@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.core.jdk.xml;
 
-import java.time.Duration;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -35,7 +33,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDKLatest;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Substitution to initialize {@link #catalog} at build time.
@@ -78,38 +75,13 @@ final class Target_javax_xml_parsers_SAXParser {
 
 final class JdkCatalogSupplier implements FieldValueTransformer {
 
-    private static Object catalog;
-
-    private static synchronized Object getCatalog() {
-        // Ensure the field is initialized.
-        Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.XMLSecurityManager");
-        // The constructor call prepareCatalog which will call JdkCatalog#init.
-        ReflectionUtil.newInstance(xmlSecurityManager);
-
-        try {
-            /*
-             * Workaround for race condition in XMLSecurityManager#prepareCatalog (JDK-8350189).
-             */
-            for (int retryCount = 0; catalog == null && retryCount < 3; retryCount++) {
-                Class<?> jdkCatalogClass = ReflectionUtil.lookupClass(false, "jdk.xml.internal.JdkCatalog");
-                Object res = ReflectionUtil.readStaticField(jdkCatalogClass, "catalog");
-                if (res == null) {
-                    Thread.sleep(Duration.ofMillis(100));
-                    continue;
-                }
-                catalog = res;
-            }
-        } catch (InterruptedException e) {
-            /* fall-through to the null check */
-        }
-        if (catalog == null) {
-            throw VMError.shouldNotReachHere("JdkCatalog initialization failed");
-        }
-        return catalog;
-    }
-
+    /**
+     * Verifies that {@link Target_jdk_xml_internal_JdkCatalog#catalog} is non-null. The
+     * initialization is triggered in
+     * {@code com.oracle.svm.hosted.xml.JavaxXmlClassAndResourcesLoaderFeature#initializeJdkCatalog()}
+     */
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        return Objects.requireNonNull(getCatalog());
+        return Objects.requireNonNull(originalValue, "JdkCatalog initialization failed");
     }
 }
