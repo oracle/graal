@@ -735,7 +735,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
 
     // Convert vmArgs to JavaVMInitArgs
     jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();
-    JavaVMOption *options = new JavaVMOption[nOptions];
+    JavaVMOption *options = (JavaVMOption*) calloc(nOptions, sizeof(JavaVMOption));
     JavaVMOption *curOpt = options;
 
     const char *svm_error = NULL;
@@ -793,7 +793,7 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
     for (int i = 0; i < nOptions; i++) {
         free(options[i].optionString);
     }
-    delete options;
+    free(options);
 
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {
