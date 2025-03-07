@@ -1582,6 +1582,7 @@ bool os::set_boot_path(char fileSep, char pathSep) {
   return false;
 }
 
+#endif // !NATIVE_IMAGE
 bool os::file_exists(const char* filename) {
   struct stat statbuf;
   if (filename == nullptr || strlen(filename) == 0) {
@@ -1589,6 +1590,7 @@ bool os::file_exists(const char* filename) {
   }
   return os::stat(filename, &statbuf) == 0;
 }
+#ifndef NATIVE_IMAGE
 
 bool os::write(int fd, const void *buf, size_t nBytes) {
   ssize_t res;
