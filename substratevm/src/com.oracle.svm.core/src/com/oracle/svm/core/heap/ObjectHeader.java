@@ -69,6 +69,8 @@ public abstract class ObjectHeader {
 
     public abstract Word encodeAsUnmanagedObjectHeader(DynamicHub hub);
 
+    public abstract void verifyDynamicHubOffsetInImageHeap(long offsetFromHeapBase);
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public DynamicHub dynamicHubFromObjectHeader(Word header) {
         return (DynamicHub) extractPotentialDynamicHubFromHeader(header).toObject();
