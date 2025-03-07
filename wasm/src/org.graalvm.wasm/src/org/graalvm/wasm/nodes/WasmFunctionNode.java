@@ -150,9 +150,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @Children private Node[] callNodes;
     @CompilationFinal private Object osrMetadata;
 
-    @CompilationFinal private int bytecodeStartOffset;
-    @CompilationFinal private int bytecodeEndOffset;
-    @CompilationFinal(dimensions = 1) private byte[] bytecode;
+    private final int bytecodeStartOffset;
+    private final int bytecodeEndOffset;
+    @CompilationFinal(dimensions = 1) private final byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
 
     @Children private WasmMemoryLibrary[] memoryLibs;
@@ -170,16 +170,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.memoryLibs = memoryLibs;
     }
 
-    private void enterErrorBranch() {
-        codeEntry.errorBranch();
+    public WasmFunctionNode(WasmFunctionNode node, byte[] bytecode, WasmNotifyFunction notifyFunction) {
+        this.module = node.module;
+        this.codeEntry = node.codeEntry;
+        this.bytecodeStartOffset = 0;
+        this.bytecodeEndOffset = bytecode.length;
+        this.bytecode = bytecode;
+        this.callNodes = new Node[node.callNodes.length];
+        for (int childIndex = 0; childIndex < callNodes.length; childIndex++) {
+            this.callNodes[childIndex] = insert(node.callNodes[childIndex].deepCopy());
+        }
+        this.memoryLibs = node.memoryLibs;
+        this.notifyFunction = notifyFunction;
     }
 
-    @SuppressWarnings("hiding")
-    void updateBytecode(byte[] bytecode, int bytecodeStartOffset, int bytecodeEndOffset, WasmNotifyFunction notifyFunction) {
-        this.bytecode = bytecode;
-        this.bytecodeStartOffset = bytecodeStartOffset;
-        this.bytecodeEndOffset = bytecodeEndOffset;
-        this.notifyFunction = notifyFunction;
+    private void enterErrorBranch() {
+        codeEntry.errorBranch();
     }
 
     private WasmMemory memory(WasmInstance instance, int index) {
@@ -301,7 +307,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     unwindStack(frame, stackPointer, localCount, resultCount);
                     dropStack(frame, stackPointer, localCount + resultCount);
                     if (notifyFunction != null) {
-                        notifyFunction.notifyLine(frame, line, -1, line);
+                        notifyFunction.notifyLine(frame, line, -1, -1);
                     }
                     return WasmConstant.RETURN_VALUE;
                 }
@@ -1698,9 +1704,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int nextLine = rawPeekI32(bytecode, offset);
                     final int sourceCodeLocation = rawPeekI32(bytecode, offset + 4);
                     offset += 8;
-                    if (notifyFunction != null) {
-                        notifyFunction.notifyLine(frame, line, nextLine, sourceCodeLocation);
-                    }
+                    assert notifyFunction != null;
+                    notifyFunction.notifyLine(frame, line, nextLine, sourceCodeLocation);
                     line = nextLine;
                     break;
                 }

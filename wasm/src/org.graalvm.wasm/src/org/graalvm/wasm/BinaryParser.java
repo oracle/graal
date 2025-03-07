@@ -586,8 +586,9 @@ public class BinaryParser extends BinaryStreamParser {
         end: while (offset < sourceCodeEndOffset) {
             // Insert a debug instruction if a line mapping exists.
             if (sourceLocationToLineMap != null) {
-                if (sourceLocationToLineMap.containsKey(offset)) {
-                    bytecode.addNotify(sourceLocationToLineMap.get(offset), offset);
+                final Integer value = sourceLocationToLineMap.get(offset);
+                if (value != null) {
+                    bytecode.addNotify(value, offset);
                 }
             }
 

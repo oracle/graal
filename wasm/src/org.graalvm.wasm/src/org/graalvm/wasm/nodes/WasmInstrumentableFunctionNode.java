@@ -104,6 +104,15 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.zeroMemoryLib = node.zeroMemoryLib;
     }
 
+    private WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node, WasmFunctionNode functionNode, WasmInstrumentationSupportNode instrumentation) {
+        this.module = node.module;
+        this.codeEntry = node.codeEntry;
+        this.functionNode = functionNode;
+        this.functionSourceLocation = node.functionSourceLocation;
+        this.instrumentation = instrumentation;
+        this.zeroMemoryLib = node.zeroMemoryLib;
+    }
+
     private WasmInstance instance(VirtualFrame frame) {
         return ((WasmRootNode) getRootNode()).instance(frame);
     }
@@ -137,10 +146,6 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         return null;
     }
 
-    protected void notifyLine(VirtualFrame frame, int line, int nextLine, int sourceLocation) {
-        instrumentation.notifyLine(frame, line, nextLine, sourceLocation);
-    }
-
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         return tag == StandardTags.RootBodyTag.class || tag == StandardTags.RootTag.class;
@@ -159,31 +164,27 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @Override
     @TruffleBoundary
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        WasmInstrumentationSupportNode info = this.instrumentation;
-        // We need to check if linking is completed. Else the call nodes might not have been
-        // resolved yet.
-        WasmContext context = WasmContext.get(this);
-        if (info == null && module.hasDebugInfo() && materializedTags.contains(StandardTags.StatementTag.class)) {
-            Lock lock = getLock();
-            lock.lock();
-            try {
-                info = this.instrumentation;
-                if (info == null) {
-                    final int functionIndex = codeEntry.functionIndex();
-                    final DebugFunction debugFunction = debugFunction();
-                    if (debugFunction == null) {
-                        return this;
+        if (this.instrumentation == null) {
+            WasmContext context = WasmContext.get(this);
+            if (module.hasDebugInfo() && materializedTags.contains(StandardTags.StatementTag.class)) {
+                Lock lock = getLock();
+                lock.lock();
+                try {
+                    if (this.instrumentation == null) {
+                        final int functionIndex = codeEntry.functionIndex();
+                        final DebugFunction debugFunction = debugFunction();
+                        if (debugFunction == null) {
+                            return this;
+                        }
+                        final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugFunction, module, functionIndex);
+                        final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
+                        final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugFunction.lineMap().sourceLocationToLineMap());
+                        final WasmFunctionNode functionNodeDuplicate = new WasmFunctionNode(functionNode, bytecode, support::notifyLine);
+                        return new WasmInstrumentableFunctionNode(this, functionNodeDuplicate, support);
                     }
-                    this.instrumentation = info = insert(new WasmInstrumentationSupportNode(debugFunction, module, functionIndex));
-                    final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
-                    final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugFunction.lineMap().sourceLocationToLineMap());
-                    functionNode.updateBytecode(bytecode, 0, bytecode.length, this::notifyLine);
-                    // the debug info contains instrumentable nodes, so we need to notify for
-                    // instrumentation updates.
-                    notifyInserted(info);
+                } finally {
+                    lock.unlock();
                 }
-            } finally {
-                lock.unlock();
             }
         }
         return this;

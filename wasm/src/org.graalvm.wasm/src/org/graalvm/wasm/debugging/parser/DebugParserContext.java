@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugFunction;
 
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 
 /**
  * Context during debug information parsing.
@@ -61,8 +62,9 @@ public class DebugParserContext {
     private final DebugParserScope globalScope;
     private final DebugLineMap[] fileLineMaps;
     private final Source[] fileSources;
+    private final DebugObjectFactory objectFactory;
 
-    public DebugParserContext(byte[] data, int debugInfoOffset, EconomicMap<Integer, DebugData> entryData, DebugLineMap[] fileLineMaps, Source[] fileSources) {
+    public DebugParserContext(byte[] data, int debugInfoOffset, EconomicMap<Integer, DebugData> entryData, DebugLineMap[] fileLineMaps, Source[] fileSources, DebugObjectFactory objectFactory) {
         assert data != null : "the reference to the array containing the debug information (data) must not be null";
         assert entryData != null : "the mapping of locations in the bytecode to debug entries (entryData) must not be null";
         this.data = data;
@@ -72,6 +74,7 @@ public class DebugParserContext {
         this.globalScope = DebugParserScope.createGlobalScope();
         this.fileLineMaps = fileLineMaps;
         this.fileSources = fileSources;
+        this.objectFactory = objectFactory;
     }
 
     /**
@@ -197,5 +200,9 @@ public class DebugParserContext {
      */
     public DebugParserScope globalScope() {
         return globalScope;
+    }
+
+    public DebugObjectFactory objectFactory() {
+        return objectFactory;
     }
 }

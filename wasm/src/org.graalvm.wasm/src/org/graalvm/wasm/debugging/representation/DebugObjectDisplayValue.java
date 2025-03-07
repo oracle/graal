@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,24 +44,24 @@ package org.graalvm.wasm.debugging.representation;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugContext;
+import org.graalvm.wasm.debugging.data.DebugFunction;
+import org.graalvm.wasm.debugging.data.DebugObject;
+import org.graalvm.wasm.nodes.WasmDataAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugContext;
-import org.graalvm.wasm.debugging.data.DebugObject;
-import org.graalvm.wasm.debugging.data.DebugFunction;
-import org.graalvm.wasm.nodes.WasmDataAccess;
 
 /**
  * Represents an object scope in the debug environment.

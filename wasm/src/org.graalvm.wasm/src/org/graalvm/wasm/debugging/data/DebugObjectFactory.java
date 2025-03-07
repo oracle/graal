@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,12 +45,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.debugging.DebugLineMap;
-import org.graalvm.wasm.debugging.parser.DebugParserContext;
-import org.graalvm.wasm.debugging.parser.DebugParserScope;
 import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
 import org.graalvm.wasm.debugging.data.objects.DebugMember;
 import org.graalvm.wasm.debugging.data.objects.DebugParameter;
@@ -68,11 +65,14 @@ import org.graalvm.wasm.debugging.data.types.DebugVariantType;
 import org.graalvm.wasm.debugging.encoding.Attributes;
 import org.graalvm.wasm.debugging.encoding.Tags;
 import org.graalvm.wasm.debugging.parser.DebugData;
-
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.wasm.debugging.parser.DebugParserContext;
+import org.graalvm.wasm.debugging.parser.DebugParserScope;
 import org.graalvm.wasm.debugging.parser.DebugUtil;
 import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Represents a factory that creates the internal representation of all types and objects in the
@@ -408,7 +408,10 @@ public abstract class DebugObjectFactory {
         assert pcs.length == 2 : "the pc range of a debug subprogram (function) must contain exactly two values (start pc and end pc)";
         final int scopeStartPc = pcs[0];
         final int scopeEndPc = pcs[1];
-        final int startLine = lineMap.getLine(scopeStartPc);
+        final int startLine = lineMap.getFirstLine(scopeStartPc, scopeEndPc);
+        if (startLine == -1) {
+            return null;
+        }
 
         final Source source = context.sourceOrNull(fileIndex);
         final SourceSection sourceSection;

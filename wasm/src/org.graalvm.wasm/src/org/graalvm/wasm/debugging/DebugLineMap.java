@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,16 +41,16 @@
 
 package org.graalvm.wasm.debugging;
 
-import org.graalvm.collections.EconomicMap;
-
 import java.nio.file.Path;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.graalvm.collections.EconomicMap;
+
 /**
  * Representation of a source location to source code line number mapping.
  */
-public class DebugLineMap {
+public final class DebugLineMap {
     private final Path filePath;
     private final SortedSet<Integer> lines;
     private final EconomicMap<Integer, Integer> sourceLocationToLineMap;
@@ -75,18 +75,32 @@ public class DebugLineMap {
         return filePath;
     }
 
-    public int getLine(int sourceLocation) {
-        if (!sourceLocationToLineMap.containsKey(sourceLocation)) {
-            return -1;
+    public int getFirstLine(int startSourceLocation, int endSourceLocation) {
+        for (int i = startSourceLocation; i <= endSourceLocation; i++) {
+            final int line = getLine(i);
+            if (line != -1) {
+                return line;
+            }
         }
-        return sourceLocationToLineMap.get(sourceLocation);
+        return -1;
+    }
+
+    public int getLastLine(int startSourceLocation, int endSourceLocation) {
+        for (int i = endSourceLocation; i >= startSourceLocation; i--) {
+            final int line = getLine(i);
+            if (line != -1) {
+                return line;
+            }
+        }
+        return -1;
+    }
+
+    private int getLine(int sourceLocation) {
+        return sourceLocationToLineMap.get(sourceLocation, -1);
     }
 
     public int getSourceLocation(int line) {
-        if (!lineToSourceLocationMap.containsKey(line)) {
-            return -1;
-        }
-        return lineToSourceLocationMap.get(line);
+        return lineToSourceLocationMap.get(line, -1);
     }
 
     public int size() {

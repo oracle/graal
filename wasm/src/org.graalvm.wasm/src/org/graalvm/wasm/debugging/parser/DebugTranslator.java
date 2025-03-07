@@ -43,7 +43,6 @@ package org.graalvm.wasm.debugging.parser;
 
 import java.nio.file.Path;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.DebugLineMap;
 import org.graalvm.wasm.debugging.data.DebugDataUtil;
@@ -53,6 +52,7 @@ import org.graalvm.wasm.debugging.encoding.Attributes;
 import org.graalvm.wasm.debugging.languages.DebugLanguageSupport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -75,23 +75,23 @@ public class DebugTranslator {
     public EconomicMap<Integer, DebugFunction> readCompilationUnits(byte[] customData, int debugInfoOffset) {
         assert customData != null : "the array containing the debug information must not be null when trying to parse the information";
         assert debugInfoOffset != DebugUtil.UNDEFINED : "the offset of the debug information must be valid";
-        EconomicMap<Integer, DebugFunction> debugFunctions = EconomicMap.create();
+        final EconomicMap<Integer, DebugFunction> debugFunctions = EconomicMap.create();
         int unitOffset = 0;
-        DebugParseUnit entryUnit = parser.readCompilationUnit(debugInfoOffset, unitOffset);
-        while (entryUnit != null) {
+        DebugParseUnit unit = parser.readCompilationUnit(debugInfoOffset, unitOffset);
+        while (unit != null) {
             // Only read compilation units for which sources are available
-            if (parseCompilationUnit(entryUnit, customData, debugInfoOffset) != null) {
-                final DebugParseUnit unit = parser.readEntries(debugInfoOffset, unitOffset);
-                if (unit != null) {
-                    final DebugParserContext context = parseCompilationUnit(unit, customData, debugInfoOffset);
-                    if (context != null) {
+            final DebugParserContext context = parseCompilationUnit(unit, customData, debugInfoOffset);
+            if (context != null) {
+                final DebugData compilationUnit = parser.readCompilationUnitChildren(unit, debugInfoOffset);
+                if (compilationUnit != null) {
+                    if (parseFunctions(context, compilationUnit)) {
                         debugFunctions.putAll(context.functions());
                     }
                 }
             }
             unitOffset = parser.getNextCompilationUnitOffset(debugInfoOffset, unitOffset);
             if (unitOffset != -1) {
-                entryUnit = parser.readCompilationUnit(debugInfoOffset, unitOffset);
+                unit = parser.readCompilationUnit(debugInfoOffset, unitOffset);
             }
         }
         return debugFunctions;
@@ -142,18 +142,21 @@ public class DebugTranslator {
         if (nullSources == fileSources.length) {
             return null;
         }
-        final DebugParserContext context = new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, fileSources);
+        return new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, fileSources, objectFactory);
+    }
+
+    private boolean parseFunctions(DebugParserContext context, DebugData data) {
         final int[] pcs = DebugDataUtil.readPcsOrNull(data, context);
         if (pcs == null) {
-            return null;
+            return false;
         }
         assert pcs.length == 2 : "the pc range of a debug compilation unit must contain exactly two values (start pc and end pc)";
         final int scopeStart = pcs[0];
         final int scopeEnd = pcs[1];
         final DebugParserScope scope = context.globalScope().with(null, scopeStart, scopeEnd);
         for (DebugData child : data.children()) {
-            objectFactory.parse(context, scope, child);
+            context.objectFactory().parse(context, scope, child);
         }
-        return context;
+        return true;
     }
 }

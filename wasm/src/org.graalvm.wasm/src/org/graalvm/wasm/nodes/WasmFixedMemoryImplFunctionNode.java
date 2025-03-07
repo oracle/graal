@@ -43,6 +43,7 @@ package org.graalvm.wasm.nodes;
 import java.util.Arrays;
 
 import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
@@ -72,9 +73,9 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     private final int bytecodeEndOffset;
     private final Node[] callNodes;
 
-    private static final WasmInstrumentableFunctionNode[] EMPTY_INSTRUMENTABLE_FUNCTION_NODES = new WasmInstrumentableFunctionNode[0];
+    private static final WasmFunctionBaseNode[] EMPTY_FUNCTION_BASE_NODES = new WasmFunctionBaseNode[0];
 
-    @Children private WasmInstrumentableFunctionNode[] instrumentableFunctionNodes = EMPTY_INSTRUMENTABLE_FUNCTION_NODES;
+    @Children private WasmFunctionBaseNode[] functionBaseNodes = EMPTY_FUNCTION_BASE_NODES;
 
     protected WasmFixedMemoryImplFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes) {
         this.module = module;
@@ -113,26 +114,28 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     }
 
     @NeverDefault
-    protected WasmInstrumentableFunctionNode createSpecializedFunctionNode(WasmMemoryLibrary[] memoryLibs) {
+    protected WasmFunctionBaseNode createSpecializedFunctionNode(WasmMemoryLibrary[] memoryLibs) {
         CompilerAsserts.neverPartOfCompilation();
         WasmInstrumentableFunctionNode instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
-        instrumentableFunctionNodes = Arrays.copyOf(instrumentableFunctionNodes, instrumentableFunctionNodes.length + 1);
-        instrumentableFunctionNodes[instrumentableFunctionNodes.length - 1] = insert(instrumentableFunctionNode);
+        WasmFunctionBaseNode baseNode = new WasmFunctionBaseNode(instrumentableFunctionNode);
+        functionBaseNodes = Arrays.copyOf(functionBaseNodes, functionBaseNodes.length + 1);
+        functionBaseNodes[functionBaseNodes.length - 1] = insert(baseNode);
         notifyInserted(instrumentableFunctionNode);
-        return instrumentableFunctionNode;
+        return baseNode;
     }
 
     @NeverDefault
-    protected WasmInstrumentableFunctionNode createDispatchedFunctionNode() {
+    protected WasmFunctionBaseNode createDispatchedFunctionNode() {
         CompilerAsserts.neverPartOfCompilation();
         WasmMemoryLibrary[] memoryLibs = new WasmMemoryLibrary[module.memoryCount()];
         for (int memoryIndex = 0; memoryIndex < module.memoryCount(); memoryIndex++) {
             memoryLibs[memoryIndex] = insert(WasmMemoryLibrary.getFactory().createDispatched(3));
         }
         WasmInstrumentableFunctionNode instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
-        instrumentableFunctionNodes = new WasmInstrumentableFunctionNode[]{insert(instrumentableFunctionNode)};
+        WasmFunctionBaseNode baseNode = new WasmFunctionBaseNode(instrumentableFunctionNode);
+        functionBaseNodes = new WasmFunctionBaseNode[]{insert(baseNode)};
         notifyInserted(instrumentableFunctionNode);
-        return instrumentableFunctionNode;
+        return baseNode;
     }
 
     public abstract void execute(VirtualFrame frame, WasmInstance instance);

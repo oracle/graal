@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,46 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.nodes;
 
-package org.graalvm.wasm.debugging.parser;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 
-import org.graalvm.collections.EconomicMap;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Represents the result of parsing debug information.
+ * Intermediate node to support instrumentation. Due to caching, instrumented nodes cannot replace
+ * themselves at {@link WasmFixedMemoryImplFunctionNode}. Therefore, this intermediate not is
+ * needed.
  */
-public final class DebugParseUnit {
-    private final DebugData rootData;
-    private final EconomicMap<Integer, DebugData> entries;
-    private final EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable;
-    private final int entryOffset;
-    private final int compilationUnitOffset;
+public final class WasmFunctionBaseNode extends Node {
+    @Child private WasmInstrumentableFunctionNode functionNode;
 
-    public DebugParseUnit(DebugData rootData, EconomicMap<Integer, DebugData> entries, EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable, int entryOffset, int compilationUnitOffset) {
-        this.rootData = rootData;
-        this.entries = entries;
-        this.abbreviationTable = abbreviationTable;
-        this.entryOffset = entryOffset;
-        this.compilationUnitOffset = compilationUnitOffset;
+    public WasmFunctionBaseNode(WasmInstrumentableFunctionNode functionNode) {
+        this.functionNode = functionNode;
     }
 
-    public DebugData rootData() {
-        return rootData;
-    }
-
-    public EconomicMap<Integer, DebugData> entries() {
-        return entries;
-    }
-
-    public EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable() {
-        return abbreviationTable;
-    }
-
-    public int entryOffset() {
-        return entryOffset;
-    }
-
-    public int compilationUnitOffset() {
-        return compilationUnitOffset;
+    public void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+        functionNode.execute(frame, context, instance);
     }
 }
