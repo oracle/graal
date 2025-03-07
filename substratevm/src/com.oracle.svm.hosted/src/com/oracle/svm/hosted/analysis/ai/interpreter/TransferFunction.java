@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.CallCallback;
+import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
@@ -15,7 +15,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
 public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterpreter<Domain> nodeInterpreter,
-                                                                      CallCallback<Domain> analyzeDependencyCallback) {
+                                                                      InvokeCallBack<Domain> analyzeDependencyCallback) {
 
     /**
      * Perform semantic transformation of the given {@link Node},
