@@ -30,7 +30,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_
 
 import java.util.Map;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -66,6 +65,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
@@ -79,6 +79,7 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
@@ -175,6 +176,12 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int offset = LayoutEncoding.getIdentityHashOffset(result);
             ObjectAccess.writeInt(result, offset, 0);
         }
+
+        /*
+         * Emit a STORE_STORE barrier to ensure that other threads see consistent values for final
+         * fields and VM internal fields.
+         */
+        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
 
         return result;
     }
