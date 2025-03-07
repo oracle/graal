@@ -210,7 +210,7 @@ public class RuntimeCodeCache {
          * Deoptimize all invocations that are on the stack. This performs a stack walk, so all
          * metadata must be intact (even though the method was already marked as non-invokable).
          */
-        Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false);
+        Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false, CurrentIsolate.getCurrentThread());
 
         boolean removeNow = !LazyDeoptimization.getValue();
         continueInvalidation(info, removeNow);
