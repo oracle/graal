@@ -303,7 +303,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase << numReservedExtraBits;
-        VMError.guarantee((header >>> numReservedExtraBits) == hubOffsetFromHeapBase, "Hub is too far from heap base for encoding in object header");
         assert (header & reservedBitsMask) == 0 : "Object header bits must be zero initially";
         if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
             if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
@@ -319,6 +318,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);
         }
         return header;
+    }
+
+    @Override
+    public void verifyDynamicHubOffsetInImageHeap(long offsetFromHeapBase) {
+        long referenceSizeMask = getReferenceSize() == Integer.BYTES ? 0xFFFF_FFFFL : -1L;
+        long encoded = (offsetFromHeapBase << numReservedExtraBits) & referenceSizeMask;
+        boolean shiftLosesInformation = (encoded >>> numReservedExtraBits != offsetFromHeapBase);
+        if (shiftLosesInformation) {
+            throw VMError.shouldNotReachHere("Hub is too far from heap base for encoding in object header: " + offsetFromHeapBase);
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
