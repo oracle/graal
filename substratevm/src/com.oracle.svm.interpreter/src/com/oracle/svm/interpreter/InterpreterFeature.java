@@ -53,7 +53,6 @@ import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -140,9 +139,7 @@ public class InterpreterFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(
-                        DeoptimizationFeature.class,
-                        DebuggerEventsFeature.class);
+        return Arrays.asList(DebuggerEventsFeature.class);
     }
 
     @Override

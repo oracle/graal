@@ -131,6 +131,7 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
         return codeStart;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public HostedImageCodeInfo getHostedImageCodeInfo() {
         return hostedImageCodeInfo;
     }
