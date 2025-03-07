@@ -28,6 +28,16 @@ import com.oracle.svm.core.util.VMError;
 
 public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
 
+    int LAYER_NUM_UNINSTALLED = -3;
+    /**
+     * Marker indicating this field is an instance field, not a static field.
+     */
+    int NONSTATIC_FIELD_LAYER_NUMBER = -2;
+    /**
+     * Marker used when a having a layer number is not applicable (such as when not building layered
+     * images).
+     */
+    int UNUSED_LAYER_NUMBER = -1;
     int UNKNOWN_LAYER_NUMBER = 0;
 
     /**

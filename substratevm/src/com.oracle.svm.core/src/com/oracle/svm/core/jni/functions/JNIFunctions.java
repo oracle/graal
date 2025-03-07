@@ -56,7 +56,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -1413,7 +1412,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle GetStaticObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        Object result = U.getReference(StaticFieldsSupport.getStaticObjectFields(), offset);
+        Object result = U.getReference(JNIAccessibleField.getStaticObjectFieldsAtRuntime(fieldId), offset);
         return JNIObjectHandles.createLocal(result);
     }
 
@@ -1422,7 +1421,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean GetStaticBooleanField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getBoolean(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getBoolean(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1430,7 +1429,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static byte GetStaticByteField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getByte(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getByte(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1438,7 +1437,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static short GetStaticShortField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getShort(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getShort(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1446,7 +1445,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static char GetStaticCharField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getChar(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getChar(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1454,7 +1453,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static int GetStaticIntField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getInt(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getInt(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1462,7 +1461,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static long GetStaticLongField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getLong(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getLong(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1470,7 +1469,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static float GetStaticFloatField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getFloat(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getFloat(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1478,7 +1477,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static double GetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        return U.getDouble(StaticFieldsSupport.getStaticPrimitiveFields(), offset);
+        return U.getDouble(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
@@ -1565,7 +1564,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, JNIObjectHandle value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putReference(StaticFieldsSupport.getStaticObjectFields(), offset, JNIObjectHandles.getObject(value));
+        U.putReference(JNIAccessibleField.getStaticObjectFieldsAtRuntime(fieldId), offset, JNIObjectHandles.getObject(value));
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1573,7 +1572,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticBooleanField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, boolean value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putBoolean(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putBoolean(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1581,7 +1580,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticByteField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, byte value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putByte(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putByte(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1589,7 +1588,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticShortField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, short value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putShort(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putShort(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1597,7 +1596,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticCharField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, char value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putChar(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putChar(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1605,7 +1604,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticIntField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, int value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putInt(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putInt(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1613,7 +1612,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticLongField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, long value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putLong(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putLong(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1621,7 +1620,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticFloatField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, float value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putFloat(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putFloat(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
@@ -1629,7 +1628,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, double value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
-        U.putDouble(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+        U.putDouble(JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId), offset, value);
     }
 
     // Checkstyle: resume
