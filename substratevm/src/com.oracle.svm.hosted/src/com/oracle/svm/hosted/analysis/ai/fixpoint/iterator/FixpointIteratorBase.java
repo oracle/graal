@@ -8,7 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -42,7 +42,7 @@ public abstract class FixpointIteratorBase<
         if (iteratorPayload.containsMethodGraph(method)) {
             this.cfgGraph = iteratorPayload.getMethodGraph().get(method);
         } else {
-            this.cfgGraph = GraphUtils.getGraph(method, debug);
+            this.cfgGraph = GraphUtil.getGraph(method, debug);
             iteratorPayload.addToMethodGraphMap(method, cfgGraph);
         }
         this.logger = AbstractInterpretationLogger.getInstance();

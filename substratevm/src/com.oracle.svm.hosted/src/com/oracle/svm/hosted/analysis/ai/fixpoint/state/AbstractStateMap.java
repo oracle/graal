@@ -1,6 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.state;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -86,10 +85,10 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
     }
 
     public String toString() {
-        StringBuilder sb = new StringBuilder("Pre and Post conditions after executing the analysis: \n");
+        StringBuilder sb = new StringBuilder();
         for (Node node : stateMap.keySet()) {
             sb.append(node).append(" -> Pre: ").append(getPreCondition(node))
-                    .append(", Post: ").append(getPostCondition(node)).append("\n");
+                    .append(", Post: ").append(getPostCondition(node)).append(System.lineSeparator());
         }
         return sb.toString();
     }
@@ -105,11 +104,12 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
      * @return the abstract context of the {@link ReturnNode}
      */
     public AbstractState<Domain> getReturnState() {
+        AbstractState<Domain> returnState = new AbstractState<>(initialDomain);
         for (Node node : stateMap.keySet()) {
             if (node instanceof ReturnNode) {
-                return stateMap.get(node);
+                returnState.joinWith(getState(node));
             }
         }
-        throw AnalysisError.shouldNotReachHere("ReturnNode not found in the state map");
+        return returnState;
     }
 }

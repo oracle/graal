@@ -12,7 +12,7 @@ import jdk.graal.compiler.graph.Node;
  * repeatedly, propagating abstract states through the graph until further changes no longer occur.
  *
  * @param <Domain> abstract domain used in the abstract interpretation
- *                                                                                                                                                                                                                                                                                 TODO in the future add support for different directions of iteration (bottom-up)
+ *
  */
 public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
 

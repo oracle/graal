@@ -46,15 +46,48 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
         return visitedCount > 0;
     }
 
+    public AbstractState<Domain> join(AbstractState<Domain> other) {
+        AbstractState<Domain> result = new AbstractState<>(preCondition.copyOf());
+        result.preCondition = preCondition.join(other.preCondition);
+        result.postCondition = postCondition.join(other.postCondition);
+        return result;
+    }
+
+    public void joinWith(AbstractState<Domain> other) {
+        preCondition.joinWith(other.preCondition);
+        postCondition.joinWith(other.postCondition);
+    }
+
+    public AbstractState<Domain> meet(AbstractState<Domain> other) {
+        AbstractState<Domain> result = new AbstractState<>(preCondition.copyOf());
+        result.preCondition = preCondition.meet(other.preCondition);
+        result.postCondition = postCondition.meet(other.postCondition);
+        return result;
+    }
+
+    public void meetWith(AbstractState<Domain> other) {
+        preCondition.meetWith(other.preCondition);
+        postCondition.meetWith(other.postCondition);
+    }
+
+    public AbstractState<Domain> widen(AbstractState<Domain> other) {
+        AbstractState<Domain> result = new AbstractState<>(preCondition.copyOf());
+        result.preCondition = preCondition.widen(other.preCondition);
+        result.postCondition = postCondition.widen(other.postCondition);
+        return result;
+    }
+
+    public void widenWith(AbstractState<Domain> other) {
+        preCondition.widenWith(other.preCondition);
+        postCondition.widenWith(other.postCondition);
+    }
+    
     public void resetCount() {
         visitedCount = 0;
     }
 
     @Override
     public String toString() {
-        return "AbstractState{" +
-                "postCondition=" + postCondition +
-                ", preCondition=" + preCondition +
-                '}';
+        return "Pre-Condition: " + preCondition + System.lineSeparator() + "Post-Condition: " + postCondition;
     }
 }
