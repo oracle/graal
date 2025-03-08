@@ -8,7 +8,6 @@ import java.util.LinkedList;
 /**
  * Represents a call stack used to keep track and manage invoked methods during analysis.
  */
-// TODO: analysisMethod probably is too broad, we can have like resolvedJavaMethod or something lighter
 public final class CallStack {
 
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
@@ -16,10 +15,6 @@ public final class CallStack {
 
     public CallStack(int maxRecursionDepth) {
         this.maxRecursionDepth = maxRecursionDepth;
-    }
-
-    public CallStack() {
-        this(10);
     }
 
     public void push(AnalysisMethod analysisMethod) {
@@ -93,8 +88,13 @@ public final class CallStack {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        boolean first = true;
         for (AnalysisMethod method : callStack) {
-            sb.append(method.getQualifiedName()).append(" <- ");
+            if (!first) {
+                sb.append(" ← ");
+            }
+            first = false;
+            sb.append(method.getQualifiedName());
         }
         return sb.toString();
     }
