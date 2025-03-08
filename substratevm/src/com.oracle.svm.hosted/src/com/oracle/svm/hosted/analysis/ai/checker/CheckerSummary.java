@@ -9,10 +9,12 @@ import java.util.List;
  */
 public final class CheckerSummary {
 
+    private final Checker checker;
     private final List<CheckerResult> warnings;
     private final List<CheckerResult> errors;
 
-    public CheckerSummary(List<CheckerResult> checkerResults) {
+    public CheckerSummary(Checker checker, List<CheckerResult> checkerResults) {
+        this.checker = checker;
         this.warnings = new LinkedList<>();
         this.errors = new LinkedList<>();
         for (var result : checkerResults) {
@@ -20,9 +22,14 @@ public final class CheckerSummary {
         }
     }
 
-    public CheckerSummary() {
+    public CheckerSummary(Checker checker) {
+        this.checker = checker;
         this.warnings = new LinkedList<>();
         this.errors = new LinkedList<>();
+    }
+
+    public Checker getChecker() {
+        return checker;
     }
 
     public List<CheckerResult> getWarnings() {
@@ -38,24 +45,6 @@ public final class CheckerSummary {
             case WARNING -> addWarning(result);
             case ERROR -> addError(result);
         }
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (var warning : warnings) {
-            sb.append("WARNING: ").append(warning).append("\n");
-        }
-        for (var error : errors) {
-            sb.append("ERROR: ").append(error).append("\n");
-        }
-        if (warnings.isEmpty() && errors.isEmpty()) {
-            sb.append("Checker passed successfully");
-        } else {
-            sb.append("Checker failed");
-        }
-
-        return sb.toString();
     }
 
     private void addWarning(CheckerResult warning) {
