@@ -6,7 +6,6 @@ import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.domain.access.ClassAccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -48,7 +47,6 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
             return false;
         }
 
-        // TODO: leq is kinda lazy here, we should go argument by argument
         return preCondition.leq(otherAccessPathIntervalSummary.preCondition);
     }
 
@@ -104,7 +102,7 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
     }
 
     @Override
-    public EnvironmentDomain<IntInterval> applySummary(Invoke invoke, Node invokeNode, EnvironmentDomain<IntInterval> callerPreCondition) {
+    public EnvironmentDomain<IntInterval> applySummary(EnvironmentDomain<IntInterval> callerPreCondition) {
         /* We rename all the prefixes from access paths in the post-condition, since we will be returning them to the caller */
         EnvironmentDomain<IntInterval> renamedEnv = new EnvironmentDomain<>(new IntInterval());
         for (AccessPath accessPath : this.postCondition.getValue().getMap().keySet()) {

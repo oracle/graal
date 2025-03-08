@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.access;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.CallCallback;
+import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.EnvironmentDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
@@ -50,7 +50,7 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Enviro
     @Override
     public EnvironmentDomain<IntInterval> execNode(Node node,
                                                    AbstractStateMap<EnvironmentDomain<IntInterval>> abstractStateMap,
-                                                   CallCallback<EnvironmentDomain<IntInterval>> analyzeDependencyCallBack) {
+                                                   InvokeCallBack<EnvironmentDomain<IntInterval>> invokeCallBack) {
 
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
@@ -71,7 +71,7 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Enviro
 
             case StoreFieldNode storeFieldNode -> {
                 AccessPath key = getAccessPathFromAccessFieldNode(storeFieldNode, abstractStateMap);
-                EnvironmentDomain<IntInterval> storeFieldEnv = execNode(storeFieldNode.value(), abstractStateMap, analyzeDependencyCallBack);
+                EnvironmentDomain<IntInterval> storeFieldEnv = execNode(storeFieldNode.value(), abstractStateMap, invokeCallBack);
                 computedPostCondition.put(key, storeFieldEnv.getExprValue());
             }
 
@@ -106,8 +106,8 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Enviro
             }
 
             case BinaryArithmeticNode<?> binaryArithmeticNode -> {
-                EnvironmentDomain<IntInterval> firstEnv = execNode(binaryArithmeticNode.getX(), abstractStateMap, analyzeDependencyCallBack);
-                EnvironmentDomain<IntInterval> secondEnv = execNode(binaryArithmeticNode.getY(), abstractStateMap, analyzeDependencyCallBack);
+                EnvironmentDomain<IntInterval> firstEnv = execNode(binaryArithmeticNode.getX(), abstractStateMap, invokeCallBack);
+                EnvironmentDomain<IntInterval> secondEnv = execNode(binaryArithmeticNode.getY(), abstractStateMap, invokeCallBack);
                 IntInterval result = new IntInterval();
                 IntInterval firstInterval = firstEnv.getExprValue();
                 IntInterval secondInterval = secondEnv.getExprValue();
@@ -176,13 +176,13 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Enviro
 
             case Invoke invoke -> {
                 /* We can use analyzeDependencyCallback to analyze calls to other methods */
-                AnalysisOutcome<EnvironmentDomain<IntInterval>> outcome = analyzeDependencyCallBack.handleCall(invoke, node, abstractStateMap);
+                AnalysisOutcome<EnvironmentDomain<IntInterval>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
                 if (outcome.isError()) {
                     logger.logToFile("Error in handling call: " + outcome.result().toString());
                     computedPostCondition.setToTop();
                 } else {
                     Summary<EnvironmentDomain<IntInterval>> summary = outcome.summary();
-                    computedPostCondition = summary.applySummary(invoke, node, preCondition);
+                    computedPostCondition = summary.applySummary(preCondition);
                 }
             }
 

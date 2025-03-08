@@ -10,7 +10,11 @@ import jdk.graal.compiler.debug.DebugContext;
 
 import java.io.IOException;
 
+/**
+ * This analyzer assigns intervals to accessPaths.
+ */
 public class AccessPathIntervalInterAnalyzer {
+
     private final InterProceduralAnalyzer<EnvironmentDomain<IntInterval>> analyzer;
 
     public AccessPathIntervalInterAnalyzer() {

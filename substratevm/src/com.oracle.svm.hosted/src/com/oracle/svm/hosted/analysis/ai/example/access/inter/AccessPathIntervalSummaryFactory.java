@@ -22,7 +22,7 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
 
     @Override
     public Summary<EnvironmentDomain<IntInterval>> createSummary(Invoke invoke,
-                                                                 EnvironmentDomain<IntInterval> callSitePreCondition,
+                                                                 EnvironmentDomain<IntInterval> callerPreCondition,
                                                                  List<EnvironmentDomain<IntInterval>> domainArguments) {
         /**
          * Here we need to create a summary that takes a pre-condition and a list of actual arguments in the environment domain
@@ -49,11 +49,11 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
             else if (arg.getStackKind().isObject()) {
                 // TODO -> this access paths base retrieval is kinda chaotic
                 AccessPathBase objectBase = domainArguments.get(i).getValue().getMap().keySet().iterator().next().getBase();
-                List<AccessPath> accessPathsWithBase = callSitePreCondition.getAccessPathsWithBase(objectBase);
+                List<AccessPath> accessPathsWithBase = callerPreCondition.getAccessPathsWithBase(objectBase);
                 accessPathsWithBase.add(new AccessPath(objectBase));
 
                 for (AccessPath accessPath : accessPathsWithBase) {
-                    IntInterval value = callSitePreCondition.get(accessPath);
+                    IntInterval value = callerPreCondition.get(accessPath);
                     AccessPath prefixedPath = new AccessPath(accessPath.getBase().addPrefix("param" + i), accessPath.getElements());
                     preCondition.put(prefixedPath, value);
                 }
@@ -61,14 +61,14 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
         }
 
         /* Ad 3. */
-        for (AccessPath path : callSitePreCondition.getValue().getMap().keySet()) {
+        for (AccessPath path : callerPreCondition.getValue().getMap().keySet()) {
             if (!(path.getBase() instanceof ClassAccessPathBase)) {
                 continue;
             }
 
             /* Only propagate if the field is accessible to the callee method */
             if (isAccessibleStaticField(path, invoke.callTarget().targetMethod())) {
-                IntInterval value = callSitePreCondition.get(path);
+                IntInterval value = callerPreCondition.get(path);
                 preCondition.put(path, value);
             }
         }
