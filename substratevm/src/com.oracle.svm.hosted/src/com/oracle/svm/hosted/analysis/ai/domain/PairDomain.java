@@ -89,7 +89,7 @@ public final class PairDomain<
 
     @Override
     public String toString() {
-        return "PairDomain{" + "first=" + first + ", second=" + second + '}';
+        return "PairDomain{" + first + ", " + second + '}';
     }
 
     @Override

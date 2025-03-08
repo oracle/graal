@@ -35,6 +35,10 @@ public final class EnvironmentDomain<Domain extends AbstractDomain<Domain>>
         return aliasMap.getOrDefault(alias, alias);
     }
 
+    public boolean hasExprValue() {
+        return exprValue != null;
+    }
+    
     public Domain getExprValue() {
         return exprValue;
     }

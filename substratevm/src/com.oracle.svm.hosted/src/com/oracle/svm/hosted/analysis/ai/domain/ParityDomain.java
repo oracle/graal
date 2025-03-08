@@ -30,5 +30,4 @@ public final class ParityDomain extends FiniteAbstractDomain<Parity> {
     public ParityDomain copyOf() {
         return new ParityDomain(this);
     }
-
 }

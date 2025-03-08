@@ -4,6 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.value.Sign;
 
 public final class SignDomain extends FiniteAbstractDomain<Sign> {
+
     public SignDomain() {
         super(Sign.BOT, AbstractValueKind.BOT);
     }

@@ -77,7 +77,7 @@ public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
 
     @Override
     public String toString() {
-        return Boolean.toString(value);
+        return "BooleanAndDomain{ " + value + " }";
     }
 
     @Override
@@ -94,4 +94,8 @@ public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
         copy.negate();
         return copy;
     }
+
+    public static BooleanAndDomain TRUE = new BooleanAndDomain(true);
+
+    public static BooleanAndDomain FALSE = new BooleanAndDomain(false);
 }

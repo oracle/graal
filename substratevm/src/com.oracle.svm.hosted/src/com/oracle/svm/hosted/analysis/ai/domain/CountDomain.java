@@ -9,24 +9,28 @@ import java.util.Objects;
 public final class CountDomain extends AbstractDomain<CountDomain> {
 
     private int value;
-    private final int maxCount;
+    private final int maxValue;
 
-    public CountDomain(int maxCount) {
+    public CountDomain(int maxValue) {
         this.value = 0;
-        this.maxCount = maxCount;
+        this.maxValue = maxValue;
     }
 
-    public CountDomain(int value, int maxCount) {
-        this.value = Math.min(value, maxCount);
-        this.maxCount = maxCount;
+    public CountDomain(int value, int maxValue) {
+        this.value = Math.min(value, maxValue);
+        this.maxValue = maxValue;
     }
 
     public int getValue() {
         return value;
     }
 
+    public int getMaxValue() {
+        return maxValue;
+    }
+
     public void increment() {
-        if (value < maxCount) {
+        if (value < maxValue) {
             value++;
         }
     }
@@ -38,17 +42,17 @@ public final class CountDomain extends AbstractDomain<CountDomain> {
     }
 
     public CountDomain getIncremented() {
-        if (value < maxCount) {
-            return new CountDomain(value + 1, maxCount);
+        if (value < maxValue) {
+            return new CountDomain(value + 1, maxValue);
         }
-        return new CountDomain(value, maxCount);
+        return new CountDomain(value, maxValue);
     }
 
     public CountDomain getDecremented() {
         if (value > 0) {
-            return new CountDomain(value - 1, maxCount);
+            return new CountDomain(value - 1, maxValue);
         }
-        return new CountDomain(value, maxCount);
+        return new CountDomain(value, maxValue);
     }
 
     @Override
@@ -58,7 +62,7 @@ public final class CountDomain extends AbstractDomain<CountDomain> {
 
     @Override
     public boolean isTop() {
-        return value == maxCount;
+        return value == maxValue;
     }
 
     @Override
@@ -70,12 +74,12 @@ public final class CountDomain extends AbstractDomain<CountDomain> {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         CountDomain that = (CountDomain) o;
-        return value == that.value && maxCount == that.maxCount;
+        return value == that.value && maxValue == that.maxValue;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(value, maxCount);
+        return Objects.hash(value, maxValue);
     }
 
     @Override
@@ -85,12 +89,12 @@ public final class CountDomain extends AbstractDomain<CountDomain> {
 
     @Override
     public void setToTop() {
-        this.value = maxCount;
+        this.value = maxValue;
     }
 
     @Override
     public void joinWith(CountDomain other) {
-        this.value = Math.min(this.value, other.value);
+        this.value = Math.max(this.value, other.value);
     }
 
     @Override
@@ -100,16 +104,16 @@ public final class CountDomain extends AbstractDomain<CountDomain> {
 
     @Override
     public void meetWith(CountDomain other) {
-        this.value = Math.max(this.value, other.value);
+        this.value = Math.min(this.value, other.value);
     }
 
     @Override
     public String toString() {
-        return "CountDomain{" + "value=" + value + ", maxCount=" + maxCount + '}';
+        return "CountDomain{" + "value = " + value + '}';
     }
 
     @Override
     public CountDomain copyOf() {
-        return new CountDomain(this.value, this.maxCount);
+        return new CountDomain(this.value, this.maxValue);
     }
 }
