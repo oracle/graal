@@ -13,24 +13,23 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
-public final class GraphUtils {
+public final class GraphUtil {
 
     public static ControlFlowGraph getGraph(AnalysisMethod root, DebugContext debug) {
         StructuredGraph structuredGraph = root.decodeAnalyzedGraph(debug, null);
         if (structuredGraph == null) {
-            throw AnalysisError.interruptAnalysis("unable to decode analyzed graph");
+            throw AnalysisError.interruptAnalysis("Unable to get graph for analysisMethod: " + root);
         }
         return new ControlFlowGraphBuilder(structuredGraph).build();
     }
 
     public static AnalysisMethod getInvokeAnalysisMethod(AnalysisMethod root, Invoke invoke) {
         for (InvokeInfo invokeInfo : root.getInvokes()) {
-            // TODO: try comparing bci, && invokeInfo.getPosition().getBCI() == invoke.bci()
             if (invoke.getTargetMethod().equals(invokeInfo.getTargetMethod())) {
                 return invokeInfo.getTargetMethod();
             }
         }
-        throw AnalysisError.interruptAnalysis("Invoke not found in analysisMethod");
+        throw AnalysisError.interruptAnalysis(invoke + " not found in: " + root);
     }
 
     public static void printGraph(AnalysisMethod root, ControlFlowGraph graph) {
@@ -67,7 +66,7 @@ public final class GraphUtils {
 
     public static void printInferredGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractStateMap<?> abstractStateMap) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logToFile("Computed postConditions of AnalysisMethod: " + analysisMethod);
+        logger.logToFile("Computed post conditions of method: " + analysisMethod);
         for (Node node : graph.getNodes()) {
             AbstractState<?> abstractState = abstractStateMap.getState(node);
             logger.logToFile(node + " -> " + abstractState.getPostCondition() + System.lineSeparator());

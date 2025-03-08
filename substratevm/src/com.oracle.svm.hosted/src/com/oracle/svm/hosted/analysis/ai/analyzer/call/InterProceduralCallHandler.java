@@ -18,10 +18,11 @@ import com.oracle.svm.hosted.analysis.ai.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,14 +70,13 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
     public AnalysisOutcome<Domain> handleCall(Invoke invoke,
                                               Node invokeNode,
                                               AbstractStateMap<Domain> callerStateMap) {
-
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        String calleeName = invoke.callTarget().targetName();
+        ResolvedJavaMethod calleeMethod = invoke.getTargetMethod();
         DebugContext debug = invokeNode.getDebug();
         AnalysisMethod analysisMethod;
 
         try {
-            analysisMethod = GraphUtils.getInvokeAnalysisMethod(callStack.getCurrentAnalysisMethod(), invoke);
+            analysisMethod = GraphUtil.getInvokeAnalysisMethod(callStack.getCurrentAnalysisMethod(), invoke);
         } catch (Exception e) {
             /* For some reason we are not able to get the AnalysisMethod of the Invoke */
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
@@ -93,9 +93,10 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         List<Domain> actualArgs = convertActualArgs(invoke, callerStateMap);
         Summary<Domain> summary = summaryManager.createSummary(invoke, callerStateMap.getPreCondition(invokeNode), actualArgs);
         /* If the summaryCache contains the summary for the target analysisMethod, we return it */
-        if (summaryManager.containsSummaryForResolvedJavaName(calleeName, summary)) {
-            logger.logToFile("Summary cache contains targetMethod: " + calleeName);
-            Summary<Domain> completeSummary = summaryManager.getSummary(calleeName, summary);
+
+        if (summaryManager.containsSummary(calleeMethod, summary)) {
+            logger.logToFile("Summary cache contains targetMethod: " + calleeMethod.getName());
+            Summary<Domain> completeSummary = summaryManager.getSummary(calleeMethod, summary);
             logger.logToFile("The summary is: " + completeSummary);
             return AnalysisOutcome.ok(completeSummary);
         }
@@ -109,23 +110,25 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
             return outcome;
         }
 
+        /* Or if we have a mutual recursion cycle */
         if (callStack.containsMethod(analysisMethod)) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
             logger.logDebugError(outcome.toString());
+            logger.logDebugError(callStack.formatCycleWithMethod(analysisMethod));
             return outcome;
         }
 
+        /* Run the fixpoint iteration on the invoked method */
         callStack.push(analysisMethod);
-        /* Create new fixpoint iterator for the target analysisMethod and run the fixpoint iteration */
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(analysisMethod, debug, summary.getPreCondition(), transferFunction, iteratorPayload);
         logger.logHighlightedDebugInfo("Running fixpoint iteration on: " + analysisMethod.getQualifiedName());
         logger.logHighlightedDebugInfo("The current call stack: " + callStack);
         AbstractStateMap<Domain> invokeAbstractStateMap = fixpointIterator.iterateUntilFixpoint();
-
         AbstractState<Domain> returnAbstractState = invokeAbstractStateMap.getReturnState();
-        summary.finalizeSummary(returnAbstractState.getPostCondition()); /* Update the summary in the cache and apply it */
-        summaryManager.putSummary(calleeName, summary);
+        summary.finalizeSummary(returnAbstractState.getPostCondition());
+        summaryManager.putSummary(calleeMethod, summary);
         callStack.pop();
+        /* Here we are finished with the fixpoint iteration and updated the summary cache */
 
         logger.logHighlightedDebugInfo("Fixpoint iteration on: " + analysisMethod.getQualifiedName() + " finished with abstract context: ");
         logger.logDebugInfo(returnAbstractState.getPostCondition().toString());
@@ -133,9 +136,8 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         logger.logDebugInfo(summary.getPreCondition().toString());
         logger.logHighlightedDebugInfo("The summary post-condition");
         logger.logDebugInfo(summary.getPostCondition().toString());
-        GraphUtils.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, invokeAbstractStateMap);
-        checkerManager.checkAll(calleeName, callerStateMap);
-
+        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, invokeAbstractStateMap);
+        checkerManager.runCheckers(calleeMethod, callerStateMap);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }
 
@@ -147,8 +149,8 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         AbstractStateMap<Domain> abstractStateMap = fixpointIterator.iterateUntilFixpoint();
         callStack.pop();
 
-        checkerManager.checkAll(root.getName(), abstractStateMap);
-        GraphUtils.printInferredGraph(iteratorPayload.getMethodGraph().get(root).graph, root, abstractStateMap);
+        checkerManager.runCheckers(root.wrapped, abstractStateMap);
+        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(root).graph, root, abstractStateMap);
     }
 
     private List<Domain> convertActualArgs(Invoke invoke, AbstractStateMap<Domain> callerStateMap) {
