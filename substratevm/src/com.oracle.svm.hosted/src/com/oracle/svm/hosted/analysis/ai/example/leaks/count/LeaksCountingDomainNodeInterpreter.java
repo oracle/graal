@@ -8,6 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
+import com.oracle.svm.hosted.analysis.ai.util.InvokeUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -29,22 +30,19 @@ public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<Count
 
         switch (node) {
             case Invoke invoke -> {
-                if (opensResource(invoke)) {
+                if (InvokeUtil.opensResource(invoke)) {
                     computedPost.increment();
-                    break;
-                }
-                if (closesResource(invoke)) {
+                } else if (InvokeUtil.closesResource(invoke)) {
                     computedPost.decrement();
-                    break;
+                } else {
+                    /* We can use analyzeDependencyCallback to analyze calls to other methods */
+                    AnalysisOutcome<CountDomain> result = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                    if (result.isError()) {
+                        throw AnalysisError.interruptAnalysis(result.toString());
+                    }
+                    Summary<CountDomain> summary = result.summary();
+                    computedPost = summary.applySummary(preCondition);
                 }
-
-                /* The invoke doesn't open or close the resource -> we can analyze it using our invokeCallBack */
-                AnalysisOutcome<CountDomain> result = invokeCallBack.handleCall(invoke, node, abstractStateMap);
-                if (result.isError()) {
-                    throw AnalysisError.interruptAnalysis(result.toString());
-                }
-                Summary<CountDomain> summary = result.summary();
-                computedPost = summary.applySummary(preCondition);
             }
 
             default -> {
@@ -54,13 +52,5 @@ public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<Count
 
         state.setPostCondition(computedPost);
         return computedPost;
-    }
-
-    private boolean opensResource(Invoke invoke) {
-        return invoke.getTargetMethod().getName().contains("<init>");
-    }
-
-    private boolean closesResource(Invoke invoke) {
-        return invoke.getTargetMethod().getName().contains("<close>");
     }
 }

@@ -10,8 +10,7 @@ import java.util.List;
 public class LeakCountingSummaryFactory implements SummaryFactory<CountDomain> {
 
     @Override
-    public Summary<CountDomain> createSummary(Invoke invoke, CountDomain callSitePreCondition, List<CountDomain> arguments) {
-        /* The arguments are unused since this simple analysis doesn't work with them at all */
-        return new LeakCountingSummary(callSitePreCondition, invoke);
+    public Summary<CountDomain> createSummary(Invoke invoke, CountDomain callerPreCondition, List<CountDomain> domainArguments) {
+        return new LeakCountingSummary(new CountDomain(0, callerPreCondition.getMaxValue()), invoke);
     }
 }

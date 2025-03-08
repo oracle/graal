@@ -16,7 +16,7 @@ public class LeakCountingSummary implements Summary<CountDomain> {
 
     public LeakCountingSummary(CountDomain preCondition, Invoke invoke) {
         this.preCondition = preCondition;
-        this.postCondition = new CountDomain(0); /* We haven't opened any files yet */
+        this.postCondition = new CountDomain(preCondition.getMaxValue()); /* We haven't opened any files yet */
         this.invoke = invoke;
     }
 
@@ -27,7 +27,7 @@ public class LeakCountingSummary implements Summary<CountDomain> {
 
     @Override
     public CountDomain getPreCondition() {
-        return null;
+        return preCondition;
     }
 
     @Override
@@ -49,7 +49,6 @@ public class LeakCountingSummary implements Summary<CountDomain> {
     public void finalizeSummary(CountDomain postCondition) {
         this.postCondition = postCondition;
     }
-
 
     @Override
     public CountDomain applySummary(CountDomain callerPreCondition) {
