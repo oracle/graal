@@ -12,7 +12,7 @@ public class EnvironmentDomainTest {
     @Test
     public void testPutAndGet() {
         EnvironmentDomain<IntInterval> domain = new EnvironmentDomain<>(new IntInterval());
-        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field");
+        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field", 0);
         domain.put(path, new IntInterval(1, 5));
         Assert.assertEquals(new IntInterval(1, 5), domain.get(path));
     }
@@ -20,7 +20,7 @@ public class EnvironmentDomainTest {
     @Test
     public void testRemove() {
         EnvironmentDomain<IntInterval> domain = new EnvironmentDomain<>(new IntInterval());
-        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field");
+        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field", 0);
         domain.put(path, new IntInterval(1, 5));
         domain.remove(path);
         Assert.assertTrue(domain.get(path).isTop());
@@ -29,8 +29,8 @@ public class EnvironmentDomainTest {
     @Test
     public void testAlias() {
         EnvironmentDomain<IntInterval> domain = new EnvironmentDomain<>(new IntInterval());
-        AccessPath original = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field");
-        AccessPath alias = new AccessPath(new PlaceHolderAccessPathBase("alias")).appendField("field");
+        AccessPath original = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field", 0);
+        AccessPath alias = new AccessPath(new PlaceHolderAccessPathBase("alias")).appendField("field", 0);
         domain.createAlias(original, alias);
         domain.put(original, new IntInterval(1, 5));
         Assert.assertEquals(new IntInterval(1, 5), domain.get(alias));
@@ -40,8 +40,8 @@ public class EnvironmentDomainTest {
     public void testJoinWith() {
         EnvironmentDomain<IntInterval> domain1 = new EnvironmentDomain<>(new IntInterval());
         EnvironmentDomain<IntInterval> domain2 = new EnvironmentDomain<>(new IntInterval());
-        AccessPath path1 = new AccessPath(new PlaceHolderAccessPathBase("var1")).appendField("field");
-        AccessPath path2 = new AccessPath(new PlaceHolderAccessPathBase("var2")).appendField("field");
+        AccessPath path1 = new AccessPath(new PlaceHolderAccessPathBase("var1")).appendField("field", 0);
+        AccessPath path2 = new AccessPath(new PlaceHolderAccessPathBase("var2")).appendField("field", 0);
         domain1.put(path1, new IntInterval(1, 5));
         domain2.put(path2, new IntInterval(3, 7));
         domain1.joinWith(domain2);
@@ -53,7 +53,7 @@ public class EnvironmentDomainTest {
     public void testIntersectionWith() {
         EnvironmentDomain<IntInterval> domain1 = new EnvironmentDomain<>(new IntInterval());
         EnvironmentDomain<IntInterval> domain2 = new EnvironmentDomain<>(new IntInterval());
-        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field");
+        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field", 0);
         domain1.put(path, new IntInterval(1, 5));
         domain2.put(path, new IntInterval(3, 7));
         domain1.intersectionWith(domain2);
@@ -64,7 +64,7 @@ public class EnvironmentDomainTest {
     public void testDifferenceWith() {
         EnvironmentDomain<IntInterval> domain1 = new EnvironmentDomain<>(new IntInterval());
         EnvironmentDomain<IntInterval> domain2 = new EnvironmentDomain<>(new IntInterval());
-        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field");
+        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("var")).appendField("field", 0);
         domain1.put(path, new IntInterval(1, 5));
         domain2.put(path, new IntInterval(3, 7));
         domain1.differenceWith((a, b) -> new IntInterval(a.getLowerBound() - b.getLowerBound(), a.getUpperBound() - b.getUpperBound()), domain2.getValue());
@@ -76,8 +76,8 @@ public class EnvironmentDomainTest {
         EnvironmentDomain<IntInterval> domain1 = new EnvironmentDomain<>(new IntInterval());
         EnvironmentDomain<IntInterval> domain2 = new EnvironmentDomain<>(new IntInterval());
 
-        AccessPath path1 = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1");
-        AccessPath path2 = new AccessPath(new PlaceHolderAccessPathBase("y")).appendField("field2");
+        AccessPath path1 = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1", 0);
+        AccessPath path2 = new AccessPath(new PlaceHolderAccessPathBase("y")).appendField("field2", 0);
 
         domain1.put(path1, new IntInterval(1, 5));
         domain1.put(path2, new IntInterval(2, 6));
@@ -94,8 +94,8 @@ public class EnvironmentDomainTest {
     public void testAliasResolution() {
         EnvironmentDomain<IntInterval> domain = new EnvironmentDomain<>(new IntInterval());
 
-        AccessPath originalPath = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1");
-        AccessPath aliasPath = new AccessPath(new PlaceHolderAccessPathBase("y")).appendField("field2");
+        AccessPath originalPath = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1", 0);
+        AccessPath aliasPath = new AccessPath(new PlaceHolderAccessPathBase("y")).appendField("field2", 0);
 
         domain.put(originalPath, new IntInterval(1, 5));
         domain.createAlias(originalPath, aliasPath);
@@ -107,8 +107,8 @@ public class EnvironmentDomainTest {
     public void testRemoveAlias() {
         EnvironmentDomain<IntInterval> domain = new EnvironmentDomain<>(new IntInterval());
 
-        AccessPath originalPath = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1");
-        AccessPath aliasPath = new AccessPath(new PlaceHolderAccessPathBase("y")).appendField("field2");
+        AccessPath originalPath = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1", 0);
+        AccessPath aliasPath = new AccessPath(new PlaceHolderAccessPathBase("y")).appendField("field2", 0);
 
         domain.put(originalPath, new IntInterval(1, 5));
         domain.createAlias(originalPath, aliasPath);
@@ -121,7 +121,7 @@ public class EnvironmentDomainTest {
     public void testCopyOf() {
         EnvironmentDomain<IntInterval> domain = new EnvironmentDomain<>(new IntInterval());
 
-        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1");
+        AccessPath path = new AccessPath(new PlaceHolderAccessPathBase("x")).appendField("field1", 0);
         domain.put(path, new IntInterval(1, 5));
 
         EnvironmentDomain<IntInterval> copy = domain.copyOf();
