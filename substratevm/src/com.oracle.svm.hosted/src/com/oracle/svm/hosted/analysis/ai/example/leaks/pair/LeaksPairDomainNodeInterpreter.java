@@ -1,11 +1,15 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.pair;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
+import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.summary.Summary;
+import com.oracle.svm.hosted.analysis.ai.util.InvokeUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -23,38 +27,41 @@ public class LeaksPairDomainNodeInterpreter implements NodeInterpreter<PairDomai
     @Override
     public PairDomain<CountDomain, BooleanOrDomain> execNode(Node node,
                                                              AbstractStateMap<PairDomain<CountDomain, BooleanOrDomain>> abstractStateMap,
-                                                             AnalysisPayload<PairDomain<CountDomain, BooleanOrDomain>> payload) {
-
+                                                             InvokeCallBack<PairDomain<CountDomain, BooleanOrDomain>> invokeCallBack) {
         PairDomain<CountDomain, BooleanOrDomain> preCondition = abstractStateMap.getPreCondition(node);
-        CountDomain preCount = preCondition.getFirst();
-        BooleanOrDomain preReturns = preCondition.getSecond();
+        PairDomain<CountDomain, BooleanOrDomain> computedPost = preCondition.copyOf();
+        int preCount = preCondition.getFirst().getValue();
 
-        if (node instanceof Invoke invoke) {
-            if (opensResource(invoke)) {
-                abstractStateMap.setPostCondition(node, new PairDomain<>(preCount.getIncremented(), preReturns));
+        switch (node) {
+            case Invoke invoke -> {
+                if (InvokeUtil.opensResource(invoke)) {
+                    computedPost.getFirst().increment();
+                } else if (InvokeUtil.closesResource(invoke)) {
+                    computedPost.getFirst().decrement();
+                } else {
+                    AnalysisOutcome<PairDomain<CountDomain, BooleanOrDomain>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                    if (outcome.isError()) {
+                        throw AnalysisError.interruptAnalysis(outcome.toString());
+                    }
+
+                    Summary<PairDomain<CountDomain, BooleanOrDomain>> summary = outcome.summary();
+                    computedPost = summary.applySummary(preCondition);
+                }
             }
-            if (closesResource(invoke)) {
-                abstractStateMap.setPostCondition(node, new PairDomain<>(preCount.getDecremented(), preReturns));
+
+            case ReturnNode returnNode -> {
+                if (preCount == 0) {
+                    computedPost.getSecond().meetWith(BooleanOrDomain.FALSE);
+                } else {
+                    computedPost.getSecond().joinWith(BooleanOrDomain.TRUE);
+                }
             }
-        } else if (node instanceof ReturnNode && preCount.getValue() > 0) {
-            abstractStateMap.setPostCondition(node, new PairDomain<>(preCount, new BooleanOrDomain(true)));
-        } else {
-            abstractStateMap.getPostCondition(node).joinWith(abstractStateMap.getPreCondition(node));
+
+            default -> {
+            }
         }
 
-        return abstractStateMap.getPreCondition(node);
-    }
-
-    // TODO: this is not complete
-    private boolean opensResource(Invoke invoke) {
-        System.out.println("invoke.getTargetMethod().getName() = " + invoke.getTargetMethod().getName());
-        System.out.println("invoke.getTargetMethod().getDeclaringClass() = " + invoke.getTargetMethod().getDeclaringClass());
-        return invoke.getTargetMethod().getName().contains("<init>");
-    }
-
-    private boolean closesResource(Invoke invoke) {
-        System.out.println("invoke.getTargetMethod().getName() = " + invoke.getTargetMethod().getName());
-        System.out.println("invoke.getTargetMethod().getDeclaringClass() = " + invoke.getTargetMethod().getDeclaringClass());
-        return invoke.getTargetMethod().getName().contains("<close>");
+        abstractStateMap.getState(node).setPostCondition(computedPost);
+        return computedPost;
     }
 }

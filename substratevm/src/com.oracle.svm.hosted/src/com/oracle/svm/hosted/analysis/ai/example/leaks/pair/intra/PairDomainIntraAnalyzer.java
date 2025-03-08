@@ -14,7 +14,7 @@ public class PairDomainIntraAnalyzer {
 
     public PairDomainIntraAnalyzer() {
         analyzer = new IntraProceduralAnalyzer.Builder<>(
-                new PairDomain<>(new CountDomain(0), new BooleanOrDomain(false)),
+                new PairDomain<>(new CountDomain(1024), new BooleanOrDomain(false)),
                 new LeaksPairDomainNodeInterpreter())
                 .build();
     }

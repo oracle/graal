@@ -19,7 +19,7 @@ public class PairDomainInterAnalyzer {
 
     public PairDomainInterAnalyzer() {
         analyzer = new InterProceduralAnalyzer.Builder<>(
-                new PairDomain<>(new CountDomain(0), new BooleanOrDomain(false)),
+                new PairDomain<>(new CountDomain(1024), new BooleanOrDomain(false)),
                 new LeaksPairDomainNodeInterpreter(),
                 new LeakPairSummaryFactory())
                 .build();
