@@ -41,21 +41,20 @@ Find more information on this topic in [Basic Usage of Profile-Guided Optimizati
 ### ML-Powered Profile Inference for Enhanced Performance
  
 Native Image supports machine learning-driven static profiling, as a built-in capability.
-By default, GraalVM runs at the `-O2` optimization level, which uses the simple and fast XGBoost ML model for profile inference.
+By default, GraalVM runs at the `-O2` optimization level, which uses the simple and fast **Graal Static Profiler (GraalSP)** for profile inference.
 This model is optimized for a wide range of applications.
 
-As of GraalVM for JDK 24, the new Graph Neural Network (GNN) ML model can be used for profile inference, offering even better performance.
+As of GraalVM for JDK 24, the new **Graal Neural Network (GraalNN)** static profiler can be used for ML-powered profile inference, offering even better performance.
 Enable it by passing the `-O3` option to Native Image. 
 
 > Note: Not available in GraalVM Community Edition.
 
-Note that if Profile-Guided Optimization (PGO) is enabled, ML inference is automatically disabled, as PGO utilizes high-quality profile data that makes additional ML inference unnecessary.
-Thus, passing the `--pgo` option will disable the ML inference feature.
+Note that if the user provides a [PGO profile](#profile-guided-optimization-for-improved-throughput) using the `--pgo` option, additional ML inference is unnecessary and therefore disabled automatically.
 
 Key Points:
 
-* **XGBoost ML model** (simple model) is used with `-O2` by default.
-* **GNN ML model** (advanced model) is used with `-O3` by default.
+* **GraalSP** (simple model) is used with `-O2` by default.
+* **GraalNN** (advanced model) is used with `-O3` by default.
 
 ### Optimizing for Specific Machines
 
