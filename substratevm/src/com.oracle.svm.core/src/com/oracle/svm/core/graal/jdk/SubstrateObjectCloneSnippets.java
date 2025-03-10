@@ -30,7 +30,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_
 
 import java.util.Map;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -44,12 +43,14 @@ import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
@@ -66,6 +67,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
@@ -79,6 +81,7 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
@@ -90,14 +93,19 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/hotspot/share/prims/jvm.cpp#L645-L694")
     private static Object doClone(Object original) throws CloneNotSupportedException {
         if (original == null) {
             throw new NullPointerException();
         } else if (!(original instanceof Cloneable)) {
-            throw new CloneNotSupportedException("Object is no instance of Cloneable.");
+            throw new CloneNotSupportedException("Object is no instance of Cloneable: " + original.getClass().getName());
         }
 
         DynamicHub hub = KnownIntrinsics.readHub(original);
+        if (hub.getHubType() == HubType.REFERENCE_INSTANCE) {
+            throw new CloneNotSupportedException("Subclasses of java.lang.ref.Reference are not cloneable: " + hub.getName());
+        }
+
         int layoutEncoding = hub.getLayoutEncoding();
         boolean isArrayLike = LayoutEncoding.isArrayLike(layoutEncoding);
 
@@ -175,6 +183,12 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int offset = LayoutEncoding.getIdentityHashOffset(result);
             ObjectAccess.writeInt(result, offset, 0);
         }
+
+        /*
+         * Emit a STORE_STORE barrier to ensure that other threads see consistent values for final
+         * fields and VM internal fields.
+         */
+        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
 
         return result;
     }
