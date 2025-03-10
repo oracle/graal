@@ -7,16 +7,19 @@ permalink: /security-guide/native-image/sbom/
 
 # Software Bill of Materials (SBOM) in Native Image
 
-GraalVM Native Image can assemble a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
-Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM).
+GraalVM Native Image assembles a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities (only available in Oracle GraalVM).
+Pass the `--enable-sbom` option to the `native-image` command to configure the SBOM feature.
+The SBOM feature is enabled by default and defaults to the `embed` option which embeds an SBOM into the native executable. 
 In addition to being embedded, the SBOM can be added to the classpath or exported as a JSON file by using `--enable-sbom=classpath,export`.
 
 The CycloneDX format is supported and is the default.
-To embed a CycloneDX SBOM into a native executable, pass the `--enable-sbom` option to the `native-image` command.
 
 The implementation constructs the SBOM by recovering all version information observable in external library manifests for classes included in a native executable.
 The SBOM is compressed to limit the SBOM's impact on the native executable size.
+The compressed size is typically less than 1/10,000 of the overall image size.
 The SBOM is stored in the `gzip` format with the exported `sbom` symbol referencing its start address and the `sbom_length` symbol referencing its size.
+
+The SBOM feature can be disabled with `--enable-sbom=false`.
 
 After embedding the compressed SBOM into the executable, the [Native Image Inspect Tool](../reference-manual/native-image/InspectTool.md) is able to extract the compressed SBOM using the `--sbom` parameter accessible through `$JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary>` from both executables and shared libraries.
 It outputs the SBOM in the following format:
