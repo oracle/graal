@@ -24,9 +24,9 @@ package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
-import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 
 /**
  * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.
@@ -35,12 +35,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F> {
-    /**
-     * @return The symbolic signature of this method.
-     */
-    Symbol<Signature> getSymbolicSignature();
-
+public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F>, Signed, PartialMethod<C, M, F> {
     /**
      * Obtains the parsed signature for this method.
      * <p>
@@ -56,23 +51,15 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
     }
 
     /**
-     * @return {@code true} if this method represents an instance initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
-     */
-    boolean isConstructor();
-
-    /**
-     * @return {@code true} if this method represents a class initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, and it is {@link #isStatic()
-     *         static}), {@code false} otherwise.
-     */
-    boolean isClassInitializer();
-
-    /**
      * Whether loading constraints checks should be skipped for this method. An example of method
      * which should skip loading constraints are the polymorphic signature methods.
      */
     boolean shouldSkipLoadingConstraints();
+
+    /**
+     * Whether this method appears in a VTable, and its VTable index is initialized.
+     */
+    boolean hasVTableIndex();
 
     /**
      * The {@link CodeAttribute} associated with this method.
@@ -82,5 +69,5 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
     /**
      * The {@link ExceptionHandler exception handlers} associated with this method.
      */
-    ExceptionHandler[] getExceptionHandlers();
+    ExceptionHandler[] getSymbolicExceptionHandlers();
 }
