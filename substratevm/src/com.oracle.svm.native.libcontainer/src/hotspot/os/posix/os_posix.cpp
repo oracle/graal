@@ -530,14 +530,6 @@ char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_des
   return aligned_base;
 }
 
-} // namespace svm_container
-
-#endif // !NATIVE_IMAGE
-
-#ifndef NATIVE_IMAGE
-
-namespace svm_container {
-
 int os::get_fileno(FILE* fp) {
   return NOT_AIX(::)fileno(fp);
 }
@@ -989,7 +981,7 @@ char* os::Posix::describe_pthread_attr(char* buf, size_t buflen, const pthread_a
   // Work around glibc stack guard issue, see os::create_thread() in os_linux.cpp.
   LINUX_ONLY(if (os::Linux::adjustStackSizeForGuardPages()) stack_size -= guard_size;)
   pthread_attr_getdetachstate(attr, &detachstate);
-  jio_snprintf(buf, buflen, "stacksize: " SIZE_FORMAT "k, guardsize: " SIZE_FORMAT "k, %s",
+  jio_snprintf(buf, buflen, "stacksize: %zuk, guardsize: %zuk, %s",
     stack_size / K, guard_size / K,
     (detachstate == PTHREAD_CREATE_DETACHED ? "detached" : "joinable"));
   return buf;
@@ -1035,9 +1027,19 @@ char* os::realpath(const char* filename, char* outbuf, size_t outbuflen) {
   return result;
 }
 
+
+} // namespace svm_container
+
+#endif // !NATIVE_IMAGE
+
+
+namespace svm_container {
+
 int os::stat(const char *path, struct stat *sbuf) {
   return ::stat(path, sbuf);
 }
+
+#ifndef NATIVE_IMAGE
 
 char * os::native_path(char *path) {
   return path;
@@ -2203,7 +2205,7 @@ const void* os::get_saved_assert_context(const void** sigInfo) {
   *sigInfo = nullptr;
   return nullptr;
 }
+#endif // !NATIVE_IMAGE
 
 } // namespace svm_container
 
-#endif // !NATIVE_IMAGE

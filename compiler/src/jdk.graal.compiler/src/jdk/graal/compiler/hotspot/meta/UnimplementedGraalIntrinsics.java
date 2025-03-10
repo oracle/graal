@@ -108,6 +108,19 @@ public final class UnimplementedGraalIntrinsics {
                         // @formatter:on
             );
         }
+
+        if (jdk >= 25) {
+            add(toBeInvestigated,
+                            // JDK-8348561: Add aarch64 intrinsics for ML-DSA
+                            // JDK-8351034: Add AVX-512 intrinsics for ML-DSA
+                            "sun/security/provider/ML_DSA.implDilithiumAlmostInverseNtt([I[I)I",
+                            "sun/security/provider/ML_DSA.implDilithiumAlmostNtt([I[I)I",
+                            "sun/security/provider/ML_DSA.implDilithiumDecomposePoly([I[I[III)I",
+                            "sun/security/provider/ML_DSA.implDilithiumMontMulByConstant([II)I",
+                            "sun/security/provider/ML_DSA.implDilithiumNttMult([I[I[I)I",
+                            "sun/security/provider/SHA3Parallel.doubleKeccak([J[J)I");
+        }
+
         add(ignore,
                         // These are dead
                         "java/lang/Math.atan2(DD)D",
