@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,6 +50,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 
 abstract class ArgumentNode extends Node {
     final PanamaType type;
@@ -233,10 +237,15 @@ abstract class ArgumentNode extends Node {
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return ctx.getContextArena().allocateFrom(interop.asString(value));
+                return allocateFrom(ctx.getContextArena(), interop.asString(value));
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
+        }
+
+        @TruffleBoundary(allowInlining = true)
+        private static MemorySegment allocateFrom(Arena arena, String str) {
+            return arena.allocateFrom(str);
         }
     }
 }
