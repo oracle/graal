@@ -70,6 +70,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         CLASS_LAYOUT_1,
         CLASS_LAYOUT_2,
         CLASS_LAYOUT_3,
+        CLASS_LAYOUT_4,
         TYPE_POINTER_SIG,
         TYPE_POINTER,
         FOREIGN_TYPEDEF,
