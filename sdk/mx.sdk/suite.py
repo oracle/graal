@@ -1399,6 +1399,7 @@ LDFLAGS=
       "platformDependent" : True,
       "native_toolchain" : {
         "kind": "ninja",
+        "compiler": "gcc",
         "target": {
           # host os/arch
           "libc": "musl",
@@ -1461,6 +1462,7 @@ LDFLAGS=
       "platformDependent" : True,
       "native_toolchain" : {
         "kind": "cmake",
+        "compiler": "gcc",
         "target": {
           # host os/arch
           "libc": "musl",
