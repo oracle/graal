@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -107,7 +108,7 @@ public class VarHandleFeature implements InternalFeature {
 
             if (guaranteeUnsafeAccessed) {
                 AnalysisField aField = result instanceof AnalysisField ? (AnalysisField) result : ((HostedField) result).getWrapped();
-                VMError.guarantee(aField.isUnsafeAccessed(), "Field not registered as unsafe accessed %s", aField);
+                AnalysisError.guarantee(aField.isUnsafeAccessed(), "Field not registered as unsafe accessed %s", aField);
             }
 
             return result;
