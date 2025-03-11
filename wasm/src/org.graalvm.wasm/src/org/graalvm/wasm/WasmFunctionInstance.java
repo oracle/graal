@@ -42,23 +42,21 @@ package org.graalvm.wasm;
 
 import java.util.Objects;
 
-import org.graalvm.wasm.nodes.WasmCallNode;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.Node;
 
-@ImportStatic(WasmCallNode.class)
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
 
@@ -137,31 +135,52 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     }
 
     @ExportMessage
-    Object execute(Object[] arguments,
-                    @CachedLibrary("this") InteropLibrary self,
-                    @Cached WasmIndirectCallNode callNode) {
-        TruffleContext c = getTruffleContext();
-        Object prev = c.enter(self);
-        try {
-            CallTarget callAdapter = this.function.getInteropCallAdapter();
-            if (callAdapter == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callAdapter = createInteropCallAdapter();
+    static class Execute {
+        private static Object execute(WasmFunctionInstance functionInstance, Object[] arguments, CallTarget callAdapter, Node node, Node callNode) {
+            TruffleContext c = functionInstance.getTruffleContext();
+            Object prev = c.enter(node);
+            try {
+                return callAdapter.call(callNode, WasmArguments.create(functionInstance, arguments));
+                // throws ArityException, UnsupportedTypeException
+            } finally {
+                c.leave(node, prev);
             }
-            return callNode.execute(callAdapter, WasmArguments.create(this, arguments));
-            // throws ArityException, UnsupportedTypeException
-        } finally {
-            c.leave(self, prev);
         }
-    }
 
-    @TruffleBoundary
-    private CallTarget createInteropCallAdapter() {
-        CallTarget callAdapter = this.function.getInteropCallAdapter();
-        if (callAdapter == null) {
-            callAdapter = context.language().interopCallAdapterFor(function.type());
-            this.function.setInteropCallAdapter(callAdapter);
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"actualFunction == cachedFunction"}, limit = "2")
+        static Object direct(WasmFunctionInstance functionInstance, Object[] arguments,
+                        @Bind("functionInstance.function()") WasmFunction actualFunction,
+                        @Cached("actualFunction") WasmFunction cachedFunction,
+                        @Cached("getOrCreateInteropCallAdapter(functionInstance)") CallTarget cachedCallAdapter,
+                        @Bind Node node) {
+            return execute(functionInstance, arguments, cachedCallAdapter, node, node);
         }
-        return callAdapter;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"actualCallAdapter == cachedCallAdapter"}, limit = "3", replaces = "direct")
+        static Object directAdapter(WasmFunctionInstance functionInstance, Object[] arguments,
+                        @Bind("getOrCreateInteropCallAdapter(functionInstance)") CallTarget actualCallAdapter,
+                        @Cached("actualCallAdapter") CallTarget cachedCallAdapter,
+                        @Bind Node node) {
+            return execute(functionInstance, arguments, cachedCallAdapter, node, node);
+        }
+
+        @Specialization(replaces = "directAdapter")
+        static Object indirect(WasmFunctionInstance functionInstance, Object[] arguments,
+                        @Bind Node node) {
+            CallTarget callAdapter = getOrCreateInteropCallAdapter(functionInstance);
+            Node callNode = node.isAdoptable() ? node : EncapsulatingNodeReference.getCurrent().get();
+            return execute(functionInstance, arguments, callAdapter, node, callNode);
+        }
+
+        static CallTarget getOrCreateInteropCallAdapter(WasmFunctionInstance functionInstance) {
+            WasmFunction function = functionInstance.function();
+            CallTarget callAdapter = function.getInteropCallAdapter();
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, callAdapter == null)) {
+                return function.getOrCreateInteropCallAdapter(functionInstance.context().language());
+            }
+            return callAdapter;
+        }
     }
 }
