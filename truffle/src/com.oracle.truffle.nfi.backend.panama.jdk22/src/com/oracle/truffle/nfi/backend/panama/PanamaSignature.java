@@ -386,7 +386,7 @@ final class PanamaSignature {
                 // We need to set and capture native errno as close as possible to the native call
                 // to avoid the JVM clobbering it
                 ctx.setNativeErrno(nfiState.getNFIErrno());
-                Object result = (Object) downcallHandle.invokeExact(segment, args);
+                Object result = downcall(args, segment);
                 nfiState.setNFIErrno(ctx.getNativeErrno());
 
                 if (result == null) {
@@ -403,6 +403,11 @@ final class PanamaSignature {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException(t);
             }
+        }
+
+        @TruffleBoundary(allowInlining = true)
+        private Object downcall(Object[] args, MemorySegment segment) throws Throwable {
+            return (Object) downcallHandle.invokeExact(segment, args);
         }
     }
 }
