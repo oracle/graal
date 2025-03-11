@@ -38,7 +38,7 @@ public enum ConfigurationFile {
     REFLECTION("reflect", REFLECTION_KEY, true, true),
     RESOURCES("resource", RESOURCES_KEY, true, true),
     SERIALIZATION("serialization", SERIALIZATION_KEY, true, true),
-    JNI("jni", JNI_KEY, true, true),
+    JNI("jni", JNI_KEY, false, true),
     /* Deprecated metadata categories */
     DYNAMIC_PROXY("proxy", null, true, false),
     PREDEFINED_CLASSES_NAME("predefined-classes", null, true, false),

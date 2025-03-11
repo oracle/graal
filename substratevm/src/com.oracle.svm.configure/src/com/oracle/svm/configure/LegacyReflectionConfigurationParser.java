@@ -97,29 +97,30 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
-        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
+        boolean jniAccessible = checkOption(ConfigurationParserOption.JNI_PARSER);
+        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, jniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, jniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, jniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, jniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, jniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, jniAccessible, clazz));
         registerIfNotDefault(data, isType, clazz, "allDeclaredClasses", () -> delegate.registerDeclaredClasses(queryCondition, clazz));
         registerIfNotDefault(data, isType, clazz, "allRecordComponents", () -> delegate.registerRecordComponents(queryCondition, clazz));
         registerIfNotDefault(data, isType, clazz, "allPermittedSubclasses", () -> delegate.registerPermittedSubclasses(queryCondition, clazz));
         registerIfNotDefault(data, isType, clazz, "allNestMembers", () -> delegate.registerNestMembers(queryCondition, clazz));
         registerIfNotDefault(data, isType, clazz, "allSigners", () -> delegate.registerSigners(queryCondition, clazz));
         registerIfNotDefault(data, isType, clazz, "allPublicClasses", () -> delegate.registerPublicClasses(queryCondition, clazz));
-        registerIfNotDefault(data, isType, clazz, "queryAllDeclaredConstructors", () -> delegate.registerDeclaredConstructors(queryCondition, true, clazz));
-        registerIfNotDefault(data, isType, clazz, "queryAllPublicConstructors", () -> delegate.registerPublicConstructors(queryCondition, true, clazz));
-        registerIfNotDefault(data, isType, clazz, "queryAllDeclaredMethods", () -> delegate.registerDeclaredMethods(queryCondition, true, clazz));
-        registerIfNotDefault(data, isType, clazz, "queryAllPublicMethods", () -> delegate.registerPublicMethods(queryCondition, true, clazz));
+        registerIfNotDefault(data, isType, clazz, "queryAllDeclaredConstructors", () -> delegate.registerDeclaredConstructors(queryCondition, true, jniAccessible, clazz));
+        registerIfNotDefault(data, isType, clazz, "queryAllPublicConstructors", () -> delegate.registerPublicConstructors(queryCondition, true, jniAccessible, clazz));
+        registerIfNotDefault(data, isType, clazz, "queryAllDeclaredMethods", () -> delegate.registerDeclaredMethods(queryCondition, true, jniAccessible, clazz));
+        registerIfNotDefault(data, isType, clazz, "queryAllPublicMethods", () -> delegate.registerPublicMethods(queryCondition, true, jniAccessible, clazz));
         if (isType) {
             /*
              * Fields cannot be registered as queried only by the user, we register them
              * unconditionally if the class is registered via "type".
              */
-            delegate.registerDeclaredFields(queryCondition, true, clazz);
-            delegate.registerPublicFields(queryCondition, true, clazz);
+            delegate.registerDeclaredFields(queryCondition, true, jniAccessible, clazz);
+            delegate.registerPublicFields(queryCondition, true, jniAccessible, clazz);
         }
         registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
         MapCursor<String, Object> cursor = data.getEntries();
@@ -129,13 +130,13 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
             try {
                 switch (name) {
                     case "methods":
-                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, jniAccessible);
                         break;
                     case "queriedMethods":
-                        parseMethods(condition, true, asList(value, "Attribute 'queriedMethods' must be an array of method descriptors"), clazz);
+                        parseMethods(condition, true, asList(value, "Attribute 'queriedMethods' must be an array of method descriptors"), clazz, jniAccessible);
                         break;
                     case "fields":
-                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
+                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz, jniAccessible);
                         break;
                 }
             } catch (LinkageError e) {

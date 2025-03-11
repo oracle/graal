@@ -29,7 +29,6 @@ import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
 import java.util.List;
 
-import com.oracle.svm.configure.config.ConfigurationType;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.configure.ClassNameSupport;
@@ -39,6 +38,7 @@ import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.util.LogUtils;
 
@@ -71,7 +71,7 @@ class JniProcessor extends AbstractProcessor {
             if (!advisor.shouldIgnore(reflectionName, callerClassLazyValue, entry)) {
                 if (function.equals("FindClass")) {
                     if (!advisor.shouldIgnoreJniLookup(function, reflectionName, lazyNull(), lazyNull(), callerClassLazyValue, entry)) {
-                        configurationSet.getJniConfiguration().getOrCreateType(condition, type);
+                        configurationSet.getReflectionConfiguration().getOrCreateType(condition, type).setJniAccessible();
                     }
                 } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(jniName).matches()) { // DefineClass
                     LogUtils.warning("Unsupported JNI function DefineClass used to load class " + jniName);
@@ -88,7 +88,8 @@ class JniProcessor extends AbstractProcessor {
         ConfigurationTypeDescriptor declaringClass = hasDeclaringClass ? NamedConfigurationTypeDescriptor.fromReflectionName((String) entry.get("declaring_class")) : null;
         ConfigurationTypeDescriptor declaringClassOrClazz = hasDeclaringClass ? declaringClass : clazz;
         ConfigurationMemberDeclaration declaration = hasDeclaringClass ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
-        TypeConfiguration config = configurationSet.getJniConfiguration();
+        TypeConfiguration config = configurationSet.getReflectionConfiguration();
+        boolean makeTypeJniAccessible = true;
         switch (function) {
             case "AllocObject":
                 expectSize(args, 0);
@@ -104,7 +105,8 @@ class JniProcessor extends AbstractProcessor {
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
                 if (!advisor.shouldIgnoreJniLookup(function, lazyValue(className), lazyValue(name), lazyValue(signature), callerClassLazyValue, entry)) {
-                    config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
+                    ConfigurationType type = getOrCreateJniAccessibleType(config, condition, declaringClassOrClazz);
+                    type.addMethod(name, signature, declaration);
                     if (!declaringClassOrClazz.equals(clazz)) {
                         config.getOrCreateType(condition, clazz);
                     }
@@ -117,7 +119,8 @@ class JniProcessor extends AbstractProcessor {
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
                 if (!advisor.shouldIgnoreJniLookup(function, lazyValue(className), lazyValue(name), lazyValue(signature), callerClassLazyValue, entry)) {
-                    config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
+                    ConfigurationType type = getOrCreateJniAccessibleType(config, condition, declaringClassOrClazz);
+                    type.addField(name, declaration, false);
                     if (!declaringClassOrClazz.equals(clazz)) {
                         config.getOrCreateType(condition, clazz);
                     }
@@ -129,26 +132,37 @@ class JniProcessor extends AbstractProcessor {
                 String name = ConfigurationMethod.CONSTRUCTOR_NAME;
                 String signature = "(Ljava/lang/String;)V";
                 if (!advisor.shouldIgnoreJniLookup(function, lazyValue(className), lazyValue(name), lazyValue(signature), callerClassLazyValue, entry)) {
-                    config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
+                    ConfigurationType type = getOrCreateJniAccessibleType(config, condition, declaringClassOrClazz);
+                    type.addMethod(name, signature, declaration);
                     assert declaringClassOrClazz.equals(clazz) : "Constructor can only be accessed via declaring class";
                 }
                 break;
             }
             case "ToReflectedField":
-                config = configurationSet.getReflectionConfiguration(); // fall through
+                makeTypeJniAccessible = false;
+                // fall through
             case "FromReflectedField": {
                 expectSize(args, 1);
                 String name = (String) args.get(0);
-                config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
+                ConfigurationType type = config.getOrCreateType(condition, declaringClassOrClazz);
+                if (makeTypeJniAccessible) {
+                    type.setJniAccessible();
+                }
+                type.addField(name, declaration, false);
                 break;
             }
             case "ToReflectedMethod":
-                config = configurationSet.getReflectionConfiguration(); // fall through
+                makeTypeJniAccessible = false;
+                // fall through
             case "FromReflectedMethod": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
+                ConfigurationType type = config.getOrCreateType(condition, declaringClassOrClazz);
+                if (makeTypeJniAccessible) {
+                    type.setJniAccessible();
+                }
+                type.addMethod(name, signature, declaration);
                 break;
             }
             case "NewObjectArray": {
@@ -158,6 +172,12 @@ class JniProcessor extends AbstractProcessor {
                 break;
             }
         }
+    }
+
+    private static ConfigurationType getOrCreateJniAccessibleType(TypeConfiguration config, UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeName) {
+        ConfigurationType type = config.getOrCreateType(condition, typeName);
+        type.setJniAccessible();
+        return type;
     }
 
 }

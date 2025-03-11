@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.jni;
 
-import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -107,6 +105,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
@@ -199,7 +198,7 @@ public class JNIAccessFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         // Ensure that KnownOffsets is fully initialized before we access it
-        return List.of(KnownOffsetsFeature.class, DynamicProxyFeature.class);
+        return List.of(KnownOffsetsFeature.class, DynamicProxyFeature.class, ReflectionFeature.class);
     }
 
     @Override
@@ -213,10 +212,11 @@ public class JNIAccessFeature implements Feature {
 
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(JNI_KEY, true, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.JNI, true, conditionResolver, runtimeSupport, null, null, null,
                         access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "JNI");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.JNI, false, conditionResolver, runtimeSupport, null, null,
+                        null,
                         access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
@@ -424,11 +424,7 @@ public class JNIAccessFeature implements Feature {
         }
         return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
-            if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
-                analysisClass.registerAsReachable("is accessed via JNI");
-            } else {
-                analysisClass.registerAsInstantiated("is accessed via JNI");
-            }
+            analysisClass.registerAsReachable("is accessed via JNI");
             return new JNIAccessibleClass(classObj);
         });
     }

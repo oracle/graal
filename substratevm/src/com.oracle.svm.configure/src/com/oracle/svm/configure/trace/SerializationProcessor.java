@@ -31,7 +31,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
