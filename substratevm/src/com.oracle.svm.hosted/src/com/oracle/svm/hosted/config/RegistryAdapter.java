@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
@@ -76,11 +77,11 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
         switch (typeDescriptor.getDescriptorType()) {
             case NAMED -> {
-                NamedConfigurationTypeDescriptor namedDescriptor = (NamedConfigurationTypeDescriptor) typeDescriptor;
-                TypeResult<Class<?>> result = resolveNamedType(namedDescriptor, allowPrimitives);
+                String reflectionName = ClassNameSupport.typeNameToReflectionName(((NamedConfigurationTypeDescriptor) typeDescriptor).name());
+                TypeResult<Class<?>> result = resolveNamedType(reflectionName, allowPrimitives);
                 if (!result.isPresent()) {
                     if (throwMissingRegistrationErrors() && result.getException() instanceof ClassNotFoundException) {
-                        registry.registerClassLookup(condition, namedDescriptor.name());
+                        registry.registerClassLookup(condition, reflectionName);
                     }
                 }
                 return result;
@@ -94,8 +95,8 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
         }
     }
 
-    private TypeResult<Class<?>> resolveNamedType(NamedConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
-        TypeResult<Class<?>> result = classLoader.findClass(typeDescriptor.name(), allowPrimitives);
+    private TypeResult<Class<?>> resolveNamedType(String reflectionName, boolean allowPrimitives) {
+        TypeResult<Class<?>> result = classLoader.findClass(reflectionName, allowPrimitives);
         if (!result.isPresent() && result.getException() instanceof NoClassDefFoundError) {
             /*
              * In certain cases when the class name is identical to an existing class name except
@@ -103,9 +104,9 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
              * `Class.forName` throws a `ClassNotFoundException`.
              */
             try {
-                Class.forName(typeDescriptor.name());
+                Class.forName(reflectionName);
             } catch (ClassNotFoundException notFoundException) {
-                result = TypeResult.forException(typeDescriptor.name(), notFoundException);
+                result = TypeResult.forException(reflectionName, notFoundException);
             } catch (Throwable t) {
                 // ignore
             }
@@ -115,7 +116,8 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
         String typeName = typeDescriptor.toString();
-        List<TypeResult<Class<?>>> interfaceResults = typeDescriptor.interfaceNames().stream().map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
+        List<TypeResult<Class<?>>> interfaceResults = typeDescriptor.interfaceNames().stream()
+                        .map(interfaceTypeName -> resolveNamedType(ClassNameSupport.typeNameToReflectionName(interfaceTypeName), false)).toList();
         List<Class<?>> interfaces = new ArrayList<>();
         for (TypeResult<Class<?>> intf : interfaceResults) {
             if (!intf.isPresent()) {

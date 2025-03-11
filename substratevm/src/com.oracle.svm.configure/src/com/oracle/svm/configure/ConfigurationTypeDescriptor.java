@@ -26,12 +26,7 @@ package com.oracle.svm.configure;
 
 import java.util.Collection;
 
-import org.graalvm.nativeimage.ImageInfo;
-
-import com.oracle.svm.util.LogUtils;
-
 import jdk.graal.compiler.util.json.JsonPrintable;
-import jdk.vm.ci.meta.MetaUtil;
 
 /**
  * Provides a representation of a Java type based on String type names. This is used to parse types
@@ -43,18 +38,6 @@ import jdk.vm.ci.meta.MetaUtil;
  * </ul>
  */
 public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTypeDescriptor>, JsonPrintable {
-    static String canonicalizeTypeName(String typeName) {
-        if (typeName == null) {
-            return null;
-        }
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
-        }
-        return name;
-    }
-
     enum Kind {
         NAMED,
         PROXY
@@ -71,11 +54,4 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
      * type. This is used to filter configurations based on a String-based class filter.
      */
     Collection<String> getAllQualifiedJavaNames();
-
-    static String checkQualifiedJavaName(String javaName) {
-        if (ImageInfo.inImageBuildtimeCode() && !(javaName.indexOf('/') == -1 || javaName.indexOf('/') > javaName.lastIndexOf('.'))) {
-            LogUtils.warning("Type descriptor requires qualified Java name, not internal representation: %s", javaName);
-        }
-        return canonicalizeTypeName(javaName);
-    }
 }

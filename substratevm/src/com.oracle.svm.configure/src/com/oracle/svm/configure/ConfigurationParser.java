@@ -243,7 +243,7 @@ public abstract class ConfigurationParser {
     protected static Optional<TypeDescriptorWithOrigin> parseName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
         Object name = data.get(NAME_KEY);
         if (name != null) {
-            NamedConfigurationTypeDescriptor typeDescriptor = new NamedConfigurationTypeDescriptor(asString(name));
+            NamedConfigurationTypeDescriptor typeDescriptor = NamedConfigurationTypeDescriptor.fromJSONName(asString(name));
             return Optional.of(new TypeDescriptorWithOrigin(typeDescriptor, treatAllNameEntriesAsType));
         } else {
             throw failOnSchemaError("must have type or name specified for an element");
@@ -252,7 +252,7 @@ public abstract class ConfigurationParser {
 
     protected static Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
         if (typeObject instanceof String stringValue) {
-            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue));
+            return Optional.of(NamedConfigurationTypeDescriptor.fromJSONName(stringValue));
         } else {
             EconomicMap<String, Object> type = asMap(typeObject, "type descriptor should be a string or object");
             if (type.containsKey(PROXY_KEY)) {
@@ -271,6 +271,6 @@ public abstract class ConfigurationParser {
     private static ProxyConfigurationTypeDescriptor getProxyDescriptor(Object proxyObject) {
         List<Object> proxyInterfaces = asList(proxyObject, "proxy interface content should be an interface list");
         List<String> proxyInterfaceNames = proxyInterfaces.stream().map(obj -> asString(obj, "proxy")).toList();
-        return new ProxyConfigurationTypeDescriptor(proxyInterfaceNames);
+        return ProxyConfigurationTypeDescriptor.fromInterfaceTypeNames(proxyInterfaceNames);
     }
 }

@@ -38,7 +38,6 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
@@ -121,10 +120,6 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
                 return value;
             }
         });
-    }
-
-    public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, String qualifiedForNameString) {
-        return getOrCreateType(condition, new NamedConfigurationTypeDescriptor(qualifiedForNameString));
     }
 
     public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {

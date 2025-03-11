@@ -31,6 +31,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
@@ -66,12 +67,12 @@ public class SerializationProcessor extends AbstractProcessor {
                 return;
             }
 
-            String className = (String) args.get(0);
+            String reflectionName = (String) args.get(0);
 
-            if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
-                serializationConfiguration.registerLambdaCapturingClass(condition, className);
+            if (reflectionName.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                serializationConfiguration.registerLambdaCapturingClass(condition, reflectionName);
             } else {
-                reflectionConfiguration.getOrCreateType(condition, new NamedConfigurationTypeDescriptor(className)).setSerializable();
+                reflectionConfiguration.getOrCreateType(condition, NamedConfigurationTypeDescriptor.fromReflectionName(reflectionName)).setSerializable();
             }
         } else if ("SerializedLambda.readResolve".equals(function)) {
             expectSize(args, 1);

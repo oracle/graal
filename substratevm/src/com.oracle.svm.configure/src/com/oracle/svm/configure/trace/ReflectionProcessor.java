@@ -102,22 +102,24 @@ class ReflectionProcessor extends AbstractProcessor {
             }
             if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass), entry) &&
                             !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass), entry))) {
-                configuration.getOrCreateType(condition, name);
+                configuration.getOrCreateType(condition, NamedConfigurationTypeDescriptor.fromReflectionName(name));
             }
             return;
         } else if (function.equals("methodTypeDescriptor")) {
             List<String> typeNames = singleElement(args);
             for (String type : typeNames) {
                 if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass), copyWithUniqueEntry(entry, "ignoredDescriptorType", type))) {
-                    configuration.getOrCreateType(condition, type);
+                    configuration.getOrCreateType(condition, NamedConfigurationTypeDescriptor.fromReflectionName(type));
                 }
             }
             return;
         }
         ConfigurationTypeDescriptor clazz = descriptorForClass(entry.get("class"));
-        for (String className : clazz.getAllQualifiedJavaNames()) {
-            if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass), copyWithUniqueEntry(entry, "ignoredClassName", className))) {
-                return;
+        if (clazz != null) {
+            for (String className : clazz.getAllQualifiedJavaNames()) {
+                if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass), copyWithUniqueEntry(entry, "ignoredClassName", className))) {
+                    return;
+                }
             }
         }
         ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
@@ -265,7 +267,7 @@ class ReflectionProcessor extends AbstractProcessor {
             case "newInstance": {
                 if (clazz.toString().equals("java.lang.reflect.Array")) { // reflective array
                                                                           // instantiation
-                    configuration.getOrCreateType(condition, new NamedConfigurationTypeDescriptor((String) args.get(0)));
+                    configuration.getOrCreateType(condition, descriptorForClass(args.get(0)));
                 } else {
                     configuration.getOrCreateType(condition, clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberDeclaration.DECLARED,
                                     ConfigurationMemberAccessibility.ACCESSED);
@@ -293,10 +295,12 @@ class ReflectionProcessor extends AbstractProcessor {
 
     @SuppressWarnings("unchecked")
     private static ConfigurationTypeDescriptor descriptorForClass(Object clazz) {
-        if (clazz instanceof List<?>) {
-            return new ProxyConfigurationTypeDescriptor((List<String>) clazz);
+        if (clazz == null) {
+            return null;
+        } else if (clazz instanceof List<?>) {
+            return ProxyConfigurationTypeDescriptor.fromInterfaceReflectionNames(((List<String>) clazz));
         } else {
-            return new NamedConfigurationTypeDescriptor((String) clazz);
+            return NamedConfigurationTypeDescriptor.fromReflectionName((String) clazz);
         }
     }
 
@@ -306,7 +310,8 @@ class ReflectionProcessor extends AbstractProcessor {
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
         String signature = descriptor.substring(sigbegin);
-        configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
+        configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), NamedConfigurationTypeDescriptor.fromReflectionName(qualifiedClass))
+                        .addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
     }
 
     private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, TypeConfiguration configuration, EconomicMap<String, Object> entry) {

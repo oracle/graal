@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -103,8 +104,8 @@ public class ConfigurationType implements JsonPrintable {
     private boolean serializable = false;
 
     public ConfigurationType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean includeAllElements) {
-        this.condition = condition;
-        this.typeDescriptor = typeDescriptor;
+        this.condition = Objects.requireNonNull(condition);
+        this.typeDescriptor = Objects.requireNonNull(typeDescriptor);
         allDeclaredClasses = allPublicClasses = allRecordComponents = allPermittedSubclasses = allNestMembers = allSigners = includeAllElements;
         allDeclaredFieldsAccess = allPublicFieldsAccess = allDeclaredMethodsAccess = allPublicMethodsAccess = allDeclaredConstructorsAccess = allPublicConstructorsAccess = includeAllElements
                         ? ConfigurationMemberAccessibility.QUERIED

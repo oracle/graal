@@ -33,8 +33,6 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
-import jdk.graal.compiler.util.json.JsonParserException;
-
 public abstract class SerializationConfigurationParser<C> extends ConditionalConfigurationParser {
 
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
@@ -67,12 +65,9 @@ public abstract class SerializationConfigurationParser<C> extends ConditionalCon
     protected abstract void parseSerializationDescriptorObject(EconomicMap<String, Object> data, boolean lambdaCapturingType);
 
     protected void registerType(ConfigurationTypeDescriptor targetSerializationClass, C condition) {
-        if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
-            serializationSupport.register(condition, namedClass.name());
-        } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
-            serializationSupport.registerProxyClass(condition, proxyClass.interfaceNames());
-        } else {
-            throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
+        switch (targetSerializationClass.getDescriptorType()) {
+            case NAMED -> serializationSupport.register(condition, ((NamedConfigurationTypeDescriptor) targetSerializationClass).name());
+            case PROXY -> serializationSupport.registerProxyClass(condition, ((ProxyConfigurationTypeDescriptor) targetSerializationClass).interfaceNames());
         }
     }
 }

@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -65,7 +66,8 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
         if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
-                reflectionSupport.registerClassLookupException(condition, namedDescriptor.name(), classLookupException);
+                String reflectionName = ClassNameSupport.typeNameToReflectionName(namedDescriptor.name());
+                reflectionSupport.registerClassLookupException(condition, reflectionName, classLookupException);
             }
         }
         return result;

@@ -49,26 +49,27 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
  * the classpath.
  */
 public final class UnresolvedConfigurationCondition implements Comparable<UnresolvedConfigurationCondition> {
-    private static final UnresolvedConfigurationCondition JAVA_LANG_OBJECT_REACHED = new UnresolvedConfigurationCondition(Object.class.getTypeName(), true);
+    private static final UnresolvedConfigurationCondition JAVA_LANG_OBJECT_REACHED = new UnresolvedConfigurationCondition(
+                    NamedConfigurationTypeDescriptor.fromTypeName(Object.class.getTypeName()), true);
     public static final String TYPE_REACHED_KEY = "typeReached";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
-    private final String typeName;
+    private final NamedConfigurationTypeDescriptor type;
     private final boolean runtimeChecked;
 
-    public static UnresolvedConfigurationCondition create(String typeName) {
-        return create(typeName, true);
+    public static UnresolvedConfigurationCondition create(NamedConfigurationTypeDescriptor type) {
+        return create(type, true);
     }
 
-    public static UnresolvedConfigurationCondition create(String typeName, boolean runtimeChecked) {
-        Objects.requireNonNull(typeName);
-        if (JAVA_LANG_OBJECT_REACHED.getTypeName().equals(typeName)) {
+    public static UnresolvedConfigurationCondition create(NamedConfigurationTypeDescriptor type, boolean runtimeChecked) {
+        Objects.requireNonNull(type);
+        if (JAVA_LANG_OBJECT_REACHED.getTypeName().equals(type.name())) {
             return JAVA_LANG_OBJECT_REACHED;
         }
-        return new UnresolvedConfigurationCondition(typeName, runtimeChecked);
+        return new UnresolvedConfigurationCondition(type, runtimeChecked);
     }
 
-    private UnresolvedConfigurationCondition(String typeName, boolean runtimeChecked) {
-        this.typeName = typeName;
+    private UnresolvedConfigurationCondition(NamedConfigurationTypeDescriptor type, boolean runtimeChecked) {
+        this.type = type;
         this.runtimeChecked = runtimeChecked;
     }
 
@@ -77,7 +78,7 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
     }
 
     public String getTypeName() {
-        return typeName;
+        return type.name();
     }
 
     public boolean isRuntimeChecked() {
@@ -85,7 +86,7 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
     }
 
     public boolean isAlwaysTrue() {
-        return typeName.equals(JAVA_LANG_OBJECT_REACHED.getTypeName());
+        return getTypeName().equals(JAVA_LANG_OBJECT_REACHED.getTypeName());
     }
 
     @Override
@@ -97,12 +98,12 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
             return false;
         }
         UnresolvedConfigurationCondition that = (UnresolvedConfigurationCondition) o;
-        return runtimeChecked == that.runtimeChecked && Objects.equals(typeName, that.typeName);
+        return runtimeChecked == that.runtimeChecked && Objects.equals(type, that.type);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(typeName, runtimeChecked);
+        return Objects.hash(type, runtimeChecked);
     }
 
     @Override
@@ -111,13 +112,13 @@ public final class UnresolvedConfigurationCondition implements Comparable<Unreso
         if (res != 0) {
             return res;
         }
-        return typeName.compareTo(o.typeName);
+        return type.compareTo(o.type);
     }
 
     @Override
     public String toString() {
         var field = runtimeChecked ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY;
-        return "[" + field + ": \"" + typeName + "\"" + "]";
+        return "[" + field + ": \"" + getTypeName() + "\"" + "]";
     }
 
 }
