@@ -323,10 +323,15 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    static final class VeryComplexOperation {
+    static final class VariadicOperation {
         @Specialization
-        public static long bla(long a1, @Variadic Object[] a2) {
+        public static long doLong(long a1, @Variadic Object[] a2) {
             return a1 + a2.length;
+        }
+
+        @Fallback
+        public static long doOther(@SuppressWarnings("unused") Object a1, @Variadic Object[] a2) {
+            return a2.length;
         }
     }
 
@@ -521,6 +526,19 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         protected static boolean callTargetMatches(CallTarget left, CallTarget right) {
             return left == right;
+        }
+    }
+
+    @Operation
+    public static final class InvokeRecursive {
+        @Specialization(guards = "true")
+        public static Object doRootNode(@Variadic Object[] args, @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return callNode.call(args);
+        }
+
+        @Specialization(replaces = {"doRootNode"})
+        public static Object doRootNodeUncached(@Variadic Object[] args, @Bind BasicInterpreter root, @Shared @Cached IndirectCallNode callNode) {
+            return callNode.call(root.getCallTarget(), args);
         }
     }
 

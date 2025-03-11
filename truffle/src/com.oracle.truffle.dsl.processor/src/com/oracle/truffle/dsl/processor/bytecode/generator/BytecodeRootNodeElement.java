@@ -13137,10 +13137,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startDeclaration(types.Node, "prev").startCall("encapsulatingNode", "set").string("this").end().end();
                 b.startTryBlock();
 
-                b.statement("int uncachedExecuteCount = this.uncachedExecuteCount_");
-                b.startIf().string("uncachedExecuteCount <= 0 && uncachedExecuteCount != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
+                b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
+                b.startIf().string("uncachedExecuteCount_ != " + FORCE_UNCACHED_THRESHOLD).end().startBlock();
                 b.statement("$root.transitionToCached(frame, 0)");
                 b.startReturn().string("startState").end();
+                b.end(2);
+                b.startElseBlock();
+                b.statement("uncachedExecuteCount_--");
                 b.end();
             }
 
@@ -13566,14 +13569,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case BRANCH_BACKWARD:
                     if (tier.isUncached()) {
                         b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-                        b.startIf().string("uncachedExecuteCount <= 1").end().startBlock();
-                        b.startIf().string("uncachedExecuteCount != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
+
+                        b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
+                        /*
+                         * The force uncached check is put in here so that we don't need to check it
+                         * in the common case (the else branch where we just decrement).
+                         */
+                        b.startIf().string("uncachedExecuteCount_ != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.statement("$root.transitionToCached(frame, bci)");
                         b.statement("return ", encodeState("bci", "sp"));
-                        b.end();
-                        b.end().startElseBlock();
-                        b.statement("uncachedExecuteCount--");
+                        b.end(2);
+                        b.startElseBlock();
+                        b.statement("uncachedExecuteCount_--");
                         b.end();
                     } else {
                         emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
@@ -16217,21 +16225,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void emitBeforeReturnProfiling(CodeTreeBuilder b) {
-            if (tier.isUncached()) {
-                b.startIf().string("uncachedExecuteCount <= 1").end().startBlock();
-                /*
-                 * The force uncached check is put in here so that we don't need to check it in the
-                 * common case (the else branch where we just decrement).
-                 */
-                b.startIf().string("uncachedExecuteCount != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("$root.transitionToCached(frame, bci)");
-                b.end();
-                b.end().startElseBlock();
-                b.statement("uncachedExecuteCount--");
-                b.statement("this.uncachedExecuteCount_ = uncachedExecuteCount");
-                b.end();
-            } else {
+            if (tier.isCached()) {
                 emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
             }
         }
