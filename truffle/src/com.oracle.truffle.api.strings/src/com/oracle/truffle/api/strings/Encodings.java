@@ -275,7 +275,8 @@ final class Encodings {
     static int utf8CodePointToByteIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iBytes = 0;
-        while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iBytes < a.length())) {
+        int lengthA = a.length();
+        while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iBytes < lengthA)) {
             if ((readS0(a, arrayA, iBytes) & 0xc0) != 0x80) {
                 if (CompilerDirectives.injectBranchProbability(0.01, !(iCP < codePointIndex))) {
                     break;
@@ -285,8 +286,8 @@ final class Encodings {
             iBytes++;
             TStringConstants.truffleSafePointPoll(location, iBytes);
         }
-        if (iBytes >= a.length()) {
-            throw InternalErrors.indexOutOfBounds();
+        if (iBytes >= lengthA) {
+            throw InternalErrors.indexOutOfBounds(lengthA, iBytes);
         }
         return iBytes;
     }
@@ -522,7 +523,8 @@ final class Encodings {
     static int utf16ValidCodePointToCharIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
-        while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iChars < a.length())) {
+        int lengthA = a.length();
+        while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iChars < lengthA)) {
             if ((readS1(a, arrayA, iChars) & 0xfc00) != 0xdc00) {
                 if (CompilerDirectives.injectBranchProbability(0.01, !(iCP < codePointIndex))) {
                     break;
@@ -532,8 +534,8 @@ final class Encodings {
             iChars++;
             TStringConstants.truffleSafePointPoll(location, iChars);
         }
-        if (iChars >= a.length()) {
-            throw InternalErrors.indexOutOfBounds();
+        if (iChars >= lengthA) {
+            throw InternalErrors.indexOutOfBounds(lengthA, iChars);
         }
         return iChars;
     }
@@ -552,7 +554,7 @@ final class Encodings {
             TStringConstants.truffleSafePointPoll(location, iChars);
         }
         if (iChars >= lengthA) {
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.indexOutOfBounds(lengthA, iChars);
         }
         return iChars;
     }
@@ -560,16 +562,17 @@ final class Encodings {
     static int utf16BrokenCodePointToCharIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
+        int lengthA = a.length();
         while (iCP < codePointIndex) {
-            if (isUTF16HighSurrogate(readS1(a, arrayA, iChars)) && (iChars + 1) < a.length() && isUTF16LowSurrogate(readS1(a, arrayA, iChars + 1))) {
+            if (isUTF16HighSurrogate(readS1(a, arrayA, iChars)) && (iChars + 1) < lengthA && isUTF16LowSurrogate(readS1(a, arrayA, iChars + 1))) {
                 iChars++;
             }
             iChars++;
             iCP++;
             TStringConstants.truffleSafePointPoll(location, iCP);
         }
-        if (iChars >= a.length()) {
-            throw InternalErrors.indexOutOfBounds();
+        if (iChars >= lengthA) {
+            throw InternalErrors.indexOutOfBounds(lengthA, iChars);
         }
         return iChars;
     }
@@ -587,7 +590,7 @@ final class Encodings {
             TStringConstants.truffleSafePointPoll(location, iCP);
         }
         if (iChars >= lengthA) {
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.indexOutOfBounds(lengthA, iChars);
         }
         return iChars;
     }
