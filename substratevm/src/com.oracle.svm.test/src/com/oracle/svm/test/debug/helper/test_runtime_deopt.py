@@ -93,28 +93,35 @@ class TestRuntimeDeopt(unittest.TestCase):
     # this requires gdb to use the full type signature fallback
     def test_type_signature_fallback_full(self):
         # stop at a method where we know that the runtime compiled frame is in the backtrace
-        gdb_execute("maintenance set dwarf type-signature-fallback full")
+        gdb_execute("set dwarf-type-signature-fallback full")
         gdb_set_breakpoint("com.oracle.svm.core.deopt.Deoptimizer::invalidateMethodOfFrame")
         gdb_continue()
 
         # check backtrace
         backtrace = gdb_execute('backtrace 5')
         self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-        self.assertIn('(this=null, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
+        self.assertIn('(this=<optimized out>, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
         self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
 
     # this should not work with just main objfile type signature fallback
     # the main objfile is the js launcher which has no debugging symbols
+    #
+    # Causes GDB to crash due to a GDB internal bug:
+    #   internal-error: copy: Assertion `m_contents != nullptr' failed.
+    # Essentially, GDB creates an ERROR_TYPE if a type signature is not found.
+    # During stack printing GDB copies parameter values.
+    # If one of the parameters has the ERROR_TYPE, GDB doesn't copy the content which causes an assertion error later.
+    @unittest.skip("GDB crashes without type signature fallback here.")
     def test_type_signature_fallback_main(self):
         # stop at a method where we know that the runtime compiled frame is in the backtrace
-        gdb_execute("maintenance set dwarf type-signature-fallback main")
+        gdb_execute("set dwarf-type-signature-fallback main")
         gdb_set_breakpoint("com.oracle.svm.core.deopt.Deoptimizer::invalidateMethodOfFrame")
         gdb_continue()
 
         # check backtrace
         backtrace = gdb_execute('backtrace 5')
         self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-        self.assertNotIn('(this=null, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
+        self.assertNotIn('(this=<optimized out>, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
         self.assertIn('this=<unknown type in <in-memory@', backtrace)
         self.assertIn('originalArguments=<unknown type in <in-memory@', backtrace)
 
