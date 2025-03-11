@@ -4742,8 +4742,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("operationData.childBci");
                 b.end(2);
             } else if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                b.startStatement().startCall("afterChild");
-                b.string("true");
+                b.declaration(type(int.class), "nextBci");
+                b.startIf().string("operation.childCount <= 1").end().startBlock();
+                b.lineComment("Single child -> boxing elimination possible");
+                b.startStatement().string("nextBci = ");
                 ShortCircuitInstructionModel shortCircuitModel = operation.instruction.shortCircuitModel;
                 if (shortCircuitModel.returnConvertedBoolean()) {
                     // We emit a boolean converter instruction above. Compute its bci.
@@ -4752,6 +4754,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     // The child bci points to the instruction producing this last value.
                     b.string("operationData.childBci");
                 }
+                b.end();  // statement
+                b.end(); // if block
+
+                b.startElseBlock();
+                b.lineComment("Multi child -> boxing elimination not possible use short-circuit bci to disable it.");
+                b.statement("nextBci = operationData.shortCircuitBci");
+                b.end();
+
+                b.startStatement().startCall("afterChild");
+                b.string("true").string("nextBci");
                 b.end(2);
             } else {
                 b.startStatement().startCall("afterChild");
@@ -5886,6 +5898,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startIf().string("this.reachable").end().startBlock();
                     b.statement("operationData.branchFixupBcis.add(bci + " + op.instruction.getImmediate("branch_target").offset() + ")");
                     b.end();
+
+                    b.statement("operationData.shortCircuitBci = bci");
 
                     // Emit the boolean check.
                     buildEmitInstruction(b, op.instruction, emitShortCircuitArguments(op.instruction));
@@ -7611,6 +7625,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         name = "CustomShortCircuitOperationData";
                         fields = List.of(//
                                         field(type(int.class), "childBci").withInitializer(UNINIT),
+                                        field(type(int.class), "shortCircuitBci").withInitializer(UNINIT),
                                         field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)"));
                         break;
                     default:
