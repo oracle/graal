@@ -78,7 +78,7 @@ public abstract class ConditionalConfigurationParser extends ConfigurationParser
         return UnresolvedConfigurationCondition.alwaysTrue();
     }
 
-    private NamedConfigurationTypeDescriptor checkConditionType(ConfigurationTypeDescriptor type) {
+    private static NamedConfigurationTypeDescriptor checkConditionType(ConfigurationTypeDescriptor type) {
         if (!(type instanceof NamedConfigurationTypeDescriptor)) {
             failOnSchemaError("condition should be a fully qualified class name.");
         }

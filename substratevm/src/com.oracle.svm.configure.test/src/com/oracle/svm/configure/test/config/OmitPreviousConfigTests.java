@@ -97,7 +97,6 @@ public class OmitPreviousConfigTests {
         ConfigurationSet config = loadTraceProcessorFromResourceDirectory(PREVIOUS_CONFIG_DIR_NAME, omittedConfig);
         config = config.copyAndSubtract(omittedConfig);
 
-        assertTrue(config.getJniConfiguration().isEmpty());
         assertTrue(config.getReflectionConfiguration().isEmpty());
         assertTrue(config.getProxyConfiguration().isEmpty());
         assertTrue(config.getResourceConfiguration().isEmpty());
@@ -112,7 +111,7 @@ public class OmitPreviousConfigTests {
         config = config.copyAndSubtract(omittedConfig);
 
         doTestGeneratedTypeConfig();
-        doTestTypeConfig(config.getJniConfiguration());
+        doTestTypeConfig(config.getReflectionConfiguration());
 
         doTestProxyConfig(config.getProxyConfiguration());
 
@@ -242,8 +241,8 @@ class TypeMethodsWithFlagsTest {
     final Map<ConfigurationMethod, ConfigurationMemberDeclaration> methodsThatMustExist = new HashMap<>();
     final Map<ConfigurationMethod, ConfigurationMemberDeclaration> methodsThatMustNotExist = new HashMap<>();
 
-    final TypeConfiguration previousConfig = new TypeConfiguration("");
-    final TypeConfiguration currentConfig = new TypeConfiguration("");
+    final TypeConfiguration previousConfig = new TypeConfiguration();
+    final TypeConfiguration currentConfig = new TypeConfiguration();
 
     TypeMethodsWithFlagsTest(ConfigurationMemberDeclaration methodKind) {
         this.methodKind = methodKind;

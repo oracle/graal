@@ -180,6 +180,8 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
     private static void parseConfigurationSet(EconomicMap<String, ?> configJson, ConfigurationSet configurationSet, URI origin) throws IOException {
         MapCursor<String, ?> cursor = configJson.getEntries();
         EnumSet<ConfigurationParserOption> parserOptions = EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION, ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
+        EnumSet<ConfigurationParserOption> jniParserOptions = parserOptions.clone();
+        jniParserOptions.add(ConfigurationParserOption.JNI_PARSER);
         while (cursor.advance()) {
             String configName = cursor.getKey();
             ConfigurationFile configType = ConfigurationFile.getByName(configName);
@@ -188,10 +190,12 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
             }
             if (configType == ConfigurationFile.REACHABILITY_METADATA) {
                 for (ConfigurationFile file : ConfigurationFile.combinedFileConfigurations()) {
-                    configurationSet.getConfiguration(file).createParser(true, parserOptions).parseAndRegister(cursor.getValue(), origin);
+                    var specificParserOptions = file == ConfigurationFile.JNI ? jniParserOptions : parserOptions;
+                    configurationSet.getConfiguration(file).createParser(true, specificParserOptions).parseAndRegister(cursor.getValue(), origin);
                 }
             } else {
-                configurationSet.getConfiguration(configType).createParser(false, parserOptions).parseAndRegister(cursor.getValue(), origin);
+                var specificParserOptions = configType == ConfigurationFile.JNI ? jniParserOptions : parserOptions;
+                configurationSet.getConfiguration(configType).createParser(false, specificParserOptions).parseAndRegister(cursor.getValue(), origin);
             }
         }
     }
