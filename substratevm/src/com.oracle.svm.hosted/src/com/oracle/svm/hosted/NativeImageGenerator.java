@@ -541,7 +541,7 @@ public class NativeImageGenerator {
     }
 
     protected static void setSystemPropertiesForImageEarly() {
-        System.setProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME);
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "Expected ImageInfo.inImageBuildtimeCode() to return true");
     }
 
     private static void setSystemPropertiesForImageLate(NativeImageKind imageKind) {
@@ -554,7 +554,6 @@ public class NativeImageGenerator {
     }
 
     public static void clearSystemPropertiesForImage() {
-        System.clearProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY);
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
