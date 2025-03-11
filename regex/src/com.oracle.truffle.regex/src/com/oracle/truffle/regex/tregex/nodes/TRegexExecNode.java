@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -442,7 +442,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             } else {
                 final CallTarget findStartCallTarget;
                 if ((getForwardExecutor().isAnchored() || (flags.isSticky() && getForwardExecutor().getPrefixLength() == 0)) ||
-                                (backwardEntryNode != null && getBackwardExecutor().isAnchored()) || getForwardExecutor().canFindStart()) {
+                                (backwardEntryNode != null && getBackwardExecutor().isAnchored() && !flags.isSticky()) || getForwardExecutor().canFindStart()) {
                     findStartCallTarget = null;
                 } else {
                     findStartCallTarget = backwardCallTarget;
@@ -536,7 +536,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return RegexResult.createFromExecutorResult(result);
             }
             if (captureGroupEntryNode != null) {
-                return RegexResult.createLazy(input, start, regionFrom, regionTo, start, maxIndex, captureGroupCallTarget);
+                return RegexResult.createLazy(input, fromIndex, regionFrom, regionTo, start, maxIndex, captureGroupCallTarget);
             }
             return RegexResult.create(start, maxIndex);
         }

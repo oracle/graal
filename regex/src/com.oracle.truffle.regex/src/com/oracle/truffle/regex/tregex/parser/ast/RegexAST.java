@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -66,7 +65,9 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -107,6 +108,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
+    private StateSet<RegexAST, RegexASTNode> prefixNodes;
     private StateSet<RegexAST, RegexASTNode> hardPrefixNodes;
     private final EconomicMap<GroupBoundaries, GroupBoundaries> groupBoundariesDeduplicationMap = EconomicMap.create();
 
@@ -307,6 +309,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return nfaAnchoredInitialStates;
     }
 
+    public StateSet<RegexAST, RegexASTNode> getPrefixNodes() {
+        return prefixNodes;
+    }
+
     public StateSet<RegexAST, RegexASTNode> getHardPrefixNodes() {
         return hardPrefixNodes;
     }
@@ -405,8 +411,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         rootNode.setMatchFound(end);
         PositionAssertion anchoredEnd = new PositionAssertion(PositionAssertion.Type.DOLLAR);
         rootNode.setAnchoredFinalState(anchoredEnd);
-        MatchFound endChecked = new MatchFound();
-        rootNode.setMatchFoundChecked(endChecked);
     }
 
     public PositionAssertion createPositionAssertion(PositionAssertion.Type type) {
@@ -479,12 +483,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         if (nfaAnchoredInitialStates != null) {
             return;
         }
+        prefixNodes = StateSet.create(this);
         hardPrefixNodes = StateSet.create(this);
         nfaAnchoredInitialStates = StateSet.create(this);
         int nextID = 1;
         MatchFound mf = new MatchFound();
         initNodeId(mf, nextID++);
         mf.setNext(getEntryAfterPrefix());
+        if (getWrappedPrefixLength() > 0) {
+            mf.setPrefix();
+            AddToSetVisitor.addCharacterClasses(prefixNodes, getEntryAfterPrefix());
+        }
         PositionAssertion pos = new PositionAssertion(PositionAssertion.Type.CARET);
         initNodeId(pos, nextID++);
         nfaAnchoredInitialStates.add(pos);
@@ -495,6 +504,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             mf = new MatchFound();
             initNodeId(mf, nextID++);
             mf.setNext(prefixNode);
+            mf.setPrefix();
             pos = new PositionAssertion(PositionAssertion.Type.CARET);
             initNodeId(pos, nextID++);
             nfaAnchoredInitialStates.add(pos);
@@ -525,6 +535,13 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      *      -> the non-optional [_any_] - matchers will be used if fromIndex > 0,
      *                                    the optional matchers will always be used
      * }
+     *
+     * The non-optional [_any_] - matchers are also called "hard prefix states" in other parts of
+     * the code. They make sure we only match look-behinds and not parts of the main expression when
+     * starting a match before the fromIndex-parameter. For example, when matching a regex
+     * /(?<=ab)c|ab/ on string "abc" with fromIndex 2, we would first rewind the index to 0 in order
+     * to match the look-behind, but we must make sure not to match the literal "ab" of the main
+     * expression's second branch until we reach index 2 again.
      */
     public void createPrefix() {
         if (root.startsWithCaret() || properties.hasNonLiteralLookBehindAssertions()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -330,7 +330,7 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             assert cur == pathGetNode(curPath.peek());
             visit(cur);
-            if (canPruneAfterUnconditionalFinalState() && cur.isMatchFound() && !dollarsOnPath() && !caretsOnPath() && lookAroundsOnPath.isEmpty() && !hasTransitionGuards()) {
+            if (canPruneAfterUnconditionalFinalState() && cur.isMatchFound() && !dollarsOnPath() && !caretsOnPath() && lookAroundsOnPath.isEmpty() && !hasTransitionGuards() && !root.isPrefix()) {
                 /*
                  * Transitions after an unconditional final state transition will never be taken, so
                  * it is safe to prune them.
