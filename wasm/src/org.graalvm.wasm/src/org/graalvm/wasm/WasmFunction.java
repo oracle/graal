@@ -173,7 +173,14 @@ public final class WasmFunction {
         return interopCallAdapter;
     }
 
-    public void setInteropCallAdapter(CallTarget interopCallAdapter) {
-        this.interopCallAdapter = interopCallAdapter;
+    @TruffleBoundary
+    public CallTarget getOrCreateInteropCallAdapter(WasmLanguage language) {
+        CallTarget callAdapter = this.interopCallAdapter;
+        if (callAdapter == null) {
+            // Benign initialization race: The call target will be the same each time.
+            callAdapter = language.interopCallAdapterFor(type());
+            this.interopCallAdapter = callAdapter;
+        }
+        return callAdapter;
     }
 }
