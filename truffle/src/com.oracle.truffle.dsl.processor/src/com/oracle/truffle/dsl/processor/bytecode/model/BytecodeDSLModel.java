@@ -201,7 +201,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public int maximumVariadicOffset;
 
     /**
-     * Whether any instruction has a variadic return. {@link #hasCustomReturn} implies
+     * Whether any instruction has a variadic return. {@link #hasVariadicReturn} implies
      * {@link #hasCustomVariadic}.
      */
     public boolean hasVariadicReturn;

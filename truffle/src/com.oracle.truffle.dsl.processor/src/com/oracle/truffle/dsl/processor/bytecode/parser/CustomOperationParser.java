@@ -281,7 +281,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             Integer startOffset = ElementUtils.getAnnotationValue(Integer.class, variadicReturn, "startOffset", false);
             if (startOffset != null) {
                 customOperation.addError(variadicReturn, ElementUtils.getAnnotationValue(variadicReturn, "startOffset"),
-                                "@%s.startOffset is not supported for variadic return specifications. It supported for variadic operands only.",
+                                "@%s.startOffset is not supported for variadic return specifications. It is supported for variadic operands only.",
                                 getSimpleName(types.Variadic));
             }
             if (!ElementUtils.typeEquals(signature.returnType, context.getType(Object[].class))) {

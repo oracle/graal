@@ -1028,7 +1028,7 @@ public class ErrorTests {
             super(language, builder);
         }
 
-        @ExpectError("@Variadic.startOffset is not supported for variadic return specifications. It supported for variadic operands only.")
+        @ExpectError("@Variadic.startOffset is not supported for variadic return specifications. It is supported for variadic operands only.")
         @Variadic(startOffset = 0)
         @Operation
         public static final class VariadicsReturn {
