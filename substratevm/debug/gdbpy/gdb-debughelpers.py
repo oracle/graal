@@ -99,7 +99,7 @@ class SVMUtil:
     # static methods
     @staticmethod
     def get_deopt_stub_adr() -> int:
-        return gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::deoptStub',
+        return gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::eagerDeoptStub',
                                         gdb.SYMBOL_VAR_DOMAIN).value().address
 
     @staticmethod
@@ -1636,17 +1636,18 @@ class SVMFrameFilter:
         self.name = "SubstrateVM FrameFilter"
         self.priority = 100
         self.enabled = True
-        self.deopt_stub_adr = 0 if deopt_stub_available else None
+        self.deopt_stub_available = deopt_stub_available
+        self.deopt_stub_adr = 0
         self.svm_util = svm_util
 
     def filter(self, frame_iter: Iterable) -> FrameDecorator:
-        if self.deopt_stub_adr == 0:
+        if self.deopt_stub_available and self.deopt_stub_adr == 0:
             self.deopt_stub_adr = SVMUtil.get_deopt_stub_adr()
 
         for frame in frame_iter:
             frame = frame.inferior_frame()
-            if self.deopt_stub_adr and frame.pc() == self.deopt_stub_adr:
-                yield SVMFrameDeopt(self.svm_util, frame, self.deopt_stub_adr)
+            if self.deopt_stub_available and int(frame.pc()) == self.deopt_stub_adr:
+                yield SVMFrameDeopt(self.svm_util, frame)
             else:
                 yield SVMFrame(frame)
 
@@ -1687,12 +1688,11 @@ class SymValueWrapper:
 
 class SVMFrameDeopt(SVMFrame):
 
-    def __init__(self, svm_util: SVMUtil, frame: gdb.Frame, deopt_stub_adr: int):
+    def __init__(self, svm_util: SVMUtil, frame: gdb.Frame):
         super().__init__(frame)
 
         # fetch deoptimized frame from stack
         sp = frame.read_register('sp')
-        assert deopt_stub_adr and frame.pc() == deopt_stub_adr
         deopt_frame_stack_slot = sp.cast(svm_util.stack_type.pointer()).dereference()
         deopt_frame = deopt_frame_stack_slot.cast(svm_util.get_compressed_type(svm_util.object_type).pointer())
         rtt = svm_util.get_rtt(deopt_frame)
@@ -1784,8 +1784,8 @@ def register_objfile(objfile: gdb.Objfile):
     svm_util = SVMUtil()
     gdb.printing.register_pretty_printer(objfile, SVMPrettyPrinter(svm_util), True)
 
-    # deopt stub points to the wrong address at first -> set dummy value to fill later (0 from SVMUtil)
-    deopt_stub_available = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::deoptStub',
+    # deopt stub points to the wrong address at first -> set dummy value to fill later
+    deopt_stub_available = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::eagerDeoptStub',
                                                     gdb.SYMBOL_VAR_DOMAIN) is not None
 
     if deopt_stub_available:

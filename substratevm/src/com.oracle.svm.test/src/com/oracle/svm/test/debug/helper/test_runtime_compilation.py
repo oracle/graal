@@ -35,7 +35,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__))))
 from gdb_helper import *
 
 
-# doesn't require the gdb patch to be available,
+# shouldn't require the gdb patch to be available
+# however, running it without the patch causes an error in gdb
 # this just tests the jit compilation interface, not the generated debug info
 # however still requires symbols to be available for setting a breakpoint
 class TestJITCompilationInterface(unittest.TestCase):
@@ -44,6 +45,7 @@ class TestJITCompilationInterface(unittest.TestCase):
         set_up_test()
         gdb_delete_breakpoints()
         gdb_start()
+        gdb_execute("set dwarf-type-signature-fallback main")
 
     @classmethod
     def tearDown(cls):
@@ -136,7 +138,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         gdb_delete_breakpoints()
         gdb_start()
         set_up_gdb_debughelpers()
-        gdb_execute("maintenance set dwarf type-signature-fallback main")
+        gdb_execute("set dwarf-type-signature-fallback main")
 
     @classmethod
     def tearDown(cls):
