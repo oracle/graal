@@ -162,7 +162,7 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConditionalCon
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName), true);
+            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), NamedConfigurationTypeDescriptor.fromJSONName(typeName), true);
             if (!typeResult.isPresent()) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;

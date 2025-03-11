@@ -62,6 +62,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
@@ -256,11 +257,11 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+        public void registerClassLookup(ConfigurationCondition condition, String jniName) {
             try {
-                register(condition, false, Class.forName(typeName));
+                register(condition, false, Class.forName(ClassNameSupport.jniNameToReflectionName(jniName)));
             } catch (ClassNotFoundException e) {
-                newNegativeClassLookups.add(typeName);
+                newNegativeClassLookups.add(jniName);
             }
         }
 
