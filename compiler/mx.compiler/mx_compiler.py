@@ -753,9 +753,12 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _bootstrapFlags + _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
 ]
 
+_runs_on_github_actions = 'GITHUB_ACTION' in os.environ
+
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
-    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
+    if not _runs_on_github_actions:
+        compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
