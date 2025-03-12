@@ -27,6 +27,7 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +37,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ProxyConfigurationParser;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
@@ -136,11 +138,12 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata) {
+    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
         if (strictMetadata) {
             throw new IllegalArgumentException("Independent proxy configuration is not supported with strict metadata");
         }
-        return new ProxyConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), true, (cond, interfaces) -> interfaceLists.add(new ConditionalElement<>(cond, interfaces)));
+        return new ProxyConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), parserOptions,
+                        (cond, interfaces) -> interfaceLists.add(new ConditionalElement<>(cond, interfaces)));
     }
 
     @Override

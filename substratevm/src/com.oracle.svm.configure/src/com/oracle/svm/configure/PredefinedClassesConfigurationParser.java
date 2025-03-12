@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -46,8 +47,8 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
 
     private final PredefinedClassesRegistry registry;
 
-    public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry, boolean strictConfiguration) {
-        super(strictConfiguration);
+    public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(parserOptions);
         this.registry = registry;
     }
 

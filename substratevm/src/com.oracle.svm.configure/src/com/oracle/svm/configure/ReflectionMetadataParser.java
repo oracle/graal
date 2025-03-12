@@ -26,6 +26,7 @@ package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,9 +44,9 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
 
     private final String combinedFileKey;
 
-    ReflectionMetadataParser(String combinedFileKey, ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
-                    boolean printMissingElements) {
-        super(conditionResolver, delegate, strictConfiguration, printMissingElements);
+    ReflectionMetadataParser(String combinedFileKey, ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
+                    EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, delegate, parserOptions);
         this.combinedFileKey = combinedFileKey;
     }
 

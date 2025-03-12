@@ -410,11 +410,11 @@ public class ResourcesFeature implements InternalFeature {
                         ClassInitializationSupport.singleton());
 
         ResourceConfigurationParser<ConfigurationCondition> parser = ResourceConfigurationParser.create(true, conditionResolver, ResourcesRegistry.singleton(),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue());
+                        ConfigurationFiles.Options.getConfigurationParserOptions());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "resource");
 
         ResourceConfigurationParser<ConfigurationCondition> legacyParser = ResourceConfigurationParser.create(false, conditionResolver, ResourcesRegistry.singleton(),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue());
+                        ConfigurationFiles.Options.getConfigurationParserOptions());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFile.RESOURCES.getFileName());

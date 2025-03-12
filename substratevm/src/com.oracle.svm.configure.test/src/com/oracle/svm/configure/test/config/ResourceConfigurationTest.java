@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +39,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ResourceConfigurationParser;
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.configure.config.ResourceConfiguration;
@@ -135,7 +137,8 @@ public class ResourceConfigurationTest {
                 }
             };
 
-            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry, true);
+            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry,
+                            EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
             writerThread.start();
             rcp.parseAndRegister(pr);
 

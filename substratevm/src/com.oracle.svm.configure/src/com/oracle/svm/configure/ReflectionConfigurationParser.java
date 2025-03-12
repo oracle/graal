@@ -27,6 +27,7 @@ package com.oracle.svm.configure;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,28 +43,32 @@ import jdk.graal.compiler.util.json.JsonParserException;
  * Parses JSON describing classes, methods and fields and delegates their registration to a
  * {@link ReflectionConfigurationParserDelegate}.
  */
-public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationParser {
+public abstract class ReflectionConfigurationParser<C, T> extends ConditionalConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
 
     protected final ConfigurationConditionResolver<C> conditionResolver;
     protected final ReflectionConfigurationParserDelegate<C, T> delegate;
-    private final boolean printMissingElements;
 
-    public ReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
-                    boolean printMissingElements) {
-        super(strictConfiguration);
+    public ReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(parserOptions);
         this.conditionResolver = conditionResolver;
-        this.printMissingElements = printMissingElements;
         this.delegate = delegate;
+    }
+
+    @Override
+    protected EnumSet<ConfigurationParserOption> supportedOptions() {
+        EnumSet<ConfigurationParserOption> base = super.supportedOptions();
+        base.add(ConfigurationParserOption.PRINT_MISSING_ELEMENTS);
+        return base;
     }
 
     public static <C, T> ReflectionConfigurationParser<C, T> create(String combinedFileKey, boolean strictMetadata,
                     ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
-                    boolean strictConfiguration, boolean printMissingElements, boolean treatAllEntriesAsType) {
+                    EnumSet<ConfigurationParserOption> parserOptions) {
         if (strictMetadata) {
-            return new ReflectionMetadataParser<>(combinedFileKey, conditionResolver, delegate, strictConfiguration, printMissingElements);
+            return new ReflectionMetadataParser<>(combinedFileKey, conditionResolver, delegate, parserOptions);
         } else {
-            return new LegacyReflectionConfigurationParser<>(conditionResolver, delegate, strictConfiguration, printMissingElements, treatAllEntriesAsType);
+            return new LegacyReflectionConfigurationParser<>(conditionResolver, delegate, parserOptions);
         }
     }
 
@@ -189,7 +194,7 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
     }
 
     protected void handleMissingElement(String msg, Throwable cause) {
-        if (printMissingElements) {
+        if (checkOption(ConfigurationParserOption.PRINT_MISSING_ELEMENTS)) {
             String message = msg;
             if (cause != null) {
                 message += " Reason: " + formatError(cause) + '.';

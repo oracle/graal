@@ -31,6 +31,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -40,6 +41,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
 
 import jdk.graal.compiler.phases.common.LazyValue;
@@ -167,11 +169,11 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata) {
+    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
         if (strictMetadata) {
             throw new IllegalArgumentException("Predefined classes configuration is not supported with strict metadata");
         }
-        return new PredefinedClassesConfigurationParser(this::add, true);
+        return new PredefinedClassesConfigurationParser(this::add, parserOptions);
     }
 
     @Override

@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +46,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ResourceConfigurationParser;
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
@@ -379,8 +381,8 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata) {
-        return ResourceConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), new ResourceConfiguration.ParserAdapter(this), true);
+    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
+        return ResourceConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), new ParserAdapter(this), parserOptions);
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {

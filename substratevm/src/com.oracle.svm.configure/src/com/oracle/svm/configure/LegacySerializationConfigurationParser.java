@@ -27,6 +27,7 @@ package com.oracle.svm.configure;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -46,9 +47,9 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
 
     private final ProxyConfigurationParser<C> proxyConfigurationParser;
 
-    LegacySerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
-        super(conditionResolver, serializationSupport, strictConfiguration);
-        this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, strictConfiguration, serializationSupport::registerProxyClass);
+    LegacySerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, serializationSupport, parserOptions);
+        this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, parserOptions, serializationSupport::registerProxyClass);
     }
 
     @Override

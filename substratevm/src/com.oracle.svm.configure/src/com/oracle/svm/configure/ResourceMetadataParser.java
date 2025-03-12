@@ -25,6 +25,7 @@
 package com.oracle.svm.configure;
 
 import java.net.URI;
+import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
@@ -32,8 +33,8 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
 final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
-        super(conditionResolver, registry, strictConfiguration);
+    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, registry, parserOptions);
     }
 
     @Override

@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.ReachabilityMetadataResources;
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllNameEntriesAsType;
 
 import java.io.IOException;
 import java.net.URI;
@@ -66,8 +65,7 @@ public final class ConfigurationParserUtils {
                     RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, ImageClassLoader imageClassLoader) {
         return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, conditionResolver,
                         RegistryAdapter.create(registry, proxyRegistry, serializationSupport, imageClassLoader),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue(),
-                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue(), TreatAllNameEntriesAsType.getValue());
+                        ConfigurationFiles.Options.getConfigurationParserOptions());
     }
 
     /**

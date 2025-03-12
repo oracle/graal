@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.configure;
 
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,6 +34,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,7 +60,6 @@ public abstract class ConfigurationParser {
         throw new IllegalArgumentException("For security reasons, reading configurations is not supported from URIs with protocol: " + url.getProtocol());
     }
 
-    public static final String CONDITIONAL_KEY = "condition";
     public static final String NAME_KEY = "name";
     public static final String TYPE_KEY = "type";
     public static final String PROXY_KEY = "proxy";
@@ -75,10 +72,25 @@ public abstract class ConfigurationParser {
     public static final String MODULE_KEY = "module";
     public static final String GLOB_KEY = "glob";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
-    private final boolean strictSchema;
+    private final EnumSet<ConfigurationParserOption> parserOptions;
 
-    protected ConfigurationParser(boolean strictConfiguration) {
-        this.strictSchema = strictConfiguration;
+    protected ConfigurationParser(EnumSet<ConfigurationParserOption> parserOptions) {
+        this.parserOptions = parserOptions;
+    }
+
+    /**
+     * Defines the options supported by this parser. A subclass can override this method to declare
+     * additional supported options.
+     */
+    protected EnumSet<ConfigurationParserOption> supportedOptions() {
+        return EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION);
+    }
+
+    protected final boolean checkOption(ConfigurationParserOption option) {
+        if (!supportedOptions().contains(option)) {
+            throw new IllegalArgumentException(String.format("Tried to check option %s but it was not declared as a supported option", option));
+        }
+        return parserOptions.contains(option);
     }
 
     public void parseAndRegister(URI uri) throws IOException {
@@ -175,7 +187,7 @@ public abstract class ConfigurationParser {
      * @param message message to be displayed.
      */
     protected void warnOrFailOnSchemaError(String message) {
-        if (strictSchema) {
+        if (checkOption(ConfigurationParserOption.STRICT_CONFIGURATION)) {
             failOnSchemaError(message);
         } else {
             LogUtils.warning(message);
@@ -221,40 +233,7 @@ public abstract class ConfigurationParser {
         throw new JsonParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data, boolean runtimeCondition) {
-        Object conditionData = data.get(CONDITIONAL_KEY);
-        if (conditionData != null) {
-            EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
-            if (conditionObject.containsKey(TYPE_REACHABLE_KEY) && conditionObject.containsKey(TYPE_REACHED_KEY)) {
-                failOnSchemaError("condition can not have both '" + TYPE_REACHED_KEY + "' and '" + TYPE_REACHABLE_KEY + "' set.");
-            }
-
-            if (conditionObject.containsKey(TYPE_REACHED_KEY)) {
-                if (!runtimeCondition) {
-                    failOnSchemaError("'" + TYPE_REACHED_KEY + "' condition cannot be used in older schemas. Please migrate the file to the latest schema.");
-                }
-                Object object = conditionObject.get(TYPE_REACHED_KEY);
-                var condition = parseTypeContents(object);
-                if (condition.isPresent()) {
-                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className);
-                }
-            } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
-                if (runtimeCondition && !Options.TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
-                    failOnSchemaError("'" + TYPE_REACHABLE_KEY + "' condition can not be used with the latest schema. Please use '" + TYPE_REACHED_KEY + "'.");
-                }
-                Object object = conditionObject.get(TYPE_REACHABLE_KEY);
-                var condition = parseTypeContents(object);
-                if (condition.isPresent()) {
-                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className, Options.TreatAllTypeReachableConditionsAsTypeReached.getValue());
-                }
-            }
-        }
-        return UnresolvedConfigurationCondition.alwaysTrue();
-    }
-
-    private static JsonParserException failOnSchemaError(String message) {
+    protected static JsonParserException failOnSchemaError(String message) {
         throw new JsonParserException(message);
     }
 

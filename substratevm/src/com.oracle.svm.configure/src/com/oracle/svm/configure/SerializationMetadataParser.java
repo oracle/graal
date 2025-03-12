@@ -25,6 +25,7 @@
 package com.oracle.svm.configure;
 
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,8 +38,8 @@ import com.oracle.svm.util.LogUtils;
 
 final class SerializationMetadataParser<C> extends SerializationConfigurationParser<C> {
 
-    SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
-        super(conditionResolver, serializationSupport, strictConfiguration);
+    SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, serializationSupport, parserOptions);
     }
 
     @Override

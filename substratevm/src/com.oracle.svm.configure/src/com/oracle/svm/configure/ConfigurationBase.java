@@ -25,6 +25,7 @@
 package com.oracle.svm.configure;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
@@ -70,7 +71,7 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> im
         return copyAnd(copy -> copy.removeIf(predicate));
     }
 
-    public abstract ConfigurationParser createParser(boolean strictMetadata);
+    public abstract ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions);
 
     public abstract boolean supportsCombinedFile();
 

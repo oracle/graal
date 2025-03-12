@@ -26,6 +26,7 @@ package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -38,8 +39,8 @@ import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.TypeResult;
 
 final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationParser<C> {
-    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
-        super(conditionResolver, registry, strictConfiguration);
+    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, registry, parserOptions);
     }
 
     @Override

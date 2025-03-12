@@ -26,6 +26,7 @@ package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -42,15 +43,14 @@ import jdk.graal.compiler.util.json.JsonParserException;
  * Parses JSON describing lists of interfaces and passes them to the given consumer (e.g., to add
  * them to a registry).
  */
-public final class ProxyConfigurationParser<C> extends ConfigurationParser {
+public final class ProxyConfigurationParser<C> extends ConditionalConfigurationParser {
 
     private final ConfigurationConditionResolver<C> conditionResolver;
 
     private final BiConsumer<C, List<String>> proxyConfigConsumer;
 
-    public ProxyConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, boolean strictConfiguration,
-                    BiConsumer<C, List<String>> proxyConfigConsumer) {
-        super(strictConfiguration);
+    public ProxyConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, EnumSet<ConfigurationParserOption> parserOptions, BiConsumer<C, List<String>> proxyConfigConsumer) {
+        super(parserOptions);
         this.proxyConfigConsumer = proxyConfigConsumer;
         this.conditionResolver = conditionResolver;
     }

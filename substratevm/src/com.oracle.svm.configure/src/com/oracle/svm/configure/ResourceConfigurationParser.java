@@ -26,6 +26,7 @@ package com.oracle.svm.configure;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -39,21 +40,22 @@ import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
-public abstract class ResourceConfigurationParser<C> extends ConfigurationParser {
+public abstract class ResourceConfigurationParser<C> extends ConditionalConfigurationParser {
     protected final ResourcesRegistry<C> registry;
 
     protected final ConfigurationConditionResolver<C> conditionResolver;
 
-    public static <C> ResourceConfigurationParser<C> create(boolean strictMetadata, ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
+    public static <C> ResourceConfigurationParser<C> create(boolean strictMetadata, ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry,
+                    EnumSet<ConfigurationParserOption> parserOptions) {
         if (strictMetadata) {
-            return new ResourceMetadataParser<>(conditionResolver, registry, strictConfiguration);
+            return new ResourceMetadataParser<>(conditionResolver, registry, parserOptions);
         } else {
-            return new LegacyResourceConfigurationParser<>(conditionResolver, registry, strictConfiguration);
+            return new LegacyResourceConfigurationParser<>(conditionResolver, registry, parserOptions);
         }
     }
 
-    protected ResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
-        super(strictConfiguration);
+    protected ResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(parserOptions);
         this.registry = registry;
         this.conditionResolver = conditionResolver;
     }

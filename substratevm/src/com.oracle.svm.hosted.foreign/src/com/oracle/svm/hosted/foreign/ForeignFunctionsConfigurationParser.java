@@ -33,6 +33,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -65,7 +66,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private final Map<String, MemoryLayout> canonicalLayouts;
 
     public ForeignFunctionsConfigurationParser(ImageClassLoader imageClassLoader, RuntimeForeignAccessSupport access, Map<String, MemoryLayout> canonicalLayouts) {
-        super(true);
+        super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.imageClassLoader = imageClassLoader;
         this.accessSupport = access;
         this.canonicalLayouts = canonicalLayouts;
