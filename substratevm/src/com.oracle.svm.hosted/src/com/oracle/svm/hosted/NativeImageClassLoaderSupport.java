@@ -69,6 +69,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.reflectionanalysis.ReflectionAnalysisTransformer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -199,6 +200,7 @@ public final class NativeImageClassLoaderSupport {
         Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
 
         classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
+        classLoader.attachTransformer(new ReflectionAnalysisTransformer());
 
         ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);

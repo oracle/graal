@@ -27,6 +27,8 @@ package com.oracle.svm.hosted;
 import java.io.File;
 import java.io.FilePermission;
 import java.io.IOException;
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleReader;
@@ -98,6 +100,9 @@ public final class NativeImageClassLoader extends SecureClassLoader {
 
     /* Modifiable map used by this loader */
     private final ConcurrentHashMap<ModuleReference, ModuleReader> moduleToReader;
+
+    /* List of class file transformers applied to the loaded classes */
+    private List<ClassFileTransformer> transformers = new ArrayList<>();
 
     private final URLClassPath ucp;
 
@@ -527,13 +532,22 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         if (bb != null) {
             CodeSigner[] signers = res.getCodeSigners();
             CodeSource cs = new CodeSource(url, signers);
+            try {
+                bb = transformClassBytes(name, bb);
+            } catch (IllegalClassFormatException e) {
+                throw new RuntimeException(e);
+            }
             return defineClass(name, bb, cs);
         } else {
             byte[] b = res.getBytes();
             CodeSigner[] signers = res.getCodeSigners();
             CodeSource cs = new CodeSource(url, signers);
-            return defineClass(name, b, 0, b.length, cs);
-        }
+            try {
+                b = transformClassBytes(name, b);
+            } catch (IllegalClassFormatException e) {
+                throw new RuntimeException(e);
+            }
+            return defineClass(name, b, 0, b.length, cs);        }
     }
 
     /**
@@ -717,7 +731,10 @@ public final class NativeImageClassLoader extends SecureClassLoader {
             }
 
             try {
+                bb = transformClassBytes(cn, bb);
                 return defineClass(cn, bb, loadedModule.codeSource());
+            } catch (IllegalClassFormatException e) {
+                throw new RuntimeException(e);
             } finally {
                 reader.release(bb);
             }
@@ -826,5 +843,22 @@ public final class NativeImageClassLoader extends SecureClassLoader {
             }
         }
         return false;
+    }
+
+    public void attachTransformer(ClassFileTransformer transformer) {
+        transformers.add(transformer);
+    }
+
+    private ByteBuffer transformClassBytes(String className, ByteBuffer bytes) throws IllegalClassFormatException {
+        byte[] internalBytes = new byte[bytes.remaining()];
+        bytes.get(internalBytes);
+        return ByteBuffer.wrap(transformClassBytes(className, internalBytes));
+    }
+
+    private byte[] transformClassBytes(String className, byte[] bytes) throws IllegalClassFormatException {
+        for (ClassFileTransformer transformer : transformers) {
+            bytes = transformer.transform(this, className, null, null, bytes);
+        }
+        return bytes;
     }
 }

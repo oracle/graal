@@ -413,6 +413,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
+        public List<StackTraceElement> getCallStack() {
+            List<StackTraceElement> callStack = new ArrayList<>(Arrays.asList(methodScope.getCallStack()));
+            /*
+             * If we're processing an invocation plugin, we want the top stack element to be the
+             * callee of the method targeted by the plugin, and not the target itself.
+             */
+            if (isParsingInvocationPlugin()) {
+                callStack.removeFirst();
+            }
+            return callStack;
+        }
+
+        @Override
         public int recursiveInliningDepth(ResolvedJavaMethod method) {
             int result = 0;
             for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
