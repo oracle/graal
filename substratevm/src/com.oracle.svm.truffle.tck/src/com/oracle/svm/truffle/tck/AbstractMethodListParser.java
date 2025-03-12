@@ -29,7 +29,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.truffle.tck.PermissionsFeature.AnalysisMethodNode;
 import jdk.graal.compiler.util.json.JsonParserException;

@@ -34,7 +34,6 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,6 +60,10 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ResourceConfigurationParser;
+import com.oracle.svm.configure.ResourcesRegistry;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
@@ -69,11 +72,7 @@ import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
@@ -99,6 +98,7 @@ import com.oracle.svm.hosted.util.ResourcesUtils;
 import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.NativeImageResourcePathRepresentation;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -125,10 +125,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * <p>
  * The {@link NativeImageResourceFileSystemProvider} provides most of the functionality of a
- * {@link FileSystem}. It is an in-memory file system that upon creation contains a copy of the
- * resources included in the native-image. Note that changes to files do not affect actual resources
- * returned by resource manipulation methods like `Class.getResource`. Upon being closed, all
- * changes are discarded.
+ * {@link java.nio.file.FileSystem}. It is an in-memory file system that upon creation contains a
+ * copy of the resources included in the native-image. Note that changes to files do not affect
+ * actual resources returned by resource manipulation methods like `Class.getResource`. Upon being
+ * closed, all changes are discarded.
  * </p>
  *
  * <p>
@@ -193,7 +193,7 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addGlob(ConfigurationCondition condition, String module, String glob, Object origin) {
-            String canonicalGlob = Resources.toCanonicalForm(glob);
+            String canonicalGlob = NativeImageResourcePathRepresentation.toCanonicalForm(glob);
             String resolvedGlob = GlobUtils.transformToTriePath(canonicalGlob, module);
             globWorkSet.add(new ConditionalPattern(condition, resolvedGlob, origin));
         }

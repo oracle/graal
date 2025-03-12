@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
 
 import java.io.IOException;
 import java.net.URI;
@@ -42,9 +42,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParser;
+
 import jdk.graal.compiler.phases.common.LazyValue;
 
 public class ConfigurationFileCollection {
@@ -116,7 +116,7 @@ public class ConfigurationFileCollection {
             case REFLECTION -> uris = getReflectConfigPaths();
             case SERIALIZATION -> uris = getSerializationConfigPaths();
             case PREDEFINED_CLASSES_NAME -> uris = getPredefinedClassesConfigPaths();
-            default -> throw VMError.shouldNotReachHere("Cannot get paths for configuration file " + configurationFile);
+            default -> throw new IllegalArgumentException("Cannot get paths for configuration file " + configurationFile);
         }
         return uris.stream().map(Paths::get).collect(Collectors.toSet());
     }

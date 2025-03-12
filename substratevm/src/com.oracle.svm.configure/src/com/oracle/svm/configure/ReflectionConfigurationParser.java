@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,8 +32,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 

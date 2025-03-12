@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.configure;
 
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.TypeResult;
+import java.net.URI;
 
-import jdk.vm.ci.meta.MetaUtil;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-public final class ConfigurationTypeResolver {
-    private final String configurationType;
-    private final ImageClassLoader classLoader;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
-    public ConfigurationTypeResolver(String configurationType, ImageClassLoader classLoader) {
-        this.configurationType = configurationType;
-        this.classLoader = classLoader;
+final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
+    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
+        super(conditionResolver, registry, strictConfiguration);
     }
 
-    public Class<?> resolveType(String typeName) {
-        return resolveType(typeName, true);
+    @Override
+    public void parseAndRegister(Object json, URI origin) {
+        Object resourcesJson = getFromGlobalFile(json, RESOURCES_KEY);
+        if (resourcesJson != null) {
+            parseGlobsObject(resourcesJson, origin);
+        }
+        Object bundlesJson = getFromGlobalFile(json, BUNDLES_KEY);
+        if (bundlesJson != null) {
+            parseBundlesObject(bundlesJson);
+        }
     }
 
-    private Class<?> resolveType(String typeName, boolean warn) {
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
-        }
-        TypeResult<Class<?>> typeResult = classLoader.findClass(name);
-        if (warn && !typeResult.isPresent()) {
-            LogUtils.warning("Could not resolve %s for %s.", name, configurationType);
-        }
-        return typeResult.get();
+    @Override
+    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+        return parseCondition(condition, true);
     }
 }

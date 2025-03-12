@@ -22,9 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
@@ -46,11 +45,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import org.graalvm.nativeimage.ImageInfo;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.util.json.JsonParser;
@@ -60,10 +56,10 @@ public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
         URL url = uri.toURL();
         if ("file".equals(url.getProtocol()) || "jar".equalsIgnoreCase(url.getProtocol()) ||
-                        (!SubstrateUtil.HOSTED && JavaNetSubstitutions.RESOURCE_PROTOCOL.equals(url.getProtocol()))) {
+                        (ImageInfo.inImageRuntimeCode() && "resource".equals(url.getProtocol()))) {
             return url.openStream();
         }
-        throw VMError.shouldNotReachHere("For security reasons, reading configurations is not supported from URIs with protocol: " + url.getProtocol());
+        throw new IllegalArgumentException("For security reasons, reading configurations is not supported from URIs with protocol: " + url.getProtocol());
     }
 
     public static final String CONDITIONAL_KEY = "condition";
@@ -244,14 +240,14 @@ public abstract class ConfigurationParser {
                     return UnresolvedConfigurationCondition.create(className);
                 }
             } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
-                if (runtimeCondition && !TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+                if (runtimeCondition && !Options.TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
                     failOnSchemaError("'" + TYPE_REACHABLE_KEY + "' condition can not be used with the latest schema. Please use '" + TYPE_REACHED_KEY + "'.");
                 }
                 Object object = conditionObject.get(TYPE_REACHABLE_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
                     String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className, TreatAllTypeReachableConditionsAsTypeReached.getValue());
+                    return UnresolvedConfigurationCondition.create(className, Options.TreatAllTypeReachableConditionsAsTypeReached.getValue());
                 }
             }
         }

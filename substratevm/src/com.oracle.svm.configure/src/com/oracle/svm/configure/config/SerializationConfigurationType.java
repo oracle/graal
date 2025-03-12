@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.NAME_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.TYPE_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.NAME_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.TYPE_KEY;
 
 import java.io.IOException;
 import java.util.Objects;

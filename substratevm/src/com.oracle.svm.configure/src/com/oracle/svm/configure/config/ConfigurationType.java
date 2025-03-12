@@ -37,9 +37,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 
 import jdk.graal.compiler.util.SignatureUtil;
 import jdk.graal.compiler.util.json.JsonPrintable;

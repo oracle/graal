@@ -35,15 +35,14 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import jdk.graal.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
 
+import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.graal.compiler.util.Digest;
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -169,7 +168,9 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
 
     @Override
     public ConfigurationParser createParser(boolean strictMetadata) {
-        VMError.guarantee(!strictMetadata, "Predefined classes configuration is not supported with strict metadata");
+        if (strictMetadata) {
+            throw new IllegalArgumentException("Predefined classes configuration is not supported with strict metadata");
+        }
         return new PredefinedClassesConfigurationParser(this::add, true);
     }
 

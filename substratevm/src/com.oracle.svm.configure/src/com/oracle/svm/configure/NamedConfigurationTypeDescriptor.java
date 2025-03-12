@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
+import java.io.IOException;
 import java.util.Collection;
-import java.util.Locale;
+import java.util.Collections;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import jdk.graal.compiler.util.json.JsonWriter;
 
-public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
+public record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTypeDescriptor {
 
-    @SuppressWarnings("unchecked")
-    static ResourcesRegistry<ConfigurationCondition> singleton() {
-        return ImageSingletons.lookup(ResourcesRegistry.class);
-    }
-
-    void addClassBasedResourceBundle(C condition, String basename, String className);
-
-    /**
-     * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
-     * reflectively.
-     */
-    @Deprecated
-    default void addResources(C condition, String pattern) {
-        addResources(condition, pattern, "unknown");
+    public NamedConfigurationTypeDescriptor(String name) {
+        this.name = ConfigurationTypeDescriptor.checkQualifiedJavaName(name);
     }
 
     @Override
-    void ignoreResources(C condition, String pattern);
+    public Kind getDescriptorType() {
+        return Kind.NAMED;
+    }
 
     @Override
-    void addResourceBundles(C condition, String name);
+    public String toString() {
+        return name;
+    }
 
     @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    public Collection<String> getAllQualifiedJavaNames() {
+        return Collections.singleton(name);
+    }
+
+    @Override
+    public int compareTo(ConfigurationTypeDescriptor other) {
+        if (other instanceof NamedConfigurationTypeDescriptor namedOther) {
+            return name.compareTo(namedOther.name);
+        } else {
+            return getDescriptorType().compareTo(other.getDescriptorType());
+        }
+    }
+
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.quote(name);
+    }
 }

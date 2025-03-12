@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.core.configure;
-
-import java.util.Comparator;
-import java.util.function.Function;
+package com.oracle.svm.configure.config.conditional;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-public record ConditionalElement<T>(UnresolvedConfigurationCondition condition, T element) {
+import com.oracle.svm.util.TypeResult;
 
-    public static <T extends Comparable<T>> Comparator<ConditionalElement<T>> comparator() {
-        return (o1, o2) -> Comparator
-                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element)
-                        .thenComparing(ConditionalElement::condition)
-                        .compare(o1, o2);
+public interface ConfigurationConditionResolver<T> {
+
+    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
+        return new ConfigurationConditionResolver<>() {
+            @Override
+            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+                return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
+            }
+
+            @Override
+            public UnresolvedConfigurationCondition alwaysTrue() {
+                return UnresolvedConfigurationCondition.alwaysTrue();
+            }
+        };
     }
 
-    public static <T> Comparator<ConditionalElement<T>> comparator(Comparator<T> elementComparator) {
-        return (o1, o2) -> Comparator
-                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element, elementComparator)
-                        .thenComparing(ConditionalElement::condition)
-                        .compare(o1, o2);
-    }
+    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
+
+    T alwaysTrue();
 }

@@ -38,11 +38,10 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.configure.ResourceConfigurationParser;
+import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -99,12 +98,12 @@ public class ResourceConfigurationTest {
 
                 @Override
                 public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, Object origin) {
-                    throw VMError.shouldNotReachHere("Unused function.");
+                    throw new AssertionError("Unused function.");
                 }
 
                 @Override
                 public void addResourceEntry(Module module, String resourcePath, Object origin) {
-                    throw VMError.shouldNotReachHere("Unused function.");
+                    throw new AssertionError("Unused function.");
                 }
 
                 @Override

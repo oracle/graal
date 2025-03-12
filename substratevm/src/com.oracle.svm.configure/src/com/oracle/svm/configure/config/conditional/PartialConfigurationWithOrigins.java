@@ -33,8 +33,8 @@ import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParser;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.graal.compiler.util.json.JsonPrintable;

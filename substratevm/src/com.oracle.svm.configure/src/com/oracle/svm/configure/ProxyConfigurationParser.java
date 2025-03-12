@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Collections;
@@ -33,13 +33,14 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
 /**
- * Parses JSON describing lists of interfaces and register them in the {@link DynamicProxyRegistry}.
+ * Parses JSON describing lists of interfaces and passes them to the given consumer (e.g., to add
+ * them to a registry).
  */
 public final class ProxyConfigurationParser<C> extends ConfigurationParser {
 

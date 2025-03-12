@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import com.oracle.svm.configure.ConfigurationUsageException;
+import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
@@ -46,7 +47,6 @@ import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.phases.common.LazyValue;

@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;

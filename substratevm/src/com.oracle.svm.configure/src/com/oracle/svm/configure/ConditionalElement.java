@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
 
-import java.net.URI;
+package com.oracle.svm.configure;
 
-public interface PredefinedClassesRegistry {
+import java.util.Comparator;
+import java.util.function.Function;
 
-    void add(String nameInfo, String hash, URI baseUri);
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+
+public record ConditionalElement<T>(UnresolvedConfigurationCondition condition, T element) {
+
+    public static <T extends Comparable<T>> Comparator<ConditionalElement<T>> comparator() {
+        return (o1, o2) -> Comparator
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element)
+                        .thenComparing(ConditionalElement::condition)
+                        .compare(o1, o2);
+    }
+
+    public static <T> Comparator<ConditionalElement<T>> comparator(Comparator<T> elementComparator) {
+        return (o1, o2) -> Comparator
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element, elementComparator)
+                        .thenComparing(ConditionalElement::condition)
+                        .compare(o1, o2);
+    }
 }

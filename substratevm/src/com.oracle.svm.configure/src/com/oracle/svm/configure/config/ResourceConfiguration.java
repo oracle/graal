@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.BUNDLES_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.GLOBS_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.RESOURCES_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.BUNDLES_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.GLOBS_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.RESOURCES_KEY;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -42,15 +42,14 @@ import java.util.regex.Pattern;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.configure.ConditionalElement;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ResourceConfigurationParser;
+import com.oracle.svm.configure.ResourcesRegistry;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.GlobUtils;
+import com.oracle.svm.util.NativeImageResourcePathRepresentation;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -77,17 +76,17 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
 
         @Override
         public void addResourceEntry(Module module, String resourcePath, Object origin) {
-            throw VMError.shouldNotReachHere("Unused function.");
+            throw new UnsupportedOperationException("Unused function.");
         }
 
         @Override
         public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
-            throw VMError.shouldNotReachHere("Unused function.");
+            throw new UnsupportedOperationException("Unused function.");
         }
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
-            VMError.shouldNotReachHere("Resource injection is only supported via Feature implementation");
+            throw new UnsupportedOperationException("Resource injection is only supported via Feature implementation");
         }
 
         @Override
@@ -215,7 +214,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
          * prevent patterns discovered by the agent to be written in the non-canonical form. Example
          * canonical path: foo/1.txt; non-canonical path: foo/bar/../1.txt
          */
-        String canonicalPattern = Resources.toCanonicalForm(pattern);
+        String canonicalPattern = NativeImageResourcePathRepresentation.toCanonicalForm(pattern);
         ResourceEntry element = new ResourceEntry(escapePossibleGlobWildcards(canonicalPattern), module);
         addedGlobs.add(new ConditionalElement<>(condition, element));
     }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,8 +33,9 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.util.LocaleUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
@@ -101,7 +102,7 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
 
     private static Locale parseLocale(Object input) {
         String localeTag = asString(input);
-        Locale locale = LocalizationSupport.parseLocaleFromTag(localeTag);
+        Locale locale = LocaleUtil.parseLocaleFromTag(localeTag);
         if (locale == null) {
             throw new JsonParserException(localeTag + " is not a valid locale tag");
         }
@@ -121,7 +122,8 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
 
     private void parseGlobEntry(Object data, GlobPatternConsumer<C> resourceRegistry) {
         EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
-        checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY), List.of(CONDITIONAL_KEY, MODULE_KEY));
+        checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY),
+                        List.of(CONDITIONAL_KEY, MODULE_KEY));
         TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(globObject));
         if (!resolvedConfigurationCondition.isPresent()) {
             return;

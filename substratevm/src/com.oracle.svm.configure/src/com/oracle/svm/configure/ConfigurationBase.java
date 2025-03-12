@@ -29,8 +29,6 @@ import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 

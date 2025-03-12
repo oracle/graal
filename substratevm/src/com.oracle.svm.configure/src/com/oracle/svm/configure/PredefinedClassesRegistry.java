@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +23,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import java.net.URI;
 
-import com.oracle.svm.core.TypeResult;
+public interface PredefinedClassesRegistry {
 
-public interface ConfigurationConditionResolver<T> {
-
-    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
-        return new ConfigurationConditionResolver<>() {
-            @Override
-            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
-                return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
-            }
-
-            @Override
-            public UnresolvedConfigurationCondition alwaysTrue() {
-                return UnresolvedConfigurationCondition.alwaysTrue();
-            }
-        };
-    }
-
-    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
-
-    T alwaysTrue();
+    void add(String nameInfo, String hash, URI baseUri);
 }

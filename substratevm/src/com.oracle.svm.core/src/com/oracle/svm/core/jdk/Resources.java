@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,7 +61,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
-import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceExceptionEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
@@ -77,6 +75,7 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.NativeImageResourcePathRepresentation;
 
 /**
  * Support for resources on Substrate VM. All resources that need to be available at run time need
@@ -332,15 +331,6 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         return pattern;
     }
 
-    /**
-     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
-     * convert <code>resourceName</code> to canonical variant.
-     */
-    public static String toCanonicalForm(String resourceName) {
-        NativeImageResourcePath path = new NativeImageResourcePath(null, removeTrailingSlash(resourceName).getBytes(StandardCharsets.UTF_8), true);
-        return new String(NativeImageResourcePath.getResolved(path));
-    }
-
     private static boolean hasTrailingSlash(String resourceName) {
         return resourceName.endsWith("/");
     }
@@ -365,7 +355,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
      */
     public static ResourceStorageEntryBase getAtRuntime(Module module, String resourceName, boolean throwOnMissing) {
         VMError.guarantee(ImageInfo.inImageRuntimeCode(), "This function should be used only at runtime.");
-        String canonicalResourceName = toCanonicalForm(resourceName);
+        String canonicalResourceName = NativeImageResourcePathRepresentation.toCanonicalForm(resourceName);
         String moduleName = moduleName(module);
         ConditionalRuntimeValue<ResourceStorageEntryBase> entry = getEntry(module, canonicalResourceName);
         if (entry == null) {
@@ -515,7 +505,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
         boolean missingMetadata = true;
 
         List<URL> resourcesURLs = new ArrayList<>();
-        String canonicalResourceName = toCanonicalForm(resourceName);
+        String canonicalResourceName = NativeImageResourcePathRepresentation.toCanonicalForm(resourceName);
         boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
 
         /* If moduleName was unspecified we have to consider all modules in the image */
