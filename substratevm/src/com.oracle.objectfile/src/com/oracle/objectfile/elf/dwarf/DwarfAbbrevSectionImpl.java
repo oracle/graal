@@ -1116,6 +1116,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         int pos = p;
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_1, buffer, pos);
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_3, buffer, pos);
+        pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_4, buffer, pos);
         if (!dwarfSections.useHeapBase()) {
             pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_2, buffer, pos);
         }
@@ -1130,21 +1131,23 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-        if (abbrevCode == AbbrevCode.CLASS_LAYOUT_3) {
+        if (abbrevCode == AbbrevCode.CLASS_LAYOUT_3 || abbrevCode == AbbrevCode.CLASS_LAYOUT_4) {
             pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
             pos = writeAttrType(DwarfAttribute.DW_AT_signature, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
+            if (abbrevCode == AbbrevCode.CLASS_LAYOUT_4) {
+                pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
+                pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+                /*-
+                 * At present we definitely don't have a line number for the class itself.
+                   pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
+                   pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
+                */
+            }
         } else {
             pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-            pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
-            pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-            /*-
-             * At present we definitely don't have a line number for the class itself.
-               pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
-               pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
-            */
             if (abbrevCode == AbbrevCode.CLASS_LAYOUT_2) {
                 pos = writeAttrType(DwarfAttribute.DW_AT_data_location, buffer, pos);
                 pos = writeAttrForm(DwarfForm.DW_FORM_expr_loc, buffer, pos);
