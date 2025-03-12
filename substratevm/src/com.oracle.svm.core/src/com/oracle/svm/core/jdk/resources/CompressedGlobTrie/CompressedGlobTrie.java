@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.StringUtil;
 
 /**

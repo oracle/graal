@@ -23,11 +23,9 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
+package com.oracle.svm.util;
 
 import java.util.List;
-
-import com.oracle.svm.util.StringUtil;
 
 public class GlobUtils {
 
