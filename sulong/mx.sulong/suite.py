@@ -963,6 +963,7 @@ suite = {
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_ENABLE_STATIC" : "NO",
+        "LIBUNWIND_ENABLE_STATIC" : "NO",
         "CMAKE_INSTALL_PREFIX" : "native",
         # workaround for build problem with cmake >=3.22
         # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
@@ -978,6 +979,9 @@ suite = {
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "linux-musl" : {
@@ -988,6 +992,9 @@ suite = {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "LIBCXX_HAS_MUSL_LIBC" : "YES",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "darwin" : {
@@ -998,6 +1005,9 @@ suite = {
             "CMAKE_INSTALL_RPATH" : "@loader_path/",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "windows" : {
@@ -1896,7 +1906,12 @@ suite = {
         },
         "<others>" : {
           "layout" : {
-            "./": ["dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*"],
+            "./": [{
+                "source_type": "dependency",
+                "dependency": "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
+                "path": "*",
+                "exclude": "native/lib/*.a",
+            }],
             "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
             # for source compatibility
             "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",

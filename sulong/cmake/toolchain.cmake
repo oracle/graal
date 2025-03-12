@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -87,3 +87,17 @@ find_tc_ifndef(CMAKE_AR ${SULONG_TOOLCHAIN_BIN}/llvm-ar)
 find_tc_ifndef(CMAKE_NM ${SULONG_TOOLCHAIN_BIN}/llvm-nm)
 
 set_ifndef(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
+    OUTPUT_VARIABLE clang_resource_dir
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+# convert llvm-dir/lib/clang/18 to just llvm-dir/
+get_filename_component(clang_lib_dir ${clang_resource_dir} DIRECTORY)
+get_filename_component(clang_lib_dir2 ${clang_lib_dir} DIRECTORY)
+get_filename_component(llvm_dir ${clang_lib_dir2} DIRECTORY)
+
+# add file-prefix-map, but not for the "LL" language
+# the LL language is used by our test bulid scripts to refer to the llvm-link command, it doesn't understand this option
+add_compile_options($<IF:$<COMPILE_LANGUAGE:LL>,,-ffile-prefix-map=${llvm_dir}=LLVM_TOOLCHAIN>)
