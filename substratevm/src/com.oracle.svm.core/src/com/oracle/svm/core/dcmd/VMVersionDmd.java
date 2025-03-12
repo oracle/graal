@@ -43,6 +43,6 @@ public class VMVersionDmd extends AbstractDCmd {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L234-L246")
     public String execute(DCmdArguments args) throws Throwable {
         VM vm = ImageSingletons.lookup(VM.class);
-        return vm.vendorVersion + " (" + vm.info + ")" + System.lineSeparator() + "JDK " + vm.version;
+        return vm.formattedVmVersion + System.lineSeparator() + vm.formattedJdkVersion;
     }
 }
