@@ -582,6 +582,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.21.0",
+      "jacoco" : "exclude",
       "workingSets" : "Truffle,Codegen",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -771,6 +772,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
     },
@@ -1165,6 +1167,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,SimpleLanguage",
+      "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -1373,6 +1376,7 @@ suite = {
         "jdk.management"
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      "jacoco" : "exclude",
       "javaCompliance" : "17+",
     },
 
