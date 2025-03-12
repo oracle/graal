@@ -141,7 +141,7 @@ jobs:
           # /truffle
           - env:
               JDK_VERSION: "21"
-              GATE_TAGS: "" # Truffle does not use tags
+              GATE_TAGS: "style,fullbuild,fulltest"
               PRIMARY: "truffle"
           # /vm
           - env:
