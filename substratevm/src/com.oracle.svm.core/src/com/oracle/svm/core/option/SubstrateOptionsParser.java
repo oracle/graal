@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.common.option.IntentionallyUnsupportedOptions;
 import com.oracle.svm.common.option.UnsupportedOptionClassException;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.util.LogUtils;
@@ -90,7 +91,8 @@ public class SubstrateOptionsParser {
         if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> {
                 OptionKey<?> key = d.getOptionKey();
-                return optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
+                return !IntentionallyUnsupportedOptions.contains(key) &&
+                                optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
             }, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
             throw new InterruptImageBuilding("");
         }
