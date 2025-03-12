@@ -56,7 +56,7 @@
                 (i32.const 8) ;; path length
                 (i32.const 0) ;; oflags
                 (i64.const 2) ;; rights base (only fd_read set)
-                (i64.const 4) ;; rights inherting (only fd_seek set)
+                (i64.const 4) ;; rights inheriting (only fd_seek set)
                 (i32.const 1) ;; fdflags (append flag set)
                 (i32.const 8) ;; fd address
             )
@@ -75,7 +75,7 @@
         (if (i32.ne (i32.load16_u (i32.const 14)) (i32.const 1)) (then (return (i32.const -2))))
         ;; Check that rights base equal 2
         (if (i64.ne (i64.load (i32.const 20)) (i64.const 2)) (then (return (i32.const -3))))
-        ;; Check that rights inherting equal 4
+        ;; Check that rights inheriting equal 4
         (if (i64.ne (i64.load (i32.const 28)) (i64.const 4)) (then (return (i32.const -4))))
 
         ;; Free opened file

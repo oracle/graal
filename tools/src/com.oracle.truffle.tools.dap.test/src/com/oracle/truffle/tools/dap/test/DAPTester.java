@@ -174,7 +174,7 @@ public final class DAPTester {
                 } else {
                     // Two consecutive newlines start the message content
                     if (contentLength < 0) {
-                        throw new IOException("Error while processing an incomming message: Missing header " + CONTENT_LENGTH_HEADER + " in input.");
+                        throw new IOException("Error while processing an incoming message: Missing header " + CONTENT_LENGTH_HEADER + " in input.");
                     } else {
                         // Read the message
                         byte[] buffer = new byte[contentLength];

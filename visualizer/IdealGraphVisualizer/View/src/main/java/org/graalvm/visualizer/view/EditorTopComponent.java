@@ -522,7 +522,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
 
         // Component organization into Cards must be done before action init.
         // The PROP_SATELLITE_SHOWN is not fired based on actual visibility of the
-        // satelite, but from manipulators. If layout hid the satellite after
+        // satellite, but from manipulators. If layout hid the satellite after
         // context actions initialize, they would not get proper change events
         // for the enabled state.
         // The layout is changed only using manipulators after initialization,
@@ -547,7 +547,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
             if (a instanceof ContextAwareAction) {
                 a = ((ContextAwareAction) a).createContextAwareInstance(getLookup());
                 if (a instanceof PropertyChangeListener) {
-                    // Bug in action intialization; see NETBEANS-1985. The event will cause the context-bound action
+                    // Bug in action initialization; see NETBEANS-1985. The event will cause the context-bound action
                     // to re-evaluate the status.
                     ((PropertyChangeListener) a).propertyChange(new PropertyChangeEvent(a, Action.SELECTED_KEY, null, Boolean.TRUE));
                 }
@@ -761,7 +761,7 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
     public void componentClosed() {
         rangeSliderModel.close();
         // the quicksearch does not unregister from global result list.
-        // remove it from the AWT hiearchy, so it does not keep this Component
+        // remove it from the AWT hierarchy, so it does not keep this Component
         // through parent chain.
         this.remove(toolbarContainer);
         this.toolbar.remove(this.quicksearch);
