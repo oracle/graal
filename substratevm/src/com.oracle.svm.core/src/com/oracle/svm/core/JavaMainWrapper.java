@@ -233,6 +233,11 @@ public class JavaMainWrapper {
                 VMRuntime.initialize();
             }
 
+            if (SubstrateOptions.PrintVMInfoAndExit.getValue()) {
+                printVmInfo();
+                return 0;
+            }
+
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
                 return VMInspectionOptions.dumpImageHeap() ? 0 : 1;
             }
@@ -451,6 +456,12 @@ public class JavaMainWrapper {
             throw new UnsupportedOperationException("Argument vector support not available");
         }
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
+    }
+
+    private static void printVmInfo() {
+        VM vm = ImageSingletons.lookup(VM.class);
+        System.out.println(vm.formattedVmVersion);
+        System.out.println(vm.formattedJdkVersion);
     }
 
     private static final class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {

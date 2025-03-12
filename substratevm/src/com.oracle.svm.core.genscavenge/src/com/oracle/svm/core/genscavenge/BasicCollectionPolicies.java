@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -35,10 +34,12 @@ import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /** Basic/legacy garbage collection policies. */
 final class BasicCollectionPolicies {
@@ -101,15 +102,9 @@ final class BasicCollectionPolicies {
                 return Word.unsigned(runtimeValue);
             }
 
-            /*
-             * If the physical size is known yet, the maximum size of the heap is a fraction of the
-             * size of the physical memory.
-             */
-            UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-            UnsignedWord physicalMemorySize = PhysicalMemory.size();
+            UnsignedWord addressSpaceSize = CommittedMemoryProvider.get().getCollectedHeapAddressSpaceSize();
             int maximumHeapSizePercent = HeapParameters.getMaximumHeapSizePercent();
-            /* Do not cache because `-Xmx` option parsing may not have happened yet. */
-            UnsignedWord result = physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
+            UnsignedWord result = PhysicalMemory.size().unsignedDivide(100).multiply(maximumHeapSizePercent);
             return UnsignedUtils.min(result, addressSpaceSize);
         }
 

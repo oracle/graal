@@ -408,7 +408,7 @@ public final class GCImpl implements GC {
             printGCPrefixAndTime().string("Using ").string(getName()).newline();
             Log log = printGCPrefixAndTime().spaces(2).string("Memory: ");
             log.rational(PhysicalMemory.size(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Heap policy: ").string(getPolicy().getName()).newline();
+            printGCPrefixAndTime().spaces(2).string("GC policy: ").string(getPolicy().getName()).newline();
             printGCPrefixAndTime().spaces(2).string("Maximum young generation size: ").rational(getPolicy().getMaximumYoungGenerationSize(), M, 0).string("M").newline();
             printGCPrefixAndTime().spaces(2).string("Maximum heap size: ").rational(getPolicy().getMaximumHeapSize(), M, 0).string("M").newline();
             printGCPrefixAndTime().spaces(2).string("Minimum heap size: ").rational(getPolicy().getMinimumHeapSize(), M, 0).string("M").newline();

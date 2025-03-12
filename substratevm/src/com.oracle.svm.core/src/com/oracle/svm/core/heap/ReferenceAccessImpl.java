@@ -109,7 +109,7 @@ public class ReferenceAccessImpl implements ReferenceAccess {
 
     @Fold
     @Override
-    public UnsignedWord getAddressSpaceSize() {
+    public UnsignedWord getMaxAddressSpaceSize() {
         int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
         if (compressionShift > 0) {
             int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
