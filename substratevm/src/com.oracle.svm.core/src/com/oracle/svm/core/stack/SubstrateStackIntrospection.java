@@ -314,7 +314,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     public void materializeVirtualObjects(boolean invalidateCode) {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (virtualFrame == null) {
-            DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptSourceFrameEagerly(ip, false);
+            DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptimizeEagerly();
             assert deoptimizedFrame == Deoptimizer.checkEagerDeoptimized(thread, sp);
         }
 

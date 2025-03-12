@@ -1034,9 +1034,8 @@ public final class Deoptimizer {
      *
      * @param pc A code address inside the source method (= the method to deoptimize)
      */
-    public void deoptSourceFrameLazily(CodePointer pc, boolean ignoreNonDeoptimizable) {
+    private void deoptSourceFrameLazily(CodePointer pc, boolean ignoreNonDeoptimizable) {
         assert VMOperation.isInProgressAtSafepoint();
-        VMError.guarantee(requestingThread == CurrentIsolate.getCurrentThread(), "This method should be called by the thread which creates the Deoptimizer.");
         if (!Options.LazyDeoptimization.getValue()) {
             deoptSourceFrameEagerly(pc, ignoreNonDeoptimizable);
             return;
@@ -1062,8 +1061,7 @@ public final class Deoptimizer {
     /**
      * Deoptimizes a source frame eagerly.
      */
-    public DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        VMError.guarantee(requestingThread == CurrentIsolate.getCurrentThread(), "This method should be called by the thread which creates the Deoptimizer.");
+    private DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
         if (!canBeDeoptimized(sourceChunk.getFrameInfo())) {
             if (ignoreNonDeoptimizable) {
                 return null;
@@ -1075,6 +1073,11 @@ public final class Deoptimizer {
         final EagerDeoptSourceFrameOperation operation = new EagerDeoptSourceFrameOperation(this, pc, ignoreNonDeoptimizable);
         operation.enqueue();
         return operation.getResult();
+    }
+
+    public DeoptimizedFrame deoptimizeEagerly() {
+        VMError.guarantee(requestingThread == CurrentIsolate.getCurrentThread(), "This method should be called by the thread which creates the Deoptimizer.");
+        return deoptSourceFrameEagerly(sourceChunk.getIP(), false);
     }
 
     @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
