@@ -34,7 +34,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
+import com.oracle.svm.util.GlobUtils;
 
 final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationParser<C> {
     LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
@@ -120,7 +120,7 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
         /* Parse fully literal regex as globs */
         if (value.startsWith("\\Q") && value.endsWith("\\E") && value.indexOf("\\E") == value.lastIndexOf("\\E")) {
             String globValue = value.substring("\\Q".length(), value.length() - "\\E".length());
-            if (CompressedGlobTrie.validatePattern(globValue).isEmpty()) {
+            if (GlobUtils.validatePattern(globValue).isEmpty()) {
                 globRegistry.accept(resolvedConfigurationCondition.get(), null, globValue);
                 return;
             }
