@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.AnyMatchNodeGen;
 import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfAnyRangeNodeGen;
 import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfAnyValueNodeGen;
@@ -61,7 +62,6 @@ import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfRangesNo
 import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfStringNodeGen;
 import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfTableNodeGen;
 import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.NoMatchNodeGen;
-import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class IndexOfCodePointSet {
 
@@ -595,8 +595,8 @@ final class IndexOfCodePointSet {
         @Override
         int runSearch(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             assert str.isManaged() && str.isMaterialized() && str.offset() == 0;
-            return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA, (byte[]) str.data(), byteArrayBaseOffset(), str.length(), str.stride(), fromIndex, toIndex,
-                            null);
+            return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA,
+                            (byte[]) str.data(), ARRAY_BYTE_BASE_OFFSET, str.length(), str.stride(), fromIndex, toIndex, null);
         }
 
         @Override

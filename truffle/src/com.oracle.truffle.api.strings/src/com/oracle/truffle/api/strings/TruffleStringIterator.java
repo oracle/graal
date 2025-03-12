@@ -460,6 +460,10 @@ public final class TruffleStringIterator {
             }
             return codepoint;
         }
+
+        static InternalNextNode getUncached() {
+            return TruffleStringIteratorFactory.InternalNextNodeGen.getUncached();
+        }
     }
 
     /**
@@ -825,6 +829,9 @@ public final class TruffleStringIterator {
             return codepoint;
         }
 
+        static InternalPreviousNode getUncached() {
+            return TruffleStringIteratorFactory.InternalPreviousNodeGen.getUncached();
+        }
     }
 
     /**

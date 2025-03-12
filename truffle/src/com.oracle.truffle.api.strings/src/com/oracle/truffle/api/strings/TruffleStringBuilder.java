@@ -49,12 +49,11 @@ import static com.oracle.truffle.api.strings.TStringGuards.isFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.lang.ref.Reference;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -623,9 +622,6 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.updateCodeRange(TSCodeRange.getValidMultiByte());
             } else {
                 assert isUnsupportedEncoding(sb.encoding);
-                if (!JCodings.JCODINGS_ENABLED) {
-                    throw CompilerDirectives.shouldNotReachHere();
-                }
                 JCodings jcodings = JCodings.getInstance();
                 if (Integer.compareUnsigned(codepoint, 0x10ffff) > 0) {
                     throw InternalErrors.invalidCodePoint(codepoint);
@@ -989,13 +985,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1003,7 +999,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.ensureCapacityS0(node, a.length(), bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(node,
                                 arrayA, offsetA, 0, 0,
-                                sb.buf, byteArrayBaseOffset(), 0, sb.length, a.length());
+                                sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, a.length());
                 sb.codePointLength += a.codePointLength();
                 sb.length += a.length();
             } finally {
@@ -1031,13 +1027,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1046,7 +1042,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityS0(node, a.length(), bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, offsetA, 0, 0,
-                                    sb.buf, byteArrayBaseOffset(), 0, sb.length, a.length());
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, a.length());
                     sb.codePointLength += a.length();
                 } else {
                     slowPathProfile.enter(node);
@@ -1056,7 +1052,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityAndInflate(node, a.length(), Stride.fromCodeRangeUTF16(codeRangeA), inflateProfile, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, offsetA, a.stride(), 0,
-                                    sb.buf, byteArrayBaseOffset(), sb.stride, sb.length, a.length());
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.stride, sb.length, a.length());
                 }
                 sb.length += a.length();
             } finally {
@@ -1083,13 +1079,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1098,7 +1094,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityS0(node, a.length(), bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, offsetA, 0, 0,
-                                    sb.buf, byteArrayBaseOffset(), 0, sb.length, a.length());
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, a.length());
                 } else {
                     slowPathProfile.enter(node);
                     int codeRangeA = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, Encoding.UTF_32);
@@ -1106,7 +1102,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityAndInflate(node, a.length(), Stride.fromCodeRangeUTF32(codeRangeA), inflateProfile, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, offsetA, a.stride(), 0,
-                                    sb.buf, byteArrayBaseOffset(), sb.stride, sb.length, a.length());
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.stride, sb.length, a.length());
                 }
                 sb.length += a.length();
             } finally {
@@ -1132,13 +1128,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1147,7 +1143,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.ensureCapacityS0(node, a.length(), bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(node,
                                 arrayA, offsetA, 0, 0,
-                                sb.buf, byteArrayBaseOffset(), 0, sb.length, a.length());
+                                sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, a.length());
                 sb.appendLength(a.length(), getCodePointLengthNode.execute(node, a, arrayA, offsetA, sb.encoding));
             } finally {
                 Reference.reachabilityFence(dataA);
@@ -1202,13 +1198,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1218,7 +1214,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.ensureCapacityS0(this, length, bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(this,
                                 arrayA, offsetA, 0, fromIndex,
-                                sb.buf, byteArrayBaseOffset(), 0, sb.length, length);
+                                sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, length);
                 sb.codePointLength += length;
                 sb.length += length;
             } finally {
@@ -1248,13 +1244,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1263,7 +1259,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityS0(this, length, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(this,
                                     arrayA, offsetA, 0, fromIndex,
-                                    sb.buf, byteArrayBaseOffset(), 0, sb.length, length);
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, length);
                     sb.codePointLength += length;
                 } else {
                     slowPathProfile.enter(this);
@@ -1295,7 +1291,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityAndInflate(this, a.length(), Stride.fromCodeRangeUTF16AllowImprecise(codeRange), inflateProfile, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(this,
                                     arrayA, offsetA, a.stride(), fromIndex,
-                                    sb.buf, byteArrayBaseOffset(), sb.stride, sb.length, length);
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.stride, sb.length, length);
                     sb.codePointLength += codePointLength;
                 }
                 sb.length += length;
@@ -1326,13 +1322,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1341,7 +1337,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityS0(this, length, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(this,
                                     arrayA, offsetA, 0, fromIndex,
-                                    sb.buf, byteArrayBaseOffset(), 0, sb.length, length);
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, length);
                 } else {
                     slowPathProfile.enter(this);
                     final int codeRange;
@@ -1358,7 +1354,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.ensureCapacityAndInflate(this, a.length(), Stride.fromCodeRangeUTF32AllowImprecise(codeRange), inflateProfile, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(this,
                                     arrayA, offsetA, a.stride(), fromIndex,
-                                    sb.buf, byteArrayBaseOffset(), sb.stride, sb.length, length);
+                                    sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.stride, sb.length, length);
                 }
                 sb.length += length;
             } finally {
@@ -1388,13 +1384,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof AbstractTruffleString.NativePointer)) {
                     arrayA = null;
                     addOffsetA = AbstractTruffleString.NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1419,7 +1415,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.ensureCapacityS0(node, length, bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(node,
                                 arrayA, offsetA, 0, fromIndex,
-                                sb.buf, byteArrayBaseOffset(), 0, sb.length, length);
+                                sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, length);
 
                 sb.appendLength(length, codePointLength);
             } finally {
@@ -1499,14 +1495,14 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             boundsCheckRegionI(fromIndex, lengthStr, javaString.length());
             final byte[] arrayStr = TStringUnsafe.getJavaStringArray(javaString);
             final int strideStr = TStringUnsafe.getJavaStringStride(javaString);
-            final int offsetStr = byteArrayBaseOffset() + (fromIndex << strideStr);
+            final int offsetStr = ARRAY_BYTE_BASE_OFFSET + (fromIndex << strideStr);
 
             if ((strideStr | sb.stride) == 0) {
                 sb.updateCodeRange(TSCodeRange.markImprecise(TSCodeRange.get8Bit()));
                 sb.ensureCapacityS0(this, lengthStr, bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(this,
                                 arrayStr, offsetStr, 0, 0,
-                                sb.buf, byteArrayBaseOffset(), 0, sb.length, lengthStr);
+                                sb.buf, ARRAY_BYTE_BASE_OFFSET, 0, sb.length, lengthStr);
                 sb.codePointLength += lengthStr;
             } else {
                 slowPathProfile.enter(this);
@@ -1524,7 +1520,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.ensureCapacityAndInflate(this, lengthStr, Stride.fromCodeRangeUTF16AllowImprecise(codeRange), inflateProfile, bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(this,
                                 arrayStr, offsetStr, strideStr, 0,
-                                sb.buf, byteArrayBaseOffset(), sb.stride, sb.length, lengthStr);
+                                sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.stride, sb.length, lengthStr);
                 sb.codePointLength += codePointLength;
             }
             sb.length += lengthStr;
@@ -1642,7 +1638,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             final int codeRange;
             final int codePointLength;
             if (calcAttributesProfile.profile(node, !TSCodeRange.isPrecise(sb.codeRange) || TSCodeRange.isBrokenMultiByte(sb.codeRange))) {
-                long attrs = TStringOps.calcStringAttributesUTF8(node, sb.buf, byteArrayBaseOffset(), sb.length, false, true, brokenProfile);
+                long attrs = TStringOps.calcStringAttributesUTF8(node, sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.length, false, true, brokenProfile);
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {
@@ -1663,7 +1659,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             final int codePointLength;
             if (calcAttributesProfile.profile(node, TSCodeRange.isBrokenMultiByte(sb.codeRange))) {
                 assert sb.stride == 1;
-                long attrs = TStringOps.calcStringAttributesUTF16(node, sb.buf, byteArrayBaseOffset(), sb.length, false);
+                long attrs = TStringOps.calcStringAttributesUTF16(node, sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.length, false);
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {
@@ -1695,7 +1691,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             final int codeRange;
             final int codePointLength;
             if (calcAttributesProfile.profile(node, !TSCodeRange.isPrecise(sb.codeRange) || TSCodeRange.isBrokenMultiByte(sb.codeRange))) {
-                long attrs = calcAttributesNode.execute(node, null, sb.buf, byteArrayBaseOffset(), sb.length, 0, sb.encoding, 0, sb.codeRange);
+                long attrs = calcAttributesNode.execute(node, null, sb.buf, ARRAY_BYTE_BASE_OFFSET, sb.length, 0, sb.encoding, 0, sb.codeRange);
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {
@@ -1732,7 +1728,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
 
     private void inflate(Node node, int appendStride) {
         byte[] newBuf = new byte[(int) Math.min(((long) buf.length) << (appendStride - stride), TStringConstants.MAX_ARRAY_SIZE)];
-        TStringOps.arraycopyWithStride(node, buf, byteArrayBaseOffset(), stride, 0, newBuf, byteArrayBaseOffset(), appendStride, 0, length);
+        TStringOps.arraycopyWithStride(node, buf, ARRAY_BYTE_BASE_OFFSET, stride, 0, newBuf, ARRAY_BYTE_BASE_OFFSET, appendStride, 0, length);
         buf = newBuf;
         stride = appendStride;
     }

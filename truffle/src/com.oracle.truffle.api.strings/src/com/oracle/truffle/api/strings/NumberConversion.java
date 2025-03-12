@@ -41,7 +41,7 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -357,8 +357,8 @@ final class NumberConversion {
     static void writeLongToBytes(Node location, long i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Long.MIN_VALUE) {
             TStringOps.arraycopyWithStride(location,
-                            LONG_MIN_VALUE_BYTES, byteArrayBaseOffset(), 0, 0,
-                            buf, byteArrayBaseOffset(), stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
+                            LONG_MIN_VALUE_BYTES, ARRAY_BYTE_BASE_OFFSET, 0, 0,
+                            buf, ARRAY_BYTE_BASE_OFFSET, stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
         } else {
             writeLongToBytesIntl(i, fromIndex + length, buf, stride);
         }
@@ -417,8 +417,8 @@ final class NumberConversion {
     static void writeIntToBytes(Node location, int i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Integer.MIN_VALUE) {
             TStringOps.arraycopyWithStride(location,
-                            INT_MIN_VALUE_BYTES, byteArrayBaseOffset(), 0, 0,
-                            buf, byteArrayBaseOffset(), stride, fromIndex, INT_MIN_VALUE_BYTES.length);
+                            INT_MIN_VALUE_BYTES, ARRAY_BYTE_BASE_OFFSET, 0, 0,
+                            buf, ARRAY_BYTE_BASE_OFFSET, stride, fromIndex, INT_MIN_VALUE_BYTES.length);
         } else {
             writeIntToBytesIntl(i, fromIndex + length, buf, stride);
         }

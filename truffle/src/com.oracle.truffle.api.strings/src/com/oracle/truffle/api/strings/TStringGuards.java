@@ -228,6 +228,10 @@ final class TStringGuards {
         return Encoding.isSupported(encoding);
     }
 
+    static boolean isSupportedEncodingWithCompaction(Encoding encoding) {
+        return Encoding.isSupportedWithCompaction(encoding.id);
+    }
+
     static boolean isSupportedEncoding(Encoding encoding) {
         return encoding.isSupported();
     }

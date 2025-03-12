@@ -149,17 +149,25 @@ final class TStringOpsNodes {
                         @Bind("fromStride(b.stride())") CompactionLevel compactionB,
                         @Cached("compactionB") CompactionLevel cachedCompactionB,
                         @Cached InlinedConditionProfile oneLength) {
-            if (oneLength.profile(node, b.length() == 1)) {
-                final int b0 = TStringOps.readValue(b, arrayB, offsetB, cachedCompactionB.getStride(), 0);
-                final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedCompactionB.getStride(), 0);
-                return TStringOps.indexOfCodePointWithOrMaskWithStride(node, arrayA, offsetA, cachedCompactionA.getStride(), fromIndex, toIndex, b0, mask0);
-            } else {
-                return TStringOps.indexOfStringWithOrMaskWithStride(node,
-                                a, arrayA, offsetA, cachedCompactionA.getStride(),
-                                b, arrayB, offsetB, cachedCompactionB.getStride(), fromIndex, toIndex, mask);
-            }
+            int strideB = cachedCompactionB.getStride();
+            int strideA = cachedCompactionA.getStride();
+            return runIndexOf(node, arrayA, offsetA, a.length(), strideA, arrayB, offsetB, b.length(), strideB, fromIndex, toIndex, mask, oneLength);
         }
 
+        static int runIndexOf(Node node,
+                        byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] mask,
+                        InlinedConditionProfile oneLength) {
+            if (oneLength.profile(node, lengthB == 1)) {
+                final int b0 = TStringOps.readValue(arrayB, offsetB, lengthB, strideB, 0);
+                final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, strideB, 0);
+                return TStringOps.indexOfCodePointWithOrMaskWithStride(node, arrayA, offsetA, strideA, fromIndex, toIndex, b0, mask0);
+            } else {
+                return TStringOps.indexOfStringWithOrMaskWithStride(node,
+                                arrayA, offsetA, lengthA, strideA,
+                                arrayB, offsetB, lengthB, strideB, fromIndex, toIndex, mask);
+            }
+        }
     }
 
     abstract static class RawLastIndexOfStringNode extends AbstractInternalNode {
@@ -178,17 +186,25 @@ final class TStringOpsNodes {
                         @Bind("fromStride(b.stride())") CompactionLevel compactionB,
                         @Cached("compactionB") CompactionLevel cachedCompactionB,
                         @Cached InlinedConditionProfile oneLength) {
-            if (oneLength.profile(node, b.length() == 1)) {
-                final int b0 = TStringOps.readValue(b, arrayB, offsetB, cachedCompactionB.getStride(), 0);
-                final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedCompactionB.getStride(), 0);
-                return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(node, arrayA, offsetA, cachedCompactionA.getStride(), fromIndex, toIndex, b0, mask0);
-            } else {
-                return TStringOps.lastIndexOfStringWithOrMaskWithStride(node,
-                                a, arrayA, offsetA, cachedCompactionA.getStride(),
-                                b, arrayB, offsetB, cachedCompactionB.getStride(), fromIndex, toIndex, mask);
-            }
+            int strideA = cachedCompactionA.getStride();
+            int strideB = cachedCompactionB.getStride();
+            return runIndexOf(node, arrayA, offsetA, a.length(), strideA, arrayB, offsetB, b.length(), strideB, fromIndex, toIndex, mask, oneLength);
         }
 
+        static int runIndexOf(Node node,
+                        byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] mask,
+                        InlinedConditionProfile oneLength) {
+            if (oneLength.profile(node, lengthB == 1)) {
+                final int b0 = TStringOps.readValue(arrayB, offsetB, lengthB, strideB, 0);
+                final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, strideB, 0);
+                return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(node, arrayA, offsetA, strideA, fromIndex, toIndex, b0, mask0);
+            } else {
+                return TStringOps.lastIndexOfStringWithOrMaskWithStride(node,
+                                arrayA, offsetA, lengthA, strideA,
+                                arrayB, offsetB, lengthB, strideB, fromIndex, toIndex, mask);
+            }
+        }
     }
 
     static int memcmp(Node location,

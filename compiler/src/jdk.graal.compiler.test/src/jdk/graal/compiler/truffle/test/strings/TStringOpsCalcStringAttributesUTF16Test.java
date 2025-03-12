@@ -212,6 +212,7 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<Calc
 
     @Test
     public void testUnknownC() {
-        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, int.class, int.class), null, DUMMY_LOCATION, toCharArray(array), (int) (offset - byteArrayBaseOffset()), length);
+        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, long.class, int.class), null, DUMMY_LOCATION, toCharArray(array), offset - byteArrayBaseOffset() + charArrayBaseOffset(),
+                        length);
     }
 }

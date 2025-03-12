@@ -60,8 +60,8 @@ public class TStringOpsCalcStringAttributesUTF16ConstantTest extends TStringOpsC
     @Test
     public void testUnknownC() {
         char[] charArray = toCharArray(arrayA);
-        int offsetCharArray = (int) (offsetA - byteArrayBaseOffset());
+        long offsetCharArray = offsetA - byteArrayBaseOffset() + charArrayBaseOffset();
         setConstantArgs(DUMMY_LOCATION, charArray, offsetCharArray, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, int.class, int.class), null, DUMMY_LOCATION, charArray, offsetCharArray, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, long.class, int.class), null, DUMMY_LOCATION, charArray, offsetCharArray, lengthA);
     }
 }

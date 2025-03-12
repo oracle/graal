@@ -156,7 +156,7 @@ public class TStringUTF16Tests extends TStringTestBase {
         return ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? TruffleString.Encoding.UTF_16BE : TruffleString.Encoding.UTF_16LE;
     }
 
-    private byte[] getByteSwappedArray(String s) {
+    private static byte[] getByteSwappedArray(String s) {
         byte[] array = new byte[s.length() << 1];
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);

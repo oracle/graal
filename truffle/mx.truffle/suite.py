@@ -424,30 +424,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.api.benchmark" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.instrumentation.test",
-        "TRUFFLE_API",
-        "mx:JMH_1_21",
-      ],
-      "requires" : [
-        "jdk.unsupported", # sun.misc.Unsafe
-      ],
-      "requiresConcealed" : {
-        "java.base" : ["jdk.internal.loader"],
-      },
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "17+",
-      "spotbugsIgnoresGenerated" : True,
-      "testProject" : True,
-      "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "API,Truffle,Test",
-      "jacoco" : "exclude",
-      "graalCompilerSourceEdition": "ignore",
-    },
-
     "com.oracle.truffle.api.library" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -739,7 +715,7 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.api.strings.bench" : {
+    "org.graalvm.truffle.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -2255,7 +2231,6 @@ suite = {
        "javaCompliance" : "17+",
        "dependencies" : [
          "com.oracle.truffle.api.test",
-         "com.oracle.truffle.api.benchmark",
          "com.oracle.truffle.api.dsl.test",
          "com.oracle.truffle.api.library.test",
          "com.oracle.truffle.api.instrumentation.test",
@@ -2293,7 +2268,7 @@ suite = {
        "subDir" : "src",
        "javaCompliance" : "17+",
        "dependencies" : [
-         "com.oracle.truffle.api.strings.bench",
+         "org.graalvm.truffle.benchmark",
        ],
        "distDependencies" : [
          "mx:JMH_1_21",

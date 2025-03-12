@@ -71,7 +71,7 @@ public class TStringOpsCalcStringAttributesLatin1ConstantRegionOOBTest extends T
     public void testConstantRegionOutOfBounds() throws Throwable {
         setConstantArgs(arrayA, offsetA, lengthA);
         // Make calcStringAttributesLatin1 branch reachable (must be in bounds)
-        runTestMethod(arrayA, 2, 2, true);
+        runTestMethod(arrayA, 2 + byteArrayBaseOffset(), 2, true);
         // Run and compile with constant offset + length out of bounds in the not taken branch.
         runTestMethod(arrayA, offsetA, lengthA, false);
         test("runTestMethod", arrayA, offsetA, lengthA, false);

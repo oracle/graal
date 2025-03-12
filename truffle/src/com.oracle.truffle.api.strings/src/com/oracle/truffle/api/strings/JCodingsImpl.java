@@ -49,7 +49,8 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
+import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -83,46 +84,54 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     public int minLength(TruffleString.Encoding encoding) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).minLength();
     }
 
     @Override
     public int maxLength(TruffleString.Encoding encoding) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).maxLength();
     }
 
     @Override
     public boolean isFixedWidth(TruffleString.Encoding encoding) {
+        assert isUnsupportedEncoding(encoding);
         var jCoding = get(encoding);
         return jCoding.isFixedWidth() && jCoding.isSingleByte();
     }
 
     @Override
     public boolean isSingleByte(TruffleString.Encoding encoding) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).isSingleByte();
     }
 
     @Override
     @TruffleBoundary
     public int getCodePointLength(TruffleString.Encoding encoding, int codepoint) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).codeToMbcLength(codepoint);
     }
 
     @Override
     @TruffleBoundary
     public int getPreviousCodePointIndex(TruffleString.Encoding encoding, byte[] array, int arrayBegin, int index, int arrayEnd) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).prevCharHead(array, arrayBegin, index, arrayEnd);
     }
 
     @Override
     @TruffleBoundary
     public int getCodePointLength(TruffleString.Encoding encoding, byte[] array, int index, int arrayLength) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).length(array, index, arrayLength);
     }
 
     @Override
     @TruffleBoundary
     public int readCodePoint(TruffleString.Encoding encoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler) {
+        assert isUnsupportedEncoding(encoding);
         var jCoding = get(encoding);
         int codePoint = jCoding.mbcToCode(array, index, arrayEnd);
         if (jCoding.isUnicode() && Encodings.isUTF16Surrogate(codePoint)) {
@@ -134,18 +143,21 @@ final class JCodingsImpl implements JCodings {
     @Override
     @TruffleBoundary
     public boolean isValidCodePoint(TruffleString.Encoding encoding, int codepoint) {
+        assert isUnsupportedEncoding(encoding);
         return !get(encoding).isUnicode() || !Encodings.isUTF16Surrogate(codepoint);
     }
 
     @Override
     @TruffleBoundary
     public int writeCodePoint(TruffleString.Encoding encoding, int codepoint, byte[] array, int index) {
+        assert isUnsupportedEncoding(encoding);
         return get(encoding).codeToMbc(codepoint, array, index);
     }
 
     @Override
     @TruffleBoundary
     public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, TruffleString.Encoding encoding) {
+        assert isUnsupportedEncoding(encoding);
         var jCoding = get(encoding);
         int minLength = jCoding.minLength();
         if (jCoding.isFixedWidth()) {
@@ -184,6 +196,7 @@ final class JCodingsImpl implements JCodings {
     @Override
     @TruffleBoundary
     public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, ErrorHandling errorHandling) {
+        assert isUnsupportedEncoding(encoding);
         int p = a.byteArrayOffset() + rawIndex;
         int end = a.byteArrayOffset() + a.length();
         int length = getCodePointLength(encoding, arrayA, p, end);
@@ -196,6 +209,7 @@ final class JCodingsImpl implements JCodings {
     @Override
     @TruffleBoundary
     public long calcStringAttributes(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA) {
+        assert isUnsupportedEncoding(encodingA);
         if (TStringGuards.is7BitCompatible(encodingA) && TStringOps.calcStringAttributesLatin1(location, arrayA, offsetA + fromIndexA, lengthA) == TSCodeRange.get7Bit()) {
             return StringAttributes.create(lengthA, TSCodeRange.get7Bit());
         }
@@ -203,9 +217,6 @@ final class JCodingsImpl implements JCodings {
         final int offsetBytes;
         if (arrayA == null) {
             if (a == null) {
-                // TODO: fix
-                // bytes = ((AbstractTruffleString.NativePointer)
-                // a.data()).materializeByteArray((int) offsetA, lengthA);
                 bytes = new byte[lengthA];
                 TStringUnsafe.copyFromNative(offsetA, 0, bytes, 0, lengthA);
             } else {
@@ -214,7 +225,7 @@ final class JCodingsImpl implements JCodings {
             offsetBytes = fromIndexA;
         } else {
             bytes = arrayA;
-            offsetBytes = (int) ((offsetA - byteArrayBaseOffset()) + fromIndexA);
+            offsetBytes = (int) ((offsetA - ARRAY_BYTE_BASE_OFFSET) + fromIndexA);
         }
         Encoding enc = get(encodingA);
         int codeRange = TSCodeRange.getValid(enc.isSingleByte());

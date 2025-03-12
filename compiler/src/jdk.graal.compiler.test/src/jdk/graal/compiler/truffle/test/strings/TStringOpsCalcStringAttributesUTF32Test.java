@@ -111,6 +111,7 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<Calc
 
     @Test
     public void testUTF32I() {
-        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, toIntArray(array), (int) (offset - byteArrayBaseOffset()), length);
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, long.class, int.class), null, DUMMY_LOCATION, toIntArray(array), offset - byteArrayBaseOffset() + intArrayBaseOffset(),
+                        length);
     }
 }

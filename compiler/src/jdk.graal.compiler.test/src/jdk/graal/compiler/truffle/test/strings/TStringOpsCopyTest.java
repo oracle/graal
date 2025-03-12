@@ -112,11 +112,9 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
         ArgSupplier arrayB = () -> new byte[(int) (128 + offsetB + (lengthCPY << strideB) + 128)];
         testWithNativeExcept(getArrayCopyWithStride(), null, 1 << 5, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
         if (strideA == 1) {
-            test(getArrayCopyWithStrideCB(), null, DUMMY_LOCATION,
-                            toCharArray((byte[]) arrayA), (int) (offsetA - byteArrayBaseOffset()), arrayB, (int) (offsetB - byteArrayBaseOffset()), strideB, lengthCPY);
+            test(getArrayCopyWithStrideCB(), null, DUMMY_LOCATION, toCharArray((byte[]) arrayA), offsetA - byteArrayBaseOffset() + charArrayBaseOffset(), arrayB, offsetB, strideB, lengthCPY);
         } else if (strideA == 2) {
-            test(getArrayCopyWithStrideIB(), null, DUMMY_LOCATION,
-                            toIntArray((byte[]) arrayA), (int) (offsetA - byteArrayBaseOffset()), arrayB, (int) (offsetB - byteArrayBaseOffset()), strideB, lengthCPY);
+            test(getArrayCopyWithStrideIB(), null, DUMMY_LOCATION, toIntArray((byte[]) arrayA), offsetA - byteArrayBaseOffset() + intArrayBaseOffset(), arrayB, offsetB, strideB, lengthCPY);
         }
     }
 

@@ -69,6 +69,14 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         return Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }
 
+    protected static long charArrayBaseOffset() {
+        return Unsafe.ARRAY_CHAR_BASE_OFFSET;
+    }
+
+    protected static long intArrayBaseOffset() {
+        return Unsafe.ARRAY_INT_BASE_OFFSET;
+    }
+
     private static long getBufferAddress(ByteBuffer buffer) {
         return UNSAFE.getLong(buffer, byteBufferAddressOffset);
     }
@@ -126,14 +134,14 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
 
     protected ResolvedJavaMethod getArrayCopyWithStrideCB() {
         return getTStringOpsMethod("arraycopyWithStrideCB",
-                        char[].class, int.class,
-                        byte[].class, int.class, int.class, int.class);
+                        char[].class, long.class,
+                        byte[].class, long.class, int.class, int.class);
     }
 
     protected ResolvedJavaMethod getArrayCopyWithStrideIB() {
         return getTStringOpsMethod("arraycopyWithStrideIB",
-                        int[].class, int.class,
-                        byte[].class, int.class, int.class, int.class);
+                        int[].class, long.class,
+                        byte[].class, long.class, int.class, int.class);
     }
 
     protected ResolvedJavaMethod getMemcmpWithStrideIntl() {

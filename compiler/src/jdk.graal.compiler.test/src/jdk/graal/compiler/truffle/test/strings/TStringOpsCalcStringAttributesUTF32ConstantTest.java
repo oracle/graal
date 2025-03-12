@@ -54,9 +54,9 @@ public class TStringOpsCalcStringAttributesUTF32ConstantTest extends TStringOpsC
     @Test
     public void testUTF32I() {
         int[] intArray = toIntArray(arrayA);
-        int offsetIntArray = (int) (offsetA - byteArrayBaseOffset());
+        long offsetIntArray = offsetA - byteArrayBaseOffset() + intArrayBaseOffset();
         setConstantArgs(DUMMY_LOCATION, intArray, offsetIntArray, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, intArray, offsetIntArray, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, long.class, int.class), null, DUMMY_LOCATION, intArray, offsetIntArray, lengthA);
     }
 
 }

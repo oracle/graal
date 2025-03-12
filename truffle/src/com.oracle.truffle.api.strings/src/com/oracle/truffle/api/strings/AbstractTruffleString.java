@@ -56,7 +56,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.lang.ref.Reference;
 
@@ -136,7 +136,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         assert isByte(stride);
         assert isByte(flags);
         assert validateCodeRange(encoding, codeRange);
-        assert isSupportedEncoding(encoding) || isUTF16FE(encoding) || isUTF32FE(encoding) || length == 0 || JCodings.JCODINGS_ENABLED;
+        assert isSupportedEncoding(encoding) || length == 0 || JCodings.JCODINGS_ENABLED;
         this.data = data;
         this.encoding = encoding.id;
         this.offset = offset;
@@ -1458,18 +1458,18 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                 final long addOffsetA;
                 if (dataA instanceof byte[]) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (dataA instanceof NativePointer) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = src.materializeLazy(location, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = src.offset() + addOffsetA;
                 TStringOps.arraycopyWithStride(location,
                                 arrayA, offsetA, src.stride(), 0,
-                                dst, byteArrayBaseOffset(), dstStride, dstFrom, src.length());
+                                dst, ARRAY_BYTE_BASE_OFFSET, dstStride, dstFrom, src.length());
             } finally {
                 Reference.reachabilityFence(dataA);
             }

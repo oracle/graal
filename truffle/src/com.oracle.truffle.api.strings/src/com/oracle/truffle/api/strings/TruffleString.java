@@ -56,6 +56,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isLatin1;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride0;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
 import static com.oracle.truffle.api.strings.TStringGuards.isSupportedEncoding;
+import static com.oracle.truffle.api.strings.TStringGuards.isSupportedEncodingWithCompaction;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
@@ -64,7 +65,9 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.littleEndian;
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_CHAR_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_INT_BASE_OFFSET;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -229,7 +232,7 @@ public final class TruffleString extends AbstractTruffleString {
             final long addOffsetA;
             if (dataA instanceof byte[]) {
                 arrayA = (byte[]) dataA;
-                addOffsetA = byteArrayBaseOffset();
+                addOffsetA = ARRAY_BYTE_BASE_OFFSET;
             } else {
                 arrayA = null;
                 addOffsetA = NativePointer.unwrap(dataA);
@@ -1160,12 +1163,16 @@ public final class TruffleString extends AbstractTruffleString {
             return encoding < 2;
         }
 
-        static boolean isSupported(int encoding) {
+        static boolean isSupportedWithCompaction(int encoding) {
             return encoding < 6;
         }
 
+        static boolean isSupported(int encoding) {
+            return encoding < 6 || encoding > 98;
+        }
+
         static boolean isUnsupported(int encoding) {
-            return encoding >= 6;
+            return encoding >= 6 && encoding < 99;
         }
 
         boolean isFixedWidth() {
@@ -1434,9 +1441,9 @@ public final class TruffleString extends AbstractTruffleString {
                 checkMaskLength(a, mask.length);
                 byte[] maskBytes = new byte[a.length() << a.stride()];
                 if (a.stride() == 0) {
-                    TStringOps.arraycopyWithStrideCB(this, mask, 0, maskBytes, 0, 0, mask.length);
+                    TStringOps.arraycopyWithStrideCB(this, mask, ARRAY_CHAR_BASE_OFFSET, maskBytes, ARRAY_BYTE_BASE_OFFSET, 0, mask.length);
                 } else {
-                    TStringOps.arraycopyWithStrideCB(this, mask, 0, maskBytes, 0, 1, mask.length);
+                    TStringOps.arraycopyWithStrideCB(this, mask, ARRAY_CHAR_BASE_OFFSET, maskBytes, ARRAY_BYTE_BASE_OFFSET, 1, mask.length);
                 }
                 return new WithMask(a, maskBytes);
             }
@@ -1495,11 +1502,11 @@ public final class TruffleString extends AbstractTruffleString {
                 checkMaskLength(a, mask.length);
                 byte[] maskBytes = new byte[a.length() << a.stride()];
                 if (a.stride() == 0) {
-                    TStringOps.arraycopyWithStrideIB(this, mask, 0, maskBytes, 0, 0, mask.length);
+                    TStringOps.arraycopyWithStrideIB(this, mask, ARRAY_INT_BASE_OFFSET, maskBytes, ARRAY_BYTE_BASE_OFFSET, 0, mask.length);
                 } else if (a.stride() == 1) {
-                    TStringOps.arraycopyWithStrideIB(this, mask, 0, maskBytes, 0, 1, mask.length);
+                    TStringOps.arraycopyWithStrideIB(this, mask, ARRAY_INT_BASE_OFFSET, maskBytes, ARRAY_BYTE_BASE_OFFSET, 1, mask.length);
                 } else {
-                    TStringOps.arraycopyWithStrideIB(this, mask, 0, maskBytes, 0, 2, mask.length);
+                    TStringOps.arraycopyWithStrideIB(this, mask, ARRAY_INT_BASE_OFFSET, maskBytes, ARRAY_BYTE_BASE_OFFSET, 2, mask.length);
                 }
                 return new WithMask(a, maskBytes);
             }
@@ -1755,7 +1762,7 @@ public final class TruffleString extends AbstractTruffleString {
                 length = 4;
                 stride = 0;
                 TStringOps.writeToByteArrayS2(bytes, 0, Integer.reverseBytes(c));
-            } else if (exoticProfile.profile(this, !isSupportedEncoding(enc))) {
+            } else if (exoticProfile.profile(this, isUnsupportedEncoding(enc))) {
                 assert !isBytes(enc);
                 length = JCodings.getInstance().getCodePointLength(enc, c);
                 stride = 0;
@@ -2034,8 +2041,8 @@ public final class TruffleString extends AbstractTruffleString {
             if (charLength == 1 && value[charOffset] <= 0xff) {
                 return TStringConstants.getSingleByte(Encoding.UTF_16, value[charOffset]);
             }
-            int offsetV = charOffset << 1;
-            if (value.length > TStringConstants.MAX_ARRAY_SIZE_S1 || offsetV < 0) {
+            long offsetV = ((long) charOffset << 1) + ARRAY_CHAR_BASE_OFFSET;
+            if (value.length > TStringConstants.MAX_ARRAY_SIZE_S1) {
                 outOfMemoryProfile.enter(this);
                 throw InternalErrors.outOfMemory();
             }
@@ -2045,9 +2052,9 @@ public final class TruffleString extends AbstractTruffleString {
             final int stride = Stride.fromCodeRangeUTF16(codeRange);
             final byte[] array = new byte[charLength << stride];
             if (utf16CompactProfile.profile(this, stride == 0)) {
-                TStringOps.arraycopyWithStrideCB(this, value, offsetV, array, 0, 0, charLength);
+                TStringOps.arraycopyWithStrideCB(this, value, offsetV, array, ARRAY_BYTE_BASE_OFFSET, 0, charLength);
             } else {
-                TStringOps.arraycopyWithStrideCB(this, value, offsetV, array, 0, 1, charLength);
+                TStringOps.arraycopyWithStrideCB(this, value, offsetV, array, ARRAY_BYTE_BASE_OFFSET, 1, charLength);
             }
             return TruffleString.createFromByteArray(array, charLength, stride, Encoding.UTF_16, codePointLength, codeRange);
         }
@@ -2237,8 +2244,8 @@ public final class TruffleString extends AbstractTruffleString {
             if (length == 1 && Integer.compareUnsigned(value[intOffset], 0xff) <= 0) {
                 return TStringConstants.getSingleByte(Encoding.UTF_32, value[intOffset]);
             }
-            int offsetV = intOffset << 2;
-            if (length > TStringConstants.MAX_ARRAY_SIZE_S2 || offsetV < 0) {
+            long offsetV = ((long) intOffset << 2) + ARRAY_INT_BASE_OFFSET;
+            if (length > TStringConstants.MAX_ARRAY_SIZE_S2) {
                 outOfMemoryProfile.enter(this);
                 throw InternalErrors.outOfMemory();
             }
@@ -2246,11 +2253,11 @@ public final class TruffleString extends AbstractTruffleString {
             final int stride = Stride.fromCodeRangeUTF32(codeRange);
             final byte[] array = new byte[length << stride];
             if (utf32Compact0Profile.profile(this, stride == 0)) {
-                TStringOps.arraycopyWithStrideIB(this, value, offsetV, array, 0, 0, length);
+                TStringOps.arraycopyWithStrideIB(this, value, offsetV, array, ARRAY_BYTE_BASE_OFFSET, 0, length);
             } else if (utf32Compact1Profile.profile(this, stride == 1)) {
-                TStringOps.arraycopyWithStrideIB(this, value, offsetV, array, 0, 1, length);
+                TStringOps.arraycopyWithStrideIB(this, value, offsetV, array, ARRAY_BYTE_BASE_OFFSET, 1, length);
             } else {
-                TStringOps.arraycopyWithStrideIB(this, value, offsetV, array, 0, 2, length);
+                TStringOps.arraycopyWithStrideIB(this, value, offsetV, array, ARRAY_BYTE_BASE_OFFSET, 2, length);
             }
             return TruffleString.createFromByteArray(array, length, stride, Encoding.UTF_32, length, codeRange);
         }
@@ -3059,13 +3066,13 @@ public final class TruffleString extends AbstractTruffleString {
                     final long addOffsetA;
                     if (managedProfileA.profile(this, dataA instanceof byte[])) {
                         arrayA = (byte[]) dataA;
-                        addOffsetA = byteArrayBaseOffset();
+                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                     } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                         arrayA = null;
                         addOffsetA = NativePointer.unwrap(dataA);
                     } else {
                         arrayA = a.materializeLazy(this, dataA);
-                        addOffsetA = byteArrayBaseOffset();
+                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                     }
                     final long offsetA = a.offset() + addOffsetA;
                     h = a.setHashCode(maskZero(calculateHashCodeNode.execute(this, a, arrayA, offsetA)));
@@ -3114,13 +3121,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (dataA instanceof byte[]) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (dataA instanceof NativePointer) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(getUncached(), dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 return a.setHashCode(maskZero(TStringOps.hashCodeWithStride(getUncached(), a, arrayA, offsetA, a.stride())));
@@ -3161,13 +3168,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 return readByteNode.execute(this, a, arrayA, offsetA, i, expectedEncoding);
@@ -3226,13 +3233,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 if (utf16S0Profile.profile(this, isStride0(a))) {
@@ -3321,13 +3328,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, encoding);
@@ -3395,13 +3402,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, encoding);
@@ -3464,13 +3471,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 a.boundsCheckRegion(this, arrayA, offsetA, 0, codepointIndex, encoding, getCodePointLengthNode);
@@ -3567,13 +3574,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 a.boundsCheck(this, arrayA, offsetA, i, encoding, getCodePointLengthNode);
@@ -3650,13 +3657,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, encoding);
@@ -3730,13 +3737,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 return TStringOps.indexOfAnyByte(this, a, arrayA, offsetA, fromByteIndex, maxByteIndex, values);
@@ -3803,13 +3810,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, Encoding.UTF_16);
@@ -3882,13 +3889,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 return indexOfNode.execute(this, a, arrayA, offsetA, fromIntIndex, maxIntIndex, values);
@@ -4129,13 +4136,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = usePreciseCodeRange ? getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, encoding) : a.codeRange();
@@ -4170,13 +4177,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, encoding);
@@ -4252,13 +4259,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 a.boundsCheck(this, arrayA, offsetA, fromIndex, toIndex, encoding, getCodePointLengthNode);
@@ -4325,13 +4332,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, encoding);
@@ -4398,13 +4405,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 a.boundsCheck(this, arrayA, offsetA, toIndex, fromIndex, encoding, getCodePointLengthNode);
@@ -4471,13 +4478,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 int codeRangeA = getCodeRangeNode.execute(this, a, arrayA, offsetA, encoding);
@@ -4546,13 +4553,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -4560,13 +4567,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -4668,13 +4675,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -4682,13 +4689,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -4696,7 +4703,7 @@ public final class TruffleString extends AbstractTruffleString {
                 final int codeRangeB = getCodeRangeBNode.execute(this, b, arrayB, offsetB, encoding);
                 a.looseCheckEncoding(encoding, codeRangeA);
                 b.looseCheckEncoding(encoding, codeRangeB);
-                if (JCodings.JCODINGS_ENABLED && mask != null && isUnsupportedEncoding(encoding) && !isFixedWidth(codeRangeA)) {
+                if (JCodings.JCODINGS_ENABLED && mask != null && !isSupportedEncodingWithCompaction(encoding) && !isFixedWidth(codeRangeA)) {
                     throw InternalErrors.unsupportedOperation();
                 }
                 if (b.isEmpty()) {
@@ -4777,13 +4784,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -4791,13 +4798,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -4899,13 +4906,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -4913,13 +4920,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -5008,13 +5015,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5022,13 +5029,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -5106,13 +5113,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5120,13 +5127,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -5204,13 +5211,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5218,13 +5225,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -5315,13 +5322,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5329,13 +5336,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -5440,13 +5447,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5454,13 +5461,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -5672,13 +5679,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5692,7 +5699,7 @@ public final class TruffleString extends AbstractTruffleString {
                     throw InternalErrors.outOfMemory();
                 }
                 byte[] array = new byte[(int) byteLength];
-                int offsetB = byteArrayBaseOffset();
+                int offsetB = ARRAY_BYTE_BASE_OFFSET;
                 if (stride == a.stride()) {
                     for (int i = 0; i < n; i++) {
                         TStringOps.arraycopyWithStride(this, arrayA, offsetA, 0, 0, array, offsetB, 0, 0, byteLengthA);
@@ -5710,7 +5717,7 @@ public final class TruffleString extends AbstractTruffleString {
                 }
                 int length = (int) (byteLength >> stride);
                 if (brokenProfile.profile(this, isBroken(codeRangeA))) {
-                    long attrs = calcStringAttributesNode.execute(this, null, array, byteArrayBaseOffset(), length, stride, expectedEncoding, 0, codeRangeA);
+                    long attrs = calcStringAttributesNode.execute(this, null, array, ARRAY_BYTE_BASE_OFFSET, length, stride, expectedEncoding, 0, codeRangeA);
                     codeRangeA = StringAttributes.getCodeRange(attrs);
                     codePointLengthA = StringAttributes.getCodePointLength(attrs);
                 } else {
@@ -5782,13 +5789,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5867,13 +5874,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5981,13 +5988,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -5995,13 +6002,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileB.profile(node, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileB.profile(node, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(node, dataB);
-                    addOffsetB = byteArrayBaseOffset();
+                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -6252,13 +6259,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -6326,13 +6333,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -6397,13 +6404,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -6485,13 +6492,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -6670,7 +6677,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile utf32S0Profile,
                         @Cached InlinedConditionProfile utf32S1Profile) {
             boundsCheckRegionI(byteFromIndexB, byteLength, arrayB.length);
-            doCopyInternal(node, a, byteFromIndexA, arrayB, byteArrayBaseOffset(), byteFromIndexB, byteLength, expectedEncoding,
+            doCopyInternal(node, a, byteFromIndexA, arrayB, ARRAY_BYTE_BASE_OFFSET, byteFromIndexB, byteLength, expectedEncoding,
                             managedProfileA, nativeProfileA, utf16Profile, utf16S0Profile, utf32Profile, utf32S0Profile, utf32S1Profile);
         }
 
@@ -6692,13 +6699,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -6873,13 +6880,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetCur;
                 if (managedProfileA.profile(node, dataCur instanceof byte[])) {
                     arrayCur = (byte[]) dataCur;
-                    addOffsetCur = byteArrayBaseOffset();
+                    addOffsetCur = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataCur instanceof NativePointer)) {
                     arrayCur = null;
                     addOffsetCur = NativePointer.unwrap(dataCur);
                 } else {
                     arrayCur = cur.materializeLazy(node, dataCur);
-                    addOffsetCur = byteArrayBaseOffset();
+                    addOffsetCur = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetCur = cur.offset() + addOffsetCur;
 
@@ -6897,8 +6904,7 @@ public final class TruffleString extends AbstractTruffleString {
                     utf16String = transCoded;
                     utf16Array = (byte[]) transCoded.data();
                     assert transCoded.isManaged();
-                    assert transCoded.offset() == 0;
-                    utf16Offset = byteArrayBaseOffset();
+                    utf16Offset = ARRAY_BYTE_BASE_OFFSET + transCoded.offset();
                 }
                 String javaString = createJavaStringNode.execute(node, utf16String, utf16Array, utf16Offset);
                 a.cacheInsert(TruffleString.createWrapJavaString(javaString, utf16String.codePointLength(), utf16String.codeRange()));
@@ -6931,7 +6937,7 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
@@ -6947,7 +6953,7 @@ public final class TruffleString extends AbstractTruffleString {
                     utf16String = transCodeNode.execute(node, a, arrayA, offsetA, getCodePointLengthNode.execute(node, a, arrayA, offsetA, encodingA), a.codeRange(), Encoding.UTF_16,
                                     TranscodingErrorHandler.DEFAULT);
                     utf16Array = (byte[]) utf16String.data();
-                    utf16Offset = byteArrayBaseOffset();
+                    utf16Offset = ARRAY_BYTE_BASE_OFFSET;
                 }
                 return createJavaStringNode.execute(node, utf16String, utf16Array, utf16Offset);
             } finally {
@@ -7049,13 +7055,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -7189,13 +7195,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -7345,12 +7351,12 @@ public final class TruffleString extends AbstractTruffleString {
                     final int stride = Stride.fromCodeRangeUTF16(preciseCodeRangeA);
                     final byte[] array = new byte[lengthA << stride];
                     if (compact10Profile.profile(node, strideA == 1 && stride == 0)) {
-                        TStringOps.arraycopyWithStride(node, null, offsetA, 1, 0, array, byteArrayBaseOffset(), 0, 0, lengthA);
+                        TStringOps.arraycopyWithStride(node, null, offsetA, 1, 0, array, ARRAY_BYTE_BASE_OFFSET, 0, 0, lengthA);
                     } else if (compact20Profile.profile(node, strideA == 2 && stride == 0)) {
-                        TStringOps.arraycopyWithStride(node, null, offsetA, 2, 0, array, byteArrayBaseOffset(), 0, 0, lengthA);
+                        TStringOps.arraycopyWithStride(node, null, offsetA, 2, 0, array, ARRAY_BYTE_BASE_OFFSET, 0, 0, lengthA);
                     } else {
                         assert strideA == 2 && stride == 1;
-                        TStringOps.arraycopyWithStride(node, null, offsetA, 2, 0, array, byteArrayBaseOffset(), 1, 0, lengthA);
+                        TStringOps.arraycopyWithStride(node, null, offsetA, 2, 0, array, ARRAY_BYTE_BASE_OFFSET, 1, 0, lengthA);
                     }
                     transCoded = TruffleString.createFromByteArray(array, 0, lengthA, stride, targetEncoding, a.codePointLength(), preciseCodeRangeA, false);
                 } finally {
@@ -7363,13 +7369,13 @@ public final class TruffleString extends AbstractTruffleString {
                     final long addOffsetA;
                     if (managedProfileA.profile(node, dataA instanceof byte[])) {
                         arrayA = (byte[]) dataA;
-                        addOffsetA = byteArrayBaseOffset();
+                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                     } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                         arrayA = null;
                         addOffsetA = NativePointer.unwrap(dataA);
                     } else {
                         arrayA = a.materializeLazy(node, dataA);
-                        addOffsetA = byteArrayBaseOffset();
+                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                     }
                     final long offsetA = a.offset() + addOffsetA;
                     transCoded = transCodeNode.execute(node, a, arrayA, offsetA, a.codePointLength(), preciseCodeRangeA, targetEncoding, errorHandler);
@@ -7406,7 +7412,7 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
@@ -7420,7 +7426,7 @@ public final class TruffleString extends AbstractTruffleString {
                     byte[] arrayDst = new byte[a.length() << strideDst];
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, offsetA, a.stride(), 0,
-                                    arrayDst, byteArrayBaseOffset(), strideDst, 0, a.length());
+                                    arrayDst, ARRAY_BYTE_BASE_OFFSET, strideDst, 0, a.length());
                     return createFromByteArray(arrayDst, a.length(), strideDst, targetEncoding, codePointLengthA, codeRangeA);
                 } else {
                     return transCodeNode.execute(node, a, arrayA, offsetA, codePointLengthA, codeRangeA, targetEncoding, errorHandler);
@@ -7560,13 +7566,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -7642,13 +7648,13 @@ public final class TruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = byteArrayBaseOffset();
+                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
