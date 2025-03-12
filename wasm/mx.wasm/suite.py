@@ -93,9 +93,6 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
 
     "org.graalvm.wasm.launcher" : {
