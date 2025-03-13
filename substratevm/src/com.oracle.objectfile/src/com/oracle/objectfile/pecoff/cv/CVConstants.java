@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,13 +35,4 @@ public abstract class CVConstants {
 
     /* CodeView section header signature */
     static final int CV_SIGNATURE_C13 = 4;
-
-    static final int CV_AMD64_R8 = 336;
-    static final int CV_AMD64_R9 = 337;
-    static final int CV_AMD64_R10 = 338;
-    static final int CV_AMD64_R11 = 339;
-    static final int CV_AMD64_R12 = 340;
-    static final int CV_AMD64_R13 = 341;
-    static final int CV_AMD64_R14 = 342;
-    static final int CV_AMD64_R15 = 343;
 }
