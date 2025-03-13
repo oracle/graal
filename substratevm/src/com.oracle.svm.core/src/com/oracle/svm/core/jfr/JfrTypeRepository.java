@@ -516,7 +516,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     @RawStructure
-    public interface JfrTypeInfo extends UninterruptibleEntry {
+    private interface JfrTypeInfo extends UninterruptibleEntry {
         @PinnedObjectField
         @RawField
         void setName(String value);
@@ -531,7 +531,7 @@ public class JfrTypeRepository implements JfrRepository {
 
 
     @RawStructure
-    public interface ClassInfoRaw extends JfrTypeInfo {
+    private interface ClassInfoRaw extends JfrTypeInfo {
         @PinnedObjectField
         @RawField
         void setClassLoaderName(String value);
@@ -561,7 +561,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     @RawStructure
-    public interface PackageInfoRaw extends JfrTypeInfo {
+    private interface PackageInfoRaw extends JfrTypeInfo {
         @PinnedObjectField
         @RawField
         void setModuleName(String value);
@@ -583,7 +583,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     @RawStructure
-    public interface ModuleInfoRaw extends JfrTypeInfo {
+    private interface ModuleInfoRaw extends JfrTypeInfo {
         @PinnedObjectField
         @RawField
         void setClassLoaderName(String value);
@@ -597,7 +597,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     @RawStructure
-    public interface ClassLoaderInfoRaw extends JfrTypeInfo {
+    private interface ClassLoaderInfoRaw extends JfrTypeInfo {
         @RawField
         void setClassTraceId(long value);
         @RawField

@@ -29,6 +29,10 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
+import com.oracle.svm.core.nmt.NmtCategory;
+import jdk.graal.compiler.word.Word;
+
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -197,7 +201,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         }
     }
 
-//    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     @Override
     public void flush() {
         assert lock.isOwner();
@@ -241,6 +245,25 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         writeFlushCheckpoint(false);
         writeMetadataEvent();
         patchFileHeader(false);
+
+        getFileSupport().close(fd);
+        filename = null;
+        fd = Word.nullPointer();
+    }
+
+    /** Similar to a regular chunk rotation but we do not safepoint, start a new epoch, or re-register threads.
+     * Similar to a flushpoint but we close the file and also process sampler buffers.*/
+    @Override
+    public void closeFileForEmergencyDump() {
+        assert lock.isOwner();
+
+        processSamplerBuffers();
+        flushStorage(true);
+
+        writeThreadCheckpoint(true);
+        writeFlushCheckpoint(true);
+        writeMetadataEvent();
+        patchFileHeader(true);
 
         getFileSupport().close(fd);
         filename = null;
@@ -533,12 +556,14 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.getValue());
 
             int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
+            Pointer buffer = com.oracle.svm.core.memory.NullableNativeMemory.malloc(length, NmtCategory.JFR);
+            if (buffer.isNull()){
+                return;
+            }
             writeCompressedInt(length);
-            int bufferSize = 512; //must be a compile time constant. Or use malloc.
-            Pointer buffer = UnsafeStackValue.get(bufferSize);
-            Pointer bufferEnd = buffer.add(bufferSize);
-            UninterruptibleUtils.String.toModifiedUTF8(str, buffer, bufferEnd, false);
+            UninterruptibleUtils.String.toModifiedUTF8(str, buffer, buffer.add(length), false);
             getFileSupport().write(fd, buffer, WordFactory.unsigned(length));
+            com.oracle.svm.core.memory.NullableNativeMemory.free(buffer);
         }
     }
 
@@ -671,33 +696,33 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
         }
+    }
+    
+    /**
+     * The VM is at a safepoint, so all other threads have a native state. However, execution
+     * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
+     * it is sufficient to mark this method as uninterruptible to prevent execution of the
+     * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
+     * be executed at any time for any thread (including the current thread). To prevent races,
+     * we need to ensure that there are no threads that execute the SIGPROF handler while we are
+     * accessing the currently active buffers of other threads.
+     */
+    @Uninterruptible(reason = "Prevent JFR recording.")
+    private static void processSamplerBuffers() {
+        assert VMOperation.isInProgressAtSafepoint();
+        assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
 
-        /**
-         * The VM is at a safepoint, so all other threads have a native state. However, execution
-         * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
-         * it is sufficient to mark this method as uninterruptible to prevent execution of the
-         * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
-         * be executed at any time for any thread (including the current thread). To prevent races,
-         * we need to ensure that there are no threads that execute the SIGPROF handler while we are
-         * accessing the currently active buffers of other threads.
-         */
-        @Uninterruptible(reason = "Prevent JFR recording.")
-        private static void processSamplerBuffers() {
-            assert VMOperation.isInProgressAtSafepoint();
-            assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
-
-            JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
-            try {
-                processSamplerBuffers0();
-            } finally {
-                JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
-            }
+        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
+        try {
+            processSamplerBuffers0();
+        } finally {
+            JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
         }
+    }
 
-        @Uninterruptible(reason = "Prevent JFR recording.")
-        private static void processSamplerBuffers0() {
-            SamplerBuffersAccess.processActiveBuffers();
-            SamplerBuffersAccess.processFullBuffers(false);
-        }
+    @Uninterruptible(reason = "Prevent JFR recording.")
+    private static void processSamplerBuffers0() {
+        SamplerBuffersAccess.processActiveBuffers();
+        SamplerBuffersAccess.processFullBuffers(false);
     }
 }

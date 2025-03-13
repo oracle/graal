@@ -111,6 +111,7 @@ public class JfrRecorderThread extends Thread {
     }
 
     void endRecording() {
+        com.oracle.svm.core.jfr.SubstrateJVM.get().vmErrorRotation();// TODO move to where it can handle an actual OOME
         lock.lock();
         try {
             SubstrateJVM.JfrEndRecordingOperation vmOp = new SubstrateJVM.JfrEndRecordingOperation();

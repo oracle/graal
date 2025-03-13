@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -154,7 +155,7 @@ public class JfrFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ThreadListenerSupportFeature.class);
+        return  Arrays.asList(ThreadListenerSupportFeature.class, com.oracle.svm.core.jfr.JfrEmergencyDumpFeature.class);
     }
 
     @Override

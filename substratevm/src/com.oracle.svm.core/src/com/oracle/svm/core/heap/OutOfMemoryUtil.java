@@ -62,7 +62,7 @@ public class OutOfMemoryUtil {
 
     @Uninterruptible(reason = "Not uninterruptible but it doesn't matter for the callers.", calleeMustBe = false)
     private static void reportOutOfMemoryError0(OutOfMemoryError error) {
-        if (VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
+        if (VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) { // TODO add jfr emergency dump here
             HeapDumping.singleton().dumpHeapOnOutOfMemoryError();
         }
 

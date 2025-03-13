@@ -34,6 +34,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
@@ -102,7 +103,6 @@ public class SubstrateJVM {
      * in).
      */
     private volatile boolean recording;
-    private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateJVM(List<Configuration> configurations, boolean writeFile) {
@@ -339,6 +339,7 @@ public class SubstrateJVM {
 
         // Cache all classes in preparation for TypeRepository TODO maybe there is a better way
         Heap.getHeap().visitLoadedClasses(clazz -> {});
+        JfrEmergencyDumpSupport.singleton().initialize();
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -585,24 +586,24 @@ public class SubstrateJVM {
      * See {@link JVM#setRepositoryLocation}.
      */
     public void setRepositoryLocation(@SuppressWarnings("unused") String dirText) {
-        // Would only be used in case of an emergency dump, which is not supported at the moment.
+        JfrEmergencyDumpSupport.singleton().setRepositoryLocation(dirText);
     }
 
     /**
      * See {@code JfrEmergencyDump::set_dump_path}.
      */
     public void setDumpPath(String dumpPathText) {
-        dumpPath = dumpPathText;
+        JfrEmergencyDumpSupport.singleton().setDumpPath(dumpPathText);
     }
 
     /**
      * See {@code JVM#getDumpPath()}.
      */
     public String getDumpPath() {
-        if (dumpPath == null) {
-            dumpPath = Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString();
+        if (JfrEmergencyDumpSupport.singleton().getDumpPath() == null) {
+                JfrEmergencyDumpSupport.singleton().setDumpPath(Target_jdk_jfr_internal_util_Utils.getPathInProperty("user.home", null).toString());
         }
-        return dumpPath;
+        return JfrEmergencyDumpSupport.singleton().getDumpPath();
     }
 
     /**
@@ -741,6 +742,22 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
+    /** See JfrRecorderService::vm_error_rotation */
+//    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
+    public void vmErrorRotation() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            boolean existingFile = chunkWriter.hasOpenFile();
+            if (existingFile) {
+                chunkWriter.closeFileForEmergencyDump();
+            }
+            JfrEmergencyDumpSupport.singleton().onVmError();
+        } finally {
+            chunkWriter.unlock();
+        }
+
+    }
+
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
         JfrBeginRecordingOperation() {
             super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));
@@ -833,6 +850,7 @@ public class SubstrateJVM {
             methodRepo.teardown();
             typeRepo.teardown();
             oldObjectRepo.teardown();
+            JfrEmergencyDumpSupport.singleton().teardown();
 
             initialized = false;
         }

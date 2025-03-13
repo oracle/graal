@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,46 +25,24 @@
  */
 package com.oracle.svm.core.jfr;
 
-public interface JfrChunkWriter extends JfrUnlockedChunkWriter {
+import com.oracle.svm.core.SigQuitFeature;
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
+import org.graalvm.nativeimage.hosted.Feature;
 
-    void unlock();
+import java.util.Collections;
+import java.util.List;
 
-    long getChunkStartNanos();
-
-    void setFilename(String filename);
-
-    void maybeOpenFile();
-
-    void openFile(String outputFile);
-
-    void write(JfrBuffer buffer);
-
-    void flush();
-
-    void markChunkFinal();
-
-    void closeFile();
-    void closeFileForEmergencyDump();
-
-    void setMetadata(byte[] bytes);
-
-    boolean shouldRotateDisk();
-
-    long beginEvent();
-
-    void endEvent(long start);
-
-    void writeBoolean(boolean value);
-
-    void writeByte(byte value);
-
-    void writeBytes(byte[] values);
-
-    void writeCompressedInt(int value);
-
-    void writePaddedInt(long value);
-
-    void writeCompressedLong(long value);
-
-    void writeString(String str);
+/**
+ * The JFR emergency dump mechanism uses platform-specific implementations (see {@link JfrEmergencyDumpSupport}).
+ */
+@AutomaticallyRegisteredFeature
+public class JfrEmergencyDumpFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return VMInspectionOptions.hasJfrSupport();
+    }
 }
