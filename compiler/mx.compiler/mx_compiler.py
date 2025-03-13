@@ -1137,7 +1137,7 @@ def collate_metrics(args):
         filename_index += 1
 
     if not results:
-        mx.log('No results to collate for ' + args.filenames[0])
+        mx.log(f"No results to collate for '{args.filenames[0]}'")
     elif args.filenames:
         collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
         with open(collated_filename, 'w') as fp:
@@ -1146,7 +1146,7 @@ def collate_metrics(args):
                 while len(series) < len(args.filenames):
                     series.append(0)
                 writer.writerow([n] + [str(v) for v in series] + [units[n]])
-        mx.log('Collated metrics into ' + collated_filename)
+        mx.log(f"Collated metrics into '{collated_filename}'")
 
 def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()
