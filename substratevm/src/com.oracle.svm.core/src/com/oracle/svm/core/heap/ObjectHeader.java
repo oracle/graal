@@ -60,9 +60,13 @@ public abstract class ObjectHeader {
     /**
      * Returns a mask where all reserved bits are set.
      */
-    public abstract int getReservedBitsMask();
+    public abstract int getReservedHubBitsMask();
 
-    public abstract long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase);
+    /**
+     * Returns an encoded hub pointer that can be used when writing the object header of an image
+     * heap object. Note that the returned value is not necessarily the full object header.
+     */
+    public abstract long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase);
 
     public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
 

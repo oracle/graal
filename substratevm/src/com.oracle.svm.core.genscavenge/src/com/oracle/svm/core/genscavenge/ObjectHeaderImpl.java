@@ -79,26 +79,26 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord IDHASH_STATE_IN_FIELD = Word.unsigned(0b10);
 
     private final int numAlignmentBits;
-    private final int numReservedBits;
-    private final int numReservedExtraBits;
+    private final int numReservedHubBits;
+    private final int numReservedExtraHubBits;
 
-    private final int reservedBitsMask;
+    private final int reservedHubBitsMask;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ObjectHeaderImpl() {
         numAlignmentBits = CodeUtil.log2(ConfigurationValues.getObjectLayout().getAlignment());
-        int numMinimumReservedBits = 3;
-        VMError.guarantee(numMinimumReservedBits <= numAlignmentBits, "Minimum set of reserved bits must be provided by object alignment");
+        int numMinReservedHubBits = 3;
+        VMError.guarantee(numMinReservedHubBits <= numAlignmentBits, "Minimum set of reserved bits must be provided by object alignment");
         if (isIdentityHashFieldOptional()) {
             VMError.guarantee(ReferenceAccess.singleton().haveCompressedReferences(), "Ensures hubs (at the start of the image heap) remain addressable");
-            numReservedBits = numMinimumReservedBits + 2;
-            VMError.guarantee(numReservedBits <= numAlignmentBits || hasShift(),
+            numReservedHubBits = numMinReservedHubBits + 2;
+            VMError.guarantee(numReservedHubBits <= numAlignmentBits || hasShift(),
                             "With no shift, forwarding references are stored directly in the header (with 64-bit, must be) and we cannot use non-alignment header bits");
         } else {
-            numReservedBits = numMinimumReservedBits;
+            numReservedHubBits = numMinReservedHubBits;
         }
-        numReservedExtraBits = numReservedBits - numAlignmentBits;
-        reservedBitsMask = (1 << numReservedBits) - 1;
+        numReservedExtraHubBits = numReservedHubBits - numAlignmentBits;
+        reservedHubBitsMask = (1 << numReservedHubBits) - 1;
     }
 
     @Fold
@@ -109,15 +109,15 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public int getReservedBitsMask() {
-        return reservedBitsMask;
+    public int getReservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Pointer extractPotentialDynamicHubFromHeader(Word header) {
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            UnsignedWord hubBits = header.unsignedShiftRight(numReservedBits);
+            UnsignedWord hubBits = header.unsignedShiftRight(numReservedHubBits);
             UnsignedWord baseRelativeBits = hubBits.shiftLeft(numAlignmentBits);
             return KnownIntrinsics.heapBase().add(baseRelativeBits);
         } else {
@@ -277,7 +277,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         Word result = Word.objectToUntrackedPointer(hub);
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             result = result.subtract(KnownIntrinsics.heapBase());
-            result = result.shiftLeft(numReservedExtraBits);
+            result = result.shiftLeft(numReservedExtraHubBits);
         }
         if (rememberedSet) {
             result = result.or(REMSET_OR_MARKED1_BIT);
@@ -291,7 +291,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     /** Clear the object header bits from a header. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord clearBits(UnsignedWord header) {
-        UnsignedWord mask = Word.unsigned(reservedBitsMask);
+        UnsignedWord mask = Word.unsigned(reservedHubBitsMask);
         return header.and(mask.not());
     }
 
@@ -314,9 +314,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase) {
-        long header = hubOffsetFromHeapBase << numReservedExtraBits;
-        assert (header & reservedBitsMask) == 0 : "Object header bits must be zero initially";
+    public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+        long header = hubOffsetFromHeapBase << numReservedExtraHubBits;
+        assert (header & reservedHubBitsMask) == 0 : "Object header bits must be zero initially";
         if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
             if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
                 header |= REMSET_OR_MARKED1_BIT.rawValue();
@@ -336,8 +336,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public void verifyDynamicHubOffsetInImageHeap(long offsetFromHeapBase) {
         long referenceSizeMask = getReferenceSize() == Integer.BYTES ? 0xFFFF_FFFFL : -1L;
-        long encoded = (offsetFromHeapBase << numReservedExtraBits) & referenceSizeMask;
-        boolean shiftLosesInformation = (encoded >>> numReservedExtraBits != offsetFromHeapBase);
+        long encoded = (offsetFromHeapBase << numReservedExtraHubBits) & referenceSizeMask;
+        boolean shiftLosesInformation = (encoded >>> numReservedExtraHubBits != offsetFromHeapBase);
         if (shiftLosesInformation) {
             throw VMError.shouldNotReachHere("Hub is too far from heap base for encoding in object header: " + offsetFromHeapBase);
         }
@@ -487,7 +487,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     private UnsignedWord getHeaderBitsFromHeader(UnsignedWord header) {
         assert !isProducedHeapChunkZapped(header) : "Produced chunk zap value";
         assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";
-        return header.and(reservedBitsMask);
+        return header.and(reservedHubBitsMask);
     }
 
     @Fold

@@ -285,7 +285,7 @@ public final class NativeImageHeapWriter {
         int hubSize = heap.objectLayout.getHubSize();
         if (NativeImageHeap.useHeapBase()) {
             long targetOffset = hubInfo.getOffset();
-            long encoding = objectHeader.encodeAsImageHeapObjectHeader(obj, targetOffset);
+            long encoding = objectHeader.encodeHubPointerForImageHeap(obj, targetOffset);
 
             if (hubSize == Long.BYTES) {
                 buffer.getByteBuffer().putLong(index, encoding);
@@ -296,7 +296,7 @@ public final class NativeImageHeapWriter {
         } else {
             assert hubSize == referenceSize();
             // The address of the DynamicHub target will be added by the link editor.
-            long encoding = objectHeader.encodeAsImageHeapObjectHeader(obj, 0L);
+            long encoding = objectHeader.encodeHubPointerForImageHeap(obj, 0L);
             addDirectRelocationWithAddend(buffer, index, hub, encoding);
         }
     }

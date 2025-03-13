@@ -259,12 +259,12 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
         int hubOffset = ol.getHubOffset();
         int bytesToRead = ol.getHubSize();
-        long reservedHeaderBitsMask = oh.getReservedBitsMask();
+        long reservedHubBitsMask = oh.getReservedHubBitsMask();
         if (hubOffset > 0 && hubOffset + ol.getHubSize() <= Long.BYTES && target.arch.getByteOrder() == ByteOrder.LITTLE_ENDIAN) {
             /* Prepare to emit a 64-bit read at offset 0 (reduces the code size). */
             hubOffset = 0;
             bytesToRead = Long.BYTES;
-            reservedHeaderBitsMask = (reservedHeaderBitsMask << Integer.SIZE) | ((1L << Integer.SIZE) - 1);
+            reservedHubBitsMask = (reservedHubBitsMask << Integer.SIZE) | ((1L << Integer.SIZE) - 1);
         }
 
         /* Read the raw hub data from the correct part of the object header. */
@@ -273,19 +273,19 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         AddressNode hubAddressNode = graph.unique(new OffsetAddressNode(object, hubOffsetNode));
         ValueNode rawHubData = graph.unique(new FloatingReadNode(hubAddressNode, NamedLocationIdentity.FINAL_LOCATION, null, readStamp, null, BarrierType.NONE));
 
-        if (reservedHeaderBitsMask != 0L) {
+        if (reservedHubBitsMask != 0L) {
             /* Get rid of the reserved header bits and extract the actual hub bits. */
-            assert CodeUtil.isPowerOf2(reservedHeaderBitsMask + 1) : "only the lowest bits may be set";
-            int numReservedBits = CodeUtil.log2(reservedHeaderBitsMask + 1);
+            assert CodeUtil.isPowerOf2(reservedHubBitsMask + 1) : "only the lowest bits may be set";
+            int numReservedHubBits = CodeUtil.log2(reservedHubBitsMask + 1);
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             int numAlignmentBits = CodeUtil.log2(ol.getAlignment());
             assert compressionShift <= numAlignmentBits : "compression discards bits";
 
-            if (numReservedBits == numAlignmentBits && compressionShift == 0) {
+            if (numReservedHubBits == numAlignmentBits && compressionShift == 0) {
                 /* AND with a constant is slightly smaller than 2 shifts. */
-                rawHubData = graph.unique(new AndNode(rawHubData, ConstantNode.forIntegerStamp(readStamp, ~reservedHeaderBitsMask, graph)));
+                rawHubData = graph.unique(new AndNode(rawHubData, ConstantNode.forIntegerStamp(readStamp, ~reservedHubBitsMask, graph)));
             } else {
-                rawHubData = graph.unique(new UnsignedRightShiftNode(rawHubData, ConstantNode.forInt(numReservedBits, graph)));
+                rawHubData = graph.unique(new UnsignedRightShiftNode(rawHubData, ConstantNode.forInt(numReservedHubBits, graph)));
                 if (compressionShift != numAlignmentBits) {
                     int shift = numAlignmentBits - compressionShift;
                     rawHubData = graph.unique(new LeftShiftNode(rawHubData, ConstantNode.forInt(shift, graph)));
