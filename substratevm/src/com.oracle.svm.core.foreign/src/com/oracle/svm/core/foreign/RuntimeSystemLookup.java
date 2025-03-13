@@ -93,6 +93,8 @@ public final class RuntimeSystemLookup {
             }
 
             return lookup;
+        } else if (OS.DARWIN.isCurrent()) {
+            return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, List.of("/usr/lib/libSystem.B.dylib"));
         } else {
             /*
              * This list of libraries was obtained by examining the dependencies of libsystemlookup,

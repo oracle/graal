@@ -62,6 +62,7 @@ public class VerifyAArch64RegisterUsages extends VerifyPhase<CoreProviders> {
             case "jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotMacroAssembler.<init>":
             case "jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotBackend.emitCodePrefix":
             case "com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler.<clinit>":
+            case "com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.getCallingConvention":
                 // Exempted cases
                 return;
             default:
