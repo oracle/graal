@@ -57,7 +57,7 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 1.  Clone the _demos_ repository and change to the application root directory:
     ```shell
     git clone https://github.com/graalvm/graalvm-demos.git
-    cd graalvm-demos/native-image/containerize
+    cd graalvm-demos/native-image
     ```
 2. Build the application with Maven (Apache Maven is also preinstalled in Cloud Shell):
     ```shell

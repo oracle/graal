@@ -106,4 +106,4 @@ Learn more at the [Oracle Help Center](https://docs.oracle.com/en/graalvm/jdk/23
 
 ### Related Documentation
 
-- [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/native-image/containerize/tiny-java-containers): Learn how GraalVM Native Image can generate native executables ideal for containerization.
+- [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/native-image/tiny-java-containers): Learn how GraalVM Native Image can generate native executables ideal for containerization.

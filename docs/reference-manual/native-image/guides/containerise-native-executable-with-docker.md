@@ -20,7 +20,7 @@ You will use a GraalVM container image with Native Image to compile a Java appli
 
 ## Download a Sample Application
 
-This guide uses the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/tree/master/native-image/containerize/spring-boot-microservice-jibber/src/main/java/com/example/benchmarks/jibber).
+This guide uses the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/tree/master/native-image/spring-boot-microservice-jibber/src/main/java/com/example/benchmarks/jibber).
 The example is a minimal REST-based API application, built on top of Spring Boot 3.
 If you call the HTTP endpoint `/jibber`, it will return some nonsense verse generated in the style of the Jabberwocky poem, by Lewis Carroll. 
 
@@ -36,9 +36,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
     git clone https://github.com/graalvm/graalvm-demos.git
     ```
     
-3. Change directory to _native-image/containerize/_:
+3. Navigate to the demo directory:
     ```shell
-    cd graalvm-demos/native-image/containerize/spring-boot-microservice-jibber
+    cd graalvm-demos/native-image/spring-boot-microservice-jibber
     ```
 
 ## Build and Run as a Native Executable
