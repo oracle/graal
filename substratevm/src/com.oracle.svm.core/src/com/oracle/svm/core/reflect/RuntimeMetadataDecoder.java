@@ -36,6 +36,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -158,22 +160,6 @@ public interface RuntimeMetadataDecoder {
             return ImageSingletons.lookup(MetadataAccessor.class);
         }
 
-        default <T> T getObject(int index) {
-            return getObject(index, 0);
-        }
-
-        default Class<?> getClass(int index) {
-            return getClass(index, 0);
-        }
-
-        default String getMemberName(int index) {
-            return getMemberName(index, 0);
-        }
-
-        default String getOtherString(int index) {
-            return getOtherString(index, 0);
-        }
-
         <T> T getObject(int index, int layerId);
 
         Class<?> getClass(int index, int layerId);
@@ -181,5 +167,13 @@ public interface RuntimeMetadataDecoder {
         String getMemberName(int index, int layerId);
 
         String getOtherString(int index, int layerId);
+    }
+
+    static int getConstantPoolLayerId(Target_jdk_internal_reflect_ConstantPool constPool) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            return constPool.getLayerId();
+        } else {
+            return 0;
+        }
     }
 }
