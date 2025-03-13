@@ -54,19 +54,6 @@ suite = {
     },
     # Support Libraries.
     # Projects depending on these will *not be built* if the 'optional' is 'True' for the given OS/architecture.
-    # This is a dummy library for dragonegg support.
-    "DRAGONEGG_SUPPORT" : {
-      "os_arch" : {
-        "linux" : {
-          "amd64" : {
-            "path": "tests/support.txt",
-            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-          },
-          "<others>": {"optional": True},
-        },
-        "<others>": {"<others>" : {"optional": True}},
-      },
-    },
     # This is a dummy library for malloc.h support.
     "MALLOC_H_SUPPORT" : {
       "os_arch" : {
@@ -1119,7 +1106,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulong.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
+      "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3"],
       "dependencies" : ["SULONG_TEST"],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1530,28 +1517,6 @@ suite = {
       "buildDependencies" : [
         "GCC_SOURCE",
         "ALIAS_SUPPORT",
-      ],
-      "testProject" : True,
-      "defaultBuild" : False,
-    },
-    "gcc_fortran" : {
-      "subDir" : "tests/gcc",
-      # The Ninja generator used by mx (version 1.8.2) does not support Fortran using Ninja version [GR-30808]
-      # "class" : "ExternalCMakeTestSuite",
-      # "variants" : ["executable-O0"],
-      "class" : "ExternalTestSuite",
-      "variants" : ["O0_OUT"],
-      "testDir" : "gcc-5.2.0/gcc/testsuite",
-      "fileExts" : [".f90", ".f", ".f03"],
-      "requireDragonegg" : True,
-      "native" : True,
-      "vpath" : True,
-      "single_job" : True, # problem with parallel builds and temporary module files
-      "buildRef" : True,
-      "dependencies" : ["SULONG_TEST"],
-      "buildDependencies" : [
-        "GCC_SOURCE",
-        "DRAGONEGG_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -2267,16 +2232,6 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./" : ["dependency:gcc_cpp/*"],
-      },
-      "testDistribution" : True,
-      "defaultBuild" : False,
-    },
-    "SULONG_GCC_FORTRAN_TEST_SUITE" : {
-      "native" : True,
-      "relpath" : True,
-      "platformDependent" : True,
-      "layout" : {
-        "./" : ["dependency:gcc_fortran/*"],
       },
       "testDistribution" : True,
       "defaultBuild" : False,
