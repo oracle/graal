@@ -32,7 +32,7 @@ import mx
 import mx_benchmark
 import mx_sdk_benchmark
 from mx_benchmark import DataPoints
-from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite
+from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite, SpecJvm2008BenchmarkSuite, PetClinicWrkBenchmarkSuite, MicronautHelloWorldWrkBenchmarkSuite
 from mx_sdk_benchmark import JvmciJdkVm, SUCCESSFUL_STAGE_PATTERNS, Stage
 
 _suite = mx.suite('compiler')
@@ -78,10 +78,11 @@ mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+Enable
 
 class CompilerMetricsBenchmarkMixin:
 
-    def __init__(self, metricName, suiteSuffix):
+    def __init__(self, metricName, suiteSuffix, metricUnit=("<unit>", str)):
         super().__init__()
         self.metricName = metricName
         self.suiteSuffix = suiteSuffix
+        self.metricUnit = metricUnit
 
     def name(self):
         return f"{super().name()}-{self.suiteSuffix}"
@@ -126,6 +127,7 @@ class CompilerMetricsBenchmarkMixin:
                        benchmark=benchmarks[0],
                        bench_suite=self.benchSuiteName(),
                        metric_name=self.metricName,
+                       metric_unit=self.metricUnit,
                        filter_fn=self.filterResult,
                    ),
                ] + super().rules(out, benchmarks, bmSuiteArgs)
@@ -173,7 +175,7 @@ class CounterBenchmarkMixin(CompilerMetricsBenchmarkMixin):
     ]
 
     def __init__(self):
-        super().__init__(metricName="count", suiteSuffix="counters")
+        super().__init__(metricName="count", suiteSuffix="counters", metricUnit="#")
 
     def metricsVmArgs(self):
         return super().metricsVmArgs() + ["-Djdk.graal.Counters=" + ','.join(CounterBenchmarkMixin.counters)]
@@ -214,7 +216,7 @@ class TimingBenchmarkMixin(CompilerMetricsBenchmarkMixin):
 
 class MemUseTrackerBenchmarkMixin(CompilerMetricsBenchmarkMixin):
     def __init__(self):
-        super().__init__(metricName="allocated-memory", suiteSuffix="mem-use")
+        super().__init__(metricName="allocated-memory", suiteSuffix="mem-use", metricUnit="B")
 
     def metricsVmArgs(self):
         # Enable all trackers
@@ -239,10 +241,16 @@ def memUseWrapper(suiteClass):
 mx_benchmark.add_bm_suite(timingWrapper(DaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(timingWrapper(ScalaDaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(timingWrapper(RenaissanceBenchmarkSuite))
+mx_benchmark.add_bm_suite(timingWrapper(SpecJvm2008BenchmarkSuite))
+mx_benchmark.add_bm_suite(timingWrapper(PetClinicWrkBenchmarkSuite))
+mx_benchmark.add_bm_suite(timingWrapper(MicronautHelloWorldWrkBenchmarkSuite))
 
 mx_benchmark.add_bm_suite(memUseWrapper(DaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(memUseWrapper(ScalaDaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(memUseWrapper(RenaissanceBenchmarkSuite))
+mx_benchmark.add_bm_suite(memUseWrapper(SpecJvm2008BenchmarkSuite))
+mx_benchmark.add_bm_suite(memUseWrapper(PetClinicWrkBenchmarkSuite))
+mx_benchmark.add_bm_suite(memUseWrapper(MicronautHelloWorldWrkBenchmarkSuite))
 
 
 class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_benchmark.NativeImageBenchmarkMixin):

@@ -80,7 +80,7 @@
   for suite in bench.groups.main_suites
   ],
 
-  local metrics_suites = [bench.dacapo, bench.scala_dacapo, bench.renaissance],
+  local metrics_suites = [bench.dacapo, bench.scala_dacapo, bench.renaissance, bench.specjvm2008],
 
   local metrics_builds = std.flattenArrays([
     [

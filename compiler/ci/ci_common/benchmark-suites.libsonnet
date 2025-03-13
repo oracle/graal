@@ -115,7 +115,7 @@
     suite:: suite_name,
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     run+: [
-      self.benchmark_cmd + [suite_name + ":*"] + suite_version_args + ["--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*"] + suite_version_args + ["--"] + self.extra_vm_args
     ],
     timelimit: "2:30:00",
     forks_batches:: 4,
