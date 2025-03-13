@@ -52,7 +52,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ENABLE_POLYBENCH_HPC: 'yes',
       POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
       POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
-    } + if !std.objectHasAll(self, 'machine_name') then {} else if self.machine_name == 'e3' then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
+    } + if !std.objectHasAll(self, 'machine_name') then {} else if self.machine_name  == 'e3' ||  self.machine_name  == 'e4_36_256' then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
   },
 
   vm_bench_polybenchmarks_base(env): {
