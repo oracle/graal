@@ -719,7 +719,7 @@ public class JNIAccessFeature implements Feature {
                     assert hField.equals(hybridLayout.getArrayField()) : "JNI access to hybrid objects is implemented only for the array field";
                     offset = hybridLayout.getArrayBaseOffset();
                 } else {
-                    assert hField.hasLocation();
+                    assert hField.hasLocation() : hField;
                     offset = hField.getLocation();
                     if (hField.isStatic()) {
                         layerNumber = hField.getInstalledLayerNum();

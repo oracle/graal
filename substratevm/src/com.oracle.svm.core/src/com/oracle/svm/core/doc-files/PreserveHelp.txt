@@ -1,0 +1,17 @@
+Preserves all classes and relevant resources from selected classpath entries in the image.
+For the selected classpath entries it is not necessary to provide reachability metadata because all classes, as well as resources not ending in '.class' or '.jar', are included into the image.
+Please note that using this option can result in a significant increase in build time and binary size, as well as a decrease in runtime performance.
+
+Usage: -H:Preserve=[all|none|module=<module>|package=<package>|package=<package-wildcard>|path=<cp-entry>][,...]
+
+The flag can be used in following ways:
+1. -H:Preserve=all preserves all elements from the JDK, the classpath, and the module path
+2. -H:Preserve=module=<module> preserves all elements from a given module
+3. -H:Preserve=module=ALL-UNNAMED preserves all elements from all class-path entries
+4. -H:Preserve=package=<package> preserves all elements from a given package
+5. -H:Preserve=package=<package-wildcard> preserves all elements from packages captured by the wildcard. For example, -H:Preserve=package=my.app.*
+6. -H:Preserve=path=<cp-entry> preserves all elements from a given class-path entry
+7. -H:Preserve=none disables all previous selections for preservation
+8. A comma-separated list of the previous cases. For example, -H:Preserve=path=<cp-entry>,module=<module>,package=<package>
+
+'-H:Preserve' is only allowed on the native-image command line and cannot be embedded in the native-image.properties files.

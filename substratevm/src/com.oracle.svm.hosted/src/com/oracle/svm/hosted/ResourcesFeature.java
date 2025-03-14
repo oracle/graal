@@ -67,6 +67,7 @@ import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -464,7 +465,7 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         /* if we have any entry in resource config file we should collect resources */
-        if (!resourcePatternWorkSet.isEmpty() || !globWorkSet.isEmpty()) {
+        if (!resourcePatternWorkSet.isEmpty() || !globWorkSet.isEmpty() || SubstrateOptions.Preserve.hasBeenSet()) {
             try {
                 collector.prepareProgressReporter();
                 ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);

@@ -86,6 +86,10 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HelloWorld", "Fails build-time initialization");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HTTPPostRequest", "Fails build-time initialization");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$TransactionBlocked", "Fails build-time initialization");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HTTPGetRequest", "Fails build-time initialization");
         rci.initializeAtBuildTime("jdk.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
@@ -152,6 +156,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("java.security", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.security.pkcs11.P11Util", "Cleaner reference");
 
         rci.initializeAtBuildTime("javax.crypto", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.security.auth", JDK_CLASS_REASON);
