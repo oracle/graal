@@ -241,6 +241,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
         model.enableBlockScoping = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBlockScoping");
         model.defaultLocalValue = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "defaultLocalValue", false);
+        model.variadicStackLimit = ElementUtils.getAnnotationValue(String.class, generateBytecodeMirror, "variadicStackLimit", true);
         boolean enableBytecodeDebugListener = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableBytecodeDebugListener");
         model.bytecodeDebugListener = (!enableBytecodeDebugListener || types.BytecodeDebugListener == null) ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
 
@@ -436,6 +437,36 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             }
         }
 
+        model.variadicStackLimitExpression = DSLExpression.parse(model, "variadicStackLimit", model.variadicStackLimit);
+        if (model.variadicStackLimitExpression != null) {
+            model.variadicStackLimitExpression = DSLExpression.resolve(resolver, model, "variadicStackLimit", model.variadicStackLimitExpression, model.variadicStackLimit);
+
+            if (!model.hasErrors()) {
+                AnnotationMirror mirror = model.getMessageAnnotation();
+                AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "variadicStackLimit");
+                if (!ElementUtils.typeEquals(context.getType(int.class), model.variadicStackLimitExpression.getResolvedType())) {
+                    model.addError(mirror, value, "Invalid variadic stack limit specified. Must return 'int' but returned '%s'", getSimpleName(model.variadicStackLimitExpression.getResolvedType()));
+                }
+
+                if (!model.hasErrors()) {
+                    Object constant = model.variadicStackLimitExpression.resolveConstant();
+                    if (constant != null) {
+                        if (constant instanceof Integer i) {
+                            if (i <= 1) {
+                                model.addError(mirror, value, "The variadic stack limit must be greater than 1.");
+                            } else if (i % 2 != 0) {
+                                model.addError(mirror, value, "The variadic stack limit must be a power of 2.");
+                            } else if (i > Short.MAX_VALUE) {
+                                model.addError(mirror, value, "The variadic stack limit must be smaller or equal to Short.MAX_VALUE.");
+                            }
+                        } else {
+                            throw new AssertionError("Invalid type should already be handled.");
+                        }
+                    }
+                }
+            }
+        }
+
         // find and bind type system
         TypeSystemData typeSystem = parseTypeSystemReference(typeElement);
         if (typeSystem == null) {
@@ -588,6 +619,28 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         if (model.materializedLocalAccessesNeedLocalIndex()) {
             model.loadLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
             model.storeLocalMaterializedOperation.instruction.addImmediate(ImmediateKind.LOCAL_INDEX, "local_index");
+        }
+
+        /*
+         * Compute optimizations flags. Must happen after all custom operations are parsed.
+         */
+        model.hasCustomVariadic = false;
+        model.hasVariadicReturn = false;
+        model.maximumVariadicOffset = 0;
+        for (OperationModel operation : model.getOperations()) {
+            if (operation.kind == OperationKind.CUSTOM && operation.isVariadic) {
+                model.hasCustomVariadic = true;
+            }
+            if (operation.variadicReturn) {
+                model.hasVariadicReturn = true;
+            }
+            model.maximumVariadicOffset = Math.max(operation.variadicOffset, model.maximumVariadicOffset);
+        }
+
+        if (model.hasVariadicReturn && !model.hasCustomVariadic) {
+            model.addError("An operation with @%s return value was specified but no operation takes @%s operands. Specify at least one operation that allows a @%s number of operands or remove the annotation.",
+                            getSimpleName(types.Variadic), getSimpleName(types.Variadic), getSimpleName(types.Variadic));
+            return;
         }
 
         // parse force quickenings

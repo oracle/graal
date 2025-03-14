@@ -56,19 +56,21 @@ public final class Signature {
     // [constantOperandsBefore*, dynamicOperands*, constantOperandsAfter*]
     public final List<TypeMirror> operandTypes;
     public final boolean isVariadic;
+    public final int variadicOffset;
     public final boolean isVoid;
     public final int constantOperandsBeforeCount;
     public final int dynamicOperandCount;
     public final int constantOperandsAfterCount;
 
     public Signature(TypeMirror returnType, List<TypeMirror> types) {
-        this(returnType, types, false, 0, 0);
+        this(returnType, types, false, 0, 0, 0);
     }
 
-    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic, int constantOperandsBeforeCount, int constantOperandsAfterCount) {
+    public Signature(TypeMirror returnType, List<TypeMirror> types, boolean isVariadic, int variadicOffset, int constantOperandsBeforeCount, int constantOperandsAfterCount) {
         this.returnType = returnType;
         this.operandTypes = Collections.unmodifiableList(types);
         this.isVariadic = isVariadic;
+        this.variadicOffset = variadicOffset;
         this.isVoid = ElementUtils.isVoid(returnType);
         this.constantOperandsBeforeCount = constantOperandsBeforeCount;
         this.dynamicOperandCount = operandTypes.size() - constantOperandsBeforeCount - constantOperandsAfterCount;
@@ -82,6 +84,7 @@ public final class Signature {
         this.returnType = returnType;
         this.operandTypes = operandTypes;
         this.isVariadic = copy.isVariadic;
+        this.variadicOffset = copy.variadicOffset;
         this.isVoid = copy.isVoid;
         this.constantOperandsBeforeCount = copy.constantOperandsBeforeCount;
         this.dynamicOperandCount = copy.dynamicOperandCount;
