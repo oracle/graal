@@ -172,9 +172,7 @@ final class PanamaSignature {
             assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
-            MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-
-            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable, node);
+            MemorySegment ret = createClosureHandle(cachedClosureInfo.handle, signature, cachedExecutable, node);
 
             return new PanamaClosure(ret);
         }
@@ -185,8 +183,7 @@ final class PanamaSignature {
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
-            MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            MemorySegment ret = signature.bind(cachedHandle, executable, node);
+            MemorySegment ret = createClosureHandle(cachedClosureInfo.handle, signature, executable, node);
             return new PanamaClosure(ret);
         }
 
@@ -195,9 +192,14 @@ final class PanamaSignature {
         static PanamaClosure createClosure(PanamaSignature signature, Object executable,
                         @Bind Node node) {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
-            MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            MemorySegment ret = signature.bind(cachedHandle, executable, node);
+            MemorySegment ret = createClosureHandle(cachedClosureInfo.handle, signature, executable, node);
             return new PanamaClosure(ret);
+        }
+
+        @TruffleBoundary
+        private static MemorySegment createClosureHandle(MethodHandle cachedClosureInfo, PanamaSignature signature, Object executable, Node node) {
+            MethodHandle cachedHandle = cachedClosureInfo.asType(signature.getUpcallMethodType());
+            return signature.bind(cachedHandle, executable, node);
         }
     }
 
@@ -225,6 +227,7 @@ final class PanamaSignature {
             upcallType = MethodType.methodType(void.class, Object.class);
         }
 
+        @TruffleBoundary
         @ExportMessage
         void setReturnType(Object t) {
             PanamaType type = (PanamaType) t;
@@ -244,14 +247,19 @@ final class PanamaSignature {
                 assert builder.argsState == oldState && type == cachedType;
                 builder.addArg(cachedType, newState);
 
-                builder.downcallType = builder.downcallType.appendParameterTypes(type.javaType);
-                builder.upcallType = builder.upcallType.appendParameterTypes(type.javaType);
+                appendParameterTypes(builder, type);
             }
 
             @Specialization(replaces = "doCached")
             static void doGeneric(PanamaSignatureBuilder builder, PanamaType type) {
                 ArgsState newState = builder.argsState.addArg(type);
                 builder.addArg(type, newState);
+            }
+
+            @TruffleBoundary
+            private static void appendParameterTypes(PanamaSignatureBuilder builder, PanamaType type) {
+                builder.downcallType = builder.downcallType.appendParameterTypes(type.javaType);
+                builder.upcallType = builder.upcallType.appendParameterTypes(type.javaType);
             }
         }
 
@@ -378,7 +386,7 @@ final class PanamaSignature {
                 // We need to set and capture native errno as close as possible to the native call
                 // to avoid the JVM clobbering it
                 ctx.setNativeErrno(nfiState.getNFIErrno());
-                Object result = (Object) downcallHandle.invokeExact(segment, args);
+                Object result = downcall(args, segment);
                 nfiState.setNFIErrno(ctx.getNativeErrno());
 
                 if (result == null) {
@@ -395,6 +403,11 @@ final class PanamaSignature {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalStateException(t);
             }
+        }
+
+        @TruffleBoundary(allowInlining = true)
+        private Object downcall(Object[] args, MemorySegment segment) throws Throwable {
+            return (Object) downcallHandle.invokeExact(segment, args);
         }
     }
 }

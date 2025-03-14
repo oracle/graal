@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import java.util.Collection;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
-import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -73,10 +72,5 @@ public final class ParserTortureSuite extends GccSuiteBase {
                 }
             }
         }
-    }
-
-    @AfterClass
-    public static void printStatistics() {
-        printStatistics(GccFortranSuite.class, SOURCE);
     }
 }

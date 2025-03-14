@@ -156,31 +156,6 @@ Another useful `mx unittest` flag is `--color`, which makes the output easier to
 To attach a debugger to Sulong tests, run `mx` with the `-d` argument, e.g.
 `mx -d unittest SulongSuite` or `mx -d gate --tags sulong`.
 
-## Fortran
-
-Some of our tests are Fortran files. Make sure you have GCC, G++, and GFortran
-in version 4.5, 4.6 or 4.7 available.
-
-On the Mac you can use Homebrew:
-
-    brew tap homebrew/versions
-    brew install gcc46 --with-fortran
-    brew link --force gmp4
-
-For the Fortran tests you also need to provide
-[DragonEgg](http://dragonegg.llvm.org/) 3.2 and Clang 3.2.
-
-[DragonEgg](http://dragonegg.llvm.org/) is a GCC plugin with which we
-can use GCC to compile a source language to LLVM IR. Sulong uses
-DragonEgg in its test cases to compile Fortran files to LLVM IR.
-Sulong also uses DragonEgg for the C/C++ test cases besides Clang to get
-additional "free" test cases for a given C/C++ file. DragonEgg requires
-a GCC in the aforementioned versions.
-
-- Sulong expects to find Clang 3.2 in `$DRAGONEGG_LLVM/bin`
-- Sulong expects to find GCC 4.5, 4.6 or 4.7 in `$DRAGONEGG_GCC/bin`
-- Sulong expects to find `dragonegg.so` under `$DRAGONEGG` or in `$DRAGONEGG_GCC/lib`
-
 ## Test Exclusion
 
 Not all tests work under all circumstances. Especially external test suites,

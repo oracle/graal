@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 
 public abstract class PanamaAccessor {
@@ -50,7 +51,8 @@ public abstract class PanamaAccessor {
     }
 
     static boolean isSupported() {
-        return true;
+        // GR-62951: not yet supported. Until then return false to keep image smaller.
+        return !TruffleOptions.AOT;
     }
 
     static NFIBackend createNFIBackend(PanamaNFILanguage language) {
