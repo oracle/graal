@@ -41,6 +41,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.AbstractLinker.UpcallStubFactory;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.internal.foreign.abi.aarch64.linux.LinuxAArch64Linker;
+import jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64Linker;
 import jdk.internal.foreign.abi.x64.sysv.SysVx64Linker;
 import jdk.internal.foreign.abi.x64.windows.Windowsx64Linker;
 
@@ -108,7 +110,20 @@ final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
     }
 }
 
-/*
- * GR-58659, GR-58660: add substitutions for LinuxAArch64Linker and MacOsAArch64Linker here once we
- * support them.
- */
+@TargetClass(value = MacOsAArch64Linker.class, onlyWith = ForeignFunctionsEnabled.class)
+final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
+
+    @Substitute
+    UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
+        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.MACOS.arrangeUpcall(targetType, function, options));
+    }
+}
+
+@TargetClass(value = LinuxAArch64Linker.class, onlyWith = ForeignFunctionsEnabled.class)
+final class Target_jdk_internal_foreign_abi_aarch64_linux_LinuxAArch64Linker {
+
+    @Substitute
+    UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
+        return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.LINUX.arrangeUpcall(targetType, function, options));
+    }
+}
