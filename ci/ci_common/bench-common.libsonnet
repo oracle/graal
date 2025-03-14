@@ -6,7 +6,7 @@
   bench_base:: common.build_base + {
     # job name automatically generated: <job_prefix>-<suite>-<platform>-<jdk_name>-<os>-<arch>-<job_suffix>
     # null values are omitted from the list.
-    generated_name:: utils.hyphenize([self.job_prefix, self.suite, self.platform, self.jdk_name, self.os, self.arch, self.job_suffix]),
+    generated_name:: utils.hyphenize([self.job_prefix, self.suite, self.platform, self.jdk_name, if std.objectHasAll(self, 'machine_name') then self.machine_name else null, self.os, self.arch, self.job_suffix]),
     job_prefix:: null,
     job_suffix:: null,
     name:
@@ -68,6 +68,13 @@
       numa_nodes:: [0],
       default_numa_node:: 0,
       num_threads:: 16
+    },
+    x52:: common.linux_amd64 + self._bench_machine + {
+      machine_name:: "x52",
+      capabilities+: ["tmpfs25g"],
+      numa_nodes:: [0, 1],
+      default_numa_node:: 1,
+      num_threads:: 72
     },
     x82:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x82",
