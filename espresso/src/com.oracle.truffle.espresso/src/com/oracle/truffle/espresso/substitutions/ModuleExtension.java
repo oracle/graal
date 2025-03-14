@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 public final class ModuleExtension {
     private static final ModuleExtension[] ESPRESSO_EXTENSION_MODULES = {
-                    new Builder("org.graalvm.continuations", "continuations.jar", (context) -> context.getEspressoEnv().Continuum).build(),
+                    new Builder("org.graalvm.continuations", "continuations.jar", (context) -> context.getLanguage().isContinuumEnabled()).build(),
                     new Builder("espresso.hotswap", "hotswap.jar", (context) -> context.getEspressoEnv().JDWPOptions != null).build(),
                     new Builder("espresso.polyglot", "espresso-polyglot.jar", (context) -> context.getEspressoEnv().Polyglot).build(),
                     new Builder("jdk.graal.compiler.espresso", "espresso-graal.jar", (context) -> context.getLanguage().isInternalJVMCIEnabled())  //
