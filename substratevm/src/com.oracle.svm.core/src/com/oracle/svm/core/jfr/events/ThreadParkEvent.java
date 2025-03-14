@@ -68,7 +68,7 @@ public class ThreadParkEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadPark, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadPark));
             JfrNativeEventWriter.putClass(data, parkedClass);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putLong(data, until);
