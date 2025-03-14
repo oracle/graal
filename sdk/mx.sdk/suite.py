@@ -1359,7 +1359,7 @@ CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
 AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
 CFLAGS=
 CXXFLAGS=
-LDFLAGS=
+LDFLAGS=-fuse-ld=lld
 '''
             },
           },
