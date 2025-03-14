@@ -55,26 +55,16 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.benchmark.ProxyLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 @State(Scope.Thread)
 @CompilerControl(Mode.DONT_INLINE)
 @OperationsPerInvocation(JavaMembersBenchmark.REPEAT)
 public class JavaMembersBenchmark extends TruffleBenchmark {
 
-    private static final int NUM_OVERLOADS = 6;
+    static final int NUM_OVERLOADS = 6;
     private static final int NUM_OBJECTS = 2 * NUM_OVERLOADS;
-    private static final int REPEAT_MEGA = 1000;
+    static final int REPEAT_MEGA = 1000;
     static final int REPEAT = REPEAT_MEGA * NUM_OBJECTS;
 
     @Benchmark
@@ -174,9 +164,8 @@ public class JavaMembersBenchmark extends TruffleBenchmark {
 
         @Setup
         public void before() {
-            Source source = Source.create(ProxyLanguage.ID, code);
-            ProxyLanguage.setDelegate(new MembersBenchmarkLanguage());
-            context = Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).allowHostAccess(HostAccess.ALL).build();
+            Source source = Source.create(MembersBenchmarkLanguage.ID, code);
+            context = Context.newBuilder(MembersBenchmarkLanguage.ID).allowAllAccess(true).allowHostAccess(HostAccess.ALL).build();
             context.enter();
             Object[] objects = createObjects();
             for (int i = 0; i < NUM_OBJECTS; i++) {
@@ -189,7 +178,6 @@ public class JavaMembersBenchmark extends TruffleBenchmark {
         public void tearDown() {
             context.leave();
             context.close();
-            ProxyLanguage.setDelegate(new ProxyLanguage());
         }
     }
 
@@ -201,226 +189,6 @@ public class JavaMembersBenchmark extends TruffleBenchmark {
         @Setup
         public void before() {
             objects = createObjects();
-        }
-    }
-
-    static final class MembersBenchmarkLanguage extends ProxyLanguage {
-
-        @Override
-        protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-            com.oracle.truffle.api.source.Source source = request.getSource();
-            return new MembersBenchmarkRootNode(languageInstance, source).getCallTarget();
-        }
-
-        static final class MembersBenchmarkRootNode extends RootNode {
-
-            @Node.Child private BenchmarkNode child;
-            @Node.Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
-
-            MembersBenchmarkRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source parsedSource) {
-                super(language);
-                String source = parsedSource.getCharacters().toString();
-                Object polyglotBindings = LanguageContext.get(this).getEnv().getPolyglotBindings();
-                Object object0;
-                try {
-                    object0 = InteropLibrary.getUncached().readMember(polyglotBindings, "object0");
-                } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
-                    throw CompilerDirectives.shouldNotReachHere(ex);
-                }
-                child = switch (source) {
-                    case "Read" -> new InteropReadNode(object0);
-                    case "Write" -> new InteropWriteNode(object0);
-                    case "Execute" -> new InteropExecuteNode(object0);
-                    case "Invoke" -> new InteropInvokeNode(object0);
-                    case "InvokeOverloads" -> new InteropInvokeOverloadsNode(object0);
-                    case "InvokeMegamorphic" -> new InteropInvokeMegamorphicNode(polyglotBindings);
-                    case "EMPTY" -> new InteropEmptyNode(object0);
-                    default -> throw CompilerDirectives.shouldNotReachHere(source);
-                };
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] args = frame.getArguments();
-                try {
-                    child.run(interop, args);
-                } catch (InteropException ex) {
-                    throw CompilerDirectives.shouldNotReachHere(ex);
-                }
-                return 0;
-            }
-
-            abstract static class BenchmarkNode extends Node {
-
-                abstract void run(InteropLibrary interop, Object... args) throws InteropException;
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropReadNode extends BenchmarkNode {
-
-                private final Object object;
-
-                InteropReadNode(Object object) {
-                    this.object = object;
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) throws InteropException {
-                    for (int i = 0; i < REPEAT; i++) {
-                        Object value = interop.readMember(object, "field");
-                        CompilerDirectives.blackhole(value);
-                    }
-                }
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropWriteNode extends BenchmarkNode {
-
-                private final Object object;
-
-                InteropWriteNode(Object object) {
-                    this.object = object;
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) throws InteropException {
-                    for (int i = 0; i < REPEAT; i++) {
-                        interop.writeMember(object, "field", 0);
-                    }
-                }
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropExecuteNode extends BenchmarkNode {
-
-                private final Object object;
-
-                InteropExecuteNode(Object object) {
-                    this.object = object;
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) throws InteropException {
-                    Object process = interop.readMember(object, "process");
-                    for (int i = 0; i < REPEAT; i++) {
-                        interop.execute(process, 0);
-                    }
-                }
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropInvokeNode extends BenchmarkNode {
-
-                private final Object object;
-
-                InteropInvokeNode(Object object) {
-                    this.object = object;
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) throws InteropException {
-                    for (int i = 0; i < REPEAT; i++) {
-                        interop.invokeMember(object, "process", 0);
-                    }
-                }
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropInvokeOverloadsNode extends BenchmarkNode {
-
-                private final Object object;
-
-                InteropInvokeOverloadsNode(Object object) {
-                    this.object = object;
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) throws InteropException {
-                    for (int i = 0; i < REPEAT / NUM_OVERLOADS; i++) {
-                        interop.invokeMember(object, "process", "");
-                        interop.invokeMember(object, "process", i);
-                        interop.invokeMember(object, "process", i, i);
-                        interop.invokeMember(object, "process", i, i, i);
-                        interop.invokeMember(object, "process", i, i, i, i);
-                        interop.invokeMember(object, "process", i, i, i, i, i);
-                    }
-                }
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropInvokeMegamorphicNode extends BenchmarkNode {
-
-                private final Object object0;
-                private final Object object1;
-                private final Object object2;
-                private final Object object3;
-                private final Object object4;
-                private final Object object5;
-                private final Object object6;
-                private final Object object7;
-                private final Object object8;
-                private final Object object9;
-                private final Object object10;
-                private final Object object11;
-
-                InteropInvokeMegamorphicNode(Object polyglotBindings) {
-                    try {
-                        object0 = InteropLibrary.getUncached().readMember(polyglotBindings, "object0");
-                        object1 = InteropLibrary.getUncached().readMember(polyglotBindings, "object1");
-                        object2 = InteropLibrary.getUncached().readMember(polyglotBindings, "object2");
-                        object3 = InteropLibrary.getUncached().readMember(polyglotBindings, "object3");
-                        object4 = InteropLibrary.getUncached().readMember(polyglotBindings, "object4");
-                        object5 = InteropLibrary.getUncached().readMember(polyglotBindings, "object5");
-                        object6 = InteropLibrary.getUncached().readMember(polyglotBindings, "object6");
-                        object7 = InteropLibrary.getUncached().readMember(polyglotBindings, "object7");
-                        object8 = InteropLibrary.getUncached().readMember(polyglotBindings, "object8");
-                        object9 = InteropLibrary.getUncached().readMember(polyglotBindings, "object9");
-                        object10 = InteropLibrary.getUncached().readMember(polyglotBindings, "object10");
-                        object11 = InteropLibrary.getUncached().readMember(polyglotBindings, "object11");
-                    } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
-                        throw CompilerDirectives.shouldNotReachHere(ex);
-                    }
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) throws InteropException {
-                    for (int i = 0; i < REPEAT_MEGA; i++) {
-                        interop.invokeMember(object0, "process", "");
-                        interop.invokeMember(object1, "process", "");
-                        interop.invokeMember(object2, "process", i);
-                        interop.invokeMember(object3, "process", i);
-                        interop.invokeMember(object4, "process", i, i);
-                        interop.invokeMember(object5, "process", i, i);
-                        interop.invokeMember(object6, "process", i, i, i);
-                        interop.invokeMember(object7, "process", i, i, i);
-                        interop.invokeMember(object8, "process", i, i, i, i);
-                        interop.invokeMember(object9, "process", i, i, i, i);
-                        interop.invokeMember(object10, "process", i, i, i, i, i);
-                        interop.invokeMember(object11, "process", i, i, i, i, i);
-                    }
-                }
-            }
-
-            @CompilerControl(Mode.DONT_INLINE)
-            static class InteropEmptyNode extends BenchmarkNode {
-
-                private final Object object;
-
-                InteropEmptyNode(Object object) {
-                    this.object = object;
-                }
-
-                @Override
-                void run(InteropLibrary interop, Object... args) {
-                    for (int i = 0; i < REPEAT; i++) {
-                        doEmpty(object);
-                    }
-                }
-
-                private static void doEmpty(Object receiver) {
-                    CompilerDirectives.blackhole(receiver);
-                }
-            }
         }
     }
 
