@@ -617,6 +617,13 @@ public final class EspressoOptions {
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
+    @Option(help = "Enable use of a custom Espresso implementation of libjava, allowing not entering native code for some boot classes.\\n" +
+                    "For unimplemented methods, espresso will use the provided native backend to fallback to the regular libjava.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
+
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

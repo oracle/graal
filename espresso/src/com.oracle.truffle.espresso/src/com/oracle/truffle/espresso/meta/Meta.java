@@ -370,6 +370,10 @@ public final class Meta extends ContextAccessImpl
             jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = null;
             jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = null;
         }
+        jdk_internal_loader_NativeLibraries$NativeLibraryImpl = diff().klass(higher(15), Types.jdk_internal_loader_NativeLibraries$NativeLibraryImpl).notRequiredKlass();
+        jdk_internal_loader_NativeLibraries$NativeLibraryImpl_handle = diff().field(higher(15), Names.handle, Types._long).notRequiredField(jdk_internal_loader_NativeLibraries$NativeLibraryImpl);
+        jdk_internal_loader_NativeLibraries$NativeLibraryImpl_jniVersion = diff().field(higher(15), Names.jniVersion, Types._int).notRequiredField(
+                        jdk_internal_loader_NativeLibraries$NativeLibraryImpl);
 
         if (getJavaVersion().java9OrLater()) {
             jdk_internal_util_ArraysSupport = knownKlass(Types.jdk_internal_util_ArraysSupport);
@@ -386,11 +390,24 @@ public final class Meta extends ContextAccessImpl
         java_io_InputStream = knownKlass(Types.java_io_InputStream);
         java_io_InputStream_read = java_io_InputStream.requireDeclaredMethod(Names.read, Signatures._int_byte_array_int_int);
         java_io_InputStream_close = java_io_InputStream.requireDeclaredMethod(Names.close, Signatures._void);
+        java_io_InputStream_skip = java_io_InputStream.requireDeclaredMethod(Names.skip, Signatures._long_long);
         java_io_PrintStream = knownKlass(Types.java_io_PrintStream);
         java_io_PrintStream_println = java_io_PrintStream.requireDeclaredMethod(Names.println, Signatures._void_String);
         java_nio_file_Path = knownKlass(Types.java_nio_file_Path);
         java_nio_file_Paths = knownKlass(Types.java_nio_file_Paths);
         java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Names.get, Signatures.Path_String_String_array);
+
+        java_nio_file_FileAlreadyExistsException = knownKlass(Types.java_nio_file_FileAlreadyExistsException);
+        java_nio_file_DirectoryNotEmptyException = knownKlass(Types.java_nio_file_DirectoryNotEmptyException);
+        java_nio_file_AtomicMoveNotSupportedException = knownKlass(Types.java_nio_file_AtomicMoveNotSupportedException);
+        java_nio_file_AccessDeniedException = knownKlass(Types.java_nio_file_AccessDeniedException);
+        java_nio_file_NoSuchFileException = knownKlass(Types.java_nio_file_NoSuchFileException);
+        java_nio_file_InvalidPathException = knownKlass(Types.java_nio_file_InvalidPathException);
+        java_nio_file_NotDirectoryException = knownKlass(Types.java_nio_file_NotDirectoryException);
+        java_nio_file_NotLinkException = knownKlass(Types.java_nio_file_NotLinkException);
+
+        java_util_zip_CRC32 = knownKlass(Types.java_util_zip_CRC32);
+        HIDDEN_CRC32 = diff().field(ALL, Names.HIDDEN_CRC32, Types._int).maybeHiddenfield(java_util_zip_CRC32);
 
         ObjectKlass nioNativeThreadKlass = knownKlass(Types.sun_nio_ch_NativeThread);
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Names.init, Signatures._void);
@@ -588,6 +605,11 @@ public final class Meta extends ContextAccessImpl
         java_lang_System = knownKlass(Types.java_lang_System);
         java_lang_System_exit = java_lang_System.requireDeclaredMethod(Names.exit, Signatures._void_int);
         java_lang_System_securityManager = java_lang_System.requireDeclaredField(Names.security, Types.java_lang_SecurityManager);
+        java_lang_System_in = java_lang_System.requireDeclaredField(Names.in, Types.java_io_InputStream);
+        java_lang_System_out = java_lang_System.requireDeclaredField(Names.out, Types.java_io_PrintStream);
+        java_lang_System_err = java_lang_System.requireDeclaredField(Names.err, Types.java_io_PrintStream);
+
+        jdk_internal_util_SystemProps_Raw = diff().klass(VERSION_9_OR_HIGHER, Types.jdk_internal_util_SystemProps_Raw).notRequiredKlass();
 
         java_security_ProtectionDomain = knownKlass(Types.java_security_ProtectionDomain);
         java_security_ProtectionDomain_impliesCreateAccessControlContext = diff() //
@@ -1458,6 +1480,10 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl;
     public final Field jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle;
 
+    public final ObjectKlass jdk_internal_loader_NativeLibraries$NativeLibraryImpl;
+    public final Field jdk_internal_loader_NativeLibraries$NativeLibraryImpl_handle;
+    public final Field jdk_internal_loader_NativeLibraries$NativeLibraryImpl_jniVersion;
+
     public final ObjectKlass jdk_internal_util_ArraysSupport;
     public final Method jdk_internal_util_ArraysSupport_vectorizedMismatch;
     public final ObjectKlass java_net_URL;
@@ -1615,6 +1641,7 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_io_InputStream;
     public final Method java_io_InputStream_read;
     public final Method java_io_InputStream_close;
+    public final Method java_io_InputStream_skip;
 
     public final ObjectKlass java_io_PrintStream;
     public final Method java_io_PrintStream_println;
@@ -1622,6 +1649,18 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_nio_file_Path;
     public final ObjectKlass java_nio_file_Paths;
     public final Method java_nio_file_Paths_get;
+
+    public final ObjectKlass java_nio_file_FileAlreadyExistsException;
+    public final ObjectKlass java_nio_file_DirectoryNotEmptyException;
+    public final ObjectKlass java_nio_file_AtomicMoveNotSupportedException;
+    public final ObjectKlass java_nio_file_AccessDeniedException;
+    public final ObjectKlass java_nio_file_NoSuchFileException;
+    public final ObjectKlass java_nio_file_NotDirectoryException;
+    public final ObjectKlass java_nio_file_InvalidPathException;
+    public final ObjectKlass java_nio_file_NotLinkException;
+
+    public final ObjectKlass java_util_zip_CRC32;
+    public final Field HIDDEN_CRC32;
 
     public final Method sun_nio_ch_NativeThread_isNativeThread;
     public final Method sun_nio_ch_NativeThread_current0;
@@ -1730,6 +1769,11 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_System_initPhase3;
     public final Method java_lang_System_exit;
     public final Field java_lang_System_securityManager;
+    public final Field java_lang_System_in;
+    public final Field java_lang_System_out;
+    public final Field java_lang_System_err;
+
+    public final ObjectKlass jdk_internal_util_SystemProps_Raw;
 
     public final ObjectKlass java_security_ProtectionDomain;
     public final Method java_security_ProtectionDomain_impliesCreateAccessControlContext;
@@ -2635,9 +2679,21 @@ public final class Meta extends ContextAccessImpl
         throw throwExceptionWithMessage(java_lang_IndexOutOfBoundsException, message + ": index=" + index + " length=" + length);
     }
 
+    /**
+     * Throws a guest {@link ArrayIndexOutOfBoundsException}. Uses the given int to construct a
+     * useful message.
+     */
+    public EspressoException throwArrayIndexOutOfBounds(int index) {
+        throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, "Array index out of range: " + index);
+    }
+
+    public EspressoException throwArrayIndexOutOfBounds(int index, int length) {
+        throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, "Array index out of range: " + index + " for length " + length);
+    }
+
     // endregion Guest exception handling (throw)
 
-    ObjectKlass knownKlass(Symbol<Type> type) {
+    public ObjectKlass knownKlass(Symbol<Type> type) {
         return knownKlass(type, StaticObject.NULL);
     }
 

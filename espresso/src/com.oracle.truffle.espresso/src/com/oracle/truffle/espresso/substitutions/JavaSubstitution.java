@@ -99,6 +99,10 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
             return isTrivial() || isFlag(SubstitutionFlag.InlineInBytecode);
         }
 
+        public boolean needsSignatureMangle() {
+            return isFlag(SubstitutionFlag.needsSignatureMangle);
+        }
+
         public InlinedMethodPredicate guard() {
             return guard;
         }

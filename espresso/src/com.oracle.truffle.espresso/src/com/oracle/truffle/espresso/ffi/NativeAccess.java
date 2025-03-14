@@ -28,6 +28,7 @@ import java.util.List;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -71,6 +72,11 @@ public interface NativeAccess {
     @Pointer
     TruffleObject loadDefaultLibrary();
 
+    @TruffleBoundary
+    default String mapLibraryName(String libname) {
+        return System.mapLibraryName(libname);
+    }
+
     /**
      * Similar to dlclose. Uses the native mechanism to close, or rather decrement the reference
      * count to a native library obtained using {@link #loadLibrary(Path)}.
@@ -79,7 +85,7 @@ public interface NativeAccess {
 
     default @Pointer TruffleObject loadLibrary(List<Path> searchPaths, String shortName, boolean notFoundIsFatal) {
         for (Path path : searchPaths) {
-            Path libPath = path.resolve(System.mapLibraryName(shortName));
+            Path libPath = path.resolve(mapLibraryName(shortName));
             @Pointer
             TruffleObject library = loadLibrary(libPath.toAbsolutePath());
             if (library != null) {

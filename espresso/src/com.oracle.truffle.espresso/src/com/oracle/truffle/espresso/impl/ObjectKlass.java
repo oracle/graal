@@ -1020,8 +1020,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public Field requireHiddenField(Symbol<Name> fieldName) {
-        // Hidden fields are (usually) located at the end of the field table.
+    public Field lookupHiddenField(Symbol<Name> fieldName) {
         Field[] fTable = fieldTable;
         for (int i = fTable.length - 1; i >= 0; i--) {
             Field f = fTable[i];
@@ -1029,7 +1028,16 @@ public final class ObjectKlass extends Klass {
                 return f;
             }
         }
-        throw EspressoError.shouldNotReachHere("Missing hidden field " + fieldName + " in " + this);
+        return null;
+    }
+
+    public Field requireHiddenField(Symbol<Name> fieldName) {
+        // Hidden fields are (usually) located at the end of the field table.
+        Field f = lookupHiddenField(fieldName);
+        if (f == null) {
+            throw EspressoError.shouldNotReachHere("Missing hidden field " + fieldName + " in " + this);
+        }
+        return f;
     }
 
     public StaticObject requireEnumConstant(Symbol<Name> fieldName) {
