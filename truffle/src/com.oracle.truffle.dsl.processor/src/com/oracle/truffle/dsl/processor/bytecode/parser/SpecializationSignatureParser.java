@@ -103,6 +103,7 @@ public class SpecializationSignatureParser {
         // Second: all operands (constant and dynamic).
         List<VariableElement> operands = new ArrayList<>();
         boolean hasVariadic = false;
+        int variadicOffset = 0;
         while (!params.isEmpty()) {
             operands.add(params.poll());
             skipDSLParameters(params);
@@ -142,9 +143,14 @@ public class SpecializationSignatureParser {
                     isValid = false;
                 } else if (isVariadic(dynamicOperand)) {
                     hasVariadic = true;
+                    variadicOffset = ElementUtils.getAnnotationValue(Integer.class, ElementUtils.findAnnotationMirror(dynamicOperand, types.Variadic), "startOffset");
 
                     if (!ElementUtils.typeEquals(dynamicOperand.asType(), new ArrayCodeTypeMirror(context.getDeclaredType(Object.class)))) {
                         errorTarget.addError(dynamicOperand, "Variadic operand must have type Object[].");
+                        isValid = false;
+                    }
+                    if (variadicOffset < 0) {
+                        errorTarget.addError(dynamicOperand, "Variadic startOffset must be positive.");
                         isValid = false;
                     }
                 }
@@ -188,7 +194,7 @@ public class SpecializationSignatureParser {
         if (ElementUtils.canThrowTypeExact(specialization.getThrownTypes(), CustomOperationParser.types().UnexpectedResultException)) {
             returnType = context.getDeclaredType(Object.class);
         }
-        Signature signature = new Signature(returnType, operandTypes, hasVariadic, constantOperands.before().size(), constantOperands.after().size());
+        Signature signature = new Signature(returnType, operandTypes, hasVariadic, variadicOffset, constantOperands.before().size(), constantOperands.after().size());
 
         return new SpecializationSignature(signature, operandNames);
     }
@@ -283,7 +289,7 @@ public class SpecializationSignatureParser {
         for (int i = 0; i < a.operandTypes.size(); i++) {
             mergedTypes.add(mergeIfPrimitiveType(a.context, a.operandTypes.get(i), b.operandTypes.get(i)));
         }
-        return new Signature(newReturnType, mergedTypes, a.isVariadic, a.constantOperandsBeforeCount, a.constantOperandsAfterCount);
+        return new Signature(newReturnType, mergedTypes, a.isVariadic, a.variadicOffset, a.constantOperandsBeforeCount, a.constantOperandsAfterCount);
     }
 
     private static TypeMirror mergeIfPrimitiveType(ProcessorContext context, TypeMirror a, TypeMirror b) {
