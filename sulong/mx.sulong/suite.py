@@ -966,9 +966,9 @@ suite = {
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
-            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
-            "CMAKE_C_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
-            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "linux-musl" : {
@@ -979,9 +979,9 @@ suite = {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "LIBCXX_HAS_MUSL_LIBC" : "YES",
-            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
-            "CMAKE_C_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
-            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "darwin" : {
@@ -992,9 +992,9 @@ suite = {
             "CMAKE_INSTALL_RPATH" : "@loader_path/",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
-            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
-            "CMAKE_C_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
-            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "windows" : {
