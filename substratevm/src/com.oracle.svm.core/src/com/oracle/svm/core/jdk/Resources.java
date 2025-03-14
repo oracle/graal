@@ -115,8 +115,8 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
      * ends up in the image heap is computed after the runtime module instances have been computed
      * {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
-    private final EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources = ImageHeapMap.create(null, true);
-    private final EconomicMap<RequestedPattern, RuntimeConditionSet> requestedPatterns = ImageHeapMap.create(null, true);
+    private final EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resources = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<RequestedPattern, RuntimeConditionSet> requestedPatterns = ImageHeapMap.createNonLayeredMap();
 
     public record RequestedPattern(String module, String resource) {
     }

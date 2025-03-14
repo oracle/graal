@@ -58,7 +58,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
             } else {
                 allMaps.add(hostedImageHeapMap);
             }
-            return hostedImageHeapMap.runtimeMap;
+            return hostedImageHeapMap.getReplacement();
         } else if (obj instanceof HostedImageHeapList<?> hostedImageHeapList) {
             if (BuildPhaseProvider.isAnalysisFinished()) {
                 VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
@@ -76,7 +76,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
         for (var hostedImageHeapMap : allMaps) {
             if (needsUpdate(hostedImageHeapMap)) {
                 update(hostedImageHeapMap);
-                access.rescanObject(hostedImageHeapMap.runtimeMap);
+                access.rescanObject(hostedImageHeapMap.getCurrentLayerMap());
                 access.requireAnalysisIteration();
             }
         }
@@ -108,7 +108,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
         for (var hostedImageHeapMap : allMaps) {
             if (needsUpdate(hostedImageHeapMap)) {
                 throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis:%n%s%n%s",
-                                hostedImageHeapMap, hostedImageHeapMap.runtimeMap);
+                                hostedImageHeapMap, hostedImageHeapMap.getCurrentLayerMap());
             }
         }
         for (var hostedImageHeapList : allLists) {
@@ -121,7 +121,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
     }
 
     private static boolean needsUpdate(HostedImageHeapMap<?, ?> hostedMap) {
-        EconomicMap<Object, Object> runtimeMap = hostedMap.runtimeMap;
+        EconomicMap<Object, Object> runtimeMap = hostedMap.getCurrentLayerMap();
         if (hostedMap.size() != runtimeMap.size()) {
             return true;
         }
@@ -137,7 +137,7 @@ final class ImageHeapCollectionFeature implements InternalFeature {
     }
 
     private static void update(HostedImageHeapMap<?, ?> hostedMap) {
-        hostedMap.runtimeMap.clear();
-        hostedMap.runtimeMap.putAll(hostedMap);
+        hostedMap.getCurrentLayerMap().clear();
+        hostedMap.getCurrentLayerMap().putAll(hostedMap);
     }
 }

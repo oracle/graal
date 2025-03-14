@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
@@ -59,32 +60,36 @@ public final class ImageHeapMap {
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create(String key) {
+        assert key != null;
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>(Equivalence.DEFAULT, key, false);
+        return HostedImageHeapMap.create(Equivalence.DEFAULT, key, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <K, V> EconomicMap<K, V> create(String key, boolean isAlreadyLayered) {
+    public static <K, V> EconomicMap<K, V> createNonLayeredMap() {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>(Equivalence.DEFAULT, key, isAlreadyLayered);
+        return HostedImageHeapMap.create(Equivalence.DEFAULT, null, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create(Equivalence strategy, String key) {
+        assert key != null;
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>(strategy, key, false);
+        return HostedImageHeapMap.create(strategy, key, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <K, V> EconomicMap<K, V> create(Equivalence strategy, String key, boolean isAlreadyLayered) {
+    public static <K, V> EconomicMap<K, V> createNonLayeredMap(Equivalence strategy) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>(strategy, key, isAlreadyLayered);
+        return HostedImageHeapMap.create(strategy, null, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
+    public static abstract class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
 
-        public final EconomicMap<Object, Object> runtimeMap;
+        public abstract EconomicMap<Object, Object> getCurrentLayerMap();
+
+        public abstract Object getReplacement();
 
         /**
          * The {code key} is only used in the Layered Image context, to link the maps across each
@@ -93,9 +98,46 @@ public final class ImageHeapMap {
          * link across layers. In this case, {@code isAlreadyLayered} should be true and the
          * {@code key} can be {@code null}.
          */
-        HostedImageHeapMap(Equivalence strategy, String key, boolean isAlreadyLayered) {
-            super((strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>());
-            this.runtimeMap = !isAlreadyLayered && ImageLayerBuildingSupport.buildingImageLayer() ? new LayeredImageHeapMap<>(strategy, key) : EconomicMap.create(strategy);
+        HostedImageHeapMap(Map<K, V> hostedMap) {
+            super(hostedMap);
+        }
+
+        public static <K, V> HostedImageHeapMap<K, V> create(Equivalence strategy, String key, boolean isAlreadyLayered) {
+            Map<K, V> hostedMap = (strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>();
+            if (!isAlreadyLayered && ImageLayerBuildingSupport.buildingImageLayer()) {
+                EconomicMap<Object, Object> runtimeMap = EconomicMap.create(strategy);
+                return new HostedImageHeapMap<>(hostedMap) {
+
+                    @Override
+                    public EconomicMap<Object, Object> getCurrentLayerMap() {
+                        return runtimeMap;
+                    }
+
+                    @Override
+                    public Object getReplacement() {
+                        return runtimeMap;
+                    }
+                };
+            } else {
+                LayeredImageHeapMap<K, V> runtimeMapObject = new LayeredImageHeapMap<>(strategy, key);
+                EconomicMap<Object, Object> currentLayerMap = EconomicMap.create(strategy);
+                var previousMap = LayeredImageHeapMapStore.currentLayer().getImageHeapMapStore().put(key, currentLayerMap);
+                if (previousMap != null) {
+                    throw VMError.shouldNotReachHere("The LayeredImageHeapMap with key %s was added twice", key);
+                }
+                return new HostedImageHeapMap<>(hostedMap) {
+
+                    @Override
+                    public EconomicMap<Object, Object> getCurrentLayerMap() {
+                        return currentLayerMap;
+                    }
+
+                    @Override
+                    public Object getReplacement() {
+                        return runtimeMapObject;
+                    }
+                };
+            }
         }
     }
 }

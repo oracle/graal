@@ -105,9 +105,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
         return MultiLayeredImageSingleton.getAllLayers(JNIReflectionDictionary.class);
     }
 
-    private final EconomicMap<CharSequence, JNIAccessibleClass> classesByName = ImageHeapMap.create(WRAPPED_CSTRING_EQUIVALENCE, null, true);
-    private final EconomicMap<Class<?>, JNIAccessibleClass> classesByClassObject = ImageHeapMap.create(null, true);
-    private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.create(null, true);
+    private final EconomicMap<CharSequence, JNIAccessibleClass> classesByName = ImageHeapMap.createNonLayeredMap(WRAPPED_CSTRING_EQUIVALENCE);
+    private final EconomicMap<Class<?>, JNIAccessibleClass> classesByClassObject = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.createNonLayeredMap();
 
     private JNIReflectionDictionary() {
     }
