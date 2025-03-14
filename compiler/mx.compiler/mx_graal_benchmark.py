@@ -91,7 +91,7 @@ class CompilerMetricsBenchmarkMixin:
         return super().name()
 
     def before(self, bmSuiteArgs):
-        fd, self._metrics_file = mkstemp(prefix='metrics', suffix='.csv', dir='.')
+        fd, self._metrics_file = mkstemp(prefix='metrics.', suffix='.csv', dir='.')
         # we don't need the file descriptor
         os.close(fd)
         super().before(bmSuiteArgs)
