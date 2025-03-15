@@ -45,6 +45,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 
 import com.oracle.truffle.api.InternalResource.OS;
 
@@ -55,6 +56,8 @@ public class ErrorContext extends AbstractErrorContext {
         case LINUX -> "__errno_location";
         case WINDOWS -> "_errno";
     };
+
+    public static final VarHandle INT_VAR_HANDLE = ValueLayout.JAVA_INT.varHandle();
 
     private MemorySegment errnoLocation;
 
@@ -89,12 +92,12 @@ public class ErrorContext extends AbstractErrorContext {
 
     @Override
     int getNativeErrno() {
-        return getErrnoLocation().get(ValueLayout.JAVA_INT, 0);
+        return (int) INT_VAR_HANDLE.get(getErrnoLocation(), 0);
     }
 
     @Override
     void setNativeErrno(int newErrno) {
-        getErrnoLocation().set(ValueLayout.JAVA_INT, 0, newErrno);
+        INT_VAR_HANDLE.set(getErrnoLocation(), 0, newErrno);
     }
 
 }

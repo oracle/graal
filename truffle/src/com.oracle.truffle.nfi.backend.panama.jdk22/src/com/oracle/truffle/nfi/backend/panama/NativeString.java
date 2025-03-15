@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.backend.panama;
 import java.lang.foreign.MemorySegment;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -68,6 +69,7 @@ class NativeString implements TruffleObject {
         return nativePointer != 0;
     }
 
+    @TruffleBoundary
     @ExportMessage
     String asString() {
         return MemorySegment.ofAddress(this.nativePointer).getString(0);
