@@ -188,16 +188,11 @@ local sulong_deps = common.deps.sulong;
     packages+: {
       gcc: "==6.1.0",
     },
-    downloads+: {
-      DRAGONEGG_GCC: { name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true },
-      DRAGONEGG_LLVM: { name: "clang+llvm", version: "3.2", platformspecific: true },
-    },
   },
 
   # like requireGCC, but only on linux/amd64, ignored otherwise
   optionalGCC:: {
     packages+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.packages else {},
-    downloads+: if self.os == "linux" && self.arch == "amd64" then $.requireGCC.downloads else {},
   },
 
   requireGMP:: {

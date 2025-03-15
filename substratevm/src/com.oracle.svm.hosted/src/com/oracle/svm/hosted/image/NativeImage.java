@@ -898,7 +898,7 @@ public abstract class NativeImage extends AbstractImage {
         long canonicalizedCount = 0L;
         long canonicalizedSize = 0L;
         for (ObjectInfo info : objects) {
-            if (info.getConstant().isInBaseLayer()) {
+            if (info.getConstant().isWrittenInPreviousLayer()) {
                 continue;
             }
             if (partition == info.getPartition()) {

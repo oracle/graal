@@ -27,6 +27,7 @@ package com.oracle.svm.core.hub;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.util.UserError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class RuntimeClassLoading {
     public static final class Options {
@@ -63,5 +65,9 @@ public class RuntimeClassLoading {
     @Fold
     public static boolean isSupported() {
         return Options.SupportRuntimeClassLoading.getValue();
+    }
+
+    public static ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType) {
+        return ImageSingletons.lookup(CremaSupport.class).createInterpreterType(hub, analysisType);
     }
 }

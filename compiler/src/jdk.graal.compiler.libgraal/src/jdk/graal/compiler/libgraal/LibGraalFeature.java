@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.hotspot.CompilerConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -317,6 +318,7 @@ public final class LibGraalFeature implements Feature {
 
         EconomicMap<String, Object> libgraalObjects = (EconomicMap<String, Object>) ObjectCopier.decode(configResult.encodedConfig(), (ClassLoader) libgraalLoader);
         EncodedSnippets encodedSnippets = (EncodedSnippets) libgraalObjects.get("encodedSnippets");
+        checkNodeClasses(encodedSnippets, (String) libgraalObjects.get("snippetNodeClasses"));
 
         // Mark all the Node classes as allocated so they are available during graph decoding.
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
@@ -328,6 +330,11 @@ public final class LibGraalFeature implements Feature {
         HotSpotForeignCallLinkage.Stubs.initStubs(foreignCallSignatures);
 
         TruffleHostEnvironment.overrideLookup(new LibGraalTruffleHostEnvironmentLookup());
+    }
+
+    private static void checkNodeClasses(EncodedSnippets encodedSnippets, String actual) {
+        String expect = CompilerConfig.snippetNodeClassesToJSON(encodedSnippets);
+        GraalError.guarantee(actual.equals(expect), "%s != %s", actual, expect);
     }
 
     /**

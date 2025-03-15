@@ -53,8 +53,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
+import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
 

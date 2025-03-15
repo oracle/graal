@@ -51,8 +51,9 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  *
  * {@link jdk.vm.ci.hotspot.HotSpotResolvedJavaType HotSpotResolvedJavaType} can't be used here
  * because the Graal classes may not be available in the host VM and even if they are, loading them
- * causes unnecessary class loading. The Substrate type system could be used but it is
- * implementation overkill for the purposes of libgraal.
+ * causes unnecessary class loading. The Substrate type system could be used, but it is
+ * implementation overkill for the purposes of libgraal. It would also introduce an unwanted
+ * dependency from the Graal compiler to SVM.
  */
 public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private final Class<?> javaClass;
@@ -304,22 +305,17 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
-        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        GraalError.guarantee(!forceLink, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         if (methods == null) {
             return new ResolvedJavaMethod[0];
         }
-        return methods.toArray(new ResolvedJavaMethod[methods.size()]);
+        return methods.toArray(new ResolvedJavaMethod[0]);
     }
 
     @Override

@@ -22,15 +22,12 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -66,7 +63,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
  */
 public final class MethodHandleIntrinsics {
 
-    private final ConcurrentHashMap<MethodRef, Method> intrinsics;
+    private final ConcurrentHashMap<MethodKey, Method> intrinsics;
 
     MethodHandleIntrinsics() {
         this.intrinsics = new ConcurrentHashMap<>();
@@ -85,7 +82,7 @@ public final class MethodHandleIntrinsics {
     }
 
     public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature) {
-        return findIntrinsic(thisMethod, new MethodRef(thisMethod, signature));
+        return findIntrinsic(thisMethod, new MethodKey(thisMethod, signature));
     }
 
     public static boolean isMethodHandleIntrinsic(Method m) {
@@ -133,13 +130,13 @@ public final class MethodHandleIntrinsics {
         return PolySigIntrinsics.None;
     }
 
-    private Method findIntrinsic(Method m, MethodRef methodRef) {
+    private Method findIntrinsic(Method m, MethodKey methodRef) {
         Method method = getIntrinsic(methodRef);
         if (method != null) {
             return method;
         }
         CompilerAsserts.neverPartOfCompilation();
-        method = m.createIntrinsic(methodRef.signature);
+        method = m.createIntrinsic(methodRef.getSignature());
         Method previous = putIntrinsic(methodRef, method);
         if (previous != null) {
             return previous;
@@ -147,52 +144,12 @@ public final class MethodHandleIntrinsics {
         return method;
     }
 
-    private Method getIntrinsic(MethodRef methodRef) {
+    private Method getIntrinsic(MethodKey methodRef) {
         return intrinsics.get(methodRef);
     }
 
-    private Method putIntrinsic(MethodRef methodRef, Method m) {
+    private Method putIntrinsic(MethodKey methodRef, Method m) {
         return intrinsics.putIfAbsent(methodRef, m);
-    }
-
-    private static final class MethodRef {
-
-        private final Symbol<Type> clazz;
-        private final Symbol<Name> methodName;
-        private final Symbol<Signature> signature;
-        private final int hash;
-
-        MethodRef(Method m, Symbol<Signature> signature) {
-            this.clazz = m.getDeclaringKlass().getType();
-            this.methodName = m.getName();
-            this.signature = signature;
-            this.hash = Objects.hash(clazz, methodName, signature);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null || getClass() != obj.getClass()) {
-                return false;
-            }
-            MethodRef other = (MethodRef) obj;
-            return Objects.equals(clazz, other.clazz) &&
-                            Objects.equals(methodName, other.methodName) &&
-                            Objects.equals(signature, other.signature);
-        }
-
-        @Override
-        public int hashCode() {
-            return hash;
-        }
-
-        @Override
-        public String toString() {
-            return TypeSymbols.binaryName(clazz) + "#" + methodName + signature;
-        }
-
     }
 
     public enum PolySigIntrinsics {

@@ -32,10 +32,10 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -65,10 +65,14 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
+import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -80,6 +84,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.word.Word;
+
 @InternalVMMethod
 public class JavaMainWrapper {
     /*
@@ -90,8 +96,12 @@ public class JavaMainWrapper {
 
     private static UnsignedWord argvLength = Word.zero();
 
-    public static class JavaMainSupport {
-
+    /**
+     * In a layered build the {@link JavaMainSupport} is installed in the last layer. However, code
+     * that uses it may be compiled as part of the base layer, e.g., such as
+     * {@link CEntryPointSnippets}.
+     */
+    public static class JavaMainSupport implements ApplicationLayerOnlyImageSingleton, UnsavedSingleton {
         private final MethodHandle javaMainHandle;
         private final MethodHandle javaMainClassCtorHandle;
         final String javaMainClassName;
@@ -157,6 +167,10 @@ public class JavaMainWrapper {
             return Collections.emptyList();
         }
 
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        }
     }
 
     public static void invokeMain(String[] args) throws Throwable {
@@ -189,6 +203,7 @@ public class JavaMainWrapper {
      * Determines whether instance main methodes are enabled. See JDK-8306112: Implementation of JEP
      * 445: Unnamed Classes and Instance Main Methods (Preview).
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean instanceMainMethodSupported() {
         var previewFeature = ReflectionUtil.lookupClass(true, "jdk.internal.misc.PreviewFeatures");
         try {
@@ -216,6 +231,11 @@ public class JavaMainWrapper {
                  * the startup hooks after setting all option values.
                  */
                 VMRuntime.initialize();
+            }
+
+            if (SubstrateOptions.PrintVMInfoAndExit.getValue()) {
+                printVmInfo();
+                return 0;
             }
 
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
@@ -436,6 +456,12 @@ public class JavaMainWrapper {
             throw new UnsupportedOperationException("Argument vector support not available");
         }
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
+    }
+
+    private static void printVmInfo() {
+        VM vm = ImageSingletons.lookup(VM.class);
+        System.out.println(vm.formattedVmVersion);
+        System.out.println(vm.formattedJdkVersion);
     }
 
     private static final class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {

@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.TYPE})
-@interface Substitution {
+public @interface Substitution {
     /**
      * Substituted method name.
      *
@@ -71,25 +71,23 @@ import java.lang.annotation.Target;
      */
     boolean hasReceiver() default false;
 
+    /**
+     * If method or class names change across versions, a {@link SubstitutionNamesProvider} can be
+     * specified to substitute for multiple cases at once.
+     * <p>
+     * Overrides the value of {@link #methodName()}.
+     */
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 
-    Class<? extends VersionFilter> versionFilter() default VersionFilter.NoFilter.class;
+    /**
+     * Some substitution should happen only for a given guest java version, or even iff an option is
+     * specified. this method allows to conditionally substitute based on the language.
+     */
+    Class<? extends LanguageFilter> languageFilter() default LanguageFilter.AlwaysValid.class;
 
     /**
-     * If the substitution is trivial.
-     *
-     * <p>
-     * Trivial methods are considered part of the caller and will be inlined whenever possible (even
-     * if inlining is disabled).
-     * </p>
-     *
-     * Inlining a trivial method should not increase code size compared to the call, in general
-     * trivial methods should:
-     * <ul>
-     * <li>Be reasonably small</li>
-     * <li>Not contain guest calls (leaf method)</li>
-     * <li>Not contain loops</li>
-     * </ul>
+     * Collects marker interfaces.
      */
-    boolean isTrivial() default false;
+    byte[] flags() default {};
+
 }

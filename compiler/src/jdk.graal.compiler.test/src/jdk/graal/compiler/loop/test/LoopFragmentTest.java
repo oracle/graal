@@ -61,7 +61,7 @@ public class LoopFragmentTest extends GraalCompilerTest {
         // Loops might be optimizable after partial unrolling
         boolean seenLoop = false;
         for (LoopBeginNode loop : loops) {
-            if (loop.isStripMinedOuter()) {
+            if (loop.isAnyStripMinedOuter()) {
                 continue;
             }
             seenLoop = true;

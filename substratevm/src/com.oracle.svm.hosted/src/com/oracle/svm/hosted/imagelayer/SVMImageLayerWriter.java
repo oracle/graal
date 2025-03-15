@@ -321,8 +321,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     public void persistAnalysisInfo() {
-        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
-        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticObjectFields());
+        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
 
         snapshotBuilder.setStaticPrimitiveFieldsConstantId(ImageHeapConstant.getConstantID(staticPrimitiveFields));
         snapshotBuilder.setStaticObjectFieldsConstantId(ImageHeapConstant.getConstantID(staticObjectFields));
@@ -631,7 +631,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Parameter[] params = member.getParameters();
         TextList.Builder atb = b.initArgumentTypeNames(params.length);
         for (int i = 0; i < params.length; i++) {
-            atb.set(i, new Text.Reader(params[i].getName()));
+            atb.set(i, new Text.Reader(params[i].getType().getName()));
         }
     }
 
@@ -810,9 +810,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             Relinking.Builder relinkingBuilder = builder.getObject().getRelinking();
             int id = ImageHeapConstant.getConstantID(imageHeapConstant);
             ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
+            boolean tryStaticFinalFieldRelink = true;
             if (type instanceof AnalysisType analysisType) {
                 relinkingBuilder.initClassConstant().setTypeId(analysisType.getId());
                 constantsToRelink.add(id);
+                tryStaticFinalFieldRelink = false;
             } else if (clazz.equals(String.class)) {
                 StringConstant.Builder stringConstantBuilder = relinkingBuilder.initStringConstant();
                 String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
@@ -822,6 +824,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                      */
                     stringConstantBuilder.setValue(value);
                     constantsToRelink.add(id);
+                    tryStaticFinalFieldRelink = false;
                 }
             } else if (Enum.class.isAssignableFrom(clazz)) {
                 EnumConstant.Builder enumBuilder = relinkingBuilder.initEnumConstant();
@@ -829,7 +832,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 enumBuilder.setEnumClass(value.getDeclaringClass().getName());
                 enumBuilder.setEnumName(value.name());
                 constantsToRelink.add(id);
-            } else if (shouldRelinkConstant(imageHeapConstant) && imageHeapConstant.getOrigin() != null) {
+                tryStaticFinalFieldRelink = false;
+            }
+            if (tryStaticFinalFieldRelink && shouldRelinkConstant(imageHeapConstant) && imageHeapConstant.getOrigin() != null) {
                 AnalysisField field = imageHeapConstant.getOrigin();
                 if (shouldRelinkField(field)) {
                     Relinking.FieldConstant.Builder fieldConstantBuilder = relinkingBuilder.initFieldConstant();

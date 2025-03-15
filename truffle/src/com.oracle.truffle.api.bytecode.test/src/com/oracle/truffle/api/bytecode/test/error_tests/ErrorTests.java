@@ -40,7 +40,13 @@
  */
 package com.oracle.truffle.api.bytecode.test.error_tests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Set;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -972,6 +978,291 @@ public class ErrorTests {
             public boolean fromInt(int x) {
                 return x != 0;
             }
+        }
+    }
+
+    @ExpectError("An operation with @Variadic return value was specified but no operation takes @Variadic operands. Specify at least one operation that allows a @Variadic number of operands or remove the annotation.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract static class InvalidVarargsReturnTest1 extends RootNode implements BytecodeRootNode {
+        protected InvalidVarargsReturnTest1(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Variadic
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract static class InvalidVarargsReturnTest2 extends RootNode implements BytecodeRootNode {
+        protected InvalidVarargsReturnTest2(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @ExpectError("@Variadic annotated operations must return Object[] for all specializations.")
+        @Variadic
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object doDefault() {
+                return null;
+            }
+        }
+
+        @Operation
+        public static final class VariadicsArgument {
+            @Specialization
+            public static void doDefault(@Variadic Object[] args) {
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract static class InvalidVarargsReturnTest3 extends RootNode implements BytecodeRootNode {
+        protected InvalidVarargsReturnTest3(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @ExpectError("@Variadic.startOffset is not supported for variadic return specifications. It is supported for variadic operands only.")
+        @Variadic(startOffset = 0)
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract static class InvalidVarargsOffsetTest1 extends RootNode implements BytecodeRootNode {
+        protected InvalidVarargsOffsetTest1(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+
+            public static Object[] doDefault(
+                            @ExpectError("Variadic startOffset must be positive.") //
+                            @Variadic(startOffset = -1) Object[] arg) {
+                return null;
+            }
+        }
+    }
+
+    @ExpectError("The variadic stack limit must be greater than 1.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "1")
+    public abstract static class InvalidVarargsLimitTest1 extends RootNode implements BytecodeRootNode {
+        protected InvalidVarargsLimitTest1(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @ExpectError("The variadic stack limit must be a power of 2.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "3")
+    public abstract static class InvalidVarargsLimitTest2 extends RootNode implements BytecodeRootNode {
+        protected InvalidVarargsLimitTest2(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @ExpectError("Invalid variadic stack limit specified. Must return 'int' but returned 'String'")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "INVALID")
+    public abstract static class InvalidVarargsLimitTest3 extends RootNode implements BytecodeRootNode {
+        static final String INVALID = "";
+
+        protected InvalidVarargsLimitTest3(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @ExpectError("Invalid variadic stack limit specified. Must return 'int' but returned 'String'")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "invalid()")
+    public abstract static class InvalidVarargsLimitTest4 extends RootNode implements BytecodeRootNode {
+        static final String invalid() {
+            return "";
+        }
+
+        protected InvalidVarargsLimitTest4(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @ExpectError("Error parsing expression 'invalid()': The method invalid is undefined for the enclosing scope.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "invalid()")
+    public abstract static class InvalidVarargsLimitTest5 extends RootNode implements BytecodeRootNode {
+        final int invalid() {
+            return 42;
+        }
+
+        protected InvalidVarargsLimitTest5(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @ExpectError("The variadic stack limit must be smaller or equal to Short.MAX_VALUE.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "32768")
+    public abstract static class InvalidVarargsLimitTest9 extends RootNode implements BytecodeRootNode {
+
+        protected InvalidVarargsLimitTest9(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "invalidDynamicValue()")
+    public abstract static class InvalidVarargsLimitTest6 extends RootNode implements BytecodeRootNode {
+        static final int invalidDynamicValue() {
+            return 41;
+        }
+
+        protected InvalidVarargsLimitTest6(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @Test
+    public void testInvalidVarargsLimitTest6() {
+        // should trigger class loading
+        Error e = Assert.assertThrows(Error.class, () -> InvalidVarargsLimitTest6Gen.newConfigBuilder());
+        if (e instanceof ExceptionInInitializerError ex) {
+            assertTrue(e.getCause() instanceof IllegalStateException);
+            assertEquals("The variadic stack limit must be a power of 2.", ex.getCause().getMessage());
+        } else if (e instanceof NoClassDefFoundError ex) {
+            // triggering if already failed once
+            // here mostly for robustness
+        } else {
+            throw e;
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "invalidDynamicValue()")
+    public abstract static class InvalidVarargsLimitTest7 extends RootNode implements BytecodeRootNode {
+        static final int invalidDynamicValue() {
+            return -1;
+        }
+
+        protected InvalidVarargsLimitTest7(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @Test
+    public void testInvalidVarargsLimitTest7() {
+        // should trigger class loading
+        Error e = Assert.assertThrows(Error.class, () -> InvalidVarargsLimitTest7Gen.newConfigBuilder());
+        if (e instanceof ExceptionInInitializerError ex) {
+            assertTrue(e.getCause() instanceof IllegalStateException);
+            assertEquals("The variadic stack limit must be greater than 1.", ex.getCause().getMessage());
+        } else if (e instanceof NoClassDefFoundError ex) {
+            // triggering if already failed once
+            // here mostly for robustness
+        } else {
+            throw e;
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class, variadicStackLimit = "invalidDynamicValue()")
+    public abstract static class InvalidVarargsLimitTest8 extends RootNode implements BytecodeRootNode {
+        static final int invalidDynamicValue() {
+            return Short.MAX_VALUE + 1;
+        }
+
+        protected InvalidVarargsLimitTest8(ErrorLanguage language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class VariadicsReturn {
+            @Specialization
+            public static Object[] doDefault() {
+                return null;
+            }
+        }
+    }
+
+    @Test
+    public void testInvalidVarargsLimitTest8() {
+        // should trigger class loading
+        Error e = Assert.assertThrows(Error.class, () -> InvalidVarargsLimitTest8Gen.newConfigBuilder());
+        if (e instanceof ExceptionInInitializerError ex) {
+            assertTrue(e.getCause() instanceof IllegalStateException);
+            assertEquals("The variadic stack limit must be smaller or equal to Short.MAX_VALUE", ex.getCause().getMessage());
+        } else if (e instanceof NoClassDefFoundError ex) {
+            // triggering if already failed once
+            // here mostly for robustness
+        } else {
+            throw e;
         }
     }
 

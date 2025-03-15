@@ -1172,6 +1172,9 @@ public class SubstrateOptions {
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
 
+    @Option(help = "Print some VM information and exit.")//
+    public static final RuntimeOptionKey<Boolean> PrintVMInfoAndExit = new RuntimeOptionKey<>(false, Immutable);
+
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false, Immutable);
 
@@ -1313,22 +1316,8 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
-    @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    @Option(help = "Include all classes, methods and fields from the given packages", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPackage = new HostedOptionKey<>(
-                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
-
     @Option(help = "Include all classes, methods, fields, and resources from the class path", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeAllFromClassPath = new HostedOptionKey<>(false);
-
-    public static boolean includeAll() {
-        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromPackage.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
-    }
 
     @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
     public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);

@@ -22,10 +22,15 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 @FunctionalInterface
-public interface VersionFilter {
+public interface VersionFilter extends LanguageFilter {
+
+    default boolean isValidFor(EspressoLanguage language) {
+        return isValidFor(language.getJavaVersion());
+    }
 
     boolean isValidFor(JavaVersion version);
 

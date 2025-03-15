@@ -60,6 +60,7 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.LinkToNativeSupport;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -97,10 +98,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsFeature implements InternalFeature {
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
-                    "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64"},
+                    "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64", "jdk.vm.ci.aarch64"},
                     "java.base", new String[]{
                                     "jdk.internal.foreign",
                                     "jdk.internal.foreign.abi",
+                                    "jdk.internal.foreign.abi.aarch64",
+                                    "jdk.internal.foreign.abi.aarch64.macos",
+                                    "jdk.internal.foreign.abi.aarch64.linux",
                                     "jdk.internal.foreign.abi.x64",
                                     "jdk.internal.foreign.abi.x64.sysv",
                                     "jdk.internal.foreign.abi.x64.windows"});
@@ -218,7 +222,12 @@ public class ForeignFunctionsFeature implements InternalFeature {
             return false;
         }
         UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "Support for the Foreign Function and Memory API is available only with JDK 22 and later.");
-        UserError.guarantee(SubstrateUtil.getArchitectureName().contains("amd64"), "Support for the Foreign Function and Memory API is currently available only on the AMD64 architecture.");
+        boolean isLinuxAmd64 = OS.LINUX.isCurrent() && SubstrateUtil.getArchitectureName().contains("amd64");
+        boolean isWindowsAmd64 = OS.WINDOWS.isCurrent() && SubstrateUtil.getArchitectureName().contains("amd64");
+        boolean isDarwinAArch64 = OS.DARWIN.isCurrent() && SubstrateUtil.getArchitectureName().contains("aarch64");
+        boolean isLinuxAArch64 = OS.LINUX.isCurrent() && SubstrateUtil.getArchitectureName().contains("aarch64");
+        UserError.guarantee(isLinuxAmd64 || isWindowsAmd64 || isDarwinAArch64 || isLinuxAArch64,
+                        "Support for the Foreign Function and Memory API is currently available on Linux AMD64, Windows AMD64, Darwin AArch64 or Linux AArch64.");
         UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
         return true;
     }
@@ -422,12 +431,43 @@ public class ForeignFunctionsFeature implements InternalFeature {
         return created;
     }
 
+    private static final String JLI_PREFIX = "java.lang.invoke.";
+
+    /**
+     * List of (generated) classes that provide accessor methods for memory segments. Those methods
+     * are referenced with {@code java.lang.invoke.SegmentVarHandle}. Unfortunately, the classes
+     * containing the methods are not subclasses of {@link java.lang.invoke.VarHandle} and so the
+     * automatic registration for reflective access (see
+     * {@link com.oracle.svm.hosted.methodhandles.MethodHandleFeature#beforeAnalysis}) does not
+     * trigger.
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/java/lang/invoke/VarHandles.java#L313-L344") //
+    private static final List<String> VAR_HANDLE_SEGMENT_ACCESSORS = List.of(
+                    "VarHandleSegmentAsBooleans",
+                    "VarHandleSegmentAsBytes",
+                    "VarHandleSegmentAsShorts",
+                    "VarHandleSegmentAsChars",
+                    "VarHandleSegmentAsInts",
+                    "VarHandleSegmentAsLongs",
+                    "VarHandleSegmentAsFloats",
+                    "VarHandleSegmentAsDoubles");
+
+    private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
+        assert subtype.getPackage().getName().equals(JLI_PREFIX.substring(0, JLI_PREFIX.length() - 1));
+        RuntimeReflection.register(subtype.getDeclaredMethods());
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         sealed = true;
 
         AbiUtils.singleton().checkLibrarySupport();
+
+        for (String simpleName : VAR_HANDLE_SEGMENT_ACCESSORS) {
+            Class<?> varHandleSegmentAsXClass = ReflectionUtil.lookupClass(JLI_PREFIX + simpleName);
+            access.registerSubtypeReachabilityHandler(ForeignFunctionsFeature::registerVarHandleMethodsForReflection, varHandleSegmentAsXClass);
+        }
 
         /*
          * Specializing an adapter would define a new class at runtime, which is not allowed in

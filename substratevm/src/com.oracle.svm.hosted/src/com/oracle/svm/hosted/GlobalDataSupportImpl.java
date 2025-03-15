@@ -26,12 +26,13 @@ package com.oracle.svm.hosted;
 
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.c.GlobalLongSupplier;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-
 import org.graalvm.nativeimage.libgraal.impl.GlobalDataSupport;
 
-@AutomaticallyRegisteredImageSingleton(GlobalDataSupport.class)
+import com.oracle.svm.core.c.GlobalLongSupplier;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.libgraal.LibGraalBuild;
+
+@AutomaticallyRegisteredImageSingleton(value = GlobalDataSupport.class, onlyWith = LibGraalBuild.class)
 public final class GlobalDataSupportImpl implements GlobalDataSupport {
     @Override
     public Supplier<Long> createGlobal(long initialValue) {

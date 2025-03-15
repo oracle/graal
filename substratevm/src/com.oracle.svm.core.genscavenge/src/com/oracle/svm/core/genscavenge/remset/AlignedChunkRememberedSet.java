@@ -37,12 +37,12 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
-import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
@@ -146,7 +146,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
+    public static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
@@ -200,7 +200,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
-    private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, GreyToBlackObjectVisitor visitor) {
+    private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, UninterruptibleObjectVisitor visitor) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         UnsignedWord index = CardTable.memoryOffsetToIndex(start.subtract(objectsStart));

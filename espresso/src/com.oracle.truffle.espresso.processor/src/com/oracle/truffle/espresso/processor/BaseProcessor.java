@@ -210,6 +210,10 @@ public abstract class BaseProcessor extends AbstractProcessor {
      *             {@code type}
      */
     public static <T> T getAnnotationValue(AnnotationMirror annotation, String name, Class<T> type) {
+        return getAnnotationValue(annotation, name, type, true);
+    }
+
+    public static <T> T getAnnotationValue(AnnotationMirror annotation, String name, Class<T> type, boolean orDefault) {
         ExecutableElement valueMethod = null;
         for (ExecutableElement method : ElementFilter.methodsIn(annotation.getAnnotationType().asElement().getEnclosedElements())) {
             if (method.getSimpleName().toString().equals(name)) {
@@ -223,8 +227,12 @@ public abstract class BaseProcessor extends AbstractProcessor {
         }
 
         AnnotationValue value = annotation.getElementValues().get(valueMethod);
-        if (value == null) {
+        if (value == null && orDefault) {
             value = valueMethod.getDefaultValue();
+        }
+
+        if (value == null) {
+            return null;
         }
 
         return type.cast(value.getValue());

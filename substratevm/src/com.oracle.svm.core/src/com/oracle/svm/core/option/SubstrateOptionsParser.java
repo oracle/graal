@@ -39,9 +39,9 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.common.option.IntentionallyUnsupportedOptions;
 import com.oracle.svm.common.option.UnsupportedOptionClassException;
 import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.options.OptionDescriptor;
@@ -63,8 +63,7 @@ public class SubstrateOptionsParser {
         try {
             return CommonOptionParser.parseOption(options, isHosted, option, valuesMap, optionPrefix, booleanOptionFormat);
         } catch (UnsupportedOptionClassException e) {
-            VMError.shouldNotReachHere(e.getMessage());
-            return null;
+            throw new AssertionError("Should not reach here", e);
         }
     }
 
@@ -92,7 +91,8 @@ public class SubstrateOptionsParser {
         if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> {
                 OptionKey<?> key = d.getOptionKey();
-                return optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
+                return !IntentionallyUnsupportedOptions.contains(key) &&
+                                optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
             }, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
             throw new InterruptImageBuilding("");
         }
@@ -160,7 +160,6 @@ public class SubstrateOptionsParser {
      * @return recommendation for setting a option value (e.g., for option 'Name' and value 'file'
      *         it returns "-H:Name=file")
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value) {
         return commandArgument(option, value, null);
     }
@@ -175,7 +174,6 @@ public class SubstrateOptionsParser {
      * @return recommendation for setting a option value (e.g., for option 'Name' and value 'file'
      *         it returns "-H:Name=file")
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value, String apiOptionName) {
         /* Ensure descriptor is loaded */
         OptionDescriptor optionDescriptor = option.loadDescriptor();
@@ -193,7 +191,9 @@ public class SubstrateOptionsParser {
         }
 
         if (optionDescriptor.getOptionValueType() == Boolean.class) {
-            VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
+            if (!value.equals("+") && !value.equals("-")) {
+                throw new AssertionError("Boolean option value can be only + or -");
+            }
             for (APIOption apiOption : apiOptions) {
                 String selected = selectVariant(apiOption, apiOptionName);
                 if (selected != null) {
@@ -240,12 +240,10 @@ public class SubstrateOptionsParser {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value, String apiOptionName, boolean escape, boolean newLine) {
         return formatCommandArgument(commandArgument(option, value, apiOptionName), escape, newLine);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value, boolean escape, boolean newLine) {
         return formatCommandArgument(commandArgument(option, value), escape, newLine);
     }
@@ -262,7 +260,9 @@ public class SubstrateOptionsParser {
     }
 
     private static String selectVariant(APIOption apiOption, String apiOptionName) {
-        VMError.guarantee(apiOption.name().length > 0, "APIOption requires at least one name");
+        if (apiOption.name().length <= 0) {
+            throw new AssertionError("APIOption requires at least one name");
+        }
         if (!apiOption.deprecated().equals("")) {
             return null; /* Never select deprecated API options. */
         }

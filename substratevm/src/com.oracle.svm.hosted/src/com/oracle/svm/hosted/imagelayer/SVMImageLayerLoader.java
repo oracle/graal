@@ -1157,9 +1157,15 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!analysisField.isStatic() && (isAccessed || isRead)) {
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
-        registerFlag(isAccessed, debug -> analysisField.registerAsAccessed(PERSISTED));
+        registerFlag(isAccessed, debug -> {
+            analysisField.injectDeclaredType();
+            analysisField.registerAsAccessed(PERSISTED);
+        });
         registerFlag(isRead, debug -> analysisField.registerAsRead(PERSISTED));
-        registerFlag(fieldData.getIsWritten(), debug -> analysisField.registerAsWritten(PERSISTED));
+        registerFlag(fieldData.getIsWritten(), debug -> {
+            analysisField.injectDeclaredType();
+            analysisField.registerAsWritten(PERSISTED);
+        });
         registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
     }
 
@@ -1497,6 +1503,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             }
             if (objectOffset != -1) {
                 objectOffsets.put(ImageHeapConstant.getConstantID(heapObj), objectOffset);
+                heapObj.markWrittenInPreviousLayer();
             }
             return heapObj;
         });

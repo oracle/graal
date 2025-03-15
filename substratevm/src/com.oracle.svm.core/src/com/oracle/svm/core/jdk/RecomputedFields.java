@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -257,18 +256,6 @@ final class Target_java_util_concurrent_ForkJoinPool {
          * provides a convenient place to ensure that the common pool is initialized.
          */
         return ForkJoinPoolCommonAccessor.get().getParallelism();
-    }
-
-    @Alias //
-    private static Unsafe U;
-
-    @Alias //
-    private static long POOLIDS;
-
-    @Substitute
-    private static int getAndAddPoolIds(int x) {
-        // Original method wrongly uses ForkJoinPool.class instead of calling U.staticFieldBase()
-        return U.getAndAddInt(StaticFieldsSupport.getStaticPrimitiveFields(), POOLIDS, x);
     }
 
     @Alias //

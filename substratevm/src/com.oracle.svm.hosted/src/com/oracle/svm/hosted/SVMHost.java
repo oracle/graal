@@ -238,7 +238,7 @@ public class SVMHost extends HostVM {
         }
         layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        if (SubstrateOptions.includeAll()) {
+        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             initializeExcludedFields();
         }
 
@@ -931,6 +931,15 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(Counter.Group.class, "enabled"));
         /* This field can contain a reference to a Thread, which is not allowed in the heap */
         excludedFields.add(ReflectionUtil.lookupField(NativeLibraries.class, "nativeLibraryLockMap"));
+    }
+
+    @Override
+    public boolean sortFields() {
+        /*
+         * If building layered images sort the fields by kind and name to ensure stable order.
+         * Sorting fields in general may lead to some issues. (GR-62599)
+         */
+        return ImageLayerBuildingSupport.buildingImageLayer();
     }
 
     /**

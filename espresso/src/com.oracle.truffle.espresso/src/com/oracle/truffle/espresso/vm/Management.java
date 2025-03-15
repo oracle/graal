@@ -74,10 +74,10 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.State;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
@@ -639,7 +639,7 @@ public final class Management extends NativeEnv {
                     return ProcessHandle.current().pid();
                 case JMM_THREAD_DAEMON_COUNT:
                     int daemonCount = 0;
-                    ThreadsAccess threadAccess = getContext().getThreadAccess();
+                    ThreadAccess threadAccess = getContext().getThreadAccess();
                     for (StaticObject t : getContext().getActiveThreads()) {
                         if (threadAccess.isDaemon(t)) {
                             ++daemonCount;

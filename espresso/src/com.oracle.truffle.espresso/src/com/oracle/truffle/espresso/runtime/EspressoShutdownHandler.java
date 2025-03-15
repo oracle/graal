@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 
 final class EspressoShutdownHandler extends ContextAccessImpl {
 
@@ -352,9 +352,9 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
 
     private static class ManagedThreadsIterable implements Iterable<StaticObject> {
         private final StaticObject[] thrds;
-        private final ThreadsAccess access;
+        private final ThreadAccess access;
 
-        ManagedThreadsIterable(StaticObject[] thrds, ThreadsAccess access) {
+        ManagedThreadsIterable(StaticObject[] thrds, ThreadAccess access) {
             this.thrds = thrds;
             this.access = access;
         }
@@ -366,11 +366,11 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
     }
 
     private static class ManagedThreadsIterator implements Iterator<StaticObject> {
-        private final ThreadsAccess access;
+        private final ThreadAccess access;
         private final StaticObject[] thrds;
         int pos;
 
-        ManagedThreadsIterator(StaticObject[] thrds, ThreadsAccess access) {
+        ManagedThreadsIterator(StaticObject[] thrds, ThreadAccess access) {
             this.thrds = thrds;
             this.access = access;
             this.pos = -1;

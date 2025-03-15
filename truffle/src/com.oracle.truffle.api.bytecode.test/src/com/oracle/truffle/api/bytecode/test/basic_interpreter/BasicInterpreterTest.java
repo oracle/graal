@@ -1715,10 +1715,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.constant",
                         "c.CreateClosure",
                         "load.argument",
-                        "load.variadic_1",
+                        "create.variadic",
                         "c.Invoke",
                         "pop",
-                        "load.local$Long$unboxed", // load BE'd
+                        "load.local$Long$unboxed",
                         "load.constant$Long",
                         "c.Add$AddLongs",
                         "return");
@@ -1733,7 +1733,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.constant",
                         "c.CreateClosure",
                         "load.argument",
-                        "load.variadic_1",
+                        "create.variadic",
                         "c.Invoke",
                         "pop$generic",
                         "load.local$Long$unboxed", // load is not affected by long store.
@@ -1751,7 +1751,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.constant",
                         "c.CreateClosure",
                         "load.argument",
-                        "load.variadic_1",
+                        "create.variadic",
                         "c.Invoke",
                         "pop$generic",
                         "load.local$generic", // load unquickens.

@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.Set;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
@@ -44,6 +43,7 @@ import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -76,6 +76,7 @@ import com.oracle.svm.jdwp.resident.JDWPBridgeImpl;
 import com.oracle.svm.jdwp.resident.ThreadStartDeathSupport;
 import com.oracle.svm.jdwp.resident.api.StackframeDescriptor;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -1323,8 +1324,8 @@ public final class ResidentJDWP implements JDWP {
             assert typeOrReceiver instanceof InterpreterResolvedJavaType;
             // typeOrReceiver is ignored, all static fields are grouped together.
             receiver = (fieldKind.isPrimitive() || field.getType().isWordType())
-                            ? StaticFieldsSupport.getStaticPrimitiveFields()
-                            : StaticFieldsSupport.getStaticObjectFields();
+                            ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
+                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
             receiver = typeOrReceiver;
             assert receiver != null;
@@ -1763,8 +1764,8 @@ public final class ResidentJDWP implements JDWP {
             assert typeOrReceiver instanceof InterpreterResolvedJavaType;
             // typeOrReceiver is ignored, all static fields are grouped together.
             receiver = (fieldKind.isPrimitive() || field.getType().isWordType())
-                            ? StaticFieldsSupport.getStaticPrimitiveFields()
-                            : StaticFieldsSupport.getStaticObjectFields();
+                            ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
+                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
             receiver = typeOrReceiver;
             assert receiver != null;

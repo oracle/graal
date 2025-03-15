@@ -1925,5 +1925,24 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return null;
     }
 
+    @Override
+    public Method lookupVTableEntry(int vtableIndex) {
+        ObjectKlass k;
+        if (this instanceof ObjectKlass) {
+            k = (ObjectKlass) this;
+        } else if (this instanceof ArrayKlass) {
+            k = getMeta().java_lang_Object;
+        } else {
+            // primitive.
+            return null;
+        }
+        assert !k.isInterface();
+        Method.MethodVersion[] table = k.getVTable();
+        if (vtableIndex >= table.length) {
+            return null;
+        }
+        return table[vtableIndex].getMethod();
+    }
+
     // endregion TypeAccess impl
 }

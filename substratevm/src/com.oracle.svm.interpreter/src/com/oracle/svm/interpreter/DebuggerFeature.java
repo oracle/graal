@@ -33,6 +33,7 @@ import static com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl.toHexS
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -73,6 +74,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.code.CompileQueue;
@@ -100,6 +102,7 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -146,6 +149,7 @@ public class DebuggerFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(
+                        DeoptimizationFeature.class,
                         InterpreterFeature.class,
                         IdentityMethodAddressResolverFeature.class);
     }
@@ -374,7 +378,7 @@ public class DebuggerFeature implements InternalFeature {
         for (HostedType hType : hUniverse.getTypes()) {
             AnalysisType aType = hType.getWrapped();
             if (aType.isReachable()) {
-                iUniverse.type(aType);
+                iUniverse.getOrCreateType(aType);
                 for (ResolvedJavaField staticField : aType.getStaticFields()) {
                     if (staticField instanceof AnalysisField analysisStaticField && !analysisStaticField.isWritten()) {
                         /*
@@ -388,7 +392,7 @@ public class DebuggerFeature implements InternalFeature {
                         if (staticField.isStatic() && staticField.isSynthetic() && staticField.getName().startsWith(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
                             Class<?> declaringClass = aType.getJavaClass();
                             boolean value = !RuntimeAssertionsSupport.singleton().desiredAssertionStatus(declaringClass);
-                            InterpreterResolvedJavaField field = iUniverse.field(staticField);
+                            InterpreterResolvedJavaField field = iUniverse.getOrCreateField(staticField);
                             JavaConstant javaConstant = iUniverse.constant(JavaConstant.forBoolean(value));
                             BuildTimeInterpreterUniverse.setUnmaterializedConstantValue(field, javaConstant);
                             field.markAsArtificiallyReachable();
@@ -411,36 +415,27 @@ public class DebuggerFeature implements InternalFeature {
                     SubstrateCompilationDirectives.singleton().registerForcedCompilation(hMethod);
                     needsMethodBody = false;
                 }
-                BuildTimeInterpreterUniverse.singleton().method(aMethod, needsMethodBody, aMetaAccess);
+
+                if (needsMethodBody) {
+                    BuildTimeInterpreterUniverse.singleton().getOrCreateMethodWithMethodBody(aMethod, aMetaAccess);
+                } else {
+                    BuildTimeInterpreterUniverse.singleton().getOrCreateMethod(aMethod);
+                }
             }
         }
 
         for (HostedField hField : accessImpl.getUniverse().getFields()) {
             AnalysisField aField = hField.getWrapped();
             if (aField.isReachable()) {
-                BuildTimeInterpreterUniverse.singleton().field(aField);
+                BuildTimeInterpreterUniverse.singleton().getOrCreateField(aField);
             }
         }
 
         iUniverse.purgeUnreachable(hMetaAccess);
 
+        Field vtableHolderField = ReflectionUtil.lookupField(InterpreterResolvedObjectType.class, "vtableHolder");
         for (HostedType hostedType : hUniverse.getTypes()) {
-            AnalysisType analysisType = hostedType.getWrapped();
-            InterpreterResolvedJavaType iType = iUniverse.getType(analysisType);
-
-            if (!(iType instanceof InterpreterResolvedObjectType objectType)) {
-                continue;
-            }
-            if (hostedType.getVTable().length == 0) {
-                continue;
-            }
-
-            InterpreterResolvedJavaMethod[] iVTable = new InterpreterResolvedJavaMethod[hostedType.getVTable().length];
-
-            for (int i = 0; i < iVTable.length; i++) {
-                iVTable[i] = iUniverse.getMethod(hostedType.getVTable()[i].getWrapped());
-            }
-            objectType.setVtable(iVTable);
+            iUniverse.mirrorSVMVTable(hostedType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
         }
 
         HostedMethod methodNotCompiledHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);

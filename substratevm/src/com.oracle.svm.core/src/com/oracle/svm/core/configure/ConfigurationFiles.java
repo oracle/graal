@@ -34,6 +34,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -213,6 +216,7 @@ public final class ConfigurationFiles {
         return resources;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static UserError.UserException foundLockFile(String container) {
         throw UserError.abort("%s contains file '%s', which means an agent is currently writing to it." +
                         "The agent must finish execution before its generated configuration can be used to build a native image." +

@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.common.option.CommonOptionParser;
+import com.oracle.svm.common.option.IntentionallyUnsupportedOptions;
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.SubstrateOptions;
@@ -267,7 +268,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                                             defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra(), apiAnnotation.launcherOption()));
         }
 
-        allOptionNames.put(optionDescriptor.getName(), new HostedOptionInfo(optionDescriptor.getStability() == OptionStability.STABLE, isBooleanOption));
+        if (!IntentionallyUnsupportedOptions.contains(optionDescriptor.getOptionKey())) {
+            allOptionNames.put(optionDescriptor.getName(), new HostedOptionInfo(optionDescriptor.getStability() == OptionStability.STABLE, isBooleanOption));
+        }
     }
 
     private static void extractPathOption(String optionPrefix, OptionDescriptor optionDescriptor, Map<String, PathsOptionInfo> pathOptions) {

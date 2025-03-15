@@ -24,6 +24,16 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1R;
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_2R;
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_3R;
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R;
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.ST1_MULTIPLE_4R;
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.HalfReg;
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
 import static jdk.vm.ci.aarch64.AArch64.v10;
@@ -57,16 +67,6 @@ import static jdk.vm.ci.aarch64.AArch64.v7;
 import static jdk.vm.ci.aarch64.AArch64.v8;
 import static jdk.vm.ci.aarch64.AArch64.v9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1R;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_2R;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_3R;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.ST1_MULTIPLE_4R;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
-import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.HalfReg;
-import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -75,20 +75,19 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
+import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/642816538fbaa5b74c6beb8a14d1738cdde28c10/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4066-L4301",
-          sha1 = "5c54c70558239282f9d986f73b69b87e652af648")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/3230894bdd8ab4183b83ad4c942eb6acad4acce6/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4066-L4316",
+          sha1 = "6da66178e70a1b21529f53454bcb23aecb36b90d")
 // @formatter:on
 public final class AArch64SHA3Op extends AArch64LIRInstruction {
 
@@ -186,6 +185,86 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             0x8000000000008080L, 0x0000000080000001L, 0x8000000080008008L
             // @formatter:on
     }, 16);
+
+    public static void keccakRound(AArch64MacroAssembler masm, Register rscratch1) {
+        masm.neon.eor3VVVV(v29, v4, v9, v14);
+        masm.neon.eor3VVVV(v26, v1, v6, v11);
+        masm.neon.eor3VVVV(v28, v3, v8, v13);
+        masm.neon.eor3VVVV(v25, v0, v5, v10);
+        masm.neon.eor3VVVV(v27, v2, v7, v12);
+        masm.neon.eor3VVVV(v29, v29, v19, v24);
+        masm.neon.eor3VVVV(v26, v26, v16, v21);
+        masm.neon.eor3VVVV(v28, v28, v18, v23);
+        masm.neon.eor3VVVV(v25, v25, v15, v20);
+        masm.neon.eor3VVVV(v27, v27, v17, v22);
+
+        masm.neon.rax1VVV(v30, v29, v26);
+        masm.neon.rax1VVV(v26, v26, v28);
+        masm.neon.rax1VVV(v28, v28, v25);
+        masm.neon.rax1VVV(v25, v25, v27);
+        masm.neon.rax1VVV(v27, v27, v29);
+
+        masm.neon.eorVVV(FullReg, v0, v0, v30);
+        masm.neon.xarVVVI(v29, v1, v25, (64 - 1));
+        masm.neon.xarVVVI(v1, v6, v25, (64 - 44));
+        masm.neon.xarVVVI(v6, v9, v28, (64 - 20));
+        masm.neon.xarVVVI(v9, v22, v26, (64 - 61));
+        masm.neon.xarVVVI(v22, v14, v28, (64 - 39));
+        masm.neon.xarVVVI(v14, v20, v30, (64 - 18));
+        masm.neon.xarVVVI(v31, v2, v26, (64 - 62));
+        masm.neon.xarVVVI(v2, v12, v26, (64 - 43));
+        masm.neon.xarVVVI(v12, v13, v27, (64 - 25));
+        masm.neon.xarVVVI(v13, v19, v28, (64 - 8));
+        masm.neon.xarVVVI(v19, v23, v27, (64 - 56));
+        masm.neon.xarVVVI(v23, v15, v30, (64 - 41));
+        masm.neon.xarVVVI(v15, v4, v28, (64 - 27));
+        masm.neon.xarVVVI(v28, v24, v28, (64 - 14));
+        masm.neon.xarVVVI(v24, v21, v25, (64 - 2));
+        masm.neon.xarVVVI(v8, v8, v27, (64 - 55));
+        masm.neon.xarVVVI(v4, v16, v25, (64 - 45));
+        masm.neon.xarVVVI(v16, v5, v30, (64 - 36));
+        masm.neon.xarVVVI(v5, v3, v27, (64 - 28));
+        masm.neon.xarVVVI(v27, v18, v27, (64 - 21));
+        masm.neon.xarVVVI(v3, v17, v26, (64 - 15));
+        masm.neon.xarVVVI(v25, v11, v25, (64 - 10));
+        masm.neon.xarVVVI(v26, v7, v26, (64 - 6));
+        masm.neon.xarVVVI(v30, v10, v30, (64 - 3));
+
+        masm.neon.bcaxVVVV(v20, v31, v22, v8);
+        masm.neon.bcaxVVVV(v21, v8, v23, v22);
+        masm.neon.bcaxVVVV(v22, v22, v24, v23);
+        masm.neon.bcaxVVVV(v23, v23, v31, v24);
+        masm.neon.bcaxVVVV(v24, v24, v8, v31);
+
+        masm.neon.ld1rV(FullReg, ElementSize.DoubleWord, v31,
+                        AArch64Address.createStructureImmediatePostIndexAddress(LD1R, FullReg, ElementSize.DoubleWord, rscratch1, 8));
+
+        masm.neon.bcaxVVVV(v17, v25, v19, v3);
+        masm.neon.bcaxVVVV(v18, v3, v15, v19);
+        masm.neon.bcaxVVVV(v19, v19, v16, v15);
+        masm.neon.bcaxVVVV(v15, v15, v25, v16);
+        masm.neon.bcaxVVVV(v16, v16, v3, v25);
+
+        masm.neon.bcaxVVVV(v10, v29, v12, v26);
+        masm.neon.bcaxVVVV(v11, v26, v13, v12);
+        masm.neon.bcaxVVVV(v12, v12, v14, v13);
+        masm.neon.bcaxVVVV(v13, v13, v29, v14);
+        masm.neon.bcaxVVVV(v14, v14, v26, v29);
+
+        masm.neon.bcaxVVVV(v7, v30, v9, v4);
+        masm.neon.bcaxVVVV(v8, v4, v5, v9);
+        masm.neon.bcaxVVVV(v9, v9, v6, v5);
+        masm.neon.bcaxVVVV(v5, v5, v30, v6);
+        masm.neon.bcaxVVVV(v6, v6, v4, v30);
+
+        masm.neon.bcaxVVVV(v3, v27, v0, v28);
+        masm.neon.bcaxVVVV(v4, v28, v1, v0);
+        masm.neon.bcaxVVVV(v0, v0, v2, v1);
+        masm.neon.bcaxVVVV(v1, v1, v27, v2);
+        masm.neon.bcaxVVVV(v2, v2, v28, v27);
+
+        masm.neon.eorVVV(FullReg, v0, v0, v31);
+    }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
@@ -298,7 +377,7 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             masm.cbz(32, blockSizeTail, labelRounds24Loop);
 
             masm.tbnz(blockSize, 5, labelSHAke128);
-            // block_size == 144, bit5 == 0, SHA3-244
+            // block_size == 144, bit5 == 0, SHA3-224
             masm.fldr(64, v28, AArch64Address.createImmediateAddress(64, IMMEDIATE_POST_INDEXED, buf, 8));
 
             masm.neon.eorVVV(HalfReg, v17, v17, v28);
@@ -332,83 +411,7 @@ public final class AArch64SHA3Op extends AArch64LIRInstruction {
             masm.bind(labelRounds24Loop);
             masm.sub(32, rscratch2, rscratch2, 1);
 
-            masm.neon.eor3VVVV(v29, v4, v9, v14);
-            masm.neon.eor3VVVV(v26, v1, v6, v11);
-            masm.neon.eor3VVVV(v28, v3, v8, v13);
-            masm.neon.eor3VVVV(v25, v0, v5, v10);
-            masm.neon.eor3VVVV(v27, v2, v7, v12);
-            masm.neon.eor3VVVV(v29, v29, v19, v24);
-            masm.neon.eor3VVVV(v26, v26, v16, v21);
-            masm.neon.eor3VVVV(v28, v28, v18, v23);
-            masm.neon.eor3VVVV(v25, v25, v15, v20);
-            masm.neon.eor3VVVV(v27, v27, v17, v22);
-
-            masm.neon.rax1VVV(v30, v29, v26);
-            masm.neon.rax1VVV(v26, v26, v28);
-            masm.neon.rax1VVV(v28, v28, v25);
-            masm.neon.rax1VVV(v25, v25, v27);
-            masm.neon.rax1VVV(v27, v27, v29);
-
-            masm.neon.eorVVV(FullReg, v0, v0, v30);
-            masm.neon.xarVVVI(v29, v1, v25, (64 - 1));
-            masm.neon.xarVVVI(v1, v6, v25, (64 - 44));
-            masm.neon.xarVVVI(v6, v9, v28, (64 - 20));
-            masm.neon.xarVVVI(v9, v22, v26, (64 - 61));
-            masm.neon.xarVVVI(v22, v14, v28, (64 - 39));
-            masm.neon.xarVVVI(v14, v20, v30, (64 - 18));
-            masm.neon.xarVVVI(v31, v2, v26, (64 - 62));
-            masm.neon.xarVVVI(v2, v12, v26, (64 - 43));
-            masm.neon.xarVVVI(v12, v13, v27, (64 - 25));
-            masm.neon.xarVVVI(v13, v19, v28, (64 - 8));
-            masm.neon.xarVVVI(v19, v23, v27, (64 - 56));
-            masm.neon.xarVVVI(v23, v15, v30, (64 - 41));
-            masm.neon.xarVVVI(v15, v4, v28, (64 - 27));
-            masm.neon.xarVVVI(v28, v24, v28, (64 - 14));
-            masm.neon.xarVVVI(v24, v21, v25, (64 - 2));
-            masm.neon.xarVVVI(v8, v8, v27, (64 - 55));
-            masm.neon.xarVVVI(v4, v16, v25, (64 - 45));
-            masm.neon.xarVVVI(v16, v5, v30, (64 - 36));
-            masm.neon.xarVVVI(v5, v3, v27, (64 - 28));
-            masm.neon.xarVVVI(v27, v18, v27, (64 - 21));
-            masm.neon.xarVVVI(v3, v17, v26, (64 - 15));
-            masm.neon.xarVVVI(v25, v11, v25, (64 - 10));
-            masm.neon.xarVVVI(v26, v7, v26, (64 - 6));
-            masm.neon.xarVVVI(v30, v10, v30, (64 - 3));
-
-            masm.neon.bcaxVVVV(v20, v31, v22, v8);
-            masm.neon.bcaxVVVV(v21, v8, v23, v22);
-            masm.neon.bcaxVVVV(v22, v22, v24, v23);
-            masm.neon.bcaxVVVV(v23, v23, v31, v24);
-            masm.neon.bcaxVVVV(v24, v24, v8, v31);
-
-            masm.neon.ld1rV(FullReg, ElementSize.DoubleWord, v31,
-                            AArch64Address.createStructureImmediatePostIndexAddress(LD1R, FullReg, ElementSize.DoubleWord, rscratch1, 8));
-
-            masm.neon.bcaxVVVV(v17, v25, v19, v3);
-            masm.neon.bcaxVVVV(v18, v3, v15, v19);
-            masm.neon.bcaxVVVV(v19, v19, v16, v15);
-            masm.neon.bcaxVVVV(v15, v15, v25, v16);
-            masm.neon.bcaxVVVV(v16, v16, v3, v25);
-
-            masm.neon.bcaxVVVV(v10, v29, v12, v26);
-            masm.neon.bcaxVVVV(v11, v26, v13, v12);
-            masm.neon.bcaxVVVV(v12, v12, v14, v13);
-            masm.neon.bcaxVVVV(v13, v13, v29, v14);
-            masm.neon.bcaxVVVV(v14, v14, v26, v29);
-
-            masm.neon.bcaxVVVV(v7, v30, v9, v4);
-            masm.neon.bcaxVVVV(v8, v4, v5, v9);
-            masm.neon.bcaxVVVV(v9, v9, v6, v5);
-            masm.neon.bcaxVVVV(v5, v5, v30, v6);
-            masm.neon.bcaxVVVV(v6, v6, v4, v30);
-
-            masm.neon.bcaxVVVV(v3, v27, v0, v28);
-            masm.neon.bcaxVVVV(v4, v28, v1, v0);
-            masm.neon.bcaxVVVV(v0, v0, v2, v1);
-            masm.neon.bcaxVVVV(v1, v1, v27, v2);
-            masm.neon.bcaxVVVV(v2, v2, v28, v27);
-
-            masm.neon.eorVVV(FullReg, v0, v0, v31);
+            keccakRound(masm, rscratch1);
 
             masm.cbnz(32, rscratch2, labelRounds24Loop);
 

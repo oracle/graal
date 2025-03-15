@@ -397,6 +397,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
+    public int getInstalledLayerNumber(Field field) {
+        VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
+
+        HostedField hostedField = hostedMetaAccess().lookupJavaField(field);
+        return hostedField.getInstalledLayerNum();
+    }
+
+    @Override
     public String getDeletionReason(Field reflectionField) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
         Delete annotation = AnnotationAccess.getAnnotation(field, Delete.class);

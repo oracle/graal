@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -61,8 +60,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
      * See class javadoc for rationale behind this 16G limit.
      */
     protected static final UnsignedWord MAXIMUM_HEAP_SIZE = Word.unsigned(16L * 1024L * 1024L * 1024L);
-
-    protected static final UnsignedWord MAXIMUM_EDEN_SIZE = Word.unsigned(4L * 1024L * 1024L * 1024L);
+    protected static final UnsignedWord MAXIMUM_YOUNG_SIZE = Word.unsigned(5L * 1024L * 1024L * 1024L);
 
     private UnsignedWord sizeBefore = Word.zero();
     private GCCause lastGCCause = null;
@@ -97,14 +95,13 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     }
 
     @Override
-    public UnsignedWord getMaximumHeapSize() {
-        return UnsignedUtils.min(super.getMaximumHeapSize(), MAXIMUM_HEAP_SIZE);
+    protected UnsignedWord getHeapSizeLimit() {
+        return UnsignedUtils.min(super.getHeapSizeLimit(), MAXIMUM_HEAP_SIZE);
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public UnsignedWord getMaximumEdenSize() {
-        return UnsignedUtils.min(super.getMaximumEdenSize(), MAXIMUM_EDEN_SIZE);
+    protected UnsignedWord getYoungSizeLimit(UnsignedWord maxHeap) {
+        return UnsignedUtils.min(super.getYoungSizeLimit(maxHeap), MAXIMUM_YOUNG_SIZE);
     }
 
     @Override

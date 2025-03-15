@@ -65,9 +65,13 @@ final class PanamaLibrary implements TruffleObject {
 
     private final SymbolLookup library;
 
+    @TruffleBoundary
+    private static SymbolLookup getDefaultLookup() {
+        return Linker.nativeLinker().defaultLookup();
+    }
+
     static PanamaLibrary createDefault() {
-        SymbolLookup lookup = Linker.nativeLinker().defaultLookup();
-        return new PanamaLibrary(lookup);
+        return new PanamaLibrary(getDefaultLookup());
     }
 
     static PanamaLibrary create(SymbolLookup library) {

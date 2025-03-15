@@ -111,6 +111,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
@@ -143,6 +144,7 @@ import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
@@ -435,7 +437,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-59683
         Module module = null;
 
-        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        // GR-59683: Setup interpreter metadata at run-time.
+        ResolvedJavaType interpreterType = null;
+
+        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature,
+                        interpreterType);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
@@ -461,6 +467,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         companion.enumConstantsReference = null;
 
         /*
+         * GR-61330:
+         *
          * These are read in snippets and must also not be set directly or the analysis would not
          * consider them to be immutable:
          *
@@ -470,11 +478,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
          * NumUtil.safeToUByte(makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true));
          */
 
+        // GR-61330: only write if the field exists according to analysis
+        // companion.metaType = null;
+
         // GR-60080: Proper referenceMap needed.
         int referenceMapIndex = DynamicHub.fromClass(Object.class).referenceMapIndex;
-
-        // GR-59683: Maybe can be used to inject a backreference to InterpreterResolvedObjectType
-        companion.metaType = null;
 
         // GR-57813
         companion.hubMetadata = null;
@@ -741,6 +749,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public SharedType getMetaType() {
         return companion.metaType;
+    }
+
+    public ResolvedJavaType getInterpreterType() {
+        return companion.interpreterType;
+    }
+
+    public void setInterpreterType(ResolvedJavaType interpreterType) {
+        companion.interpreterType = interpreterType;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -1896,7 +1912,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     Target_jdk_internal_reflect_ConstantPool getConstantPool() {
-        return null;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            return ConstantPoolProvider.singletons()[layerId].getConstantPool();
+        } else {
+            return null;
+        }
     }
 
     @Substitute

@@ -30,23 +30,26 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
+import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * A command line program that initializes the compiler data structures to be serialized into the
@@ -55,6 +58,8 @@ import org.graalvm.nativeimage.Platforms;
  * *
  * <li>"encodedSnippets" -> value returned by
  * {@link SymbolicSnippetEncoder#encodeSnippets(OptionValues)}</li>
+ * <li>"snippetNodeClasses" -> a {@link #snippetNodeClassesToJSON JSON dump} of the snippet node
+ * classes</li>
  * <li>"foreignCallSignatures" -> value that is passed to
  * {@link jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.Stubs#initStubs}</li>
  * </ul>
@@ -79,6 +84,7 @@ public class CompilerConfig {
 
         EconomicMap<String, Object> encodedObjects = EconomicMap.create();
         encodedObjects.put("encodedSnippets", encodedSnippets);
+        encodedObjects.put("snippetNodeClasses", snippetNodeClassesToJSON(encodedSnippets));
         encodedObjects.put("foreignCallSignatures", foreignCallSignatures);
 
         try (PrintStream debugStream = new PrintStream(new FileOutputStream(args[1]))) {
@@ -142,5 +148,41 @@ public class CompilerConfig {
                 }
             }
         });
+    }
+
+    /**
+     * Gets the info in {@code encodedSnippets.getSnippetNodeClasses()} used by
+     * {@link jdk.graal.compiler.nodes.GraphEncoder} as JSON. This is used to verify that the
+     * {@link NodeClass} in snippets have the same layout in the encoding and decoding JVM
+     * processes.
+     */
+    public static String snippetNodeClassesToJSON(EncodedSnippets encodedSnippets) {
+        Formatter out = new Formatter();
+        out.format("[");
+        String sep = "";
+        for (NodeClass<?> nc : encodedSnippets.getSnippetNodeClasses()) {
+            out.format("%s{\"clazz\":\"%s\"", sep, nc.getClazz().getName());
+            formatFields(out, "inputs", nc.getInputEdges());
+            formatFields(out, "properties", nc.getData());
+            formatFields(out, "successors", nc.getSuccessorEdges());
+            out.format("}");
+            sep = ",";
+        }
+        out.format("]");
+        return out.toString();
+    }
+
+    private static void formatFields(Formatter out, String name, Fields fields) {
+        out.format(",\"%s\":[", name);
+        String sep = "";
+        for (int i = 0; i < fields.getCount(); i++) {
+            out.format("%s\"%s.%s:%s\"",
+                            sep,
+                            fields.getDeclaringClass(i).getName(),
+                            fields.getName(i),
+                            fields.getType(i).getName());
+            sep = ",";
+        }
+        out.format("]");
     }
 }

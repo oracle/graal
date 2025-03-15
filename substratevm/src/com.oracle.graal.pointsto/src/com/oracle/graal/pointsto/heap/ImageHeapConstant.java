@@ -98,6 +98,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          */
         private boolean isInBaseLayer;
         /**
+         * A boolean telling if the constant was written in the image heap of the base layer.
+         */
+        private boolean writtenInPreviousLayer;
+        /**
          * An object representing a way to retrieve the value of the constant in the hosted
          * universe.
          */
@@ -210,6 +214,15 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     public boolean isInBaseLayer() {
         return constantData.isInBaseLayer;
+    }
+
+    public void markWrittenInPreviousLayer() {
+        AnalysisError.guarantee(isInBaseLayer(), "Constant must be in base layer to be marked as written in the base layer.");
+        constantData.writtenInPreviousLayer = true;
+    }
+
+    public boolean isWrittenInPreviousLayer() {
+        return constantData.writtenInPreviousLayer;
     }
 
     public JavaConstant getHostedObject() {

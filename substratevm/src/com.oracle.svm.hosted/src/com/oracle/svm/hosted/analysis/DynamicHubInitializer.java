@@ -45,6 +45,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
@@ -75,6 +76,7 @@ public class DynamicHubInitializer {
     private final Field hubCompanionClassInitializationInfo;
     private final Field hubCompanionInterfacesEncoding;
     private final Field hubCompanionAnnotationsEnumConstantsReference;
+    private final Field hubCompanionInterpreterType;
 
     public DynamicHubInitializer(BigBang bb) {
         this.bb = bb;
@@ -88,6 +90,7 @@ public class DynamicHubInitializer {
         hubCompanionClassInitializationInfo = ReflectionUtil.lookupField(DynamicHubCompanion.class, "classInitializationInfo");
         hubCompanionInterfacesEncoding = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interfacesEncoding");
         hubCompanionAnnotationsEnumConstantsReference = ReflectionUtil.lookupField(DynamicHubCompanion.class, "enumConstantsReference");
+        hubCompanionInterpreterType = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interpreterType");
     }
 
     public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
@@ -144,6 +147,11 @@ public class DynamicHubInitializer {
                     heapScanner.rescanField(hub.getCompanion(), hubCompanionAnnotationsEnumConstantsReference);
                 }
             }
+        }
+
+        if (RuntimeClassLoading.isSupported()) {
+            hub.setInterpreterType(RuntimeClassLoading.createInterpreterType(hub, type));
+            heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType);
         }
     }
 

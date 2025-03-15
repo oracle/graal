@@ -61,6 +61,8 @@ import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerObject;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -179,7 +181,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public int getLayerObjectCount() {
-        return (int) objects.values().stream().filter(o -> !o.constant.isInBaseLayer()).count();
+        return (int) objects.values().stream().filter(o -> !o.constant.isWrittenInPreviousLayer()).count();
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
@@ -291,8 +293,8 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private void addStaticFields() {
-        addObject(StaticFieldsSupport.getStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
-        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
+        addObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
+        addObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
 
         /*
          * We only have empty holder arrays for the static fields, so we need to add static object
@@ -415,10 +417,12 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     @Override
-    public int countDynamicHubs() {
+    public int countAndVerifyDynamicHubs() {
+        ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
         for (ObjectInfo o : getObjects()) {
-            if (!o.constant.isInBaseLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+            if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+                objHeader.verifyDynamicHubOffsetInImageHeap(o.getOffset());
                 count++;
             }
         }
@@ -648,7 +652,7 @@ public final class NativeImageHeap implements ImageHeap {
      * are reachable from regular constants in this layer.
      */
     private static boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
-        if (((ImageHeapConstant) constant).isInBaseLayer()) {
+        if (((ImageHeapConstant) constant).isWrittenInPreviousLayer()) {
             info.setOffsetInPartition(HostedImageLayerBuildingSupport.singleton().getLoader().getObjectOffset(constant));
             info.setHeapPartition(BASE_LAYER_PARTITION);
             return true;

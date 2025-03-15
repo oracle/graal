@@ -25,10 +25,13 @@
 package com.oracle.svm.core.imagelayer;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class DynamicImageLayerInfo {
     public static final int CREMA_LAYER_ID = Byte.MAX_VALUE;
 

@@ -400,6 +400,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base": [
+                    "jdk.internal.misc",
                     "sun.nio.ch",
                 ],
                 "java.management": [
@@ -762,10 +763,14 @@ suite = {
                     "jdk.internal.foreign.abi.x64",
                     "jdk.internal.foreign.abi.x64.sysv",
                     "jdk.internal.foreign.abi.x64.windows",
+                    "jdk.internal.foreign.abi.aarch64",
+                    "jdk.internal.foreign.abi.aarch64.macos",
+                    "jdk.internal.foreign.abi.aarch64.linux",
                     "jdk.internal.loader",
                     "jdk.internal.reflect",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.amd64",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta"
@@ -799,9 +804,13 @@ suite = {
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64.windows",
                     "jdk.internal.foreign.abi.x64.sysv",
+                    "jdk.internal.foreign.abi.aarch64",
+                    "jdk.internal.foreign.abi.aarch64.macos",
+                    "jdk.internal.foreign.abi.aarch64.linux",
                     "jdk.internal.foreign.layout",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.amd64",
@@ -2429,6 +2438,7 @@ suite = {
                         "jdk.vm.ci.meta",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.amd64",
+                        "jdk.vm.ci.aarch64",
                     ],
                     "java.base": [
                         "jdk.internal.foreign",
@@ -2436,6 +2446,9 @@ suite = {
                         "jdk.internal.foreign.abi.x64",
                         "jdk.internal.foreign.abi.x64.sysv",
                         "jdk.internal.foreign.abi.x64.windows",
+                        "jdk.internal.foreign.abi.aarch64",
+                        "jdk.internal.foreign.abi.aarch64.macos",
+                        "jdk.internal.foreign.abi.aarch64.linux",
                     ],
                 },
             },

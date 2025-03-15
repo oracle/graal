@@ -36,6 +36,7 @@ import org.graalvm.word.UnsignedWord;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
@@ -57,6 +58,7 @@ import jdk.graal.compiler.replacements.SnippetCounter.Group.Factory;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.gc.G1WriteBarrierSnippets;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
@@ -230,16 +232,32 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                             SATB_QUEUE_MARKING_ACTIVE_LOCATION,
                             SATB_QUEUE_INDEX_LOCATION,
                             SATB_QUEUE_BUFFER_LOCATION);
-            g1PostWriteBarrier = snippet(providers,
-                            G1WriteBarrierSnippets.class,
-                            "g1PostWriteBarrier",
-                            null,
-                            receiver,
-                            GC_CARD_LOCATION,
-                            CARD_TABLE_BASE_LOCATION,
-                            CARD_QUEUE_LOG_LOCATION,
-                            CARD_QUEUE_INDEX_LOCATION,
-                            CARD_QUEUE_BUFFER_LOCATION);
+
+            if (JavaVersionUtil.JAVA_SPEC > 21 && Assertions.assertionsEnabled() && config.verifyBeforeGC) {
+                g1PostWriteBarrier = snippet(providers,
+                                G1WriteBarrierSnippets.class,
+                                "g1PostWriteBarrier",
+                                null,
+                                receiver,
+                                GC_CARD_LOCATION,
+                                CARD_TABLE_BASE_LOCATION,
+                                CARD_QUEUE_LOG_LOCATION,
+                                CARD_QUEUE_INDEX_LOCATION,
+                                CARD_QUEUE_BUFFER_LOCATION,
+                                getClassComponentTypeLocation(providers.getMetaAccess()));
+            } else {
+                g1PostWriteBarrier = snippet(providers,
+                                G1WriteBarrierSnippets.class,
+                                "g1PostWriteBarrier",
+                                null,
+                                receiver,
+                                GC_CARD_LOCATION,
+                                CARD_TABLE_BASE_LOCATION,
+                                CARD_QUEUE_LOG_LOCATION,
+                                CARD_QUEUE_INDEX_LOCATION,
+                                CARD_QUEUE_BUFFER_LOCATION);
+            }
+
             g1ArrayRangePreWriteBarrier = snippet(providers,
                             G1WriteBarrierSnippets.class,
                             "g1ArrayRangePreWriteBarrier",

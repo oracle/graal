@@ -47,6 +47,7 @@ import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.Buffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -69,6 +70,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.source.Source;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.home.Version;
@@ -1297,9 +1299,13 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
 
         private static String formatPath(SourceSection sourceSection) {
-            if (sourceSection.getSource().getPath() != null) {
+            Source source = sourceSection.getSource();
+            URL url = source.getURL();
+            if (url != null && !"file".equals(url.getProtocol())) {
+                return url.toExternalForm();
+            } else if (source.getPath() != null) {
                 Path path = FileSystems.getDefault().getPath(".").toAbsolutePath();
-                Path filePath = FileSystems.getDefault().getPath(sourceSection.getSource().getPath()).toAbsolutePath();
+                Path filePath = FileSystems.getDefault().getPath(source.getPath()).toAbsolutePath();
 
                 try {
                     return path.relativize(filePath).toString();

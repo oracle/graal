@@ -387,33 +387,33 @@ public class HotSpotGraphBuilderPlugins {
                     return true;
                 }
             });
+            r.register(new InvocationPlugin("isInterface", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        ValueNode klass = helper.readKlassFromClass(receiver.get(true));
+                        // Primitive Class case returns false
+                        ValueNode klassNonNull = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
+                        ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
+                        // return (Klass::_access_flags & Modifier.INTERFACE) == 0 ? false : true
+                        LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(Modifier.INTERFACE), NodeView.DEFAULT);
+                        helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
+                    }
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("isPrimitive", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        ValueNode klass = helper.readKlassFromClass(receiver.get(true));
+                        LogicNode isNull = b.add(IsNullNode.create(klass));
+                        b.addPush(JavaKind.Boolean, ConditionalNode.create(isNull, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                    }
+                    return true;
+                }
+            });
         }
-        r.register(new InvocationPlugin("isInterface", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
-                    // Primitive Class case returns false
-                    ValueNode klassNonNull = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
-                    ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
-                    // return (Klass::_access_flags & Modifier.INTERFACE) == 0 ? false : true
-                    LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(Modifier.INTERFACE), NodeView.DEFAULT);
-                    helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
-                }
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("isPrimitive", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
-                    LogicNode isNull = b.add(IsNullNode.create(klass));
-                    b.addPush(JavaKind.Boolean, ConditionalNode.create(isNull, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
-                }
-                return true;
-            }
-        });
         r.register(new InvocationPlugin("getSuperclass", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -782,7 +782,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/642816538fbaa5b74c6beb8a14d1738cdde28c10/src/hotspot/share/opto/library_call.cpp#L2902-L2956",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/de29ef3bf3a029f99f340de9f093cd20544217fd/src/hotspot/share/opto/library_call.cpp#L2913-L2967",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -831,7 +831,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/642816538fbaa5b74c6beb8a14d1738cdde28c10/src/hotspot/share/opto/library_call.cpp#L3722-L3806",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/de29ef3bf3a029f99f340de9f093cd20544217fd/src/hotspot/share/opto/library_call.cpp#L3733-L3817",
               sha1 = "3e9cfba4d9554f7cd9ab392f0826a31ae6396193")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {

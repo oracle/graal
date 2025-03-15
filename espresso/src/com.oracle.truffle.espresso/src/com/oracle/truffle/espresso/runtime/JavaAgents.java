@@ -53,7 +53,7 @@ import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.substitutions.Target_sun_instrument_InstrumentationImpl;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_instrument_InstrumentationImpl;
 
 public final class JavaAgents extends ContextAccessImpl {
     @CompilationFinal(dimensions = 1) private JavaAgent[] agents;
@@ -379,7 +379,7 @@ public final class JavaAgents extends ContextAccessImpl {
         for (int i = allNativePrefixes.length - 1; i >= 0; i--) {
             Symbol<Name> prefix = allNativePrefixes[i];
             if (resolvedName.contentStartsWith(prefix)) {
-                resolvedName = resolvedName.subSequence(prefix.length(), resolvedName.length() - prefix.length());
+                resolvedName = resolvedName.subSequence(prefix.length(), resolvedName.length());
             }
         }
         return getContext().getNames().getOrCreate(resolvedName);
@@ -419,7 +419,7 @@ public final class JavaAgents extends ContextAccessImpl {
                     // we lost the race, so nothing to do
                     return;
                 }
-                getContext().getMeta().jdk_internal_module_Modules_transformedByAgent.invokeDirect(module.module());
+                getContext().getMeta().jdk_internal_module_Modules_transformedByAgent.invokeDirectStatic(module.module());
                 // no reason to call into guest for a module more than once,
                 // so flip the hasDefaultReads flag
                 module.setHasDefaultReads();

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -94,6 +94,13 @@ def _lib_versioned(arg):
 
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
 
+def sulong_prefix_path(name):
+    # name is a CMakeNinjaProject with `symlinkSource: True`
+    # return the path to the build directory, that also includes the sources
+    p = mx.project(name)
+    return p.out_dir
+
+mx_subst.results_substitutions.register_with_arg('sulong_prefix', sulong_prefix_path)
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
     mx_sulong_gate.testLLVMImage(image, imageArgs, testFilter, libPath, test, unittestArgs)

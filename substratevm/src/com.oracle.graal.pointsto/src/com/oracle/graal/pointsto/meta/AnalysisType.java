@@ -28,6 +28,7 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -1227,8 +1228,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
+    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getJavaKind).thenComparing(ResolvedJavaField::getName);
+
     private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        for (ResolvedJavaField original : originals) {
+        ResolvedJavaField[] localOriginals = originals;
+        if (universe.hostVM.sortFields()) {
+            /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
+            localOriginals = originals.clone();
+            Arrays.sort(localOriginals, FIELD_COMPARATOR);
+        }
+        for (ResolvedJavaField original : localOriginals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
                     AnalysisField aField = universe.lookup(original);

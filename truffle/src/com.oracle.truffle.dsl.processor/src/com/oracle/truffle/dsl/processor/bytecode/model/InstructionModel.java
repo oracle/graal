@@ -72,8 +72,9 @@ public final class InstructionModel implements PrettyPrintable {
         POP,
         DUP,
         LOAD_VARIADIC,
-        MERGE_VARIADIC,
-        STORE_NULL,
+        CREATE_VARIADIC,
+        EMPTY_VARIADIC,
+        SPLAT_VARIADIC,
         LOAD_LOCAL_MATERIALIZED,
         STORE_LOCAL_MATERIALIZED,
 
@@ -100,6 +101,15 @@ public final class InstructionModel implements PrettyPrintable {
                 case LOAD_LOCAL:
                 case STORE_LOCAL:
                 case CLEAR_LOCAL:
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean isCustom() {
+            switch (this) {
+                case CUSTOM:
+                case CUSTOM_SHORT_CIRCUIT:
                     return true;
             }
             return false;
@@ -159,6 +169,7 @@ public final class InstructionModel implements PrettyPrintable {
          */
         LOCAL_ROOT("local_root", ImmediateWidth.SHORT),
         SHORT("short", ImmediateWidth.SHORT),
+        INTEGER("int", ImmediateWidth.INT),
         BYTECODE_INDEX("bci", ImmediateWidth.INT),
         STACK_POINTER("sp", ImmediateWidth.SHORT),
         CONSTANT("const", ImmediateWidth.INT),
@@ -245,7 +256,6 @@ public final class InstructionModel implements PrettyPrintable {
     public final Signature signature;
     public CodeTypeElement nodeType;
     public NodeData nodeData;
-    public int variadicPopCount = -1;
 
     // Immediate values that get encoded in the bytecode.
     public final List<InstructionImmediate> immediates = new ArrayList<>();
@@ -265,6 +275,8 @@ public final class InstructionModel implements PrettyPrintable {
     public boolean returnTypeQuickening;
 
     public boolean generic;
+
+    public boolean nonNull;
 
     /*
      * Alternative argument specialization type for builtin quickenings. E.g. for loadLocal

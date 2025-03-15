@@ -334,7 +334,7 @@ public abstract class BinaryStreamParser {
                 Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
                 break;
             default:
-                Assert.fail(Failure.MALFORMED_VALUE_TYPE, String.format("Invalid value type: 0x%02X", b));
+                Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", b);
         }
         return b;
     }

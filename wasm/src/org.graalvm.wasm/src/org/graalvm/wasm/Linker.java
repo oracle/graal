@@ -68,6 +68,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -468,7 +469,8 @@ public class Linker {
     }
 
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
-        final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
+        final WasmFunction function = module.symbolTable().function(functionIndex);
+        final ImportDescriptor importDescriptor = function.importDescriptor();
         final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor, functionIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
@@ -751,7 +753,7 @@ public class Linker {
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
                     int droppedDataInstanceOffset) {
         assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED,
-                        String.format("Specified memory was not declared or imported in the module '%s'", instance.name()));
+                        "Specified memory was not declared or imported in the module '%s'", instance.name());
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
@@ -1090,7 +1092,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(init global %d in %s)", globalIndex, moduleName);
+                return String.format(Locale.ROOT, "(init global %d in %s)", globalIndex, moduleName);
             }
 
             @Override
@@ -1121,7 +1123,8 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import func %s from %s into %s at %d)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, destinationIndex);
+                return String.format(Locale.ROOT, "(import func %s from %s into %s at %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, destinationIndex);
             }
 
             @Override
@@ -1182,7 +1185,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(callsite at %d in %s)", instructionOffset, moduleName);
+                return String.format(Locale.ROOT, "(callsite %d at %d in %s)", controlTableOffset, instructionOffset, moduleName);
             }
 
             @Override
@@ -1210,7 +1213,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(code entry at %d in %s)", functionIndex, moduleName);
+                return String.format(Locale.ROOT, "(code entry at %d in %s)", functionIndex, moduleName);
             }
 
             @Override
@@ -1240,7 +1243,8 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import memory %s from %s into %s with index %d)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, memoryIndex);
+                return String.format(Locale.ROOT, "(import memory %s from %s into %s with index %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, memoryIndex);
             }
 
             @Override
@@ -1296,7 +1300,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", dataSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(data %d in %s)", dataSegmentId, moduleName);
             }
 
             @Override
@@ -1380,7 +1384,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", elemSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(data %d in %s)", elemSegmentId, moduleName);
             }
 
             @Override

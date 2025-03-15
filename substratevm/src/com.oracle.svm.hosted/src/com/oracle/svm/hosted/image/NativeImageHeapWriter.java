@@ -103,11 +103,12 @@ public final class NativeImageHeapWriter {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
-                if (info.getConstant().isInBaseLayer()) {
+                if (info.getConstant().isWrittenInPreviousLayer()) {
                     /*
-                     * Base layer constants are only added to the heap model to store the absolute
-                     * offset in the base layer heap. We don't need to actually write them; their
-                     * absolute offset is used by the objects that reference them.
+                     * Base layer constants already written in the base layer heap are only added to
+                     * the heap model to store the absolute offset in the base layer heap. We don't
+                     * need to actually write them; their absolute offset is used by the objects
+                     * that reference them.
                      */
                     continue;
                 }
@@ -133,8 +134,8 @@ public final class NativeImageHeapWriter {
          * Features registered that change the value of static fields late in the native image
          * generation process.
          */
-        ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
+        ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
             if (field.wrapped.isInBaseLayer()) {
                 /* Base layer static field values are accessed via the base layer arrays. */
@@ -277,7 +278,7 @@ public final class NativeImageHeapWriter {
         DynamicHub hub = obj.getClazz().getHub();
         assert hub != null : "Null DynamicHub found during native image generation.";
         ObjectInfo hubInfo = heap.getObjectInfo(hub);
-        assert hubInfo != null : "Unknown object " + hub.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
+        assert hubInfo != null : "Unknown object " + hub + " found. Static field or an object referenced from a static field changed during native image generation?";
 
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         if (NativeImageHeap.useHeapBase()) {
@@ -355,7 +356,7 @@ public final class NativeImageHeapWriter {
         if (referenceSize() == Long.BYTES) {
             buffer.getByteBuffer().putLong(index, value);
         } else if (referenceSize() == Integer.BYTES) {
-            buffer.getByteBuffer().putInt(index, NumUtil.safeToInt(value));
+            buffer.getByteBuffer().putInt(index, NumUtil.safeToUInt(value));
         } else {
             throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }

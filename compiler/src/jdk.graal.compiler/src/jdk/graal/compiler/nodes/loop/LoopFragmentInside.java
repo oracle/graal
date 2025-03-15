@@ -53,6 +53,7 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GuardPhiNode;
 import jdk.graal.compiler.nodes.GuardProxyNode;
 import jdk.graal.compiler.nodes.IfNode;
@@ -149,8 +150,84 @@ public class LoopFragmentInside extends LoopFragment {
         return super.loop();
     }
 
+    /**
+     * Collects all floating guards with outside anchors.
+     *
+     * Floating guards and loop peeling: when peeling loops while we have floating guards we have to
+     * take special care about the position of a guard after peeling. A guard has 2 things that
+     * define its position: the anchor and the condition. Both are relevant to execute the guard at
+     * the correct point in time. The correct point is as early as possible without being to eager.
+     * Peeling can now "free" guards of their conditional scheduling position. What does that mean?
+     *
+     * Consider the following loop
+     *
+     * <pre>
+     * int phi = 0;
+     * int sum = 0;
+     * while (true) {
+     *     if (phi > 0) {
+     *         // Guard of the second iteration should not float before the
+     *         // first
+     *         // break
+     *         GraalDirectives.deoptimizeAndInvalidate();
+     *     }
+     *     phi = (int) Math.tan(phi + 1);
+     *     sum += phi;
+     *     if (flag) {
+     *         break;
+     *     }
+     * }
+     * </pre>
+     *
+     * The position of the guard is determined by the scheduling of the inputs: that is the phi. The
+     * anchor is already outside of the loop. If we peel this loop now 2 times and duplicate the
+     * guard, the fact that the phi input is gone lets the guard float up above the original part of
+     * the loop's previous iteration. That means we have 2 duplicates of this guard one that evals
+     * the condition {@code 0>0} which evaluates to {@code false}. The other one, of iteration 1
+     * evals then the condition {@code 1>0} which is true and thus unconditionally will yield a
+     * deopt. That guard however can float to the beginning of the method and cause too eager
+     * deopts. The fact that peeling replaces phi nodes with their inputs at the respective
+     * iteration "frees" the guards of their scheduling positions. Thus, we manually inject the
+     * anchor to be the end of the last iteration that was peeled. That naturally is the correct
+     * position. Later optimization can specualtively move guards further.
+     */
+    private static NodeBitMap collectExistingGuardsWithOutsideAnchors(StructuredGraph graph, Loop loop) {
+        NodeBitMap guardsWithOutsideAnchors = null;
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
+            for (Node inside : loop.inside().nodes()) {
+                if (inside instanceof GuardNode g) {
+                    // the anchor is already outside the loop
+                    if (!loop.whole().contains(g.getAnchor().asNode())) {
+                        if (guardsWithOutsideAnchors == null) {
+                            guardsWithOutsideAnchors = graph.createNodeBitMap();
+                        }
+                        guardsWithOutsideAnchors.mark(g);
+                    }
+                }
+            }
+        }
+        return guardsWithOutsideAnchors;
+    }
+
+    private static void reconnectAnchors(Loop loop, LoopFragment fragment, StructuredGraph graph, NodeBitMap guardsWithOutsideAnchors) {
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before correcting floating guard anchors for loop %s", loop.loopBegin());
+        AnchoringNode newAnchor = AbstractBeginNode.prevBegin(fragment.getDuplicatedNode(loop.loopBegin()));
+        for (Node originalGuard : guardsWithOutsideAnchors) {
+            assert originalGuard instanceof GuardNode : Assertions.errorMessage(originalGuard, guardsWithOutsideAnchors);
+            GuardNode g = (GuardNode) originalGuard;
+            GuardNode duplicate = (GuardNode) fragment.getDuplicatedNode(g.asNode());
+            if (duplicate != null) {
+                duplicate.setAnchor(newAnchor);
+            }
+        }
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After correcting floating guard anchors for loop %s", loop.loopBegin());
+    }
+
     @Override
     public void insertBefore(Loop loop) {
+        StructuredGraph graph = loop.loopBegin().graph();
+        NodeBitMap guardsWithOutsideAnchors = collectExistingGuardsWithOutsideAnchors(graph, loop);
+
         assert this.isDuplicate();
         assert this.original().loop() == loop : "Original loop " + this.original().loop() + " != " + loop;
 
@@ -165,6 +242,10 @@ public class LoopFragmentInside extends LoopFragment {
         AbstractBeginNode entry = getDuplicatedNode(loop.loopBegin());
         loop.entryPoint().replaceAtPredecessor(entry);
         end.setNext(loop.entryPoint());
+
+        if (graph.getGuardsStage().allowsFloatingGuards() && guardsWithOutsideAnchors != null) {
+            reconnectAnchors(loop, this, graph, guardsWithOutsideAnchors);
+        }
     }
 
     /**

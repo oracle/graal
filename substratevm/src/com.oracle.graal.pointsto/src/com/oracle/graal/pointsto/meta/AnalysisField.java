@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -268,6 +269,15 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         });
     }
 
+    public void injectDeclaredType() {
+        BigBang bb = getUniverse().getBigbang();
+        if (getStorageKind().isObject()) {
+            bb.injectFieldTypes(this, List.of(this.getType()), true);
+        } else if (bb.trackPrimitiveValues() && getStorageKind().isPrimitive()) {
+            ((PointsToAnalysisField) this).saturatePrimitiveField();
+        }
+    }
+
     public boolean isGuaranteeFolded() {
         return getAnnotation(GuaranteeFolded.class) != null;
     }
@@ -408,6 +418,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public void setPosition(int newPosition) {
+        AnalysisError.guarantee(position == -1 || newPosition == position, "Position already set for field %s, old position: %d, new position: %d", this, position, newPosition);
         this.position = newPosition;
     }
 

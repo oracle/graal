@@ -72,7 +72,10 @@ public class SuspendedInfo {
     }
 
     public Frame getCallerFrame() {
-        return stackFrames.length > 1 ? stackFrames[1].getFrame() : null;
+        // use getStackFrames virtual call since this.stackFrames
+        // field can be null for unknown suspended info
+        CallFrame[] frames = getStackFrames();
+        return frames.length > 1 ? frames[1].getFrame() : null;
     }
 
     public void setForceEarlyReturnInProgress() {

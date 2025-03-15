@@ -34,13 +34,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -56,6 +57,11 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -66,10 +72,6 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;
-import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -145,7 +147,7 @@ public final class BuildTimeInterpreterUniverse {
         int modifiers = resolvedJavaType.getModifiers();
         InterpreterResolvedJavaType componentType;
         if (originalType.isArray()) {
-            componentType = universe.type(originalType.getComponentType());
+            componentType = universe.getOrCreateType(originalType.getComponentType());
         } else {
             componentType = null;
         }
@@ -154,13 +156,13 @@ public final class BuildTimeInterpreterUniverse {
         ResolvedJavaType originalSuperclass = resolvedJavaType.getSuperclass();
         InterpreterResolvedObjectType superclass = null;
         if (originalSuperclass != null) {
-            superclass = (InterpreterResolvedObjectType) universe.type(originalSuperclass);
+            superclass = (InterpreterResolvedObjectType) universe.getOrCreateType(originalSuperclass);
         }
 
         ResolvedJavaType[] originalInterfaces = resolvedJavaType.getInterfaces();
         InterpreterResolvedObjectType[] interfaces = new InterpreterResolvedObjectType[originalInterfaces.length];
         for (int i = 0; i < interfaces.length; i++) {
-            interfaces[i] = (InterpreterResolvedObjectType) universe.type(originalInterfaces[i]);
+            interfaces[i] = (InterpreterResolvedObjectType) universe.getOrCreateType(originalInterfaces[i]);
         }
 
         return InterpreterResolvedObjectType.createAtBuildTime(resolvedJavaType, name, modifiers, componentType, superclass, interfaces, null, clazz, sourceFileName);
@@ -174,7 +176,7 @@ public final class BuildTimeInterpreterUniverse {
         int modifiers = resolvedJavaField.getModifiers();
         JavaType fieldType = originalField.getType();
 
-        InterpreterResolvedJavaType type = universe.type((ResolvedJavaType) fieldType);
+        InterpreterResolvedJavaType type = universe.getOrCreateType((ResolvedJavaType) fieldType);
         InterpreterResolvedObjectType declaringClass = universe.referenceType(originalField.getDeclaringClass());
 
         return InterpreterResolvedJavaField.create(originalField, name, modifiers, type, declaringClass, 0, null);
@@ -270,6 +272,7 @@ public final class BuildTimeInterpreterUniverse {
         return BuildTimeInterpreterUniverse.singleton().localVariableTable(new LocalVariableTable(locals));
     }
 
+    /* Not thread-safe, only call in single thread context */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setNeedMethodBody(InterpreterResolvedJavaMethod thiz, boolean needMethodBody, MetaAccessProvider metaAccessProvider) {
         if (thiz.needMethodBody) {
@@ -309,7 +312,7 @@ public final class BuildTimeInterpreterUniverse {
                             continue;
                         }
 
-                        BuildTimeInterpreterUniverse.singleton().method(resolvedJavaMethod, false, metaAccessProvider);
+                        BuildTimeInterpreterUniverse.singleton().getOrCreateMethodWithMethodBody(resolvedJavaMethod, metaAccessProvider);
                     } catch (UnsupportedFeatureException | UserError.UserException e) {
                         InterpreterUtil.log("[process invokes] lookup in method %s failed due to:", thiz.getOriginalMethod());
                         InterpreterUtil.log(e);
@@ -444,20 +447,20 @@ public final class BuildTimeInterpreterUniverse {
     private final Map<JavaConstant, JavaConstant> indyAppendices;
 
     public BuildTimeInterpreterUniverse() {
-        this.types = new HashMap<>();
-        this.fields = new HashMap<>();
-        this.methods = new HashMap<>();
-        this.signatures = new HashMap<>();
-        this.primitiveConstants = new HashMap<>();
-        this.strings = new HashMap<>();
-        this.objectConstants = new HashMap<>();
-        this.exceptionHandlers = new HashMap<>();
-        this.locals = new HashMap<>();
-        this.localVariableTables = new HashMap<>();
-        this.unresolvedTypes = new HashMap<>();
-        this.unresolvedMethods = new HashMap<>();
-        this.unresolvedFields = new HashMap<>();
-        this.indyAppendices = new HashMap<>();
+        this.types = new ConcurrentHashMap<>();
+        this.fields = new ConcurrentHashMap<>();
+        this.methods = new ConcurrentHashMap<>();
+        this.signatures = new ConcurrentHashMap<>();
+        this.primitiveConstants = new ConcurrentHashMap<>();
+        this.strings = new ConcurrentHashMap<>();
+        this.objectConstants = new ConcurrentHashMap<>();
+        this.exceptionHandlers = new ConcurrentHashMap<>();
+        this.locals = new ConcurrentHashMap<>();
+        this.localVariableTables = new ConcurrentHashMap<>();
+        this.unresolvedTypes = new ConcurrentHashMap<>();
+        this.unresolvedMethods = new ConcurrentHashMap<>();
+        this.unresolvedFields = new ConcurrentHashMap<>();
+        this.indyAppendices = new ConcurrentHashMap<>();
     }
 
     public static BuildTimeInterpreterUniverse singleton() {
@@ -465,7 +468,7 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     public InterpreterResolvedObjectType referenceType(ResolvedJavaType resolvedJavaType) {
-        return (InterpreterResolvedObjectType) type(resolvedJavaType);
+        return (InterpreterResolvedObjectType) getOrCreateType(resolvedJavaType);
     }
 
     @SuppressWarnings("static-method")
@@ -474,45 +477,52 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     public InterpreterResolvedPrimitiveType primitiveType(ResolvedJavaType resolvedJavaType) {
-        return (InterpreterResolvedPrimitiveType) type(resolvedJavaType);
+        return (InterpreterResolvedPrimitiveType) getOrCreateType(resolvedJavaType);
     }
 
     public InterpreterResolvedJavaType getType(ResolvedJavaType resolvedJavaType) {
         return types.get(resolvedJavaType);
     }
 
-    public InterpreterResolvedJavaType type(ResolvedJavaType resolvedJavaType) {
+    public InterpreterResolvedJavaType getOrCreateType(ResolvedJavaType resolvedJavaType) {
         assert resolvedJavaType instanceof AnalysisType;
         InterpreterResolvedJavaType result = getType(resolvedJavaType);
-        if (result == null) {
-            synchronized (types) {
-                result = types.get(resolvedJavaType);
-                if (result == null) {
-                    if (resolvedJavaType.isPrimitive()) {
-                        result = InterpreterResolvedPrimitiveType.fromKind(JavaKind.fromPrimitiveOrVoidTypeChar(resolvedJavaType.getName().charAt(0)));
-                    } else {
-                        result = createResolvedObjectType(resolvedJavaType);
-                    }
-                    InterpreterUtil.log("[universe] Adding type '%s'", resolvedJavaType);
-                    types.put(resolvedJavaType, result);
-                }
-            }
+
+        if (result != null) {
+            return result;
         }
+
+        if (resolvedJavaType.isPrimitive()) {
+            result = InterpreterResolvedPrimitiveType.fromKind(JavaKind.fromPrimitiveOrVoidTypeChar(resolvedJavaType.getName().charAt(0)));
+        } else {
+            result = createResolvedObjectType(resolvedJavaType);
+        }
+
+        InterpreterResolvedJavaType previous = types.putIfAbsent(resolvedJavaType, result);
+        if (previous != null) {
+            return previous;
+        }
+
+        InterpreterUtil.log("[universe] Adding type '%s'", resolvedJavaType);
         return result;
     }
 
-    public InterpreterResolvedJavaField field(ResolvedJavaField resolvedJavaField) {
+    public InterpreterResolvedJavaField getOrCreateField(ResolvedJavaField resolvedJavaField) {
         assert resolvedJavaField instanceof AnalysisField;
         InterpreterResolvedJavaField result = fields.get(resolvedJavaField);
-        if (result == null) {
-            synchronized (fields) {
-                result = fields.get(resolvedJavaField);
-                if (result == null) {
-                    InterpreterUtil.log("[universe] Adding field '%s'", resolvedJavaField);
-                    fields.put(resolvedJavaField, result = createResolvedJavaField(resolvedJavaField));
-                }
-            }
+
+        if (result != null) {
+            return result;
         }
+
+        result = createResolvedJavaField(resolvedJavaField);
+
+        InterpreterResolvedJavaField previous = fields.putIfAbsent(resolvedJavaField, result);
+        if (previous != null) {
+            return previous;
+        }
+
+        InterpreterUtil.log("[universe] Adding field '%s'", resolvedJavaField);
         return result;
     }
 
@@ -524,24 +534,30 @@ public final class BuildTimeInterpreterUniverse {
         return methods.get(wrapped);
     }
 
-    public InterpreterResolvedJavaMethod method(ResolvedJavaMethod resolvedJavaMethod, boolean needsMethodBody, MetaAccessProvider metaAccessProvider) {
+    public InterpreterResolvedJavaMethod getOrCreateMethod(ResolvedJavaMethod resolvedJavaMethod) {
         assert resolvedJavaMethod instanceof AnalysisMethod;
         InterpreterResolvedJavaMethod result = getMethod(resolvedJavaMethod);
 
-        if (result == null) {
-            synchronized (methods) {
-                result = methods.get(resolvedJavaMethod);
-                if (result == null) {
-                    InterpreterUtil.log("[universe] Adding method '%s' with needsMethodBody=%s", resolvedJavaMethod, needsMethodBody);
-                    methods.put(resolvedJavaMethod, result = createResolveJavaMethod(resolvedJavaMethod));
-                }
-            }
+        if (result != null) {
+            return result;
         }
 
-        if (needsMethodBody) {
-            /* added explicitly, bytecodes are needed for interpretation */
-            setNeedMethodBody(result, true, metaAccessProvider);
+        result = createResolveJavaMethod(resolvedJavaMethod);
+
+        InterpreterResolvedJavaMethod previous = methods.putIfAbsent(resolvedJavaMethod, result);
+        if (previous != null) {
+            return previous;
         }
+
+        InterpreterUtil.log("[universe] Adding method '%s'", resolvedJavaMethod);
+        return result;
+    }
+
+    public InterpreterResolvedJavaMethod getOrCreateMethodWithMethodBody(ResolvedJavaMethod resolvedJavaMethod, MetaAccessProvider metaAccessProvider) {
+        InterpreterResolvedJavaMethod result = getOrCreateMethod(resolvedJavaMethod);
+
+        /* added explicitly, bytecodes are needed for interpretation */
+        setNeedMethodBody(result, true, metaAccessProvider);
 
         return result;
     }
@@ -590,19 +606,20 @@ public final class BuildTimeInterpreterUniverse {
     public JavaConstant appendix(JavaConstant appendix) {
         Objects.requireNonNull(appendix);
         JavaConstant result = indyAppendices.get(appendix);
-        if (result == null) {
-            synchronized (indyAppendices) {
-                result = indyAppendices.get(appendix);
-                if (result == null) {
-                    if (appendix instanceof ImageHeapConstant imageHeapConstant) {
-                        result = weakObjectConstant(imageHeapConstant);
-                    } else {
-                        VMError.shouldNotReachHere("unexpected appendix: " + appendix);
-                    }
-                    indyAppendices.put(appendix, result);
-                }
-            }
+        if (result != null) {
+            return result;
         }
+        if (appendix instanceof ImageHeapConstant imageHeapConstant) {
+            result = weakObjectConstant(imageHeapConstant);
+        } else {
+            VMError.shouldNotReachHere("unexpected appendix: " + appendix);
+        }
+
+        JavaConstant previous = indyAppendices.putIfAbsent(appendix, result);
+        if (previous != null) {
+            return previous;
+        }
+
         return result;
     }
 
@@ -704,6 +721,10 @@ public final class BuildTimeInterpreterUniverse {
 
     public Collection<InterpreterResolvedJavaMethod> getMethods() {
         return methods.values();
+    }
+
+    public Collection<InterpreterResolvedJavaType> getTypes() {
+        return types.values();
     }
 
     private static boolean isReachable(InterpreterResolvedJavaType type) {
@@ -886,5 +907,27 @@ public final class BuildTimeInterpreterUniverse {
             return JavaConstant.NULL_POINTER;
         }
         throw VMError.shouldNotReachHere("unsupported constant: " + constant);
+    }
+
+    public void mirrorSVMVTable(HostedType hostedType, Consumer<Object> rescanFieldInHeap) {
+        AnalysisType analysisType = hostedType.getWrapped();
+        InterpreterResolvedJavaType iType = getType(analysisType);
+
+        if (!(iType instanceof InterpreterResolvedObjectType objectType)) {
+            return;
+        }
+
+        if (hostedType.getVTable().length == 0) {
+            return;
+        }
+
+        InterpreterResolvedJavaMethod[] iVTable = new InterpreterResolvedJavaMethod[hostedType.getVTable().length];
+
+        for (int i = 0; i < iVTable.length; i++) {
+            iVTable[i] = getMethod(hostedType.getVTable()[i].getWrapped());
+        }
+
+        objectType.setVtable(iVTable);
+        rescanFieldInHeap.accept(objectType);
     }
 }

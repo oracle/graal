@@ -57,6 +57,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -223,7 +224,8 @@ public abstract class SubstrateSegfaultHandler {
          * value as an extra sanity check. Note that the heap base register still contains an
          * invalid value when we execute this code, which makes things a bit more complex.
          */
-        UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton().getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFields());
+        UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton()
+                        .getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER));
         UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(Word.unsigned(offsetOfStaticFieldWithWellKnownValue));
         Pointer wellKnownField = ((Pointer) isolate).add(wellKnownFieldOffset);
         return wellKnownField.readLong(0) == MARKER_VALUE;

@@ -199,11 +199,7 @@ public class FieldsOffsetsFeature implements Feature {
     }
 
     private static Field findField(Fields fields, int index) {
-        try {
-            return fields.getDeclaringClass(index).getDeclaredField(fields.getName(index));
-        } catch (NoSuchFieldException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
+        return fields.getField(index);
     }
 
     @Override

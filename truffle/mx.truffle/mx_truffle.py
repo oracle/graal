@@ -497,6 +497,8 @@ def gate_truffle_jvm(tasks):
         additional_jvm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
     else:
         additional_jvm_args = []
+    # GR-62632: Debug VM exception translation failure
+    additional_jvm_args += ['-Djdk.internal.vm.TranslatedException.debug=true']
     with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_module_path_optimized_unit_tests_gate(additional_jvm_args)
@@ -1843,9 +1845,6 @@ truffle_nfi_component = mx_sdk_vm.GraalVmLanguage(
 )
 mx_sdk_vm.register_graalvm_component(truffle_nfi_component)
 
-_libffi_jars = ['truffle:TRUFFLE_NFI_LIBFFI']
-if mx.get_jdk().javaCompliance >= "22":
-    _libffi_jars += ['truffle:TRUFFLE_NFI_PANAMA']
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI LIBFFI',
@@ -1854,7 +1853,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
-    truffle_jars=_libffi_jars,
+    truffle_jars=[
+        'truffle:TRUFFLE_NFI_LIBFFI',
+        'truffle:TRUFFLE_NFI_PANAMA',
+    ],
     installable=False,
     stability="supported",
 ))

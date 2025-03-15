@@ -72,6 +72,13 @@ public interface CommittedMemoryProvider {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
+    /**
+     * Returns the size of the address space that is reserved for the collected Java heap (i.e.,
+     * this explicitly excludes all heap parts that are not collected, such as the image heap or the
+     * protected memory before the image heap).
+     */
+    UnsignedWord getCollectedHeapAddressSpaceSize();
+
     Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

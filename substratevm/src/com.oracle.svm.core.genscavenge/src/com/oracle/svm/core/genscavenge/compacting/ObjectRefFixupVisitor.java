@@ -34,7 +34,6 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 
@@ -71,9 +70,7 @@ public final class ObjectRefFixupVisitor implements ObjectReferenceVisitor {
         } else {
             obj = original;
         }
-        if (HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
-            RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
-        }
+        // Note that image heap cards have already been cleaned and re-marked during the scan
         return true;
     }
 }
