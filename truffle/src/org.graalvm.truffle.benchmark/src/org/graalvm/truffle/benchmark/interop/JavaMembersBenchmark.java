@@ -40,7 +40,6 @@
  */
 package org.graalvm.truffle.benchmark.interop;
 
-import com.oracle.truffle.api.benchmark.MembersBenchmarkLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;

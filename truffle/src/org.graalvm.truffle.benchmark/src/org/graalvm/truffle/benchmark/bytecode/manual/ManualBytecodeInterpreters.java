@@ -44,11 +44,12 @@ import static org.graalvm.truffle.benchmark.bytecode.manual.AccessToken.PUBLIC_T
 
 import java.util.Arrays;
 
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguage;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.benchmark.BenchmarkLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;

@@ -40,17 +40,17 @@
  */
 package org.graalvm.truffle.benchmark.bytecode;
 
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNode.BenchmarkLanguageRootNode;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNode.BlockNode;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNode.IfNode;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNode.WhileNode;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.AddNodeGen;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.ConstNodeGen;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.LessNodeGen;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.LoadLocalNodeGen;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.ModNodeGen;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.ReturnNodeGen;
-import static com.oracle.truffle.api.benchmark.BenchmarkLanguageNodeFactory.StoreLocalNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BenchmarkLanguageRootNode;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BlockNode;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.IfNode;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.WhileNode;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.AddNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ConstNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LessNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LoadLocalNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ModNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ReturnNodeGen;
+import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.StoreLocalNodeGen;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -72,14 +72,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.truffle.api.benchmark.BenchmarkLanguage;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNode;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNodeAll;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNodeBase;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNodeBoxingEliminated;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNodeBuilder;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNodeChecked;
-import com.oracle.truffle.api.benchmark.BytecodeBenchmarkRootNodeWithUncached;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 

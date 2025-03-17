@@ -53,8 +53,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.truffle.api.benchmark.TStringBenchDummyLanguage;
-
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class CalcStringAttributesUTF16Benchmark extends TStringBenchmarkBase {
 

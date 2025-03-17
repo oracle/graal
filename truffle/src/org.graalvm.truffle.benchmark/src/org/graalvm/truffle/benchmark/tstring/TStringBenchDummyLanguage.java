@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.benchmark;
+package org.graalvm.truffle.benchmark.tstring;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 

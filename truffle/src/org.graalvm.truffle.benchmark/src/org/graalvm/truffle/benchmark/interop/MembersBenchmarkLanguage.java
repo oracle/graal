@@ -38,9 +38,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.benchmark;
+package org.graalvm.truffle.benchmark.interop;
 
-import org.graalvm.truffle.benchmark.interop.JavaMembersBenchmark;
 import org.openjdk.jmh.annotations.CompilerControl;
 import org.openjdk.jmh.annotations.CompilerControl.Mode;
 

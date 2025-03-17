@@ -45,7 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.benchmark.BenchmarkLanguage;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguage;
 import org.graalvm.truffle.benchmark.bytecode.manual.ManualNodedBytecodeInterpretersFactory.AddNodeGen;
 import org.graalvm.truffle.benchmark.bytecode.manual.ManualNodedBytecodeInterpretersFactory.LtNodeGen;
 import org.graalvm.truffle.benchmark.bytecode.manual.ManualNodedBytecodeInterpretersFactory.ModNodeGen;

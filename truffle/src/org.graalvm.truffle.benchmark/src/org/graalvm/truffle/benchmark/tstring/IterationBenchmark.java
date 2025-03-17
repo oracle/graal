@@ -49,7 +49,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.truffle.api.benchmark.TStringBenchDummyLanguage;
 import com.oracle.truffle.api.strings.TruffleString;
 
 public class IterationBenchmark extends TStringBenchmarkBase {
