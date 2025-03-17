@@ -53,6 +53,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.util.Timer;
 
 import jdk.graal.compiler.word.Word;
 
@@ -251,25 +252,25 @@ final class CompactingOldGeneration extends OldGeneration {
          */
         ReferenceObjectProcessing.updateForwardedRefs();
 
-        Timer oldPlanningTimer = timers.oldPlanning.open();
+        Timer oldPlanningTimer = timers.oldPlanning.start();
         try {
             planCompaction();
         } finally {
-            oldPlanningTimer.close();
+            oldPlanningTimer.stop();
         }
 
-        Timer oldFixupTimer = timers.oldFixup.open();
+        Timer oldFixupTimer = timers.oldFixup.start();
         try {
             fixupReferencesBeforeCompaction(chunkReleaser, timers);
         } finally {
-            oldFixupTimer.close();
+            oldFixupTimer.stop();
         }
 
-        Timer oldCompactionTimer = timers.oldCompaction.open();
+        Timer oldCompactionTimer = timers.oldCompaction.start();
         try {
             compact(timers);
         } finally {
-            oldCompactionTimer.close();
+            oldCompactionTimer.stop();
         }
     }
 
@@ -280,7 +281,7 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     private void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
-        Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.open();
+        Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.start();
         try {
             AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
             while (aChunk.isNonNull()) {
@@ -288,10 +289,10 @@ final class CompactingOldGeneration extends OldGeneration {
                 aChunk = HeapChunk.getNext(aChunk);
             }
         } finally {
-            oldFixupAlignedChunksTimer.close();
+            oldFixupAlignedChunksTimer.stop();
         }
 
-        Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.open();
+        Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.start();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 fixupImageHeapRoots(info);
@@ -303,43 +304,43 @@ final class CompactingOldGeneration extends OldGeneration {
                 }
             }
         } finally {
-            oldFixupImageHeapTimer.close();
+            oldFixupImageHeapTimer.stop();
         }
 
-        Timer oldFixupThreadLocalsTimer = timers.oldFixupThreadLocals.open();
+        Timer oldFixupThreadLocalsTimer = timers.oldFixupThreadLocals.start();
         try {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 VMThreadLocalSupport.singleton().walk(isolateThread, refFixupVisitor);
             }
         } finally {
-            oldFixupThreadLocalsTimer.close();
+            oldFixupThreadLocalsTimer.stop();
         }
 
-        Timer oldFixupStackTimer = timers.oldFixupStack.open();
+        Timer oldFixupStackTimer = timers.oldFixupStack.start();
         try {
             fixupStackReferences();
         } finally {
-            oldFixupStackTimer.close();
+            oldFixupStackTimer.stop();
         }
 
         /*
          * Check each unaligned object and fix its references if the object is marked. Add the chunk
          * to the releaser's list in case the object is not marked and therefore won't survive.
          */
-        Timer oldFixupUnalignedChunksTimer = timers.oldFixupUnalignedChunks.open();
+        Timer oldFixupUnalignedChunksTimer = timers.oldFixupUnalignedChunks.start();
         try {
             fixupUnalignedChunkReferences(chunkReleaser);
         } finally {
-            oldFixupUnalignedChunksTimer.close();
+            oldFixupUnalignedChunksTimer.stop();
         }
 
-        Timer oldFixupRuntimeCodeCacheTimer = timers.oldFixupRuntimeCodeCache.open();
+        Timer oldFixupRuntimeCodeCacheTimer = timers.oldFixupRuntimeCodeCache.start();
         try {
             if (RuntimeCompilation.isEnabled()) {
                 RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheFixupWalker);
             }
         } finally {
-            oldFixupRuntimeCodeCacheTimer.close();
+            oldFixupRuntimeCodeCacheTimer.stop();
         }
     }
 
@@ -394,7 +395,7 @@ final class CompactingOldGeneration extends OldGeneration {
             chunk = HeapChunk.getNext(chunk);
         }
 
-        Timer oldCompactionRememberedSetsTimer = timers.oldCompactionRememberedSets.open();
+        Timer oldCompactionRememberedSetsTimer = timers.oldCompactionRememberedSets.start();
         try {
             chunk = space.getFirstAlignedHeapChunk();
             while (chunk.isNonNull()) {
@@ -413,7 +414,7 @@ final class CompactingOldGeneration extends OldGeneration {
                 chunk = HeapChunk.getNext(chunk);
             }
         } finally {
-            oldCompactionRememberedSetsTimer.close();
+            oldCompactionRememberedSetsTimer.stop();
         }
     }
 
