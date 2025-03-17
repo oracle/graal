@@ -27,6 +27,7 @@ package com.oracle.svm.core.foreign;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.lang.constant.DirectMethodHandleDesc;
+import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.invoke.MethodHandle;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,6 +66,7 @@ import jdk.graal.compiler.word.Word;
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
+import jdk.internal.foreign.abi.LinkerOptions;
 
 public class ForeignFunctionsRuntime implements ForeignSupport {
     @Fold
@@ -73,7 +76,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
 
     private final AbiUtils.TrampolineTemplate trampolineTemplate;
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
-    private final EconomicMap<DirectMethodHandleDesc, FunctionPointerHolder> directUpcallStubs = EconomicMap.create();
+    private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = EconomicMap.create();
     private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
@@ -115,9 +118,10 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, CFunctionPointer ptr) {
-        VMError.guarantee(!directUpcallStubs.containsKey(desc), "Seems like multiple stubs were generated for %s", desc);
-        VMError.guarantee(directUpcallStubs.put(desc, new FunctionPointerHolder(ptr)) == null);
+    public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
+        var key = Pair.create(desc, jep);
+        VMError.guarantee(!directUpcallStubs.containsKey(key), "Seems like multiple stubs were generated for %s", desc);
+        VMError.guarantee(directUpcallStubs.put(key, new FunctionPointerHolder(ptr)) == null);
     }
 
     /**
@@ -168,8 +172,9 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
      * @param trampolineAddress The address of the upcall trampoline.
      * @param desc A direct method handle descriptor used to lookup the direct upcall stub.
      */
-    void patchForDirectUpcall(long trampolineAddress, DirectMethodHandleDesc desc) {
-        FunctionPointerHolder functionPointerHolder = directUpcallStubs.get(desc);
+    void patchForDirectUpcall(long trampolineAddress, DirectMethodHandleDesc desc, FunctionDescriptor functionDescriptor, LinkerOptions options) {
+        JavaEntryPointInfo jep = AbiUtils.singleton().makeJavaEntryPoint(functionDescriptor, options);
+        FunctionPointerHolder functionPointerHolder = directUpcallStubs.get(Pair.create(desc, jep));
         if (functionPointerHolder == null) {
             return;
         }
