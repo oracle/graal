@@ -65,7 +65,7 @@ import com.oracle.truffle.api.nodes.Node;
 import sun.misc.Unsafe;
 
 @ExportLibrary(WasmMemoryLibrary.class)
-final class NativeWasmMemory extends WasmMemory {
+public final class NativeWasmMemory extends WasmMemory {
 
     private long startAddress;
     /**
