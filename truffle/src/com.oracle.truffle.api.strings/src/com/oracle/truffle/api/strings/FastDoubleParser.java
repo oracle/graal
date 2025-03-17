@@ -42,7 +42,7 @@ package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.NumberConversion.numberFormatException;
 import static com.oracle.truffle.api.strings.TStringOps.readValue;
-import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.nio.charset.StandardCharsets;
 
@@ -369,7 +369,7 @@ final class FastDoubleParser {
 
     private static boolean regionMatches(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int index, TruffleString b) {
         assert b.isManaged() && b.isMaterialized() && b.offset() == 0;
-        return TStringOps.regionEqualsWithOrMaskWithStride(location, a, arrayA, offsetA, strideA, index, b, (byte[]) b.data(), ARRAY_BYTE_BASE_OFFSET, b.stride(), 0, null, b.length());
+        return TStringOps.regionEqualsWithOrMaskWithStride(location, a, arrayA, offsetA, strideA, index, b, (byte[]) b.data(), byteArrayBaseOffset(), b.stride(), 0, null, b.length());
     }
 
     /**
@@ -512,10 +512,10 @@ final class FastDoubleParser {
         final int offsetStr;
         if (arrayA != null && strideA == 0) {
             arrayStr = arrayA;
-            offsetStr = (int) ((offsetA - ARRAY_BYTE_BASE_OFFSET) + startIndex);
+            offsetStr = (int) ((offsetA - byteArrayBaseOffset()) + startIndex);
         } else {
             arrayStr = new byte[len];
-            TStringOps.arraycopyWithStride(location, arrayA, offsetA, strideA, startIndex, arrayStr, ARRAY_BYTE_BASE_OFFSET, 0, 0, len);
+            TStringOps.arraycopyWithStride(location, arrayA, offsetA, strideA, startIndex, arrayStr, byteArrayBaseOffset(), 0, 0, len);
             offsetStr = 0;
         }
         return callJavaStringParseDouble(len, arrayStr, offsetStr);

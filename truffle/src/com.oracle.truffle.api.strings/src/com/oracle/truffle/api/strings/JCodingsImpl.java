@@ -50,7 +50,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
-import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -225,7 +225,7 @@ final class JCodingsImpl implements JCodings {
             offsetBytes = fromIndexA;
         } else {
             bytes = arrayA;
-            offsetBytes = (int) ((offsetA - ARRAY_BYTE_BASE_OFFSET) + fromIndexA);
+            offsetBytes = (int) ((offsetA - byteArrayBaseOffset()) + fromIndexA);
         }
         Encoding enc = get(encodingA);
         int codeRange = TSCodeRange.getValid(enc.isSingleByte());

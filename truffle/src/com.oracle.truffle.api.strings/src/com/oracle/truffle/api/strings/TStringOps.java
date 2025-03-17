@@ -43,7 +43,7 @@ package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.Encodings.isUTF16LowSurrogate;
 import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
-import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
@@ -54,7 +54,7 @@ import sun.misc.Unsafe;
 final class TStringOps {
 
     static int readFromByteArray(byte[] array, int stride, int i) {
-        final long offset = ARRAY_BYTE_BASE_OFFSET;
+        final long offset = byteArrayBaseOffset();
         assert validateRegionIndex(array, 0, array.length >> stride, stride, i);
         return switch (stride) {
             case 0 -> uInt(array[i]);
@@ -64,19 +64,19 @@ final class TStringOps {
     }
 
     static int readFromByteArrayS1(byte[] array, int i) {
-        final long offset = ARRAY_BYTE_BASE_OFFSET;
+        final long offset = byteArrayBaseOffset();
         assert validateRegionIndex(array, 0, array.length >> 1, 1, i);
         return TStringUnsafe.getChar(array, offset + ((long) i << 1));
     }
 
     static void writeToByteArrayS1(byte[] array, int i, int value) {
-        final long offset = ARRAY_BYTE_BASE_OFFSET;
+        final long offset = byteArrayBaseOffset();
         assert validateRegionIndex(array, 0, array.length >> 1, 1, i);
         TStringUnsafe.putChar(array, offset + ((long) i << 1), (char) value);
     }
 
     static void writeToByteArrayS2(byte[] array, int i, int value) {
-        final long offset = ARRAY_BYTE_BASE_OFFSET;
+        final long offset = byteArrayBaseOffset();
         assert validateRegionIndex(array, 0, array.length >> 2, 2, i);
         TStringUnsafe.putInt(array, offset + ((long) i << 2), value);
     }
@@ -427,7 +427,7 @@ final class TStringOps {
     static int indexOfStringWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
-        int offsetMask = ARRAY_BYTE_BASE_OFFSET;
+        int offsetMask = byteArrayBaseOffset();
         assert lengthB > 1;
         assert lengthA >= lengthB;
         final int max = toIndex - (lengthB - 2);
@@ -493,7 +493,7 @@ final class TStringOps {
     static int lastIndexOfStringWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
-        int offsetMask = ARRAY_BYTE_BASE_OFFSET;
+        int offsetMask = byteArrayBaseOffset();
         assert lengthB > 1;
         assert lengthA >= lengthB;
         int index = fromIndex;
@@ -723,7 +723,7 @@ final class TStringOps {
 
     static byte[] arraycopyOfWithStride(Node location, byte[] arrayA, long offsetA, int lengthA, int strideA, int lengthB, int strideB) {
         byte[] dst = new byte[lengthB << strideB];
-        arraycopyWithStride(location, arrayA, offsetA, strideA, 0, dst, ARRAY_BYTE_BASE_OFFSET, strideB, 0, lengthA);
+        arraycopyWithStride(location, arrayA, offsetA, strideA, 0, dst, byteArrayBaseOffset(), strideB, 0, lengthA);
         return dst;
     }
 
@@ -1612,7 +1612,7 @@ final class TStringOps {
         if (array == null) {
             return offset >= 0 && length >= 0;
         } else {
-            return Long.compareUnsigned((offset - ARRAY_BYTE_BASE_OFFSET) + (Integer.toUnsignedLong(length) << stride), array.length) <= 0;
+            return Long.compareUnsigned((offset - byteArrayBaseOffset()) + (Integer.toUnsignedLong(length) << stride), array.length) <= 0;
         }
     }
 

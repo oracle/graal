@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.lang.ref.Reference;
 import java.util.Arrays;
@@ -414,7 +414,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
@@ -499,23 +499,23 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 final long addOffsetB;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 }
                 if (managedProfileB.profile(this, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetB = byteArrayBaseOffset();
                 } else if (nativeProfileB.profile(this, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(this, dataB);
-                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetB = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 final long offsetB = b.offset() + addOffsetB;
@@ -591,13 +591,13 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(this, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else if (nativeProfileA.profile(this, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(this, dataA);
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -818,13 +818,13 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 final byte[] array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, a.length(), a.stride(), byteLength >> expectedEncoding.naturalStride, expectedEncoding.naturalStride);
@@ -871,13 +871,13 @@ public final class MutableTruffleString extends AbstractTruffleString {
             final long addOffsetA;
             if (managedProfileA.profile(node, dataA instanceof byte[])) {
                 arrayA = (byte[]) dataA;
-                addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                addOffsetA = byteArrayBaseOffset();
             } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                 arrayA = null;
                 addOffsetA = NativePointer.unwrap(dataA);
             } else {
                 arrayA = a.materializeLazy(node, dataA);
-                addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                addOffsetA = byteArrayBaseOffset();
             }
             final long offsetA = a.offset() + addOffsetA;
             final byte[] array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, a.length(), a.stride(), lengthB, strideB);

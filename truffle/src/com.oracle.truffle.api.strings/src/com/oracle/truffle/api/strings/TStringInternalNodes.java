@@ -80,7 +80,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringOps.readS0;
 import static com.oracle.truffle.api.strings.TStringOps.writeToByteArrayS1;
 import static com.oracle.truffle.api.strings.TStringOps.writeToByteArrayS2;
-import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.lang.ref.Reference;
 import java.util.Arrays;
@@ -174,13 +174,13 @@ final class TStringInternalNodes {
                     final long addOffsetA;
                     if (managedProfileA.profile(node, dataA instanceof byte[])) {
                         arrayA = (byte[]) dataA;
-                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                        addOffsetA = byteArrayBaseOffset();
                     } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                         arrayA = null;
                         addOffsetA = NativePointer.unwrap(dataA);
                     } else {
                         arrayA = a.materializeLazy(node, dataA);
-                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                        addOffsetA = byteArrayBaseOffset();
                     }
                     final long offsetA = a.offset() + addOffsetA;
                     return StringAttributes.getCodeRange(updateAttributes(node, a, arrayA, offsetA, encoding, codeRange));
@@ -224,13 +224,13 @@ final class TStringInternalNodes {
                     final long addOffsetA;
                     if (managedProfileA.profile(node, dataA instanceof byte[])) {
                         arrayA = (byte[]) dataA;
-                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                        addOffsetA = byteArrayBaseOffset();
                     } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                         arrayA = null;
                         addOffsetA = NativePointer.unwrap(dataA);
                     } else {
                         arrayA = a.materializeLazy(node, dataA);
-                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                        addOffsetA = byteArrayBaseOffset();
                     }
                     final long offsetA = a.offset() + addOffsetA;
                     return StringAttributes.getCodeRange(updateAttributes(node, a, arrayA, offsetA, encoding, codeRange));
@@ -278,13 +278,13 @@ final class TStringInternalNodes {
                     final long addOffsetA;
                     if (managedProfileA.profile(node, dataA instanceof byte[])) {
                         arrayA = (byte[]) dataA;
-                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                        addOffsetA = byteArrayBaseOffset();
                     } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                         arrayA = null;
                         addOffsetA = NativePointer.unwrap(dataA);
                     } else {
                         arrayA = a.materializeLazy(node, dataA);
-                        addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                        addOffsetA = byteArrayBaseOffset();
                     }
                     final long offsetA = a.offset() + addOffsetA;
                     return StringAttributes.getCodePointLength(updateAttributes(node, a, arrayA, offsetA, encoding, a.codeRange()));
@@ -324,7 +324,7 @@ final class TStringInternalNodes {
                 final long offsetA;
                 if (dataA instanceof byte[] byteArray) {
                     arrayA = byteArray;
-                    offsetA = ARRAY_BYTE_BASE_OFFSET + strOffsetA;
+                    offsetA = byteArrayBaseOffset() + strOffsetA;
                 } else {
                     arrayA = null;
                     offsetA = NativePointer.unwrap(dataA) + strOffsetA;
@@ -346,9 +346,9 @@ final class TStringInternalNodes {
                         offset = 0;
                         array = new byte[length << stride];
                         if (utf16CompactProfile.profile(node, stride == 0)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, ARRAY_BYTE_BASE_OFFSET, 0, 0, length);
+                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, byteArrayBaseOffset(), 0, 0, length);
                         } else {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, ARRAY_BYTE_BASE_OFFSET, 1, 0, length);
+                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, byteArrayBaseOffset(), 1, 0, length);
                         }
                     } else {
                         offset = strOffsetA;
@@ -364,11 +364,11 @@ final class TStringInternalNodes {
                         offset = 0;
                         array = new byte[length << stride];
                         if (utf32Compact0Profile.profile(node, stride == 0)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, ARRAY_BYTE_BASE_OFFSET, 0, 0, length);
+                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 0, 0, length);
                         } else if (utf32Compact1Profile.profile(node, stride == 1)) {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, ARRAY_BYTE_BASE_OFFSET, 1, 0, length);
+                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 1, 0, length);
                         } else {
-                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, ARRAY_BYTE_BASE_OFFSET, 2, 0, length);
+                            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, byteArrayBaseOffset(), 2, 0, length);
                         }
                     } else {
                         offset = strOffsetA;
@@ -443,13 +443,13 @@ final class TStringInternalNodes {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -460,7 +460,7 @@ final class TStringInternalNodes {
                     return encoding.getEmpty();
                 }
                 final int strideA = a.stride();
-                final int offset = ARRAY_BYTE_BASE_OFFSET;
+                final int offset = byteArrayBaseOffset();
                 final int stride;
                 final byte[] array;
                 if (utf16Profile.profile(node, isUTF16(encoding))) {
@@ -1170,7 +1170,7 @@ final class TStringInternalNodes {
             }
             byte[] encoded = Encodings.utf8EncodeNonAscii(codepoint, encodedSize);
             TruffleString b = TruffleString.createFromByteArray(encoded, encoded.length, 0, Encoding.UTF_8, 1, TSCodeRange.getValidMultiByte());
-            return TStringOps.indexOfStringWithOrMaskWithStride(node, a, arrayA, offsetA, 0, b, encoded, ARRAY_BYTE_BASE_OFFSET, 0, fromIndex, toIndex, null);
+            return TStringOps.indexOfStringWithOrMaskWithStride(node, a, arrayA, offsetA, 0, b, encoded, byteArrayBaseOffset(), 0, fromIndex, toIndex, null);
         }
 
         @Specialization(guards = {"isUTF16(encoding)", "!isFixedWidth(codeRangeA)"})
@@ -1277,7 +1277,7 @@ final class TStringInternalNodes {
             byte[] encoded = Encodings.utf8EncodeNonAscii(codepoint, encodedSize);
             return TStringOps.lastIndexOfStringWithOrMaskWithStride(node,
                             arrayA, offsetA, a.length(), 0,
-                            encoded, ARRAY_BYTE_BASE_OFFSET, encoded.length, 0, fromIndex, toIndex, null);
+                            encoded, byteArrayBaseOffset(), encoded.length, 0, fromIndex, toIndex, null);
         }
 
         @Specialization(guards = {"isUTF16(encoding)", "!isFixedWidth(codeRangeA)"})
@@ -1455,7 +1455,7 @@ final class TStringInternalNodes {
                 final byte[] newBytes = new byte[length];
                 TStringOps.arraycopyWithStride(node,
                                 arrayA, lazyOffset, 1, 0,
-                                newBytes, ARRAY_BYTE_BASE_OFFSET, 0, 0, length);
+                                newBytes, byteArrayBaseOffset(), 0, 0, length);
                 data = newBytes;
             } else if (stride2MustMaterializeProfile.profile(node, a.stride() == 2 && TSCodeRange.isMoreRestrictiveOrEqual(codeRange, TSCodeRange.get16Bit()))) {
                 // Always materialize 4-byte UTF-32 strings when they can be compacted. Otherwise,
@@ -1468,12 +1468,12 @@ final class TStringInternalNodes {
                 if (stride == 0) {
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, lazyOffset, 2, 0,
-                                    newBytes, ARRAY_BYTE_BASE_OFFSET, 0, 0, length);
+                                    newBytes, byteArrayBaseOffset(), 0, 0, length);
                 } else {
                     assert stride == 1;
                     TStringOps.arraycopyWithStride(node,
                                     arrayA, lazyOffset, 2, 0,
-                                    newBytes, ARRAY_BYTE_BASE_OFFSET, 1, 0, length);
+                                    newBytes, byteArrayBaseOffset(), 1, 0, length);
                 }
                 data = newBytes;
             } else {
@@ -1519,13 +1519,13 @@ final class TStringInternalNodes {
                 final long addOffsetA;
                 if (managedProfileA.profile(node, dataA instanceof byte[])) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else if (nativeProfileA.profile(node, dataA instanceof NativePointer)) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = a.materializeLazy(node, dataA);
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
 
@@ -1533,13 +1533,13 @@ final class TStringInternalNodes {
                 final long addOffsetB;
                 if (managedProfileB.profile(node, dataB instanceof byte[])) {
                     arrayB = (byte[]) dataB;
-                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetB = byteArrayBaseOffset();
                 } else if (nativeProfileB.profile(node, dataB instanceof NativePointer)) {
                     arrayB = null;
                     addOffsetB = NativePointer.unwrap(dataB);
                 } else {
                     arrayB = b.materializeLazy(node, dataB);
-                    addOffsetB = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetB = byteArrayBaseOffset();
                 }
                 final long offsetB = b.offset() + addOffsetB;
 
@@ -1547,7 +1547,7 @@ final class TStringInternalNodes {
                 final int codeRange;
                 final int codePointLength;
                 if (brokenProfile.profile(node, isBrokenMultiByte(concatCodeRange))) {
-                    final long attrs = calculateAttributesNode.execute(node, null, bytes, ARRAY_BYTE_BASE_OFFSET, concatLength, concatStride, encoding, 0, TSCodeRange.getBrokenMultiByte());
+                    final long attrs = calculateAttributesNode.execute(node, null, bytes, byteArrayBaseOffset(), concatLength, concatStride, encoding, 0, TSCodeRange.getBrokenMultiByte());
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                     codeRange = StringAttributes.getCodeRange(attrs);
                 } else {
@@ -1575,10 +1575,10 @@ final class TStringInternalNodes {
             final byte[] bytes = new byte[concatLength << concatStride];
             TStringOps.arraycopyWithStride(node,
                             arrayA, offsetA, a.stride(), 0,
-                            bytes, ARRAY_BYTE_BASE_OFFSET, concatStride, 0, a.length());
+                            bytes, byteArrayBaseOffset(), concatStride, 0, a.length());
             TStringOps.arraycopyWithStride(node,
                             arrayB, offsetB, b.stride(), 0,
-                            bytes, ARRAY_BYTE_BASE_OFFSET, concatStride, a.length(), b.length());
+                            bytes, byteArrayBaseOffset(), concatStride, a.length(), b.length());
             return bytes;
         }
 
@@ -1592,10 +1592,10 @@ final class TStringInternalNodes {
             final byte[] bytes = new byte[concatLength];
             TStringOps.arraycopyWithStride(node,
                             arrayA, offsetA, 0, 0,
-                            bytes, ARRAY_BYTE_BASE_OFFSET, 0, 0, a.length());
+                            bytes, byteArrayBaseOffset(), 0, 0, a.length());
             TStringOps.arraycopyWithStride(node,
                             arrayB, offsetB, 0, 0,
-                            bytes, ARRAY_BYTE_BASE_OFFSET, 0, a.length(), b.length());
+                            bytes, byteArrayBaseOffset(), 0, a.length(), b.length());
             return bytes;
         }
     }
@@ -1989,7 +1989,7 @@ final class TStringInternalNodes {
                     codePointLength = -1;
                     codeRange = TSCodeRange.markImprecise(TSCodeRange.getBrokenMultiByte());
                 } else {
-                    final long attrs = TStringOps.calcStringAttributesUTF16(node, arrayJS, offsetJS + ARRAY_BYTE_BASE_OFFSET, length, false);
+                    final long attrs = TStringOps.calcStringAttributesUTF16(node, arrayJS, offsetJS + byteArrayBaseOffset(), length, false);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
@@ -2003,10 +2003,10 @@ final class TStringInternalNodes {
                 array = new byte[length << stride];
                 offset = 0;
                 if (strideJS == 1 && stride == 0) {
-                    TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + ARRAY_BYTE_BASE_OFFSET, 1, 0, array, offset + ARRAY_BYTE_BASE_OFFSET, 0, 0, length);
+                    TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 1, 0, array, offset + byteArrayBaseOffset(), 0, 0, length);
                 } else {
                     assert strideJS == stride;
-                    TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + ARRAY_BYTE_BASE_OFFSET, 0, 0, array, offset + ARRAY_BYTE_BASE_OFFSET, 0, 0, length << stride);
+                    TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 0, 0, array, offset + byteArrayBaseOffset(), 0, 0, length << stride);
                 }
             }
             TruffleString ret = TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, true);
@@ -2031,13 +2031,13 @@ final class TStringInternalNodes {
             final int stride = TStringUnsafe.COMPACT_STRINGS_ENABLED ? Stride.fromCodeRangeUTF16(a.codeRange()) : 1;
             final byte[] bytes;
             if (reuseProfile.profile(node, a instanceof TruffleString && arrayA != null && a.length() << a.stride() == arrayA.length && a.stride() == stride)) {
-                assert offsetA == ARRAY_BYTE_BASE_OFFSET;
+                assert offsetA == byteArrayBaseOffset();
                 bytes = arrayA;
             } else {
                 bytes = new byte[a.length() << stride];
                 TStringOps.arraycopyWithStride(node,
                                 arrayA, offsetA, a.stride(), 0,
-                                bytes, ARRAY_BYTE_BASE_OFFSET, stride, 0, a.length());
+                                bytes, byteArrayBaseOffset(), stride, 0, a.length());
             }
             return TStringUnsafe.createJavaString(bytes, stride);
         }
@@ -2058,7 +2058,7 @@ final class TStringInternalNodes {
             int pos = 0;
             int loopCount = 0;
             while (pos < length) {
-                pos = TStringOps.indexOfCodePointWithMaskWithStrideIntl(node, array, ARRAY_BYTE_BASE_OFFSET, length, 0, pos, 0xff, 0x7f);
+                pos = TStringOps.indexOfCodePointWithMaskWithStrideIntl(node, array, byteArrayBaseOffset(), length, 0, pos, 0xff, 0x7f);
                 if (pos >= 0) {
                     array[pos++] = '?';
                 } else {
@@ -2125,7 +2125,7 @@ final class TStringInternalNodes {
                 outOfMemoryProfile.enter(node);
                 throw InternalErrors.outOfMemory();
             }
-            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 0, lastErrorPos, buffer, ARRAY_BYTE_BASE_OFFSET, 0, length, lengthCPY);
+            TStringOps.arraycopyWithStride(node, arrayA, offsetA, 0, lastErrorPos, buffer, byteArrayBaseOffset(), 0, length, lengthCPY);
             return length + lengthCPY;
         }
 
@@ -2138,7 +2138,7 @@ final class TStringInternalNodes {
             int codeRange = TSCodeRange.get16Bit();
             int loopCount = 0;
             while (true) {
-                pos = TStringOps.indexOfCodePointWithMaskWithStrideIntl(node, array, ARRAY_BYTE_BASE_OFFSET, length, 1, pos, 0xdfff, 0x7ff);
+                pos = TStringOps.indexOfCodePointWithMaskWithStrideIntl(node, array, byteArrayBaseOffset(), length, 1, pos, 0xdfff, 0x7ff);
                 if (pos >= 0) {
                     boolean invalid = true;
                     if (pos != length - 1) {
@@ -2409,7 +2409,7 @@ final class TStringInternalNodes {
             }
             final int codePointLength;
             if (isBrokenMultiByte(codeRange)) {
-                long attrs = TStringOps.calcStringAttributesUTF8(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, false, false, brokenProfile);
+                long attrs = TStringOps.calcStringAttributesUTF8(node, buffer, byteArrayBaseOffset(), length, false, false, brokenProfile);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
             } else {
@@ -2434,7 +2434,7 @@ final class TStringInternalNodes {
             }
             final int codePointLength;
             if (isBrokenMultiByte(codeRange)) {
-                long attrs = TStringOps.calcStringAttributesUTF16(this, buffer, ARRAY_BYTE_BASE_OFFSET, length, false);
+                long attrs = TStringOps.calcStringAttributesUTF16(this, buffer, byteArrayBaseOffset(), length, false);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
             } else {
@@ -2453,13 +2453,13 @@ final class TStringInternalNodes {
             final long inflatedOffset;
             if (isStride0(a)) {
                 inflatedBuffer = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, a.length(), 0, length, 1);
-                inflatedOffset = ARRAY_BYTE_BASE_OFFSET;
+                inflatedOffset = byteArrayBaseOffset();
             } else {
                 inflatedBuffer = arrayA;
                 inflatedOffset = offsetA;
             }
             byte[] buffer = new byte[a.byteLength(Encoding.UTF_16)];
-            TStringOps.byteSwapS1(node, inflatedBuffer, inflatedOffset, buffer, ARRAY_BYTE_BASE_OFFSET, length);
+            TStringOps.byteSwapS1(node, inflatedBuffer, inflatedOffset, buffer, byteArrayBaseOffset(), length);
             final int codeRange;
             if (TSCodeRange.isMoreRestrictiveOrEqual(codeRangeA, TSCodeRange.getValidMultiByte())) {
                 codeRange = TSCodeRange.getValidMultiByte();
@@ -2478,14 +2478,14 @@ final class TStringInternalNodes {
             assert isStride0(a);
             byte[] buffer = new byte[a.length()];
             int length = buffer.length >> 1;
-            TStringOps.byteSwapS1(node, arrayA, offsetA, buffer, ARRAY_BYTE_BASE_OFFSET, length);
-            long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, false);
+            TStringOps.byteSwapS1(node, arrayA, offsetA, buffer, byteArrayBaseOffset(), length);
+            long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, byteArrayBaseOffset(), length, false);
             int codeRange = StringAttributes.getCodeRange(attrs);
             int codePointLength = StringAttributes.getCodePointLength(attrs);
             assert codePointLength == codePointLengthA;
             int stride = Stride.fromCodeRangeUTF16(codeRange);
             if (stride == 0) {
-                buffer = TStringOps.arraycopyOfWithStride(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, 1, length, 0);
+                buffer = TStringOps.arraycopyOfWithStride(node, buffer, byteArrayBaseOffset(), length, 1, length, 0);
             }
             return create(a, buffer, length, stride, Encoding.UTF_16, codePointLength, codeRange);
         }
@@ -2499,11 +2499,11 @@ final class TStringInternalNodes {
             assert isStride0(a);
             byte[] buffer = new byte[a.length()];
             int length = buffer.length >> 2;
-            TStringOps.byteSwapS2(node, arrayA, offsetA, buffer, ARRAY_BYTE_BASE_OFFSET, length);
-            int codeRange = TStringOps.calcStringAttributesUTF32(node, buffer, ARRAY_BYTE_BASE_OFFSET, length);
+            TStringOps.byteSwapS2(node, arrayA, offsetA, buffer, byteArrayBaseOffset(), length);
+            int codeRange = TStringOps.calcStringAttributesUTF32(node, buffer, byteArrayBaseOffset(), length);
             int stride = Stride.fromCodeRangeUTF32(codeRange);
             if (stride < 2) {
-                buffer = TStringOps.arraycopyOfWithStride(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, 2, length, stride);
+                buffer = TStringOps.arraycopyOfWithStride(node, buffer, byteArrayBaseOffset(), length, 2, length, stride);
             }
             return create(a, buffer, length, stride, Encoding.UTF_32, length, codeRange);
         }
@@ -2518,13 +2518,13 @@ final class TStringInternalNodes {
             final long inflatedOffset;
             if (a.stride() < 2) {
                 inflatedBuffer = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, a.length(), a.stride(), length, 2);
-                inflatedOffset = ARRAY_BYTE_BASE_OFFSET;
+                inflatedOffset = byteArrayBaseOffset();
             } else {
                 inflatedBuffer = arrayA;
                 inflatedOffset = offsetA;
             }
             byte[] buffer = new byte[a.byteLength(Encoding.UTF_32)];
-            TStringOps.byteSwapS2(node, inflatedBuffer, inflatedOffset, buffer, ARRAY_BYTE_BASE_OFFSET, length);
+            TStringOps.byteSwapS2(node, inflatedBuffer, inflatedOffset, buffer, byteArrayBaseOffset(), length);
             final int codeRange;
             if (TSCodeRange.isMoreRestrictiveOrEqual(codeRangeA, TSCodeRange.getValidFixedWidth())) {
                 codeRange = TSCodeRange.getValidMultiByte();
@@ -2562,7 +2562,7 @@ final class TStringInternalNodes {
                 int curIndex = it.getRawIndex();
                 int codepoint = iteratorNextNode.execute(node, it, sourceEncoding, decodingErrorHandler);
                 if (codepoint > 0xff) {
-                    buffer = TStringOps.arraycopyOfWithStride(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, 0, codePointLengthA, 1);
+                    buffer = TStringOps.arraycopyOfWithStride(node, buffer, byteArrayBaseOffset(), length, 0, codePointLengthA, 1);
                     codeRange = TSCodeRange.get16Bit();
                     it.setRawIndex(curIndex);
                     break;
@@ -2597,7 +2597,7 @@ final class TStringInternalNodes {
             codePointLength = length;
             if (!it.hasNext()) {
                 if (isBrokenMultiByte(codeRange)) {
-                    long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, false);
+                    long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, byteArrayBaseOffset(), length, false);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
@@ -2621,7 +2621,7 @@ final class TStringInternalNodes {
                 TStringConstants.truffleSafePointPoll(node, ++loopCount);
             }
             if (isBrokenMultiByte(codeRange)) {
-                long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, false);
+                long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, byteArrayBaseOffset(), length, false);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
             }
@@ -2669,7 +2669,7 @@ final class TStringInternalNodes {
                 TStringConstants.truffleSafePointPoll(node, ++loopCount);
             }
             if (isBrokenMultiByte(codeRange)) {
-                long attrs = TStringOps.calcStringAttributesUTF16FE(node, buffer, ARRAY_BYTE_BASE_OFFSET, length);
+                long attrs = TStringOps.calcStringAttributesUTF16FE(node, buffer, byteArrayBaseOffset(), length);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
             }
@@ -2713,7 +2713,7 @@ final class TStringInternalNodes {
             int codePointLength = codePointLengthA;
             int codeRange = isBroken ? TSCodeRange.getBrokenFixedWidth() : TSCodeRange.getValidFixedWidth();
             if (isBroken && !allowUTF16Surrogates) {
-                long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, ARRAY_BYTE_BASE_OFFSET, length, false);
+                long attrs = TStringOps.calcStringAttributesUTF16(node, buffer, byteArrayBaseOffset(), length, false);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
             }
@@ -2727,7 +2727,7 @@ final class TStringInternalNodes {
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, offsetA, codeRangeA, sourceEncoding);
             DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
             byte[] buffer = new byte[codePointLengthA];
-            int offsetBuf = ARRAY_BYTE_BASE_OFFSET;
+            int offsetBuf = byteArrayBaseOffset();
             int length = 0;
             int codeRange = TSCodeRange.get7Bit();
             int codepoint = 0;

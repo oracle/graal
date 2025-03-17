@@ -56,7 +56,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
-import static com.oracle.truffle.api.strings.TStringUnsafe.ARRAY_BYTE_BASE_OFFSET;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.lang.ref.Reference;
 
@@ -1458,18 +1458,18 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                 final long addOffsetA;
                 if (dataA instanceof byte[]) {
                     arrayA = (byte[]) dataA;
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 } else if (dataA instanceof NativePointer) {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
                     arrayA = src.materializeLazy(location, dataA);
-                    addOffsetA = ARRAY_BYTE_BASE_OFFSET;
+                    addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = src.offset() + addOffsetA;
                 TStringOps.arraycopyWithStride(location,
                                 arrayA, offsetA, src.stride(), 0,
-                                dst, ARRAY_BYTE_BASE_OFFSET, dstStride, dstFrom, src.length());
+                                dst, byteArrayBaseOffset(), dstStride, dstFrom, src.length());
             } finally {
                 Reference.reachabilityFence(dataA);
             }

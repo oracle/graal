@@ -51,10 +51,6 @@ import sun.misc.Unsafe;
 
 final class TStringUnsafe {
 
-    public static final int ARRAY_BYTE_BASE_OFFSET = Unsafe.ARRAY_BYTE_BASE_OFFSET;
-    public static final int ARRAY_CHAR_BASE_OFFSET = Unsafe.ARRAY_CHAR_BASE_OFFSET;
-    public static final int ARRAY_INT_BASE_OFFSET = Unsafe.ARRAY_INT_BASE_OFFSET;
-
     @TruffleBoundary
     private static int getJavaSpecificationVersion() {
         return Runtime.version().feature();
@@ -123,6 +119,18 @@ final class TStringUnsafe {
                 throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
             }
         }
+    }
+
+    static int byteArrayBaseOffset() {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    }
+
+    static int charArrayBaseOffset() {
+        return Unsafe.ARRAY_CHAR_BASE_OFFSET;
+    }
+
+    static int intArrayBaseOffset() {
+        return Unsafe.ARRAY_INT_BASE_OFFSET;
     }
 
     static byte[] getJavaStringArray(String str) {
@@ -197,6 +205,6 @@ final class TStringUnsafe {
     }
 
     static void copyFromNative(long arraySrc, int offsetSrc, byte[] arrayDst, long offsetDst, int byteLength) {
-        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, TStringUnsafe.ARRAY_BYTE_BASE_OFFSET + offsetDst, byteLength);
+        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, byteArrayBaseOffset() + offsetDst, byteLength);
     }
 }
