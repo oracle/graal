@@ -63,12 +63,14 @@ public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return environSizesGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return environSizesGet(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int environSizesGet(WasmMemory memory, int environCountAddress, int environSizeAddress) {
-        final Map<String, String> env = getContext().environment().getEnvironment();
+    private int environSizesGet(WasmContext context, WasmMemory memory, int environCountAddress, int environSizeAddress) {
+        final Map<String, String> env = context.environment().getEnvironment();
         int size = 0;
         for (final Map.Entry<String, String> entry : env.entrySet()) {
             size += WasmMemory.encodedStringLength(entry.getKey() + "=" + entry.getValue());

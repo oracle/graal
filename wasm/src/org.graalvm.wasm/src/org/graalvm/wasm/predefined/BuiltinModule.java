@@ -47,6 +47,7 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -67,13 +68,13 @@ public abstract class BuiltinModule {
                     "spectest", new SpectestModule(),
                     "go", new GoModule());
 
-    public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
+    public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmStore store, String name, String predefinedModuleName) {
         CompilerAsserts.neverPartOfCompilation();
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown predefined module: " + predefinedModuleName);
         }
-        return builtinModule.createInstance(language, context, name);
+        return builtinModule.createInstance(language, store, name);
     }
 
     protected BuiltinModule() {
@@ -81,10 +82,10 @@ public abstract class BuiltinModule {
 
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
 
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> createModule(language, context, name));
+    protected WasmInstance createInstance(WasmLanguage language, WasmStore store, String name) {
+        final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> createModule(language, store.context(), name));
 
-        final WasmInstance instance = new WasmInstance(context, module, context.environment().getContext());
+        final WasmInstance instance = new WasmInstance(store, module);
         instance.createLinkActions();
         for (int i = 0; i < module.numFunctions(); i++) {
             var target = module.function(i).target();

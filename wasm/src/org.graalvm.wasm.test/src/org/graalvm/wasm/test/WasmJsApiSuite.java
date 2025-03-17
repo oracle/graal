@@ -109,10 +109,10 @@ public class WasmJsApiSuite {
         module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
         WasmFunction func = module.declareFunction(0);
         func.setTarget(functionRootNode.getCallTarget());
-        WasmInstance moduleInstance = context.readInstance(module);
+        WasmInstance moduleInstance = context.contextStore().readInstance(module);
         // Perform normal linking steps, incl. assignTypeEquivalenceClasses().
         // Functions need to have type equivalence classes assigned for indirect calls.
-        context.linker().tryLink(moduleInstance);
+        moduleInstance.store().linker().tryLink(moduleInstance);
         assert func.typeEquivalenceClass() >= 0 : "type equivalence class must be assigned";
         return new WasmFunctionInstance(moduleInstance, func, functionRootNode.getCallTarget());
     }
@@ -906,9 +906,8 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
-            WasmContext wasmContext = WasmContext.get(null);
-            final WasmFunctionInstance functionInstance = createWasmFunctionInstance(wasmContext, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
-                            new RootNode(wasmContext.language()) {
+            final WasmFunctionInstance functionInstance = createWasmFunctionInstance(context, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
+                            new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;

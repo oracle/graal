@@ -61,12 +61,14 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return argsSizesGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return argsSizesGet(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsSizesGet(WasmMemory memory, int argcAddress, int argvBufSizeAddress) {
-        final String[] arguments = getContext().environment().getApplicationArguments();
+    private int argsSizesGet(WasmContext context, WasmMemory memory, int argcAddress, int argvBufSizeAddress) {
+        final String[] arguments = context.environment().getApplicationArguments();
         final int argc = arguments.length;
         int argvBufSize = 0;
         for (final String argument : arguments) {
