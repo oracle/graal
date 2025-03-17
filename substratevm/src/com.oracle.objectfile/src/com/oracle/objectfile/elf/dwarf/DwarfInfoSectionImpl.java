@@ -162,7 +162,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeSkeletonClassLayout(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] class layout", pos);
-        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_3;
+        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_4;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = classEntry.getTypeName();
@@ -173,6 +173,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         long typeSignature = classEntry.getLayoutTypeSignature();
         log(context, "  [0x%08x]     type specification 0x%x", pos, typeSignature);
         pos = writeTypeSignature(typeSignature, buffer, pos);
+        int fileIdx = classEntry.getFileIdx();
+        log(context, "  [0x%08x]     file  0x%x (%s)", pos, fileIdx, classEntry.getFileName());
+        pos = writeAttrData2((short) fileIdx, buffer, pos);
 
         pos = writeStaticFieldDeclarations(context, classEntry, buffer, pos);
         pos = writeMethodDeclarations(context, classEntry, buffer, pos);
@@ -646,9 +649,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = classEntry.getSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
         pos = writeAttrData2((short) size, buffer, pos);
-        int fileIdx = classEntry.getFileIdx();
-        log(context, "  [0x%08x]     file  0x%x (%s)", pos, fileIdx, classEntry.getFileName());
-        pos = writeAttrData2((short) fileIdx, buffer, pos);
         if (abbrevCode == AbbrevCode.CLASS_LAYOUT_2) {
             /* Write a data location expression to mask and/or rebase oop pointers. */
             log(context, "  [0x%08x]     data_location", pos);
