@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -208,44 +209,74 @@ public final class Target_java_io_TruffleFileSystem {
     }
 
     @Substitution
-    static native boolean setPermission0(@JavaType(File.class) StaticObject f, int access, boolean enable, boolean owneronly,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean setPermission0(@JavaType(File.class) StaticObject f, int access, boolean enable, boolean owneronly,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native @JavaType(String.class) StaticObject fromURIPath0(@JavaType(String.class) StaticObject path,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static @JavaType(String.class) StaticObject fromURIPath0(@JavaType(String.class) StaticObject path,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    static native boolean createFileExclusively0(@JavaType(String.class) StaticObject pathname,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean createFileExclusively0(@JavaType(String.class) StaticObject pathname,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native boolean delete0(@JavaType(File.class) StaticObject path,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean delete0(@JavaType(File.class) StaticObject path,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native @JavaType(String[].class) StaticObject list0(@JavaType(File.class) StaticObject path,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static @JavaType(String[].class) StaticObject list0(@JavaType(File.class) StaticObject path,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native boolean createDirectory0(@JavaType(File.class) StaticObject f,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean createDirectory0(@JavaType(File.class) StaticObject f,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native boolean rename0(@JavaType(File.class) StaticObject from, @JavaType(File.class) StaticObject to,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean rename0(@JavaType(File.class) StaticObject from, @JavaType(File.class) StaticObject to,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native boolean setLastModifiedTime0(@JavaType(File.class) StaticObject f, long time,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean setLastModifiedTime0(@JavaType(File.class) StaticObject f, long time,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native boolean setReadOnly0(@JavaType(File.class) StaticObject f,
-                    @Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static boolean setReadOnly0(@JavaType(File.class) StaticObject f,
+                    @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    static native @JavaType(File[].class) StaticObject listRoots0(@Inject TruffleIO io, @Inject EspressoContext ctx);
+    @SuppressWarnings("unused")
+    static @JavaType(File[].class) StaticObject listRoots0(@Inject TruffleIO io, @Inject EspressoContext ctx) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @SuppressWarnings("unused")

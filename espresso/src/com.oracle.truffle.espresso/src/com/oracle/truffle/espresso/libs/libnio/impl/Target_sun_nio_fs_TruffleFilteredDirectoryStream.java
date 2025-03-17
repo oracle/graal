@@ -31,6 +31,7 @@ import java.util.Iterator;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -39,27 +40,45 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
     @Substitution
     @Throws(IOException.class)
-    public static native @JavaType(DirectoryStream.class) StaticObject directoryStream0(
+    @SuppressWarnings("unused")
+    public static @JavaType(DirectoryStream.class) StaticObject directoryStream0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject dir,
-                    @JavaType(Class.class) StaticObject directoryStreamClass);
+                    @JavaType(Class.class) StaticObject directoryStreamClass) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native boolean hasNext0(@JavaType(Iterator.class) StaticObject iterator);
+    @SuppressWarnings("unused")
+    public static boolean hasNext0(@JavaType(Iterator.class) StaticObject iterator) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native @JavaType(Object.class) StaticObject next0(@JavaType(Iterator.class) StaticObject iterator);
+    @SuppressWarnings("unused")
+    public static @JavaType(Object.class) StaticObject next0(@JavaType(Iterator.class) StaticObject iterator) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void close0(@JavaType(DirectoryStream.class) StaticObject directoryStream);
+    @SuppressWarnings("unused")
+    public static void close0(@JavaType(DirectoryStream.class) StaticObject directoryStream) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native @JavaType(Iterator.class) StaticObject iterator0(
+    @SuppressWarnings("unused")
+    public static @JavaType(Iterator.class) StaticObject iterator0(
                     @JavaType(DirectoryStream.class) StaticObject directoryStream,
-                    @JavaType(Class.class) StaticObject iteratorClass);
+                    @JavaType(Class.class) StaticObject iteratorClass) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native @JavaType(internalName = TRUFFLE_PATH) StaticObject toTrufflePath0(
+    @SuppressWarnings("unused")
+    public static @JavaType(internalName = TRUFFLE_PATH) StaticObject toTrufflePath0(
                     @JavaType(Object.class) StaticObject truffleFile,
-                    @JavaType(internalName = "Lsun/nio/fs/TruffleFileSystem;") StaticObject truffleFileSystem);
+                    @JavaType(internalName = "Lsun/nio/fs/TruffleFileSystem;") StaticObject truffleFileSystem) {
+        throw JavaSubstitution.unimplemented();
+    }
 }

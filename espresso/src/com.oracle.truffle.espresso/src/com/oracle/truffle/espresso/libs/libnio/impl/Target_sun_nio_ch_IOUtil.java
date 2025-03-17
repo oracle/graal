@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.libs.libnio.LibNio;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -69,7 +70,10 @@ public final class Target_sun_nio_ch_IOUtil {
 
     @Substitution
     @Throws(IOException.class)
-    static native long makePipe(boolean blocking);
+    @SuppressWarnings("unused")
+    static long makePipe(boolean blocking) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
@@ -95,7 +99,10 @@ public final class Target_sun_nio_ch_IOUtil {
 
     @Substitution
     @Throws(IOException.class)
-    public static native void configureBlocking(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking);
+    @SuppressWarnings("unused")
+    public static void configureBlocking(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     public static int fdVal(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {

@@ -28,6 +28,7 @@ import java.io.IOException;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -35,81 +36,142 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 @EspressoSubstitutions(group = LibNio.class)
 public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Substitution
-    public static native long allocationGranularity0();
+    public static long allocationGranularity0() {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native long map0(@JavaType(FileDescriptor.class) StaticObject fd, int prot, long position, long length, boolean isSync);
+    @SuppressWarnings("unused")
+    public static long map0(@JavaType(FileDescriptor.class) StaticObject fd, int prot, long position, long length, boolean isSync) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native int unmap0(long address, long length);
+    @SuppressWarnings("unused")
+    public static int unmap0(long address, long length) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native int maxDirectTransferSize0();
+    public static int maxDirectTransferSize0() {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native long transferTo0(@JavaType(FileDescriptor.class) StaticObject src, long position, long count, @JavaType(FileDescriptor.class) StaticObject dst, boolean append);
+    @SuppressWarnings("unused")
+    public static long transferTo0(@JavaType(FileDescriptor.class) StaticObject src, long position, long count, @JavaType(FileDescriptor.class) StaticObject dst, boolean append) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
-    public static native long transferFrom0(@JavaType(FileDescriptor.class) StaticObject src, @JavaType(FileDescriptor.class) StaticObject dst, long position, long count, boolean append);
-
-    @Substitution
-    @Throws(IOException.class)
-    public static native long seek0(@JavaType(FileDescriptor.class) StaticObject fd, long offset);
-
-    @Substitution
-    @Throws(IOException.class)
-    public static native int force0(@JavaType(FileDescriptor.class) StaticObject fd, boolean metadata);
-
-    @Substitution
-    @Throws(IOException.class)
-    public static native int truncate0(@JavaType(FileDescriptor.class) StaticObject fd, long size);
-
-    @Substitution
-    @Throws(IOException.class)
-    public static native int lock0(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking, long pos, long size, boolean shared);
-
-    @Substitution
-    @Throws(IOException.class)
-    public static native void release0(@JavaType(FileDescriptor.class) StaticObject fd, long pos, long size);
+    @SuppressWarnings("unused")
+    public static long transferFrom0(@JavaType(FileDescriptor.class) StaticObject src, @JavaType(FileDescriptor.class) StaticObject dst, long position, long count, boolean append) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native long size0(@JavaType(FileDescriptor.class) StaticObject fd);
+    @SuppressWarnings("unused")
+    public static long seek0(@JavaType(FileDescriptor.class) StaticObject fd, long offset) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int read0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len);
+    @SuppressWarnings("unused")
+    public static int force0(@JavaType(FileDescriptor.class) StaticObject fd, boolean metadata) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int readv0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len);
+    @SuppressWarnings("unused")
+    public static int truncate0(@JavaType(FileDescriptor.class) StaticObject fd, long size) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int write0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len);
+    @SuppressWarnings("unused")
+    public static int lock0(@JavaType(FileDescriptor.class) StaticObject fd, boolean blocking, long pos, long size, boolean shared) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int writev0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len);
+    @SuppressWarnings("unused")
+    public static void release0(@JavaType(FileDescriptor.class) StaticObject fd, long pos, long size) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void close0(@JavaType(FileDescriptor.class) StaticObject fd);
+    @SuppressWarnings("unused")
+    public static long size0(@JavaType(FileDescriptor.class) StaticObject fd) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int pread0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position);
+    @SuppressWarnings("unused")
+    public static int read0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int pwrite0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position);
+    @SuppressWarnings("unused")
+    public static int readv0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void dup0(@JavaType(FileDescriptor.class) StaticObject fd1, @JavaType(FileDescriptor.class) StaticObject fd2);
+    @SuppressWarnings("unused")
+    public static int write0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native int setDirect0(@JavaType(FileDescriptor.class) StaticObject fd, @JavaType(String.class) StaticObject path);
+    @SuppressWarnings("unused")
+    public static int writev0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len) {
+        throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    @SuppressWarnings("unused")
+    public static void close0(@JavaType(FileDescriptor.class) StaticObject fd) {
+        throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    @SuppressWarnings("unused")
+    public static int pread0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position) {
+        throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    @SuppressWarnings("unused")
+    public static int pwrite0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position) {
+        throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    @SuppressWarnings("unused")
+    public static void dup0(@JavaType(FileDescriptor.class) StaticObject fd1, @JavaType(FileDescriptor.class) StaticObject fd2) {
+        throw JavaSubstitution.unimplemented();
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    @SuppressWarnings("unused")
+    public static int setDirect0(@JavaType(FileDescriptor.class) StaticObject fd, @JavaType(String.class) StaticObject path) {
+        throw JavaSubstitution.unimplemented();
+    }
 }

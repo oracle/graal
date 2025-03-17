@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -50,58 +51,88 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
 
     @Substitution
     @Throws(IOException.class)
-    public static native @JavaType(FileChannel.class) StaticObject newFileChannel0(
+    @SuppressWarnings("unused")
+    public static @JavaType(FileChannel.class) StaticObject newFileChannel0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject path,
                     @JavaType(FileDescriptor.class) StaticObject fileDescriptor,
-                    int openOptionsMask);
+                    int openOptionsMask) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void createDirectory0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path);
+    @SuppressWarnings("unused")
+    public static void createDirectory0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void delete0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path);
+    @SuppressWarnings("unused")
+    public static void delete0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void copy0(
+    @SuppressWarnings("unused")
+    public static void copy0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject source,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject target,
-                    int copyOptions);
+                    int copyOptions) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void move0(
+    @SuppressWarnings("unused")
+    public static void move0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject source,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject target,
-                    int copyOptions);
+                    int copyOptions) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native boolean isSameFile0(
+    @SuppressWarnings("unused")
+    public static boolean isSameFile0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject path,
-                    @JavaType(internalName = TRUFFLE_PATH) StaticObject path2);
+                    @JavaType(internalName = TRUFFLE_PATH) StaticObject path2) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void checkAccess0(
+    @SuppressWarnings("unused")
+    public static void checkAccess0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject path,
-                    int accessModesMask);
+                    int accessModesMask) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void createSymbolicLink0(
+    @SuppressWarnings("unused")
+    public static void createSymbolicLink0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject link,
-                    @JavaType(internalName = TRUFFLE_PATH) StaticObject target);
+                    @JavaType(internalName = TRUFFLE_PATH) StaticObject target) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native void createLink0(
+    @SuppressWarnings("unused")
+    public static void createLink0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject link,
-                    @JavaType(internalName = TRUFFLE_PATH) StaticObject existing);
+                    @JavaType(internalName = TRUFFLE_PATH) StaticObject existing) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution
     @Throws(IOException.class)
-    public static native @JavaType(String.class) StaticObject readSymbolicLink0(@JavaType(internalName = TRUFFLE_PATH) StaticObject link);
+    @SuppressWarnings("unused")
+    public static @JavaType(String.class) StaticObject readSymbolicLink0(@JavaType(internalName = TRUFFLE_PATH) StaticObject link) {
+        throw JavaSubstitution.unimplemented();
+    }
 }

@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -94,9 +95,15 @@ public final class Target_java_io_FileInputStream {
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
-    public static native long skip0(@JavaType(FileInputStream.class) StaticObject self, long n);
+    @SuppressWarnings("unused")
+    public static long skip0(@JavaType(FileInputStream.class) StaticObject self, long n) {
+        throw JavaSubstitution.unimplemented();
+    }
 
     @Substitution(hasReceiver = true)
     @Throws(IOException.class)
-    public static native int available0(@JavaType(FileInputStream.class) StaticObject self);
+    @SuppressWarnings("unused")
+    public static int available0(@JavaType(FileInputStream.class) StaticObject self) {
+        throw JavaSubstitution.unimplemented();
+    }
 }
