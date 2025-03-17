@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
+import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 
 import java.util.Objects;
 

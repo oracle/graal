@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
-import com.oracle.svm.hosted.analysis.ai.value.MapValue;
+import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
+import com.oracle.svm.hosted.analysis.ai.domain.value.MapValue;
 
 import java.util.Map;
 import java.util.function.BiFunction;

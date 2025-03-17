@@ -1,7 +1,7 @@
 package com.oracle.svm.graal.test.ai;
 
 import com.oracle.svm.hosted.analysis.ai.domain.SignDomain;
-import com.oracle.svm.hosted.analysis.ai.value.Sign;
+import com.oracle.svm.hosted.analysis.ai.domain.value.Sign;
 import org.junit.Assert;
 import org.junit.Test;
 

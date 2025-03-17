@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
-import com.oracle.svm.hosted.analysis.ai.value.Parity;
+import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
+import com.oracle.svm.hosted.analysis.ai.domain.value.Parity;
 
 /**
  * Abstract domain representing the parity of a value.

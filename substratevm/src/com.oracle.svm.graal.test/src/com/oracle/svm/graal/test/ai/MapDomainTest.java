@@ -4,7 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanAndDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.MapDomain;
-import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
+import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import org.junit.Assert;
 import org.junit.Test;
 

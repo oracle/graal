@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.value;
+package com.oracle.svm.hosted.analysis.ai.domain.value;
 
 /**
  * Encoding of abstract value in an abstract domain.

@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.value;
+package com.oracle.svm.hosted.analysis.ai.domain.value;
 
 /**
  * Represents the structure of elements of an abstract domain.
