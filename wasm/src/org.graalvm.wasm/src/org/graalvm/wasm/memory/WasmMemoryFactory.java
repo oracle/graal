@@ -40,9 +40,9 @@
  */
 package org.graalvm.wasm.memory;
 
-import org.graalvm.wasm.exception.Failure;
-
 import static org.graalvm.wasm.Assert.assertTrue;
+
+import org.graalvm.wasm.exception.Failure;
 
 public class WasmMemoryFactory {
     public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess) {

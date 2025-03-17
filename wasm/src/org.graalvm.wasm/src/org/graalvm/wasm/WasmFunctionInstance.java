@@ -64,7 +64,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     private final WasmInstance moduleInstance;
     private final WasmFunction function;
     private final CallTarget target;
-    private final TruffleContext truffleContext;
     /**
      * Stores the imported function object for {@link org.graalvm.wasm.api.ExecuteHostFunctionNode}.
      * Initialized during linking.
@@ -79,11 +78,10 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     }
 
     public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
-        this.context = context;
+        this.context = Objects.requireNonNull(context, "context must be non-null");
         this.moduleInstance = Objects.requireNonNull(moduleInstance, "module instance must be non-null");
         this.function = Objects.requireNonNull(function, "function must be non-null");
         this.target = Objects.requireNonNull(target, "Call target must be non-null");
-        this.truffleContext = context.environment().getContext();
         assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
     }
 
@@ -92,8 +90,16 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return name();
     }
 
+    public WasmStore store() {
+        return moduleInstance.store();
+    }
+
     public WasmContext context() {
         return context;
+    }
+
+    public TruffleContext getTruffleContext() {
+        return context.environment().getContext();
     }
 
     public WasmInstance moduleInstance() {
@@ -114,10 +120,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     public CallTarget target() {
         return target;
-    }
-
-    public TruffleContext getTruffleContext() {
-        return truffleContext;
     }
 
     public void setImportedFunction(Object importedFunction) {

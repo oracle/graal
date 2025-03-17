@@ -62,6 +62,7 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -77,7 +78,6 @@ import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -139,25 +139,18 @@ public class WebAssembly extends Dictionary {
 
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
-        final TruffleContext innerTruffleContext = currentContext.environment().newInnerContextBuilder().initializeCreatorContext(true).build();
-        final Object prev = innerTruffleContext.enter(null);
-        try {
-            final WasmContext instanceContext = WasmContext.get(null);
-            instanceContext.inheritCallbacksFromParentContext(currentContext);
-            WasmInstance instance = instantiateModule(module, instanceContext);
-            var imports = resolveModuleImports(module, instanceContext, importObject);
-            instanceContext.linker().tryLink(instance, imports);
-            return instance;
-        } finally {
-            innerTruffleContext.leave(null, prev);
-        }
+        WasmStore instanceStore = new WasmStore(currentContext, currentContext.language());
+        WasmInstance instance = instantiateModule(module, instanceStore);
+        var imports = resolveModuleImports(module, importObject);
+        instance.store().linker().tryLink(instance, imports);
+        return instance;
     }
 
-    private static WasmInstance instantiateModule(WasmModule module, WasmContext context) {
-        return context.readInstance(module);
+    private static WasmInstance instantiateModule(WasmModule module, WasmStore store) {
+        return store.readInstance(module);
     }
 
-    private static ImportValueSupplier resolveModuleImports(WasmModule module, WasmContext context, Object importObject) {
+    private static ImportValueSupplier resolveModuleImports(WasmModule module, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
         List<Object> resolvedImports = new ArrayList<>(module.numImportedSymbols());
 
@@ -169,10 +162,10 @@ public class WebAssembly extends Dictionary {
             final int listIndex = resolvedImports.size();
             assert listIndex == descriptor.importedSymbolIndex();
 
-            final Object member = getImportObjectMemberInParentContext(importObject, descriptor, context);
+            final Object member = getImportObjectMember(importObject, descriptor);
 
             resolvedImports.add(switch (descriptor.identifier()) {
-                case ImportIdentifier.FUNCTION -> requireCallableInParentContext(member, descriptor, context);
+                case ImportIdentifier.FUNCTION -> requireCallable(member, descriptor);
                 case ImportIdentifier.TABLE -> requireWasmTable(member, descriptor);
                 case ImportIdentifier.MEMORY -> requireWasmMemory(member, descriptor);
                 case ImportIdentifier.GLOBAL -> requireWasmGlobal(member, descriptor);
@@ -199,9 +192,7 @@ public class WebAssembly extends Dictionary {
         return importObject;
     }
 
-    private static Object getImportObjectMemberInParentContext(Object importObject, ImportDescriptor descriptor, WasmContext context) {
-        TruffleContext parentContext = context.environment().getContext().getParent();
-        Object prev = parentContext.enter(null);
+    private static Object getImportObjectMember(Object importObject, ImportDescriptor descriptor) {
         try {
             final InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
             if (!importObjectInterop.isMemberReadable(importObject, descriptor.moduleName())) {
@@ -215,21 +206,7 @@ public class WebAssembly extends Dictionary {
             return moduleObjectInterop.readMember(importedModuleObject, descriptor.memberName());
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
-        } finally {
-            parentContext.leave(null, prev);
         }
-    }
-
-    private static Object requireCallableInParentContext(Object member, ImportDescriptor importDescriptor, WasmContext context) {
-        TruffleContext parentContext = context.environment().getContext().getParent();
-        Object prev = parentContext.enter(null);
-        Object executable;
-        try {
-            executable = requireCallable(member, importDescriptor);
-        } finally {
-            parentContext.leave(null, prev);
-        }
-        return executable;
     }
 
     private static Object requireCallable(Object member, ImportDescriptor importDescriptor) {
@@ -1049,17 +1026,17 @@ public class WebAssembly extends Dictionary {
             final int index = globalIndex;
             final int address = instance.globalAddress(index);
             if (address < 0) {
-                return instance.context().globals().externalGlobal(address);
+                return instance.store().globals().externalGlobal(address);
             } else {
                 final ValueType valueType = ValueType.fromByteValue(instance.symbolTable().globalValueType(index));
                 final boolean mutable = instance.symbolTable().isGlobalMutable(index);
-                return new ExportedWasmGlobal(valueType, mutable, instance.context().globals(), address);
+                return new ExportedWasmGlobal(valueType, mutable, instance.store().globals(), address);
             }
         } else if (memoryIndex != null) {
             return instance.memory(memoryIndex);
         } else if (tableIndex != null) {
             final int address = instance.tableAddress(tableIndex);
-            return instance.context().tables().table(address);
+            return instance.store().tables().table(address);
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, name + " is not a exported name of the given instance");
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,11 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
+import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -62,7 +64,7 @@ public class WasiPathRenameNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathRename(context, memory(frame),
+        return pathRename(instance.store(), memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
@@ -72,9 +74,10 @@ public class WasiPathRenameNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private int pathRename(WasmContext context, WasmMemory memory, int oldFd, int oldPathAddress, int oldPathLength, int newFd, int newPathAddress, int newPathLength) {
-        final Fd oldHandle = context.fdManager().get(oldFd);
-        final Fd newHandle = context.fdManager().get(newFd);
+    private int pathRename(WasmStore store, WasmMemory memory, int oldFd, int oldPathAddress, int oldPathLength, int newFd, int newPathAddress, int newPathLength) {
+        final FdManager fdManager = store.fdManager();
+        final Fd oldHandle = fdManager.get(oldFd);
+        final Fd newHandle = fdManager.get(newFd);
         if (oldHandle == null || newHandle == null) {
             return Errno.Badf.ordinal();
         }

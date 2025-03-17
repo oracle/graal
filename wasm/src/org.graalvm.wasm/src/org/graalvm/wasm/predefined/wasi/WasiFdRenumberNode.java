@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,21 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.io.IOException;
+
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
+import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import java.io.IOException;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class WasiFdRenumberNode extends WasmBuiltinRootNode {
 
@@ -62,13 +65,16 @@ public class WasiFdRenumberNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return fdRenumber(context, (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return fdRenumber(instance.store(),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    public int fdRenumber(WasmContext context, int fd, int to) {
-        synchronized (context.fdManager()) {
-            Fd handle = context.fdManager().get(fd);
+    public int fdRenumber(WasmStore store, int fd, int to) {
+        FdManager fdManager = store.fdManager();
+        synchronized (fdManager) {
+            Fd handle = fdManager.get(fd);
             if (handle == null) {
                 return Errno.Badf.ordinal();
             }
@@ -77,7 +83,7 @@ public class WasiFdRenumberNode extends WasmBuiltinRootNode {
                 // since the semantics of fd_renumber is based on POSIX's dup2, we do the same
                 return Errno.Success.ordinal();
             }
-            Fd toHandle = context.fdManager().get(to);
+            Fd toHandle = fdManager.get(to);
             if (toHandle == null) {
                 // do not allow renumbering to arbitrary fd values
                 return Errno.Badf.ordinal();
@@ -87,7 +93,7 @@ public class WasiFdRenumberNode extends WasmBuiltinRootNode {
             } catch (IOException e) {
                 return Errno.Io.ordinal();
             }
-            context.fdManager().renumber(fd, to);
+            fdManager.renumber(fd, to);
             return Errno.Success.ordinal();
         }
     }
