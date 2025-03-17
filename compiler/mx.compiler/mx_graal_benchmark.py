@@ -184,6 +184,8 @@ class CounterBenchmarkMixin(CompilerMetricsBenchmarkMixin):
         return r if r['name'] in CounterBenchmarkMixin.counters else None
 
 
+# Default regex matching all accumulated metrics, extracting their name.
+# Change this metric or the filtering function below to constrain the metrics collected.
 _accm_metric_re = re.compile(r"(?P<name>\w+)_Accm")
 def filterAccumulatedMetric(result):
     m = _accm_metric_re.match(result['name'])

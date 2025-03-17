@@ -265,7 +265,9 @@
     max_jdk_version:: null
   },
 
-  // Metrics-collecting benchmarks
+  // Benchmark mixins that run metric-collecting variants of the benchmark suite they're applied to.
+  // For example, dacapo-timing is a variant of the dacapo benchmark which collects phase times and other compiler timers in its results.
+
   timing: {
     suite+: "-timing",
     forks_batches:: null,
