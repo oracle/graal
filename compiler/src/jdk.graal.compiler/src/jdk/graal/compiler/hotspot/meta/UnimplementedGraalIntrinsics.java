@@ -111,6 +111,10 @@ public final class UnimplementedGraalIntrinsics {
 
         if (jdk >= 25) {
             add(toBeInvestigated,
+                            // JDK-8342103: C2 compiler support for Float16 type and associated
+                            // scalar operations
+                            "jdk/internal/vm/vector/Float16Math.fma(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/Float16Math$TernaryOperator;)Ljava/lang/Object;",
+                            "jdk/internal/vm/vector/Float16Math.sqrt(Ljava/lang/Class;Ljava/lang/Object;Ljava/util/function/UnaryOperator;)Ljava/lang/Object;",
                             // JDK-8348561: Add aarch64 intrinsics for ML-DSA
                             // JDK-8351034: Add AVX-512 intrinsics for ML-DSA
                             "sun/security/provider/ML_DSA.implDilithiumAlmostInverseNtt([I[I)I",
