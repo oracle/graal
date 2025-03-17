@@ -25,10 +25,12 @@
 package jdk.graal.compiler.core.common;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Map;
@@ -43,6 +45,16 @@ import java.util.function.Supplier;
  * dependencies that are only needed when building libgraal.
  */
 public interface LibGraalSupport {
+
+    /**
+     * Denotes that the annotated element (type, method, or field) is only visible when running
+     * hosted on HotSpot (i.e., jargraal or while building libgraal) but not cannot be used at
+     * libgraal run time. This annotation is ignored when building a non-libgraal native image.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.FIELD})
+    @interface HostedOnly {
+    }
 
     /**
      * Prefix to use for an image runtime system property describing some aspect of the libgraal
@@ -70,7 +82,7 @@ public interface LibGraalSupport {
      * @param initialValue the initial value of the off-heap word
      * @return a supplier of the address of the off-heap word
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     Supplier<Long> createGlobal(long initialValue);
 
     /**
@@ -95,7 +107,7 @@ public interface LibGraalSupport {
     /**
      * Enqueues pending {@link Reference}s into their corresponding {@link ReferenceQueue}s and
      * executes pending cleaners.
-     *
+     * <p>
      * If automatic reference handling is enabled, this method is a no-op.
      */
     void processReferences();
@@ -142,19 +154,21 @@ public interface LibGraalSupport {
     void shutdown(String callbackClassName, String callbackMethodName);
 
     /**
-     * Non-null iff accessed in the context of the libgraal class loader or if executing in the
+     * Returns true if the current runtime is in the libgraal native image (i.e. SVM).
+     */
+    static boolean inLibGraalRuntime() {
+        return false;
+    }
+
+    /**
+     * Non-null iff accessed in the context of the libgraal class loader or executing in the
      * libgraal runtime.
      */
     LibGraalSupport INSTANCE = Init.init();
 
     /**
-     * @return true iff called from classes loaded by the libgraal class loader or if executing in
-     *         the libgraal runtime
+     * Initializaton support for {@link LibGraalSupport#INSTANCE}.
      */
-    static boolean inLibGraal() {
-        return INSTANCE != null;
-    }
-
     class Init {
         @SuppressWarnings("try")
         static LibGraalSupport init() {

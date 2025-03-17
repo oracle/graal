@@ -92,10 +92,10 @@ public class FactoryMethodSupport {
             ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aInstType).getWrapped();
             Signature unwrappedSignature = ResolvedSignature.fromArray(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
-            ResolvedJavaType unwrappedInstatiatedType = aInstType.getWrapped();
+            ResolvedJavaType unwrappedInstantiatedType = aInstType.getWrapped();
             ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrapped();
             ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();
-            return new FactoryMethod(name, unwrappedConstructor, unwrappedInstatiatedType, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
+            return new FactoryMethod(name, unwrappedConstructor, unwrappedInstantiatedType, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });
 
         AnalysisMethod aMethod = aMetaAccess.getUniverse().lookup(factoryMethod);

@@ -39,6 +39,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.CSVUtil;
 import jdk.graal.compiler.debug.GraalError;
@@ -52,7 +53,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import org.graalvm.nativeimage.ImageInfo;
 
 //JaCoCo Exclude
 
@@ -464,7 +464,7 @@ public class BenchmarkCounters {
             enabled = true;
         }
         if (Options.TimedDynamicCounters.getValue(options) > 0) {
-            if (ImageInfo.inImageRuntimeCode()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 throw new GraalError("Use of %s is only supported in jargraal", Options.TimedDynamicCounters.getName());
             }
             Thread thread = new Thread(new Runnable() {

@@ -24,13 +24,11 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
-
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Objects;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -57,7 +55,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private final Class<?> javaClass;
-    private List<SnippetResolvedJavaMethod> methods;
+    private SnippetResolvedJavaMethod[] methods;
     private SnippetResolvedJavaType arrayOfType;
 
     public SnippetResolvedJavaType(Class<?> javaClass) {
@@ -69,20 +67,22 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         this.arrayOfType = arrayOfType;
     }
 
+    @LibGraalSupport.HostedOnly
     synchronized SnippetResolvedJavaMethod add(SnippetResolvedJavaMethod method) {
-        if (inImageRuntimeCode()) {
-            throw new InternalError("immutable");
-        }
         if (methods == null) {
-            methods = new ArrayList<>(1);
+            methods = new SnippetResolvedJavaMethod[]{method};
+            return method;
         }
-        // This in inefficient but is only use during image building for a small number of methods.
-        int index = methods.indexOf(method);
+        // This in inefficient but is only used while building
+        // libgraal for a small number of methods.
+        int index = Arrays.asList(methods).indexOf(method);
         if (index == -1) {
-            methods.add(method);
+            SnippetResolvedJavaMethod[] newMethods = Arrays.copyOf(methods, methods.length + 1);
+            newMethods[methods.length] = method;
+            methods = newMethods;
             return method;
         } else {
-            return methods.get(index);
+            return methods[index];
         }
     }
 
@@ -315,7 +315,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         if (methods == null) {
             return new ResolvedJavaMethod[0];
         }
-        return methods.toArray(new ResolvedJavaMethod[0]);
+        return methods.clone();
     }
 
     @Override

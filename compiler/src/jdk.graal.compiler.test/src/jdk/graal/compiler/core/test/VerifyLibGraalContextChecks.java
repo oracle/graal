@@ -26,44 +26,22 @@ package jdk.graal.compiler.core.test;
 
 import java.util.List;
 
-import jdk.graal.compiler.hotspot.HotSpotGraalCompilerFactory;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
- * Ensures that the only code directly accessing
- * {@link jdk.vm.ci.services.Services#IS_IN_NATIVE_IMAGE} is in
- * {@link jdk.graal.compiler.serviceprovider.GraalServices}. All other code must use one of the
- * following methods:
- * <ul>
- * <li>{@link GraalServices#isInLibgraal()}</li>
- * <li>{@link ImageInfo#inImageCode()}</li>
- * <li>{@link ImageInfo#inImageBuildtimeCode()}</li>
- * <li>{@link ImageInfo#inImageRuntimeCode()}</li>
- * </ul>
+ * Ensures that no code accesses {@link jdk.vm.ci.services.Services#IS_IN_NATIVE_IMAGE}.
  */
 public class VerifyLibGraalContextChecks extends VerifyPhase<CoreProviders> {
 
     @Override
     public boolean checkContract() {
-        return false;
-    }
-
-    static boolean isAllowedToAccess(ResolvedJavaMethod method) {
-        if (method.getDeclaringClass().toJavaName().equals(GraalServices.class.getName())) {
-            return method.getName().equals("isBuildingLibgraal") || method.getName().equals("isInLibgraal");
-        }
-        if (method.getDeclaringClass().toJavaName().equals(HotSpotGraalCompilerFactory.class.getName())) {
-            return method.getName().equals("createCompiler");
-        }
         return false;
     }
 
@@ -78,13 +56,11 @@ public class VerifyLibGraalContextChecks extends VerifyPhase<CoreProviders> {
             ResolvedJavaField field = load.field();
             if (field.getDeclaringClass().toJavaName().equals(Services.class.getName())) {
                 if (field.getName().equals("IS_IN_NATIVE_IMAGE")) {
-                    if (!isAllowedToAccess(graph.method())) {
-                        throw new VerificationError("reading %s in %s is prohibited - use %s.isInLibgraal() instead",
-                                        field.format("%H.%n"),
-                                        graph.method().format("%H.%n(%p)"),
-                                        GraalServices.class.getName());
+                    throw new VerificationError("reading %s in %s is prohibited - use %s.isInLibgraal() instead",
+                                    field.format("%H.%n"),
+                                    graph.method().format("%H.%n(%p)"),
+                                    GraalServices.class.getName());
 
-                    }
                 }
             }
         }

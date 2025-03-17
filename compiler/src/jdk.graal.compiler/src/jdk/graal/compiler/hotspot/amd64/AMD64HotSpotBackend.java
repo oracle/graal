@@ -164,7 +164,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
             assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
-            if (!isStub && config.nmethodEntryBarrier != 0) {
+            if (!isStub) {
                 emitNmethodEntryBarrier(crb, asm);
             } else {
                 crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
