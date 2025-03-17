@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.core.hub;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface CremaSupport {
+    @Platforms(Platform.HOSTED_ONLY.class)
     ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
 }
