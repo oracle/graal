@@ -84,8 +84,8 @@
 
   local metrics_builds = std.flattenArrays([
     [
-    c.monthly + hw.e3 + jdk + cc.libgraal + suite + bench.timing,
-    c.monthly + hw.e3 + jdk + cc.libgraal + suite + bench.mem_use,
+    c.weekly + hw.e3 + jdk + cc.libgraal + suite + bench.timing,
+    c.weekly + hw.e3 + jdk + cc.libgraal + suite + bench.mem_use,
     ],
   for jdk in cc.product_jdks
   for suite in metrics_suites
