@@ -40,6 +40,7 @@
  */
 package org.graalvm.truffle.benchmark.interop;
 
+import com.oracle.truffle.api.benchmark.MembersBenchmarkLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
@@ -62,10 +63,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 @OperationsPerInvocation(JavaMembersBenchmark.REPEAT)
 public class JavaMembersBenchmark extends TruffleBenchmark {
 
-    static final int NUM_OVERLOADS = 6;
+    public static final int NUM_OVERLOADS = 6;
     private static final int NUM_OBJECTS = 2 * NUM_OVERLOADS;
-    static final int REPEAT_MEGA = 1000;
-    static final int REPEAT = REPEAT_MEGA * NUM_OBJECTS;
+    public static final int REPEAT_MEGA = 1000;
+    public static final int REPEAT = REPEAT_MEGA * NUM_OBJECTS;
 
     @Benchmark
     public void doMemberInterop(InteropContextState state) {
