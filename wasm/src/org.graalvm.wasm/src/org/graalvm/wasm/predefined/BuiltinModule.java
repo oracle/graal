@@ -58,7 +58,6 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.RootCallTarget;
 
 public abstract class BuiltinModule {
     private static final Map<String, BuiltinModule> predefinedModules = Map.of(
@@ -87,14 +86,10 @@ public abstract class BuiltinModule {
 
         final WasmInstance instance = new WasmInstance(context, module, context.environment().getContext());
         instance.createLinkActions();
-        boolean multiContext = context.language().isMultiContext();
         for (int i = 0; i < module.numFunctions(); i++) {
             var target = module.function(i).target();
             if (target != null && instance.target(i) == null) {
                 instance.setTarget(i, target);
-                if (!multiContext) {
-                    ((WasmRootNode) ((RootCallTarget) target).getRootNode()).setBoundModuleInstance(instance);
-                }
             }
         }
         return instance;
