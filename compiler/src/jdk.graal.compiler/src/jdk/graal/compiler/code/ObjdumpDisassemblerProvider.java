@@ -36,6 +36,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NativeImageSupport;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -91,6 +94,9 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
 
     @Override
     public String disassembleCompiledCode(OptionValues options, CodeCacheProvider codeCache, CompilationResult compResult) {
+        if (NativeImageSupport.inRuntimeCode() && !ENABLE_OBJDUMP) {
+            throw new GraalError("Objdump not available");
+        }
         String objdump = getObjdump(options);
         if (objdump == null) {
             return null;
@@ -206,13 +212,36 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
         return "'" + arg.replace("'", "'\"'\"'") + "'";
     }
 
+    private static final String ENABLE_OBJDUMP_PROP = "debug.jdk.graal.enableObjdump";
+
+    /**
+     * Support for objdump is excluded by default from native images (including libgraal) to reduce
+     * the image size. It also reduces security concerns related to running subprocesses.
+     *
+     * To objdump during development, set the {@value #ENABLE_OBJDUMP_PROP} system property to true
+     * when building native images.
+     */
+    private static final boolean ENABLE_OBJDUMP = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_OBJDUMP_PROP));
+
+    private static boolean objdumpUnsupportedWarned;
+
     /**
      * Searches for a valid GNU objdump executable.
      */
-    private String getObjdump(OptionValues options) {
+    private static String getObjdump(OptionValues options) {
         // for security, user must provide the possible objdump locations.
         String candidates = Options.ObjdumpExecutables.getValue(options);
         if (candidates != null && !candidates.isEmpty()) {
+            if (NativeImageSupport.inRuntimeCode() && !ENABLE_OBJDUMP) {
+                if (!objdumpUnsupportedWarned) {
+                    // Ignore races or multiple isolates - an extra warning is ok
+                    objdumpUnsupportedWarned = true;
+                    TTY.printf("WARNING: Objdump not supported as the %s system property was false when building.%n",
+                                    ENABLE_OBJDUMP_PROP);
+                }
+                return null;
+            }
+
             for (String candidate : candidates.split(",")) {
                 synchronized (objdumpCache) {
                     // first checking to see if a cached verdict for this candidate exists.
