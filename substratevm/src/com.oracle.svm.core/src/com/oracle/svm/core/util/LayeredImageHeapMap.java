@@ -36,6 +36,8 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * This map lives across multiple layers through the {@link LayeredImageHeapMapStore}. It has a
@@ -62,22 +64,26 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
         this.strategy = strategy;
         this.mapKey = mapKey;
         this.fromBaseToApp = fromBaseToApp;
-
-        var previousMap = LayeredImageHeapMapStore.currentLayer().getImageHeapMapStore().putIfAbsent(mapKey, EconomicMap.create(strategy));
-        if (previousMap != null) {
-            throw VMError.shouldNotReachHere("The LayeredImageHeapMap with key %s was added twice", mapKey);
-        }
     }
 
     @Override
     public V put(K key, V value) {
-        // FIXME this is still wrong
-        var singletons = LayeredImageHeapMapStore.layeredSingletons();
-        /*
-         * The value at run time needs to overwrite any other value, so the first map to be checked
-         * is used.
-         */
-        return getRuntimeMap(singletons[fromBaseToApp ? 0 : singletons.length - 1]).put(key, value);
+        /* The returned value needs to be the first value to be found. */
+        List<LayeredImageHeapMapStore> singletons = Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).toList();
+        boolean first = true;
+        for (var singleton : fromBaseToApp ? singletons : singletons.reversed()) {
+            V oldValue;
+            if (first) {
+                oldValue = getRuntimeMap(singleton).put(key, value);
+                first = false;
+            } else {
+                oldValue = getRuntimeMap(singleton).get(key);
+            }
+            if (oldValue != null) {
+                return oldValue;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -96,9 +102,9 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
         List<LayeredImageHeapMapStore> singletons = Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).toList();
         V previousValue = null;
         for (var singleton : fromBaseToApp ? singletons : singletons.reversed()) {
-            V value = getRuntimeMap(singleton).removeKey(key);
-            if (value != null && previousValue == null) {
-                previousValue = value;
+            V oldValue = getRuntimeMap(singleton).removeKey(key);
+            if (oldValue != null && previousValue == null) {
+                previousValue = oldValue;
             }
         }
         return previousValue;
@@ -219,6 +225,11 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
         for (var singleton : LayeredImageHeapMapStore.layeredSingletons()) {
             getRuntimeMap(singleton).replaceAll(function);
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getMapKey() {
+        return mapKey;
     }
 
     @SuppressWarnings("unchecked")

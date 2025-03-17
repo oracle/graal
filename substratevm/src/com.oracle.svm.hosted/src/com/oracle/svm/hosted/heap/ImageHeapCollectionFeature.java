@@ -34,8 +34,11 @@ import org.graalvm.collections.MapCursor;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.ImageHeapList.HostedImageHeapList;
 import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
+import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
+import com.oracle.svm.core.util.LayeredImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
@@ -57,8 +60,11 @@ final class ImageHeapCollectionFeature implements InternalFeature {
                 VMError.guarantee(allMaps.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
             } else {
                 allMaps.add(hostedImageHeapMap);
+                if (hostedImageHeapMap.getRuntimeMap() instanceof LayeredImageHeapMap<Object, Object> layeredImageHeapMap) {
+                    LayeredHostedImageHeapMapCollector.singleton().registerReachableHostedImageHeapMap(layeredImageHeapMap);
+                }
             }
-            return hostedImageHeapMap.getReplacement();
+            return hostedImageHeapMap.getRuntimeMap();
         } else if (obj instanceof HostedImageHeapList<?> hostedImageHeapList) {
             if (BuildPhaseProvider.isAnalysisFinished()) {
                 VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
@@ -73,6 +79,9 @@ final class ImageHeapCollectionFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            allMaps.addAll(LayeredHostedImageHeapMapCollector.singleton().getPreviousLayerReachableMaps());
+        }
         for (var hostedImageHeapMap : allMaps) {
             if (needsUpdate(hostedImageHeapMap)) {
                 update(hostedImageHeapMap);

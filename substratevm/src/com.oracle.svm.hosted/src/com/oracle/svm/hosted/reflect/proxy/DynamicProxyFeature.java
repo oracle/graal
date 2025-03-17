@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.reflect.proxy;
 
-import java.lang.reflect.Field;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
@@ -40,7 +38,6 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -50,7 +47,6 @@ import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 @AutomaticallyRegisteredFeature
 public final class DynamicProxyFeature implements InternalFeature {
     private int loadedConfigurations;
-    private Field proxyCacheField;
     private ProxyRegistry proxyRegistry;
 
     @Override
@@ -78,8 +74,6 @@ public final class DynamicProxyFeature implements InternalFeature {
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFile.DYNAMIC_PROXY.getFileName());
-
-        proxyCacheField = access.findField(DynamicProxySupport.class, "proxyCache");
     }
 
     private static ProxyRegistry proxyRegistry() {
@@ -89,12 +83,6 @@ public final class DynamicProxyFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         proxyRegistry().setAnalysisAccess(access);
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess a) {
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanField(ImageSingletons.lookup(DynamicProxyRegistry.class), proxyCacheField);
     }
 
     @Override
