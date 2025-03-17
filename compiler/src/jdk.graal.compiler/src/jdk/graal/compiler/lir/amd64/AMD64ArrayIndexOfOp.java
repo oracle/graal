@@ -351,15 +351,15 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             case MatchAny:
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 for (int i = 0; i < nValues; i++) {
-                    cmpqAndJcc(crb, asm, cmpResult, searchValue[i], elementWiseFound, ConditionFlag.Equal, true);
+                    cmplAndJcc(crb, asm, cmpResult, searchValue[i], elementWiseFound, ConditionFlag.Equal, true);
                 }
                 break;
             case MatchRange:
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 for (int i = 0; i < nValues; i += 2) {
                     Label noMatch = new Label();
-                    cmpqAndJcc(crb, asm, cmpResult, searchValue[i], noMatch, ConditionFlag.Below, true);
-                    cmpqAndJcc(crb, asm, cmpResult, searchValue[i + 1], elementWiseFound, ConditionFlag.BelowEqual, true);
+                    cmplAndJcc(crb, asm, cmpResult, searchValue[i], noMatch, ConditionFlag.Below, true);
+                    cmplAndJcc(crb, asm, cmpResult, searchValue[i + 1], elementWiseFound, ConditionFlag.BelowEqual, true);
                     asm.bind(noMatch);
                 }
                 break;
@@ -510,11 +510,11 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static void cmpqAndJcc(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register src1, Value src2, Label branchTarget, ConditionFlag cc, boolean isShortJmp) {
+    private static void cmplAndJcc(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register src1, Value src2, Label branchTarget, ConditionFlag cc, boolean isShortJmp) {
         if (isStackSlot(src2)) {
-            asm.cmpqAndJcc(src1, (AMD64Address) crb.asAddress(src2), cc, branchTarget, isShortJmp);
+            asm.cmplAndJcc(src1, (AMD64Address) crb.asAddress(src2), cc, branchTarget, isShortJmp);
         } else {
-            asm.cmpqAndJcc(src1, asRegister(src2), cc, branchTarget, isShortJmp);
+            asm.cmplAndJcc(src1, asRegister(src2), cc, branchTarget, isShortJmp);
         }
     }
 
