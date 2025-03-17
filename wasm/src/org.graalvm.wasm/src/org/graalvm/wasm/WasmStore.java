@@ -83,7 +83,7 @@ public final class WasmStore {
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
-        this.filesManager = new FdManager(context.environment());
+        this.filesManager = context.fdManager();
         instantiateBuiltinInstances();
     }
 
