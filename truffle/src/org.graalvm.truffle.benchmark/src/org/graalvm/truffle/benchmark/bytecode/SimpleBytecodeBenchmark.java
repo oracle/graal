@@ -40,22 +40,21 @@
  */
 package org.graalvm.truffle.benchmark.bytecode;
 
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BenchmarkLanguageRootNode;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BlockNode;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.IfNode;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.WhileNode;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.AddNodeGen;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ConstNodeGen;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LessNodeGen;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LoadLocalNodeGen;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ModNodeGen;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ReturnNodeGen;
-import static org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.StoreLocalNodeGen;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.truffle.benchmark.TruffleBenchmark;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BenchmarkLanguageRootNode;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.BlockNode;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.IfNode;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNode.WhileNode;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.AddNodeGen;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ConstNodeGen;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LessNodeGen;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.LoadLocalNodeGen;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ModNodeGen;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.ReturnNodeGen;
+import org.graalvm.truffle.benchmark.bytecode.BenchmarkLanguageNodeFactory.StoreLocalNodeGen;
 import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters;
 import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters.ManualBytecodeInterpreter;
 import org.graalvm.truffle.benchmark.bytecode.manual.ManualBytecodeInterpreters.ManualBytecodeInterpreterWithoutBE;

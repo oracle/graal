@@ -40,9 +40,8 @@
  */
 package org.graalvm.truffle.benchmark.tstring;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
