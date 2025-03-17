@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.predefined.wasi.fd.FdManager;
+
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -49,6 +51,7 @@ public final class WasmContext {
     private final WasmLanguage language;
     private final WasmContextOptions contextOptions;
     private final WasmStore contextStore;
+    private final FdManager fdManager;
 
     /**
      * Optional grow callback to notify the embedder.
@@ -68,7 +71,7 @@ public final class WasmContext {
         this.env = env;
         this.language = language;
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
-
+        this.fdManager = new FdManager(env);
         this.contextStore = new WasmStore(this, language);
     }
 
@@ -138,5 +141,9 @@ public final class WasmContext {
         setMemGrowCallback(parent.getMemGrowCallback());
         setMemNotifyCallback(parent.getMemNotifyCallback());
         setMemWaitCallback(parent.getMemWaitCallback());
+    }
+
+    public FdManager fdManager() {
+        return fdManager;
     }
 }
