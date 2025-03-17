@@ -27,8 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -37,6 +35,9 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 class ChunkedImageHeapAllocator {
     /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
@@ -287,5 +288,10 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
     @Override
     public long getSize() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isFiller() {
+        return true;
     }
 }
