@@ -575,7 +575,7 @@ public abstract class SymbolTable {
         return function;
     }
 
-    WasmFunction declareFunction(int typeIndex) {
+    public WasmFunction declareFunction(int typeIndex) {
         checkNotParsed();
         return allocateFunction(typeIndex, null);
     }

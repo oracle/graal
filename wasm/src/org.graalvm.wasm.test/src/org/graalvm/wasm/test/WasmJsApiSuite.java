@@ -107,9 +107,13 @@ public class WasmJsApiSuite {
     private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, byte[] paramTypes, byte[] resultTypes, RootNode functionRootNode) {
         WasmModule module = WasmModule.createBuiltin("dummyModule");
         module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
-        WasmFunction func = module.declareExportedFunction(0, "dummyFunction");
+        WasmFunction func = module.declareFunction(0);
         func.setTarget(functionRootNode.getCallTarget());
-        WasmInstance moduleInstance = new WasmInstance(context, module, context.environment().getContext());
+        WasmInstance moduleInstance = context.readInstance(module);
+        // Perform normal linking steps, incl. assignTypeEquivalenceClasses().
+        // Functions need to have type equivalence classes assigned for indirect calls.
+        context.linker().tryLink(moduleInstance);
+        assert func.typeEquivalenceClass() >= 0 : "type equivalence class must be assigned";
         return new WasmFunctionInstance(moduleInstance, func, functionRootNode.getCallTarget());
     }
 
