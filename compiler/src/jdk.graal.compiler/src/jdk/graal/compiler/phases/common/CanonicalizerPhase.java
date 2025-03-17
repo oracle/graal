@@ -544,11 +544,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
-        if (Options.CanonicalizerVerifyGVNAllowed.getValue(node.getOptions())) {
-            assert ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(
-                            StageFlag.PARTIAL_REDUNDANCY_SCHEDULE) : "GVN must not occur after expanding partially redundant nodes, trying to gvn " + node + " for graph " +
-                                            node.graph();
-        }
+        assert !Options.CanonicalizerVerifyGVNAllowed.getValue(node.getOptions()) || ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(
+                        StageFlag.PARTIAL_REDUNDANCY_SCHEDULE) : "GVN must not occur after expanding partially redundant nodes, trying to gvn " + node + " for graph " +
+                                        node.graph();
         return gvn(node, nodeClass);
     }
 

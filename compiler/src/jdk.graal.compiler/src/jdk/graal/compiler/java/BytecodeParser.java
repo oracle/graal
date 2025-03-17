@@ -237,6 +237,8 @@ import static jdk.graal.compiler.core.common.GraalOptions.StressExplicitExceptio
 import static jdk.graal.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
 import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionChecks;
 import static jdk.graal.compiler.core.common.GraalOptions.TraceInlining;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlinePartialIntrinsicExitDuringParsing;
@@ -256,8 +258,6 @@ import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2737,8 +2737,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * intrinsic) can be inlined.
      */
     protected boolean canInlinePartialIntrinsicExit() {
-        assert !inImageRuntimeCode();
-        return InlinePartialIntrinsicExitDuringParsing.getValue(options) && !inImageBuildtimeCode() && method.getAnnotation(Snippet.class) == null;
+        assert !inRuntimeCode();
+        return InlinePartialIntrinsicExitDuringParsing.getValue(options) && !inBuildtimeCode() &&
+                        method.getAnnotation(Snippet.class) == null;
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
@@ -2773,7 +2774,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * @param format a format string
      * @param args arguments to the format string
      */
-
     protected void traceWithContext(String format, Object... args) {
         StackTraceElement where = code.asStackTraceElement(bci());
         String s = format("%s%s (%s:%d) %s", nSpaces(getDepth()), method.isConstructor() ? method.format("%h.%n") : method.getName(), where.getFileName(), where.getLineNumber(),
@@ -2918,11 +2918,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     protected void genReturn(ValueNode returnVal, JavaKind returnKind) {
         if (parsingIntrinsic() && returnVal != null) {
 
-            if (returnVal instanceof StateSplit) {
-                StateSplit stateSplit = (StateSplit) returnVal;
+            if (returnVal instanceof StateSplit stateSplit) {
                 FrameState stateAfter = stateSplit.stateAfter();
                 if (stateSplit.hasSideEffect()) {
-                    assert stateSplit != null;
                     if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
                         assert stateAfter.hasExactlyOneUsage();
                         assert stateAfter.usages().first() == stateSplit : Assertions.errorMessage(stateAfter, stateSplit);
@@ -2934,10 +2932,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                             // without a return value on the top of stack.
                             assert stateSplit instanceof Invoke : Assertions.errorMessage(stateSplit);
                             ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
-                            if (!inImageRuntimeCode()) {
-                                assert targetMethod != null;
-                                assert (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null) : "Target should be fold or intrinsic " +
-                                                targetMethod;
+                            if (!inRuntimeCode()) {
+                                GraalError.guarantee(targetMethod != null, "%s has null target method", stateSplit);
+                                GraalError.guarantee(targetMethod.getAnnotation(Fold.class) != null ||
+                                                targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null,
+                                                "Target should be fold or intrinsic ", targetMethod);
                             }
                             state = new FrameState(BytecodeFrame.AFTER_BCI);
                         } else {

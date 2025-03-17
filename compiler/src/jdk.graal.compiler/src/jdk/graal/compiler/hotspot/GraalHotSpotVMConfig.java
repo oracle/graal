@@ -584,7 +584,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This flag indicates that support for loom is enabled.
     public final boolean continuationsEnabled = getFieldValue("CompilerToVM::Data::continuations_enabled", Boolean.class, "bool");
 
-    // If the nmethod_entry_barrier field is non-null then an entry barrier must be emitted
     public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_guard_value_offset", Integer.class, "int");
     public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address");
 
@@ -746,6 +745,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             }
         }
 
+        assert nmethodEntryBarrier != 0L;
         assert codeEntryAlignment > 0 : codeEntryAlignment;
         assert checkNullAllocationStubs();
         return true;

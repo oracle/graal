@@ -39,6 +39,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -79,8 +80,6 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 //JaCoCo Exclude
 
@@ -170,7 +169,7 @@ public abstract class Stub {
      * Calls {@link #getGraph} for the side effect of registering the types used in the graph with
      * SymbolicSnippetEncoder.snippetTypes.
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public final void findTypesInGraph() {
         try (DebugContext debug = DebugContext.disabled(options)) {
             Stub stub = linkage.getStub();

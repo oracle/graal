@@ -30,6 +30,7 @@ import static jdk.graal.compiler.replacements.classfile.ClassfileConstant.CONSTA
 import java.io.DataInputStream;
 import java.io.IOException;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ClassRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ExecutableRef;
@@ -45,6 +46,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
+@LibGraalSupport.HostedOnly
 class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     final ClassfileConstant[] entries;

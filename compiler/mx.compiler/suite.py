@@ -170,7 +170,6 @@ suite = {
       "dependencies" : [
         "sdk:WORD",
         "sdk:COLLECTIONS",
-        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_COMPILER",
       ],
       "requires" : [
@@ -643,7 +642,6 @@ suite = {
       "distDependencies" : [
         "sdk:COLLECTIONS",
         "sdk:WORD",
-        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,
@@ -680,6 +678,7 @@ suite = {
         "jdk.graal.compiler.libgraal.loader"
       ],
       "distDependencies" : [
+        "sdk:NATIVEIMAGE",
         "sdk:NATIVEIMAGE_LIBGRAAL",
         "GRAAL",
       ],
@@ -699,10 +698,12 @@ suite = {
       "distDependencies": [
         "GRAAL",
         "GRAAL_MANAGEMENT",
-        "sdk:NATIVEIMAGE_LIBGRAAL",
-        "sdk:JNIUTILS",
         "sdk:NATIVEIMAGE",
-        "sdk:NATIVEBRIDGE"
+        "sdk:NATIVEIMAGE_LIBGRAAL",
+        "sdk:COLLECTIONS",
+        "sdk:JNIUTILS",
+        "sdk:NATIVEBRIDGE",
+        "truffle:TRUFFLE_COMPILER"
       ],
       "maven": False,
     },

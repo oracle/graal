@@ -36,7 +36,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -49,6 +48,7 @@ import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -134,8 +134,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * This class performs graph encoding using {@link GraphEncoder} but also converts JVMCI type and
@@ -144,7 +142,7 @@ import org.graalvm.nativeimage.Platforms;
  * <p>
  * An instance of this class only exist when building libgraal.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
+@LibGraalSupport.HostedOnly
 public class SymbolicSnippetEncoder {
 
     /**
@@ -479,9 +477,8 @@ public class SymbolicSnippetEncoder {
         JavaConstant mirror = originalReplacements.getProviders().getConstantReflection().asJavaClass(type);
         Class<?> clazz = originalReplacements.getProviders().getSnippetReflection().asObject(Class.class, mirror);
         SnippetResolvedJavaType snippetType = lookupSnippetType(clazz);
-        assert (snippetType != null);
-        SnippetResolvedJavaMethod m = new SnippetResolvedJavaMethod(snippetType, method);
-        return snippetType.add(m);
+        GraalError.guarantee(snippetType != null, "missing snippet type for %s", clazz.getName());
+        return snippetType.add(new SnippetResolvedJavaMethod(snippetType, method));
     }
 
     private void ensureSnippetTypeAvailable(ResolvedJavaType type) {
@@ -540,12 +537,7 @@ public class SymbolicSnippetEncoder {
         lookupSnippetType(SnippetTemplate.EagerSnippetInfo.class);
         lookupSnippetType(ForeignCallStub.class);
 
-        // Ensure AbstractForeignCallStub.getGraph is available
-        MetaAccessProvider metaAccess = originalReplacements.getProviders().getMetaAccess();
-        ResolvedJavaMethod[] stubMethods = metaAccess.lookupJavaType(AbstractForeignCallStub.class).getDeclaredMethods();
-        Optional<ResolvedJavaMethod> abstractForeignCallStubGetName = Arrays.stream(stubMethods).filter(resolvedJavaMethod -> resolvedJavaMethod.getName().equals("getGraph")).findFirst();
-        GraalError.guarantee(abstractForeignCallStubGetName.isPresent(), "ResolvedJavaMethod for AbstractForeignCallStub.getGraph() unavailable");
-        findSnippetMethod(abstractForeignCallStubGetName.get());
+        registerAbstractForeignCallStubInfo();
 
         SnippetObjectFilter filter = new SnippetObjectFilter(originalReplacements.getProviders());
         byte[] snippetEncoding = encoder.getEncoding();
@@ -557,6 +549,14 @@ public class SymbolicSnippetEncoder {
         }
         debug.log("Encoded %d snippet preparedSnippetGraphs using %d bytes with %d objects", graphDatas.size(), snippetEncoding.length, snippetObjects.length);
         return new EncodedSnippets(snippetEncoding, snippetObjects, encoder.getNodeClasses(), graphDatas, snippetTypes);
+    }
+
+    /**
+     * Ensures the snippet types and methods for {@link AbstractForeignCallStub} are registered.
+     */
+    private void registerAbstractForeignCallStubInfo() {
+        MetaAccessProvider metaAccess = originalReplacements.getProviders().getMetaAccess();
+        findSnippetMethod(AbstractForeignCallStub.getGraphMethod(metaAccess));
     }
 
     /**
@@ -687,42 +687,43 @@ public class SymbolicSnippetEncoder {
             if (cached != null) {
                 return cached;
             }
-            if (o instanceof HotSpotResolvedJavaMethod) {
-                HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) o;
+            if (o instanceof HotSpotResolvedJavaMethod method) {
                 if (HotSpotReplacementsImpl.isGraalClass(method.getDeclaringClass())) {
                     ResolvedJavaMethod snippetMethod = findSnippetMethod(method);
                     cachedFilteredObjects.put(method, snippetMethod);
                     return snippetMethod;
                 }
                 return filterMethod(debug, method);
-            } else if (o instanceof HotSpotResolvedJavaField) {
-                return filterField(debug, (HotSpotResolvedJavaField) o);
+            } else if (o instanceof HotSpotResolvedJavaField field) {
+                return filterField(debug, field);
             } else if (o instanceof HotSpotResolvedJavaType) {
                 return filterType(debug, (HotSpotResolvedJavaType) o);
-            } else if (o instanceof FieldLocationIdentity) {
-                FieldLocationIdentity fli = (FieldLocationIdentity) o;
+            } else if (o instanceof FieldLocationIdentity fli) {
                 if (fli.getField() instanceof HotSpotResolvedJavaField) {
                     return filterFieldLocationIdentity(debug, (HotSpotResolvedJavaField) fli.getField());
                 } else {
                     return o;
                 }
-            } else if (o instanceof HotSpotObjectConstant) {
-                return new SnippetObjectConstant(getSnippetReflection().asObject(Object.class, (HotSpotObjectConstant) o));
+            } else if (o instanceof HotSpotObjectConstant constant) {
+                return new SnippetObjectConstant(getSnippetReflection().asObject(Object.class, constant));
             } else if (o instanceof NodeSourcePosition) {
                 // Filter these out for now. These can't easily be handled because these positions
                 // description snippet methods which might not be available in the runtime.
                 return null;
-            } else if (o instanceof ForeignCallsProvider || o instanceof GraalHotSpotVMConfig || o instanceof WordTypes || o instanceof TargetDescription ||
+            } else if (o instanceof ForeignCallsProvider ||
+                            o instanceof GraalHotSpotVMConfig ||
+                            o instanceof WordTypes ||
+                            o instanceof TargetDescription ||
                             o instanceof SnippetReflectionProvider) {
                 // These objects should be recovered from the runtime environment instead of being
                 // embedded in the node.
                 throw new GraalError("%s shouldn't be reachable from snippets", o);
-            } else if (o instanceof Stamp) {
-                return filterStamp(debug, (Stamp) o);
-            } else if (o instanceof StampPair) {
-                return filterStampPair(debug, (StampPair) o);
-            } else if (o instanceof ResolvedJavaMethodBytecode) {
-                return filterBytecode(debug, (ResolvedJavaMethodBytecode) o);
+            } else if (o instanceof Stamp stamp) {
+                return filterStamp(debug, stamp);
+            } else if (o instanceof StampPair stampPair) {
+                return filterStampPair(debug, stampPair);
+            } else if (o instanceof ResolvedJavaMethodBytecode m) {
+                return filterBytecode(debug, m);
             }
             return o;
         }

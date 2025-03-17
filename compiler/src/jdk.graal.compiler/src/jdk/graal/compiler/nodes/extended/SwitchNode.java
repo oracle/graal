@@ -78,6 +78,12 @@ public abstract class SwitchNode extends ControlSplitNode {
     protected SwitchProbabilityData profileData;
 
     /**
+     * Index of the {@link #successors} field in {@link SwitchNode}'s
+     * {@linkplain NodeClass#getSuccessorEdges() successor edges}.
+     */
+    public static final long SUCCESSORS_EDGE_INDEX = TYPE.getSuccessorEdges().getIndex(SwitchNode.class, "successors");
+
+    /**
      * Constructs a new Switch.
      *
      * @param value the instruction that provides the value to be switched over

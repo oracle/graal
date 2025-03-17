@@ -104,6 +104,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
+    /**
+     * Number of {@link IfNode}'s {@linkplain NodeClass#getSuccessorEdges() successor edges}.
+     */
+    public static final long SUCCESSOR_EDGES_COUNT = TYPE.getSuccessorEdges().getCount();
+
+    /**
+     * Index of the {@link #trueSuccessor} in {@link IfNode}'s
+     * {@linkplain NodeClass#getSuccessorEdges() successor edges}.
+     */
+    public static final long TRUE_SUCCESSOR_EDGE_INDEX = TYPE.getSuccessorEdges().getIndex(IfNode.class, "trueSuccessor");
+
+    /**
+     * Index of the {@link #falseSuccessor} in {@link IfNode}'s
+     * {@linkplain NodeClass#getSuccessorEdges() successor edges}.
+     */
+    public static final long FALSE_SUCCESSOR_EDGE_INDEX = TYPE.getSuccessorEdges().getIndex(IfNode.class, "falseSuccessor");
+
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;

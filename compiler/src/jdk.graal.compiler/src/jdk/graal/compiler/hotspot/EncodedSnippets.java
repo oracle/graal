@@ -26,12 +26,12 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -212,7 +212,7 @@ public class EncodedSnippets {
             data = graphDatas.get(methodKey(method));
         }
         if (data == null) {
-            if (inImageRuntimeCode()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
             } else {
                 return null;
@@ -230,7 +230,7 @@ public class EncodedSnippets {
             declaringClass = replacements.getProviders().getMetaAccess().lookupJavaType(Object.class);
         }
         SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, data.originalMethod, declaringClass);
-        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, inImageRuntimeCode());
+        return decodeSnippetGraph(encodedGraph, method, original, replacements, args, allowAssumptions, options, LibGraalSupport.inLibGraalRuntime());
     }
 
     public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
@@ -306,7 +306,7 @@ public class EncodedSnippets {
         if (args != null) {
             MetaAccessProvider meta = HotSpotReplacementsImpl.noticeTypes(providers.getMetaAccess());
             SnippetReflectionProvider snippetReflection = replacements.getProviders().getSnippetReflection();
-            if (inImageRuntimeCode()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 snippetReflection = new LibGraalSnippetReflectionProvider(snippetReflection);
             }
             parameterPlugin = new ConstantBindingParameterPlugin(args, meta, snippetReflection);

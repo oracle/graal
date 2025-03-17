@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.replacements;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -120,7 +120,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         StructuredGraph graphToEncode;
-        if (graph.isSubstitution() && inImageRuntimeCode()) {
+        if (graph.isSubstitution() && inRuntimeCode()) {
             throw GraalError.shouldNotReachHere("dead path"); // ExcludeFromJacocoGeneratedReport
         } else {
             graphToEncode = buildGraph(method, intrinsicBytecodeProvider, canonicalizer);

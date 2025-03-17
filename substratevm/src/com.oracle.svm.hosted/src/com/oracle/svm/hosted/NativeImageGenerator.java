@@ -266,6 +266,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
@@ -542,6 +543,8 @@ public class NativeImageGenerator {
 
     protected static void setSystemPropertiesForImageEarly() {
         VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "Expected ImageInfo.inImageBuildtimeCode() to return true");
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode() == NativeImageSupport.inBuildtimeCode(),
+                        "ImageInfo.inImageBuildtimeCode() and NativeImageSupport.inBuildtimeCode() are not in sync");
     }
 
     private static void setSystemPropertiesForImageLate(NativeImageKind imageKind) {

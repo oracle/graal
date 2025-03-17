@@ -25,8 +25,7 @@
 package jdk.graal.compiler.serviceprovider;
 
 import static java.lang.Thread.currentThread;
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,8 +40,8 @@ import java.util.ServiceLoader;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.vm.ci.code.Architecture;
-import org.graalvm.nativeimage.ImageInfo;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.misc.VM;
@@ -50,8 +49,6 @@ import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -59,20 +56,11 @@ import org.graalvm.nativeimage.Platforms;
 public final class GraalServices {
 
     /**
-     * Returns true if current runtime is in libgraal. Note that this is more specific than
-     * {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when executing any native
-     * image, not just libgraal.
-     */
-    public static boolean isInLibgraal() {
-        return Services.IS_IN_NATIVE_IMAGE;
-    }
-
-    /**
      * The set of services available in libgraal.
      */
     private static final Map<Class<?>, List<?>> libgraalServices;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     private static Class<?> loadClassOrNull(String name) {
         try {
             return GraalServices.class.getClassLoader().loadClass(name);
@@ -85,7 +73,7 @@ public final class GraalServices {
      * Gets a name for the current architecture that is compatible with
      * {@link Architecture#getName()}.
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     private static String getJVMCIArch() {
         String rawArch = getSavedProperty("os.arch");
         return switch (rawArch) {
@@ -97,7 +85,7 @@ public final class GraalServices {
         };
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     @SuppressWarnings("unchecked")
     private static void addProviders(String arch, Class<?> service) {
         List<Object> providers = (List<Object>) GraalServices.libgraalServices.computeIfAbsent(service, key -> new ArrayList<>());
@@ -133,13 +121,17 @@ public final class GraalServices {
      */
     @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
-        if (inImageRuntimeCode() || libgraalServices != null) {
+        if (libgraalServices != null) {
             List<?> list = libgraalServices.get(service);
             if (list == null) {
                 throw new InternalError(String.format("No %s providers found in libgraal (missing %s annotation on %s?)",
                                 service.getName(), LibGraalService.class.getName(), service.getName()));
             }
             return (Iterable<S>) list;
+        }
+        if (NativeImageSupport.inRuntimeCode()) {
+            // Service loading by Graal can only be done at build time
+            return List.of();
         }
         return load0(service);
     }
@@ -165,7 +157,7 @@ public final class GraalServices {
      * @see VM#getSavedProperties
      */
     public static Map<String, String> getSavedProperties() {
-        if (inImageBuildtimeCode()) {
+        if (!LibGraalSupport.inLibGraalRuntime() && LibGraalSupport.INSTANCE != null) {
             // Avoid calling down to JVMCI native methods as they will fail to
             // link in a copy of JVMCI loaded by a LibGraalLoader.
             return jdk.internal.misc.VM.getSavedProperties();
@@ -187,6 +179,7 @@ public final class GraalServices {
         return getSavedProperties().get(name);
     }
 
+    @LibGraalSupport.HostedOnly
     private static <S> Iterable<S> load0(Class<S> service) {
         Module module = GraalServices.class.getModule();
         // Graal cannot know all the services used by another module
@@ -226,11 +219,8 @@ public final class GraalServices {
      *
      * @param other all JVMCI packages will be opened to the module defining this class
      */
+    @LibGraalSupport.HostedOnly
     static void openJVMCITo(Class<?> other) {
-        if (inImageRuntimeCode()) {
-            return;
-        }
-
         Module jvmciModule = JVMCI_MODULE;
         Module otherModule = other.getModule();
         if (jvmciModule != otherModule) {
@@ -283,6 +273,7 @@ public final class GraalServices {
     /**
      * Gets the class file bytes for {@code c}.
      */
+    @LibGraalSupport.HostedOnly
     public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
         String classfilePath = c.getName().replace('.', '/') + ".class";
         return c.getModule().getResourceAsStream(classfilePath);
@@ -303,7 +294,7 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        if (inImageRuntimeCode()) {
+        if (inRuntimeCode()) {
             return true;
         }
 

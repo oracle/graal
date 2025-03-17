@@ -36,11 +36,10 @@ import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
@@ -64,7 +63,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * {@link jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.Stubs#initStubs}</li>
  * </ul>
  */
-@Platforms(Platform.HOSTED_ONLY.class)
+@LibGraalSupport.HostedOnly
 public class CompilerConfig {
 
     /**

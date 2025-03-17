@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.serviceprovider;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+
 import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -31,9 +33,6 @@ import java.util.function.Supplier;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * A shareable long value in the JVM process that is updated atomically. The long value is stored in
@@ -50,7 +49,7 @@ public class GlobalAtomicLong {
     /**
      * Cleaner for freeing {@link #address} when executing in jargraal.
      */
-    @Platforms(Platform.HOSTED_ONLY.class) //
+    @LibGraalSupport.HostedOnly //
     private static Cleaner cleaner;
 
     /**
@@ -82,14 +81,11 @@ public class GlobalAtomicLong {
     public GlobalAtomicLong(String name, long initialValue) {
         this.name = name;
         this.initialValue = initialValue;
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (inRuntimeCode()) {
             throw GraalError.shouldNotReachHere("Cannot create " + getClass().getName() + " objects in native image runtime");
         } else {
             LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
             if (libgraal != null) {
-                if (ImageInfo.inImageRuntimeCode()) {
-                    throw GraalError.shouldNotReachHere("The addressSupplier field value should have been replaced at image build time");
-                }
                 addressSupplier = libgraal.createGlobal(initialValue);
             } else {
                 // Executing in jargraal
