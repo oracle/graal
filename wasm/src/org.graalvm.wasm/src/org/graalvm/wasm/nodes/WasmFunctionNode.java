@@ -539,19 +539,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int callNodeIndex;
                     final int expectedFunctionTypeIndex;
                     final int tableIndex;
-                    final int profileOffset;
                     if (opcode == Bytecode.CALL_INDIRECT_U8) {
                         callNodeIndex = rawPeekU8(bytecode, offset);
                         expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
                         tableIndex = rawPeekU8(bytecode, offset + 2);
-                        profileOffset = offset + 3;
-                        offset += 5;
+                        offset += 3;
                     } else {
                         callNodeIndex = rawPeekI32(bytecode, offset);
                         expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
                         tableIndex = rawPeekI32(bytecode, offset + 8);
-                        profileOffset = offset + 12;
-                        offset += 14;
+                        offset += 12;
                     }
                     final WasmTable table = store.tables().table(instance.tableAddress(tableIndex));
                     final Object[] elements = table.elements();

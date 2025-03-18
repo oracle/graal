@@ -433,12 +433,12 @@ public abstract class BytecodeParser {
                 }
                 case Bytecode.CALL_INDIRECT_U8: {
                     callNodes.add(new CallNode(originalOffset));
-                    offset += 5;
+                    offset += 3;
                     break;
                 }
                 case Bytecode.CALL_INDIRECT_I32: {
                     callNodes.add(new CallNode(originalOffset));
-                    offset += 14;
+                    offset += 12;
                     break;
                 }
                 case Bytecode.UNREACHABLE:
