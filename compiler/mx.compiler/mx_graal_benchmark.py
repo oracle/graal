@@ -32,7 +32,7 @@ import mx
 import mx_benchmark
 import mx_sdk_benchmark
 from mx_benchmark import DataPoints
-from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite, SpecJvm2008BenchmarkSuite, PetClinicWrkBenchmarkSuite, MicronautHelloWorldWrkBenchmarkSuite
+from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite, SpecJvm2008BenchmarkSuite
 from mx_sdk_benchmark import JvmciJdkVm, SUCCESSFUL_STAGE_PATTERNS, Stage
 
 _suite = mx.suite('compiler')
@@ -244,15 +244,11 @@ mx_benchmark.add_bm_suite(timingWrapper(DaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(timingWrapper(ScalaDaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(timingWrapper(RenaissanceBenchmarkSuite))
 mx_benchmark.add_bm_suite(timingWrapper(SpecJvm2008BenchmarkSuite))
-mx_benchmark.add_bm_suite(timingWrapper(PetClinicWrkBenchmarkSuite))
-mx_benchmark.add_bm_suite(timingWrapper(MicronautHelloWorldWrkBenchmarkSuite))
 
 mx_benchmark.add_bm_suite(memUseWrapper(DaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(memUseWrapper(ScalaDaCapoBenchmarkSuite))
 mx_benchmark.add_bm_suite(memUseWrapper(RenaissanceBenchmarkSuite))
 mx_benchmark.add_bm_suite(memUseWrapper(SpecJvm2008BenchmarkSuite))
-mx_benchmark.add_bm_suite(memUseWrapper(PetClinicWrkBenchmarkSuite))
-mx_benchmark.add_bm_suite(memUseWrapper(MicronautHelloWorldWrkBenchmarkSuite))
 
 
 class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_benchmark.NativeImageBenchmarkMixin):
