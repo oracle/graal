@@ -52,6 +52,7 @@ public final class WasmContext {
     private final WasmContextOptions contextOptions;
     private final WasmStore contextStore;
     private final FdManager fdManager;
+    private final MemoryContext memoryContext;
 
     /**
      * Optional grow callback to notify the embedder.
@@ -72,6 +73,7 @@ public final class WasmContext {
         this.language = language;
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         this.fdManager = new FdManager(env);
+        this.memoryContext = new MemoryContext();
         this.contextStore = new WasmStore(this, language);
     }
 
@@ -141,6 +143,10 @@ public final class WasmContext {
         setMemGrowCallback(parent.getMemGrowCallback());
         setMemNotifyCallback(parent.getMemNotifyCallback());
         setMemWaitCallback(parent.getMemWaitCallback());
+    }
+
+    public MemoryContext memoryContext() {
+        return memoryContext;
     }
 
     public FdManager fdManager() {

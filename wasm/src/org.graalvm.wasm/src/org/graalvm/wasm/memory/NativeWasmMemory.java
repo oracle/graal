@@ -49,8 +49,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import org.graalvm.wasm.MemoryContext;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Sizes;
@@ -59,6 +58,8 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
@@ -81,18 +82,25 @@ final class NativeWasmMemory extends WasmMemory {
     private static final Unsafe unsafe;
     private static final VarHandle SIZE_FIELD;
 
+    private final MemoryContext memoryContext;
+    private final Deallocator deallocator;
+
+    @SuppressWarnings("this-escape")
     @TruffleBoundary
-    private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+    private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, MemoryContext memoryContext) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, false);
         this.size = initialSize;
+        this.memoryContext = memoryContext;
         final long initialBufferSize = byteSize();
-        this.startAddress = allocate(initialBufferSize);
         this.bufferSize = initialBufferSize;
+        long addr = allocate(initialBufferSize);
+        this.startAddress = addr;
+        this.deallocator = registerDeallocator(this, memoryContext, addr);
     }
 
     @TruffleBoundary
-    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64);
+    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, MemoryContext memoryContext) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, memoryContext);
     }
 
     private static long allocate(long newBufferSize) {
@@ -103,6 +111,12 @@ final class NativeWasmMemory extends WasmMemory {
         } catch (OutOfMemoryError error) {
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }
+    }
+
+    private static Deallocator registerDeallocator(NativeWasmMemory memory, MemoryContext memoryContext, long address) {
+        var deallocator = new Deallocator(address);
+        memoryContext.registerCleaner(memory, deallocator);
+        return deallocator;
     }
 
     @ExportMessage
@@ -129,7 +143,7 @@ final class NativeWasmMemory extends WasmMemory {
             if (Long.compareUnsigned(targetByteSize, bufferSize) > 0) {
                 try {
                     long newBufferSize = newBufferSize(targetByteSize);
-                    startAddress = unsafe.reallocateMemory(startAddress, newBufferSize);
+                    startAddress = updateDeallocatorAddress(unsafe.reallocateMemory(startAddress, newBufferSize));
                     unsafe.setMemory(startAddress + bufferSize, newBufferSize - bufferSize, (byte) 0);
                     bufferSize = newBufferSize;
                 } catch (OutOfMemoryError error) {
@@ -137,7 +151,7 @@ final class NativeWasmMemory extends WasmMemory {
                     // was requested.
                     try {
                         long newBufferSize = targetByteSize;
-                        startAddress = unsafe.reallocateMemory(startAddress, newBufferSize);
+                        startAddress = updateDeallocatorAddress(unsafe.reallocateMemory(startAddress, newBufferSize));
                         unsafe.setMemory(startAddress + bufferSize, newBufferSize - bufferSize, (byte) 0);
                         bufferSize = newBufferSize;
                     } catch (OutOfMemoryError errorAgain) {
@@ -155,6 +169,11 @@ final class NativeWasmMemory extends WasmMemory {
         }
     }
 
+    private long updateDeallocatorAddress(long newAddress) {
+        deallocator.setAddress(newAddress);
+        return newAddress;
+    }
+
     public long newBufferSize(long targetByteSize) {
         // bufferSize <= Sizes.MAX_MEMORY_64_INSTANCE_BYTE_SIZE, so this should not overflow
         long prefBufferSize = Math.addExact(bufferSize, bufferSize >> 1);
@@ -165,15 +184,16 @@ final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     @TruffleBoundary
-    public void reset() {
+    public synchronized void reset() {
         free();
         size = declaredMinSize;
         bufferSize = byteSize();
-        startAddress = allocate(bufferSize);
+        startAddress = updateDeallocatorAddress(allocate(bufferSize));
         currentMinSize = declaredMinSize;
     }
 
     private void validateAddress(Node node, long address, long length) {
+        assert size == 0 || !freed();
         validateAddress(node, address, length, byteSize());
     }
 
@@ -947,7 +967,7 @@ final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public WasmMemory duplicate() {
-        final NativeWasmMemory other = new NativeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64);
+        final NativeWasmMemory other = new NativeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64, memoryContext);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
     }
@@ -982,12 +1002,19 @@ final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public boolean freed() {
-        return startAddress == 0;
+        return startAddress == 0 || deallocator.getAddress() == 0;
+    }
+
+    /**
+     * Called by {@link Deallocator#run()}.
+     */
+    private static void free(long addr) {
+        unsafe.freeMemory(addr);
     }
 
     @TruffleBoundary
-    private void free() {
-        unsafe.freeMemory(startAddress);
+    private synchronized void free() {
+        deallocator.run();
         bufferSize = 0;
         startAddress = 0;
         size = 0;
@@ -1040,6 +1067,40 @@ final class NativeWasmMemory extends WasmMemory {
             throw trapOutOfBoundsBuffer(node, dstOffset, length, dst.length);
         }
         unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
+    }
+
+    private static final class Deallocator implements Runnable {
+        private volatile long address;
+        private static final VarHandle ADDRESS;
+
+        static {
+            try {
+                ADDRESS = MethodHandles.lookup().findVarHandle(Deallocator.class, "address", long.class);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
+
+        Deallocator(long address) {
+            this.address = address;
+        }
+
+        @Override
+        public void run() {
+            // Atomic update to prevent double free.
+            long addr = (long) ADDRESS.getAndSet(this, 0);
+            if (addr != 0) {
+                free(addr);
+            }
+        }
+
+        void setAddress(long address) {
+            this.address = address;
+        }
+
+        long getAddress() {
+            return address;
+        }
     }
 
     static {
