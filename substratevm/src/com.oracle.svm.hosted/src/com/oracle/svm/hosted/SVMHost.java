@@ -155,6 +155,7 @@ import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.internal.loader.NativeLibraries;
+import jdk.internal.vm.annotation.DontInline;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -807,6 +808,10 @@ public class SVMHost extends HostVM {
     @Override
     public boolean hasNeverInlineDirective(ResolvedJavaMethod method) {
         if (AnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
+            return true;
+        }
+
+        if (AnnotationAccess.isAnnotationPresent(method, DontInline.class)) {
             return true;
         }
 
