@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -151,6 +151,12 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_CALLBR = 57;
     private static final int INSTRUCTION_FREEZE = 58;
     private static final int INSTRUCTION_ATOMICRMW = 59;
+    private static final int INSTRUCTION_BLOCKADDR_USERS = 60;
+    private static final int INSTRUCTION_DEBUG_RECORD_VALUE = 61;
+    private static final int INSTRUCTION_DEBUG_RECORD_DECLARE = 62;
+    private static final int INSTRUCTION_DEBUG_RECORD_ASSIGN = 63;
+    private static final int INSTRUCTION_DEBUG_RECORD_VALUE_SIMPLE = 64;
+    private static final int INSTRUCTION_DEBUG_RECORD_LABEL = 65;
 
     private final FunctionDefinition function;
 
@@ -227,9 +233,13 @@ public final class Function implements ParserListener {
     public void record(RecordBuffer buffer) {
         int opCode = buffer.getId();
 
-        // debug locations can occur after terminating instructions, we process them before we
+        // debug instructions can occur after terminating instructions, we process them before we
         // replace the old block
         switch (opCode) {
+            case INSTRUCTION_DECLAREBLOCKS:
+                function.allocateBlocks(buffer.readInt());
+                return;
+
             case INSTRUCTION_DEBUG_LOC:
                 parseDebugLocation(buffer); // intentional fallthrough
 
@@ -237,8 +247,17 @@ public final class Function implements ParserListener {
                 applyDebugLocation();
                 return;
 
-            case INSTRUCTION_DECLAREBLOCKS:
-                function.allocateBlocks(buffer.readInt());
+            case INSTRUCTION_BLOCKADDR_USERS:
+                // only needed by the IRLinker
+                // since we consume only bitcode after linking, it's safe to ignore
+                return;
+
+            case INSTRUCTION_DEBUG_RECORD_VALUE:
+            case INSTRUCTION_DEBUG_RECORD_DECLARE:
+            case INSTRUCTION_DEBUG_RECORD_ASSIGN:
+            case INSTRUCTION_DEBUG_RECORD_VALUE_SIMPLE:
+            case INSTRUCTION_DEBUG_RECORD_LABEL:
+                // TODO parse debug info
                 return;
 
             default:
