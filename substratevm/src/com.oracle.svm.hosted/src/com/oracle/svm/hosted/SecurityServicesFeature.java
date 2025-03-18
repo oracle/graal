@@ -80,6 +80,8 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -217,6 +219,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private Class<?> jceSecurityClass;
 
+    private AnnotationSubstitutionProcessor substitutionProcessor;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
@@ -335,6 +339,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
 
+        substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+
         access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
             /*
              * We must wait until all providers have been registered before filtering the list.
@@ -425,6 +431,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         if (usedProviders.contains(p)) {
             return false;
+        }
+        if (substitutionProcessor.isDeleted(p.getClass())) {
+            return true;
         }
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }
