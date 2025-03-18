@@ -328,7 +328,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             int currentGeneral = 0;
             int currentFP = 0;
 
-            for (int i = 0; i < parameterTypes.length; i++) {
+            for (int i = firstActualArgument; i < parameterTypes.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
