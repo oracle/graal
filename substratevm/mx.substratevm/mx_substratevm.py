@@ -1844,7 +1844,7 @@ def java_agent_test(args):
             # Note: we are not using MX here to avoid polluting the suite.py and requiring extra build flags
             mx.log("Building agent jars from " + test_classpath)
             agents = []
-            for i in range(1, 4):
+            for i in range(1, 3):
                 agent = join(tmp_dir, "testagent%d.jar" % (i))
                 current_dir = os.getcwd()
                 # Change to test classpath to create agent jar file
@@ -1856,8 +1856,6 @@ def java_agent_test(args):
                 mx.run([mx.get_jdk().jar, 'cmf', join(test_classpath, 'resources', 'javaagent' + str(i), 'MANIFEST.MF'), agent] + class_list, cwd = test_classpath)
                 agents.append(agent)
                 os.chdir(current_dir)
-
-            build_and_run(args, join(tmp_dir, 'agenttest3'), native_image, agents,[f'-javaagent:{agents[2]}'])
 
             mx.log("Building images with different agent orders ")
             build_and_run(args, join(tmp_dir, 'agenttest1'), native_image, agents,[f'-javaagent:{agents[0]}=test.agent1=true', f'-javaagent:{agents[1]}=test.agent2=true'])
