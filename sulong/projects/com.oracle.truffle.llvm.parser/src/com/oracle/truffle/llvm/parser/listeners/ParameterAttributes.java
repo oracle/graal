@@ -271,7 +271,7 @@ public class ParameterAttributes implements ParserListener {
                     // these attributes are not actually used by Sulong, skip over them
                     Attribute.Kind.decode(buffer.read());
                     long bitWidth = buffer.read();
-                    skipConstantRange(buffer, bitWidth);
+                    buffer.skipConstantRange(bitWidth);
                     break;
                 }
 
@@ -281,7 +281,7 @@ public class ParameterAttributes implements ParserListener {
                     long rangeSize = buffer.read();
                     long bitWidth = buffer.read();
                     for (int i = 0; i < rangeSize; i++) {
-                        skipConstantRange(buffer, bitWidth);
+                        buffer.skipConstantRange(bitWidth);
                     }
                     break;
                 }
@@ -289,19 +289,6 @@ public class ParameterAttributes implements ParserListener {
                 default:
                     throw new LLVMParserException("Unexpected code of attribute group: " + type);
             }
-        }
-    }
-
-    private static void skipConstantRange(RecordBuffer buffer, long bitWidth) {
-        if (bitWidth > 64) {
-            long activeWords = buffer.read();
-            long lowerActiveWords = activeWords & ((1L << 32) - 1);
-            long upperActiveWords = activeWords >>> 32;
-            buffer.skip(lowerActiveWords);
-            buffer.skip(upperActiveWords);
-        } else {
-            buffer.skip(); // start
-            buffer.skip(); // end
         }
     }
 

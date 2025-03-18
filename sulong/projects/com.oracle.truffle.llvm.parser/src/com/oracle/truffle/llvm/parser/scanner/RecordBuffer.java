@@ -108,6 +108,19 @@ public final class RecordBuffer {
         index++;
     }
 
+    public void skipConstantRange(long bitWidth) {
+        if (bitWidth > 64) {
+            long activeWords = read();
+            long lowerActiveWords = activeWords & ((1L << 32) - 1);
+            long upperActiveWords = activeWords >>> 32;
+            skip(lowerActiveWords);
+            skip(upperActiveWords);
+        } else {
+            skip(); // start
+            skip(); // end
+        }
+    }
+
     public void skip(long nr) {
         index += nr;
     }
