@@ -138,15 +138,9 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     @ExportMessage
     static class Execute {
-        private static Object execute(WasmFunctionInstance functionInstance, Object[] arguments, CallTarget callAdapter, Node node, Node callNode) {
-            TruffleContext c = functionInstance.getTruffleContext();
-            Object prev = c.enter(node);
-            try {
-                return callAdapter.call(callNode, WasmArguments.create(functionInstance, arguments));
-                // throws ArityException, UnsupportedTypeException
-            } finally {
-                c.leave(node, prev);
-            }
+        private static Object execute(WasmFunctionInstance functionInstance, Object[] arguments, CallTarget callAdapter, Node callNode) {
+            return callAdapter.call(callNode, WasmArguments.create(functionInstance, arguments));
+            // throws ArityException, UnsupportedTypeException
         }
 
         @SuppressWarnings("unused")
@@ -156,7 +150,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                         @Cached("actualFunction") WasmFunction cachedFunction,
                         @Cached("getOrCreateInteropCallAdapter(functionInstance)") CallTarget cachedCallAdapter,
                         @Bind Node node) {
-            return execute(functionInstance, arguments, cachedCallAdapter, node, node);
+            return execute(functionInstance, arguments, cachedCallAdapter, node);
         }
 
         @SuppressWarnings("unused")
@@ -165,7 +159,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                         @Bind("getOrCreateInteropCallAdapter(functionInstance)") CallTarget actualCallAdapter,
                         @Cached("actualCallAdapter") CallTarget cachedCallAdapter,
                         @Bind Node node) {
-            return execute(functionInstance, arguments, cachedCallAdapter, node, node);
+            return execute(functionInstance, arguments, cachedCallAdapter, node);
         }
 
         @Specialization(replaces = "directAdapter")
@@ -173,7 +167,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                         @Bind Node node) {
             CallTarget callAdapter = getOrCreateInteropCallAdapter(functionInstance);
             Node callNode = node.isAdoptable() ? node : EncapsulatingNodeReference.getCurrent().get();
-            return execute(functionInstance, arguments, callAdapter, node, callNode);
+            return execute(functionInstance, arguments, callAdapter, callNode);
         }
 
         static CallTarget getOrCreateInteropCallAdapter(WasmFunctionInstance functionInstance) {
