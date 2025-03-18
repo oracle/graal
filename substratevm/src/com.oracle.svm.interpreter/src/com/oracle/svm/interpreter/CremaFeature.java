@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
@@ -32,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -39,6 +41,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -53,6 +56,7 @@ import com.oracle.svm.util.ReflectionUtil;
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredFeature
 public class CremaFeature implements InternalFeature {
+    private Method enterVTableInterpreterStub;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -73,6 +77,17 @@ public class CremaFeature implements InternalFeature {
         boolean enabled = false;
         assert (enabled = true) == true : "Enabling assertions";
         return enabled;
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        try {
+            enterVTableInterpreterStub = InterpreterStubSection.class.getMethod("enterVTableInterpreterStub", int.class, Pointer.class);
+            accessImpl.registerAsRoot(enterVTableInterpreterStub, true, "stub for interpreter");
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 
     @Override
@@ -106,9 +121,14 @@ public class CremaFeature implements InternalFeature {
     public void afterAbstractImageCreation(AfterAbstractImageCreationAccess access) {
         FeatureImpl.AfterAbstractImageCreationAccessImpl accessImpl = ((FeatureImpl.AfterAbstractImageCreationAccessImpl) access);
 
-        /* create vtable enter stubs */
-        int maxVtableIndex = 0x100;
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-        stubSection.createInterpreterVtableEnterStubSection(accessImpl.getImage(), maxVtableIndex);
+        stubSection.createInterpreterVTableEnterStubSection(accessImpl.getImage());
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        FeatureImpl.BeforeImageWriteAccessImpl accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
+        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
+        stubSection.markEnterStubPatch(accessImpl.getHostedMetaAccess().lookupJavaMethod(enterVTableInterpreterStub));
     }
 }
