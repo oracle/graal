@@ -162,7 +162,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeSkeletonClassLayout(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] class layout", pos);
-        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_4;
+        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_CU;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = classEntry.getTypeName();
@@ -343,7 +343,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         TypeEntry valueType = fieldEntry.getValueType();
         long typeSignature = 0;
         int typeIdx = 0;
-        AbbrevCode abbrevCode = AbbrevCode.HEADER_FIELD;
+        AbbrevCode abbrevCode = AbbrevCode.STRUCT_FIELD_SIG;
         if (fieldEntry.isEmbedded()) {
             // the field type must be a foreign type
             ForeignTypeEntry foreignValueType = (ForeignTypeEntry) valueType;
@@ -355,7 +355,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 assert (fieldSize % valueSize == 0) : "embedded field size is not a multiple of value type size!";
                 // declare a local array of the embedded type and use it as the value type
                 typeIdx = pos;
-                abbrevCode = AbbrevCode.ARRAY_ELEMENT_FIELD;
+                abbrevCode = AbbrevCode.STRUCT_FIELD;
                 pos = writeEmbeddedArrayDataType(context, foreignValueType, valueSize, fieldSize / valueSize, buffer, pos);
             } else {
                 if (foreignValueType.isPointer()) {
@@ -386,7 +386,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
         pos = writeStrSectionOffset(fieldName, buffer, pos);
-        if (abbrevCode == AbbrevCode.HEADER_FIELD) {
+        if (abbrevCode == AbbrevCode.STRUCT_FIELD_SIG) {
             log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeSignature, valueType.getTypeName());
             pos = writeTypeSignature(typeSignature, buffer, pos);
         } else {
@@ -633,13 +633,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeTUPreamble(context, classEntry.getLayoutTypeSignature(), loaderId, buffer, pos);
 
         log(context, "  [0x%08x] type layout", pos);
-        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_1;
+        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_TU;
         /*
          * when we don't have a separate compressed type then hub layouts need an extra
          * data_location attribute
          */
         if (!dwarfSections.useHeapBase() && dwarfSections.isHubClassEntry(classEntry)) {
-            abbrevCode = AbbrevCode.CLASS_LAYOUT_2;
+            abbrevCode = AbbrevCode.CLASS_LAYOUT_TU_2;
         }
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -649,7 +649,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = classEntry.getSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
         pos = writeAttrData2((short) size, buffer, pos);
-        if (abbrevCode == AbbrevCode.CLASS_LAYOUT_2) {
+        if (abbrevCode == AbbrevCode.CLASS_LAYOUT_TU_2) {
             /* Write a data location expression to mask and/or rebase oop pointers. */
             log(context, "  [0x%08x]     data_location", pos);
             pos = writeCompressedOopConversionExpression(true, buffer, pos);
@@ -1638,7 +1638,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeSkeletonArrayLayout(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] array layout", pos);
-        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_3;
+        AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_ARRAY;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = arrayTypeEntry.getTypeName();
@@ -1726,7 +1726,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeArrayElementField(DebugContext context, int offset, int arrayDataTypeIdx, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] array element data field", pos);
-        AbbrevCode abbrevCode = AbbrevCode.ARRAY_ELEMENT_FIELD;
+        AbbrevCode abbrevCode = AbbrevCode.STRUCT_FIELD;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String fieldName = uniqueDebugString("data");
