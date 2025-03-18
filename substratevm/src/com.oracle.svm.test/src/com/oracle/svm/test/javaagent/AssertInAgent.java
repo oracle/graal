@@ -27,7 +27,7 @@
 package com.oracle.svm.test.javaagent;
 
 /**
- * Assertions used inside agent when not using JUNIT
+ * Assertions used inside agent when not using JUNIT.
  */
 public class AssertInAgent {
     public static void assertNotNull(Object o) {
@@ -60,8 +60,6 @@ public class AssertInAgent {
             }
         }
     }
-
-
 
     public static void assertTrue(boolean actual) {
         assertEquals(true, actual);
