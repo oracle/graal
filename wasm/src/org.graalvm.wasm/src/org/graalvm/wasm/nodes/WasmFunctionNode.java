@@ -98,7 +98,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
@@ -584,24 +583,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                     int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
 
-                    // Validate that the function type matches the expected type.
-                    final boolean functionFromCurrentContext = functionInstanceContext == context;
+                    assert functionInstanceContext == context;
 
-                    if (profileCondition(bytecode, profileOffset, functionFromCurrentContext)) {
-                        // We can do a quick equivalence-class check.
-                        if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
-                            enterErrorBranch();
-                            failFunctionTypeCheck(function, expectedFunctionTypeIndex);
-                        }
-                    } else {
-                        // The table is coming from a different context, so do a slow check.
-                        // If the Wasm function is set to null, then the check must be performed
-                        // in the body of the function. This is done when the function is
-                        // provided externally (e.g. comes from a different language).
-                        if (function != null && !function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
-                            enterErrorBranch();
-                            failFunctionTypeCheck(function, expectedFunctionTypeIndex);
-                        }
+                    // Validate that the target function type matches the expected type of the
+                    // indirect call by performing an equivalence-class check.
+                    if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                        enterErrorBranch();
+                        failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                     }
 
                     // Invoke the resolved function.
@@ -610,29 +598,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer -= paramCount;
                     WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
 
-                    // Enter function's context when it is not from the current one
-                    final boolean enterContext = !functionFromCurrentContext;
-                    TruffleContext truffleContext;
-                    Object prev;
-                    if (enterContext) {
-                        truffleContext = functionInstanceContext.environment().getContext();
-                        prev = truffleContext.enter(this);
-                    } else {
-                        truffleContext = null;
-                        prev = null;
-                    }
-
-                    final Object result;
-                    try {
-                        result = executeIndirectCallNode(callNodeIndex, target, args);
-                        WasmLanguage language = enterContext ? functionInstanceContext.language() : WasmLanguage.get(this);
-                        stackPointer = pushIndirectCallResult(frame, stackPointer, expectedFunctionTypeIndex, result, language);
-                        CompilerAsserts.partialEvaluationConstant(stackPointer);
-                    } finally {
-                        if (enterContext) {
-                            truffleContext.leave(this, prev);
-                        }
-                    }
+                    final Object result = executeIndirectCallNode(callNodeIndex, target, args);
+                    stackPointer = pushIndirectCallResult(frame, stackPointer, expectedFunctionTypeIndex, result, WasmLanguage.get(this));
+                    CompilerAsserts.partialEvaluationConstant(stackPointer);
                     break;
                 }
                 case Bytecode.DROP: {
@@ -1763,25 +1731,20 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
         Node callNode = callNodes[callNodeIndex];
+        Object result;
         if (imported) {
             WasmIndirectCallNode indirectCallNode = (WasmIndirectCallNode) callNode;
             WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
-            TruffleContext truffleContext = functionInstance.getTruffleContext();
             WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
-            Object prev = truffleContext.enter(this);
-            try {
-                Object result = indirectCallNode.execute(instance.target(function.index()), args);
-                return pushDirectCallResult(frame, stackPointer, function, result, functionInstance.store().language());
-            } finally {
-                truffleContext.leave(this, prev);
-            }
+            assert functionInstance.context() == WasmContext.get(null);
+            result = indirectCallNode.execute(instance.target(function.index()), args);
         } else {
             WasmDirectCallNode directCallNode = (WasmDirectCallNode) callNode;
             WasmArguments.setModuleInstance(args, instance);
             assert assertDirectCall(instance, function, directCallNode.getTarget());
-            Object result = directCallNode.execute(args);
-            return pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
+            result = directCallNode.execute(args);
         }
+        return pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
     }
 
     private boolean assertDirectCall(WasmInstance instance, WasmFunction function, CallTarget target) {
