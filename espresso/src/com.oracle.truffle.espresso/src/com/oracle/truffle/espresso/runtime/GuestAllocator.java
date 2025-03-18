@@ -164,7 +164,7 @@ public final class GuestAllocator implements LanguageAccess {
             klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
-        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
+        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
         klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
         return trackAllocation(klass, newObj);

@@ -348,7 +348,7 @@ public abstract class ClassRegistry {
         }
         assert entry != null;
         StaticObject classLoader = getClassLoader();
-        if (!StaticObject.isNull(classLoader)) {
+        if (!StaticObject.isNull(classLoader) && context.getJavaVersion().java21OrEarlier()) {
             entry.checkPackageAccess(env.getMeta(), classLoader, protectionDomain);
         }
         return entry.klass();

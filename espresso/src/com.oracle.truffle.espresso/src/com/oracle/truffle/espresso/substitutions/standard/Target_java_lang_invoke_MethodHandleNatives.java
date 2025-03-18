@@ -713,6 +713,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         // @CallerSensitive annotation detected
         public static final int MN_CALLER_SENSITIVE = 0x00100000;
         public static final int MN_TRUSTED_FINAL = 0x00200000; // trusted final field
+        public static final int MN_HIDDEN_MEMBER = 0x00400000; /*- members defined in a hidden class or with @Hidden */
         public static final int MN_REFERENCE_KIND_SHIFT = 24; // refKind
         public static final int MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT;
         // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
