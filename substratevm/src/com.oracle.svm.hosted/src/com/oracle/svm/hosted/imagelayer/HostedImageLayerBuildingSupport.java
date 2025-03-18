@@ -31,7 +31,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import org.capnproto.ReaderOptions;
 import org.capnproto.Serialize;
@@ -50,21 +49,24 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
+import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 
 public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
+
+    private static String layerCreatePossibleOptions() {
+        return "[" + IncludeOptionsSupport.possibleExtendedOptions() + "]";
+    }
+
     private SVMImageLayerLoader loader;
     private SVMImageLayerWriter writer;
     private SVMImageLayerSingletonLoader singletonLoader;
@@ -166,31 +168,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 classLoaderSupport.setLayerFile(layerOption.fileName());
 
                 String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
-                for (ExtendedOption option : layerOption.extendedOptions()) {
-                    switch (option.key()) {
-                        case LayerArchiveSupport.MODULE_OPTION -> {
-                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
-                                            "Layer option %s specified with '%s' from %s requires a module name argument, e.g., %s=module-name.",
-                                            option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
-                            classLoaderSupport.addJavaModuleToInclude(option.value());
-
-                        }
-                        case LayerArchiveSupport.PACKAGE_OPTION -> {
-                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
-                                            "Layer option %s specified with '%s' from %s requires a package name argument, e.g., %s=package-name.",
-                                            option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
-                            classLoaderSupport.addJavaPackageToInclude(Objects.requireNonNull(PackageOptionValue.from(option)));
-                        }
-                        case LayerArchiveSupport.PATH_OPTION -> {
-                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
-                                            "Layer option %s specified with '%s' from %s requires a class-path entry, e.g., %s=path/to/cp-entry.",
-                                            option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
-                            classLoaderSupport.addClassPathEntryToInclude(option.value());
-                        }
-                        default ->
-                            throw UserError.abort("Unknown layer option %s specified with '%s' from %s. Use --help-extra for usage instructions.",
-                                            option.key(), layerCreateArg, valueWithOrigin.origin());
-                    }
+                NativeImageClassLoaderSupport.IncludeSelectors layerSelectors = classLoaderSupport.getLayerSelectors();
+                for (IncludeOptionsSupport.ExtendedOption option : layerOption.extendedOptions()) {
+                    IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
                 }
 
                 SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);

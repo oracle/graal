@@ -122,7 +122,7 @@ public final class ReflectionUtil {
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
-        } catch (ReflectiveOperationException ex) {
+        } catch (ReflectiveOperationException | NoClassDefFoundError ex) {
             if (optional) {
                 return null;
             }

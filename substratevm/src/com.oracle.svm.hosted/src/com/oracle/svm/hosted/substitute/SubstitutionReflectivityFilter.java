@@ -36,6 +36,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -74,6 +75,8 @@ public class SubstitutionReflectivityFilter {
                 return true;
             } else if (aMethod.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
+            } else if (aMethod.isAnnotationPresent(Fold.class)) {
+                return true; // accesses can contain hosted elements
             } else if (aMethod.isSynthetic() && aMethod.getDeclaringClass().isAnnotationPresent(TargetClass.class)) {
                 /*
                  * Synthetic methods are usually methods injected by javac to provide access to
