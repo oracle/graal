@@ -41,7 +41,7 @@ import java.util.Set;
 public class TestJavaAgent1 {
 
     public static void premain(
-            String agentArgs, Instrumentation inst) {
+                    String agentArgs, Instrumentation inst) {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
         AgentPremainHelper.load(TestJavaAgent1.class);
@@ -144,18 +144,17 @@ public class TestJavaAgent1 {
 
         @Override
         public byte[] transform(
-                ClassLoader loader,
-                String className,
-                Class<?> classBeingRedefined,
-                ProtectionDomain protectionDomain,
-                byte[] classfileBuffer) {
+                        ClassLoader loader,
+                        String className,
+                        Class<?> classBeingRedefined,
+                        ProtectionDomain protectionDomain,
+                        byte[] classfileBuffer) {
             if (internalClassName.equals(className)) {
                 ClassFile classFile = ClassFile.of();
                 ClassModel classModel = classFile.parse(classfileBuffer);
 
                 return classFile.transformClass(classModel, (classbuilder, ce) -> {
-                    if (ce instanceof MethodModel mm && mm.methodName().equalsString("getCounter")
-                            && mm.methodType().equalsString("()I")) {
+                    if (ce instanceof MethodModel mm && mm.methodName().equalsString("getCounter") && mm.methodType().equalsString("()I")) {
                         classbuilder.transformMethod(mm, (mb, me) -> {
                             mb.withCode(cb -> {
                                 cb.loadConstant(11);
