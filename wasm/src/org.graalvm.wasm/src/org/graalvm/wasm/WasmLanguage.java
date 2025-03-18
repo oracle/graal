@@ -52,8 +52,6 @@ import org.graalvm.wasm.api.InteropCallAdapterNode;
 import org.graalvm.wasm.api.JsConstants;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
@@ -223,11 +221,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected void finalizeContext(WasmContext context) {
         super.finalizeContext(context);
-        MemoryRegistry memories = context.contextStore().memories();
-        for (int i = 0; i < memories.count(); ++i) {
-            final WasmMemory memory = memories.memory(i);
-            WasmMemoryLibrary.getUncached().close(memory);
-        }
+        context.memoryContext().close();
         try {
             context.contextStore().fdManager().close();
         } catch (IOException e) {
