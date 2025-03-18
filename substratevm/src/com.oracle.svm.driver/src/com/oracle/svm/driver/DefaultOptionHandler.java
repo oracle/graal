@@ -34,9 +34,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport.ExtendedOption;
+import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
 import com.oracle.svm.util.LogUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -151,7 +151,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 List<String> layerCreateValue = OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, rawLayerCreateValue, OptionOrigin.from(args.argumentOrigin));
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
                 for (ExtendedOption option : layerOption.extendedOptions()) {
-                    var packageOptionValue = PackageOptionValue.from(option);
+                    var packageOptionValue = IncludeOptionsSupport.PackageOptionValue.from(option);
                     if (packageOptionValue == null) {
                         continue;
                     }
