@@ -181,6 +181,8 @@ public final class Arguments {
                         handler.addModules(optionString.substring("--add-modules=".length()));
                     } else if (optionString.startsWith("--enable-native-access=")) {
                         handler.enableNativeAccess(optionString.substring("--enable-native-access=".length()));
+                    } else if (optionString.startsWith("--illegal-native-access=")) {
+                        builder.option("java.IllegalNativeAccess", optionString.substring("--illegal-native-access=".length()));
                     } else if (optionString.startsWith("--module-path=")) {
                         builder.option("java.ModulePath", optionString.substring("--module-path=".length()));
                     } else if (optionString.startsWith("--upgrade-module-path=")) {

@@ -212,6 +212,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "--enable-native-access":
                     parseNumberedOption(args, "java.EnableNativeAccess", "module");
                     break;
+                case "--illegal-native-access":
+                    espressoOptions.put("java.IllegalNativeAccess", args.getValue(arg, "illegal native access"));
+                    break;
                 case "-m":
                 case "--module":
                     /* This arguments specifies in which module we find the main class. */

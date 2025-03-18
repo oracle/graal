@@ -29,8 +29,12 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_20_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_LOWER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_25_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_21;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.lower;
 import static com.oracle.truffle.espresso.impl.EspressoClassLoadingException.wrapClassNotFoundGuestException;
@@ -49,6 +53,7 @@ import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -114,7 +119,10 @@ public final class Meta extends ContextAccessImpl
                         .notRequiredField(java_lang_Class);
         HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Names.HIDDEN_MIRROR_KLASS);
         HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Names.HIDDEN_SIGNERS);
-        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Names.HIDDEN_PROTECTION_DOMAIN);
+        HIDDEN_PROTECTION_DOMAIN = diff() //
+                        .field(lower(24), Names.HIDDEN_PROTECTION_DOMAIN, Types.java_security_ProtectionDomain) //
+                        .field(VERSION_25_OR_HIGHER, Names.protectionDomain, Types.java_security_ProtectionDomain) //
+                        .maybeHiddenfield(java_lang_Class);
 
         if (getJavaVersion().modulesEnabled()) {
             java_lang_Class_module = java_lang_Class.requireDeclaredField(Names.module, Types.java_lang_Module);
@@ -349,8 +357,13 @@ public final class Meta extends ContextAccessImpl
                         .klass(higher(15), Types.jdk_internal_loader_NativeLibraries) //
                         .klass();
         java_lang_ClassLoader$NativeLibrary_getFromClass = java_lang_ClassLoader$NativeLibrary.requireDeclaredMethod(Names.getFromClass, Signatures.Class);
-        java_lang_ClassLoader_checkPackageAccess = java_lang_ClassLoader.requireDeclaredMethod(Names.checkPackageAccess, Signatures.Class_PermissionDomain);
-        java_lang_ClassLoader_findNative = java_lang_ClassLoader.requireDeclaredMethod(Names.findNative, Signatures._long_ClassLoader_String);
+        java_lang_ClassLoader_checkPackageAccess = diff() //
+                        .method(VERSION_21_OR_LOWER, Names.checkPackageAccess, Signatures.Class_PermissionDomain) //
+                        .notRequiredMethod(java_lang_ClassLoader);
+        java_lang_ClassLoader_findNative = diff() //
+                        .method(VERSION_21_OR_LOWER, Names.findNative, Signatures._long_ClassLoader_String) //
+                        .method(VERSION_25_OR_HIGHER, Names.findNative, Signatures._long_ClassLoader_Class_String_String) //
+                        .method(java_lang_ClassLoader);
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.requireDeclaredMethod(Names.getSystemClassLoader, Signatures.ClassLoader);
         java_lang_ClassLoader_parent = java_lang_ClassLoader.requireDeclaredField(Names.parent, Types.java_lang_ClassLoader);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.requireHiddenField(Names.HIDDEN_CLASS_LOADER_REGISTRY);
@@ -591,7 +604,9 @@ public final class Meta extends ContextAccessImpl
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Names.contextClassLoader, Types.java_lang_ClassLoader);
 
         java_lang_Thread_name = java_lang_Thread.requireDeclaredField(Names.name, java_lang_String.getType());
-        java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.requireDeclaredField(Names.inheritedAccessControlContext, Types.java_security_AccessControlContext);
+        java_lang_Thread_inheritedAccessControlContext = diff()//
+                        .field(VERSION_21_OR_LOWER, Names.inheritedAccessControlContext, Types.java_security_AccessControlContext)//
+                        .notRequiredField(java_lang_Thread);
         java_lang_Thread_checkAccess = java_lang_Thread.requireDeclaredMethod(Names.checkAccess, Signatures._void);
         java_lang_Thread_stop = java_lang_Thread.requireDeclaredMethod(Names.stop, Signatures._void);
         java_lang_ThreadGroup_maxPriority = java_lang_ThreadGroup.requireDeclaredField(Names.maxPriority, Types._int);
@@ -605,7 +620,9 @@ public final class Meta extends ContextAccessImpl
 
         java_lang_System = knownKlass(Types.java_lang_System);
         java_lang_System_exit = java_lang_System.requireDeclaredMethod(Names.exit, Signatures._void_int);
-        java_lang_System_securityManager = java_lang_System.requireDeclaredField(Names.security, Types.java_lang_SecurityManager);
+        java_lang_System_securityManager = diff() //
+                        .field(VERSION_21_OR_LOWER, Names.security, Types.java_lang_SecurityManager) //
+                        .notRequiredField(java_lang_System);
         java_lang_System_in = java_lang_System.requireDeclaredField(Names.in, Types.java_io_InputStream);
         java_lang_System_out = java_lang_System.requireDeclaredField(Names.out, Types.java_io_PrintStream);
         java_lang_System_err = java_lang_System.requireDeclaredField(Names.err, Types.java_io_PrintStream);
@@ -622,9 +639,15 @@ public final class Meta extends ContextAccessImpl
 
         java_security_AccessControlContext = knownKlass(Types.java_security_AccessControlContext);
         java_security_AccessControlContext_context = java_security_AccessControlContext.requireDeclaredField(Names.context, Types.java_security_ProtectionDomain_array);
-        java_security_AccessControlContext_privilegedContext = java_security_AccessControlContext.requireDeclaredField(Names.privilegedContext, Types.java_security_AccessControlContext);
-        java_security_AccessControlContext_isPrivileged = java_security_AccessControlContext.requireDeclaredField(Names.isPrivileged, Types._boolean);
-        java_security_AccessControlContext_isAuthorized = java_security_AccessControlContext.requireDeclaredField(Names.isAuthorized, Types._boolean);
+        java_security_AccessControlContext_privilegedContext = diff() //
+                        .field(VERSION_21_OR_LOWER, Names.privilegedContext, Types.java_security_AccessControlContext) //
+                        .notRequiredField(java_security_AccessControlContext);
+        java_security_AccessControlContext_isPrivileged = diff() //
+                        .field(VERSION_21_OR_LOWER, Names.isPrivileged, Types._boolean) //
+                        .notRequiredField(java_security_AccessControlContext);
+        java_security_AccessControlContext_isAuthorized = diff() //
+                        .field(VERSION_21_OR_LOWER, Names.isAuthorized, Types._boolean) //
+                        .notRequiredField(java_security_AccessControlContext);
         java_security_AccessController = knownKlass(Types.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Types.java_lang_invoke_MethodType);
@@ -740,9 +763,38 @@ public final class Meta extends ContextAccessImpl
 
             java_lang_StackStreamFactory = knownKlass(Types.java_lang_StackStreamFactory);
 
+            java_lang_ClassFrameInfo = diff() //
+                            .klass(VERSION_22_OR_HIGHER, Types.java_lang_ClassFrameInfo) //
+                            .notRequiredKlass();
+            java_lang_ClassFrameInfo_classOrMemberName = diff() //
+                            .field(VERSION_22_OR_HIGHER, Names.classOrMemberName, Types.java_lang_Object) //
+                            .notRequiredField(java_lang_ClassFrameInfo);
+            java_lang_ClassFrameInfo_flags = diff() //
+                            .field(VERSION_22_OR_HIGHER, Names.flags, Types._int) //
+                            .notRequiredField(java_lang_ClassFrameInfo);
+
             java_lang_StackFrameInfo = knownKlass(Types.java_lang_StackFrameInfo);
-            java_lang_StackFrameInfo_memberName = java_lang_StackFrameInfo.requireDeclaredField(Names.memberName, Types.java_lang_Object);
+            java_lang_StackFrameInfo_memberName = diff() //
+                            .field(JavaVersion.VersionRange.VERSION_9_TO_21, Names.memberName, Types.java_lang_Object) //
+                            .notRequiredField(java_lang_StackFrameInfo);
+            java_lang_StackFrameInfo_name = diff() //
+                            .field(JavaVersion.VersionRange.VERSION_22_OR_HIGHER, Names.name, Types.java_lang_String) //
+                            .notRequiredField(java_lang_StackFrameInfo);
+            java_lang_StackFrameInfo_type = diff() //
+                            .field(JavaVersion.VersionRange.VERSION_22_OR_HIGHER, Names.type, Types.java_lang_Object) //
+                            .notRequiredField(java_lang_StackFrameInfo);
             java_lang_StackFrameInfo_bci = java_lang_StackFrameInfo.requireDeclaredField(Names.bci, Types._int);
+
+            java_lang_invoke_ResolvedMethodName = diff() //
+                            .klass(VERSION_22_OR_HIGHER, Types.java_lang_invoke_ResolvedMethodName) //
+                            .notRequiredKlass();
+            java_lang_invoke_ResolvedMethodName_vmholder = diff() //
+                            .field(VERSION_22_OR_HIGHER, Names.vmholder, Types.java_lang_Class) //
+                            .notRequiredField(java_lang_invoke_ResolvedMethodName);
+
+            HIDDEN_VM_METHOD = diff() //
+                            .field(VERSION_22_OR_HIGHER, Names.HIDDEN_VM_METHOD, Types.java_lang_Object) //
+                            .maybeHiddenfield(java_lang_invoke_ResolvedMethodName);
 
             java_lang_System_initPhase1 = java_lang_System.requireDeclaredMethod(Names.initPhase1, Signatures._void);
             java_lang_System_initPhase2 = java_lang_System.requireDeclaredMethod(Names.initPhase2, Signatures._int_boolean_boolean);
@@ -758,9 +810,19 @@ public final class Meta extends ContextAccessImpl
 
             java_lang_StackStreamFactory = null;
 
+            java_lang_ClassFrameInfo = null;
+            java_lang_ClassFrameInfo_classOrMemberName = null;
+            java_lang_ClassFrameInfo_flags = null;
+
             java_lang_StackFrameInfo = null;
             java_lang_StackFrameInfo_memberName = null;
+            java_lang_StackFrameInfo_name = null;
+            java_lang_StackFrameInfo_type = null;
             java_lang_StackFrameInfo_bci = null;
+
+            java_lang_invoke_ResolvedMethodName = null;
+            java_lang_invoke_ResolvedMethodName_vmholder = null;
+            HIDDEN_VM_METHOD = null;
 
             java_lang_System_initPhase1 = null;
             java_lang_System_initPhase2 = null;
@@ -820,12 +882,12 @@ public final class Meta extends ContextAccessImpl
 
         sun_reflect_MagicAccessorImpl = diff() //
                         .klass(VERSION_8_OR_LOWER, Types.sun_reflect_MagicAccessorImpl) //
-                        .klass(VERSION_9_OR_HIGHER, Types.jdk_internal_reflect_MagicAccessorImpl) //
-                        .klass();
+                        .klass(VERSION_9_TO_21, Types.jdk_internal_reflect_MagicAccessorImpl) //
+                        .notRequiredKlass();
         sun_reflect_DelegatingClassLoader = diff() //
                         .klass(VERSION_8_OR_LOWER, Types.sun_reflect_DelegatingClassLoader) //
-                        .klass(VERSION_9_OR_HIGHER, Types.jdk_internal_reflect_DelegatingClassLoader) //
-                        .klass();
+                        .klass(VERSION_9_TO_21, Types.jdk_internal_reflect_DelegatingClassLoader) //
+                        .notRequiredKlass();
 
         sun_reflect_MethodAccessorImpl = diff() //
                         .klass(VERSION_8_OR_LOWER, Types.sun_reflect_MethodAccessorImpl) //
@@ -1879,9 +1941,19 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_lang_StackStreamFactory;
     public final Method java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk;
 
+    public final ObjectKlass java_lang_ClassFrameInfo;
+    public final Field java_lang_ClassFrameInfo_classOrMemberName;
+    public final Field java_lang_ClassFrameInfo_flags;
+
     public final ObjectKlass java_lang_StackFrameInfo;
     public final Field java_lang_StackFrameInfo_memberName;
+    public final Field java_lang_StackFrameInfo_name;
+    public final Field java_lang_StackFrameInfo_type;
     public final Field java_lang_StackFrameInfo_bci;
+
+    public final ObjectKlass java_lang_invoke_ResolvedMethodName;
+    public final Field java_lang_invoke_ResolvedMethodName_vmholder;
+    public final Field HIDDEN_VM_METHOD;
 
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;

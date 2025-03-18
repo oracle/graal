@@ -479,7 +479,8 @@ public final class RuntimeConstantPool extends ConstantPool {
             return true;
         }
         // MagicAccessorImpl marks internal reflection classes that have access to everything.
-        if (accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
+        if (accessingKlass.getJavaVersion().java23OrEarlier() &&
+                        accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }
 

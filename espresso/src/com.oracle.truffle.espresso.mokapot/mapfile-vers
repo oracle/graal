@@ -273,7 +273,7 @@ SUNWprivate_1.1 {
                 JVM_Write;
                 JVM_Yield;
                 JVM_handle_linux_signal;
-                
+
                 # JDK 11
                 JVM_AddModuleExports;
                 JVM_AddModuleExportsToAll;
@@ -360,6 +360,17 @@ SUNWprivate_1.1 {
                 JVM_VirtualThreadMount;
                 JVM_VirtualThreadUnmount;
                 JVM_PrintWarningAtDynamicAgentLoad;
+
+                # JDK 25
+                JVM_SleepNanos;
+                JVM_ExpandStackFrameInfo;
+                JVM_IsContainerized;
+                JVM_GetCDSConfigStatus;
+                JVM_NeedsClassInitBarrierForCDS;
+                JVM_VirtualThreadDisableSuspend;
+                JVM_VirtualThreadPinnedEvent;
+                JVM_TakeVirtualThreadListToUnblock;
+                JVM_IsStaticallyLinked;
 
                 # miscellaneous functions
                 jio_fprintf;

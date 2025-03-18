@@ -455,6 +455,9 @@ public final class VM extends NativeEnv {
     }
 
     private StaticObject nonReflectionClassLoader(StaticObject loader) {
+        if (getJavaVersion().java21OrLater()) {
+            return loader;
+        }
         if (StaticObject.notNull(loader)) {
             Meta meta = getMeta();
             if (meta.sun_reflect_DelegatingClassLoader.isAssignableFrom(loader.getKlass())) {
@@ -1393,7 +1396,7 @@ public final class VM extends NativeEnv {
         if (StaticObject.isNull(current)) {
             return StaticObject.NULL;
         }
-        StaticObject pd = (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
+        StaticObject pd = getMeta().HIDDEN_PROTECTION_DOMAIN.getObject(current);
         return pd == null ? StaticObject.NULL : pd;
     }
 
@@ -2482,6 +2485,7 @@ public final class VM extends NativeEnv {
             map.setNumberedProperty("jdk.module.addopens.", options.get(EspressoOptions.AddOpens), "AddOpens");
             addmodCount = map.setNumberedProperty("jdk.module.addmods.", options.get(EspressoOptions.AddModules), "AddModules");
             map.setNumberedProperty("jdk.module.enable.native.access.", options.get(EspressoOptions.EnableNativeAccess), "EnableNativeAccess");
+            map.setPropertyIfExists("jdk.module.illegal.native.access", options.get(EspressoOptions.IllegalNativeAccess), "IllegalNativeAccess");
         }
 
         // Applications expect different formats e.g. 1.8 vs. 11
@@ -2720,7 +2724,7 @@ public final class VM extends NativeEnv {
     /**
      * Returns the caller frame, 'depth' levels up. If securityStackWalk is true, some Espresso
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
-     * 
+     *
      * May return null if there is no Java frame on the stack.
      */
     @TruffleBoundary
@@ -3859,6 +3863,11 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
+    public static int JVM_GetCDSConfigStatus() {
+        return 0;
+    }
+
+    @VmImpl(isJni = true)
     public static boolean JVM_IsSharingEnabled() {
         return false;
     }
@@ -3938,20 +3947,32 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
-    public static void JVM_InitStackTraceElement(@JavaType(StackTraceElement.class) StaticObject element, @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
+    public static void JVM_InitStackTraceElement(@JavaType(StackTraceElement.class) StaticObject element,
+                    @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
                     @Inject Meta meta) {
         if (StaticObject.isNull(element) || StaticObject.isNull(info)) {
             throw meta.throwNullPointerException();
         }
-        StaticObject mname = meta.java_lang_StackFrameInfo_memberName.getObject(info);
+        Field mnameField = meta.getJavaVersion().java22OrLater()
+                        ? meta.java_lang_ClassFrameInfo_classOrMemberName
+                        : meta.java_lang_StackFrameInfo_memberName;
+        Field clazzField = meta.getJavaVersion().java22OrLater()
+                        ? meta.java_lang_invoke_ResolvedMethodName_vmholder
+                        : meta.java_lang_invoke_MemberName_clazz;
+        Field targetField = meta.getJavaVersion().java22OrLater()
+                        ? meta.HIDDEN_VM_METHOD // ResolvedMethodName.vmMethod
+                        : meta.HIDDEN_VMTARGET; // MemberName.vmTarget
+        assert mnameField != null && clazzField != null && targetField != null;
+        StaticObject mname = mnameField.getObject(info);
         if (StaticObject.isNull(mname)) {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
-        StaticObject clazz = meta.java_lang_invoke_MemberName_clazz.getObject(mname);
-        Method m = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(mname);
+        StaticObject clazz = clazzField.getObject(mname);
+        Method m = (Method) targetField.getHiddenObject(mname);
         if (m == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
+
         int bci = meta.java_lang_StackFrameInfo_bci.getInt(info);
         fillInElement(element, new VM.EspressoStackElement(m, bci), meta);
     }
@@ -4139,6 +4160,28 @@ public final class VM extends NativeEnv {
                     @Inject Meta meta) {
         checkStackWalkArguments(language, batchSize, startIndex, frames, meta);
         return getStackWalk().fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, meta);
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    public static void JVM_ExpandStackFrameInfo(@JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject obj,
+                    @Inject Meta meta) {
+        StaticObject resolvedMethodName = meta.java_lang_ClassFrameInfo_classOrMemberName.getObject(obj);
+        if (StaticObject.isNull(resolvedMethodName) || resolvedMethodName.getKlass() != meta.java_lang_invoke_ResolvedMethodName) {
+            return;
+        }
+        Method m = (Method) meta.HIDDEN_VM_METHOD.getHiddenObject(resolvedMethodName);
+        if (m == null) {
+            return;
+        }
+        boolean hasName = !StaticObject.isNull(meta.java_lang_StackFrameInfo_name.getObject(obj));
+        boolean hasType = !StaticObject.isNull(meta.java_lang_StackFrameInfo_type.getObject(obj));
+        if (!hasName) {
+            meta.java_lang_StackFrameInfo_name.setObject(obj, meta.toGuestString(m.getName()));
+        }
+        if (!hasType) {
+            meta.java_lang_StackFrameInfo_type.setObject(obj, meta.toGuestString(m.getRawSignature()));
+        }
     }
 
     // endregion stackwalk
