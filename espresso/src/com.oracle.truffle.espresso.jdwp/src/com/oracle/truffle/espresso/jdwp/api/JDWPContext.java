@@ -73,7 +73,7 @@ public interface JDWPContext {
      * @param root the Truffle root node object
      * @return the declaring method of the root node
      */
-    MethodRef getMethodFromRootNode(RootNode root);
+    MethodVersionRef getMethodFromRootNode(RootNode root);
 
     /**
      * @return guest language array of all active threads

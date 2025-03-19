@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1518,7 +1518,8 @@ public final class JDWP {
                     if (method == null) {
                         return new CommandResult(reply);
                     }
-                    reply.writeBoolean(method.isObsolete());
+                    // only condition to check here is if removed by redefinition
+                    reply.writeBoolean(method.isRemovedByRedefinition());
                 }
                 return new CommandResult(reply);
             }
@@ -2154,7 +2155,7 @@ public final class JDWP {
                     reply.writeLong(controller.getContext().getIds().getIdAsLong(frame));
                     reply.writeByte(frame.getTypeTag());
                     reply.writeLong(frame.getClassId());
-                    reply.writeLong(frame.getMethod().isObsolete() ? 0 : controller.getContext().getIds().getIdAsLong(frame.getMethod()));
+                    reply.writeLong(frame.getMethodVersion().isObsolete() ? 0 : controller.getContext().getIds().getIdAsLong(frame.getMethod()));
                     reply.writeLong(frame.getCodeIndex());
                 }
                 return new CommandResult(reply);
