@@ -285,7 +285,7 @@ public class LoopFragmentInside extends LoopFragment {
             backedgeValues.add(duplicatedNode);
         }
         int index = 0;
-        for (PhiNode mainPhiNode : mainLoopBegin.phis()) {
+        for (PhiNode mainPhiNode : mainLoopBegin.phis().snapshot()) {
             ValueNode duplicatedNode = backedgeValues.get(index++);
             if (duplicatedNode != null) {
                 mainPhiNode.setValueAt(1, duplicatedNode);
