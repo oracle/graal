@@ -71,7 +71,14 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> im
         return copyAnd(copy -> copy.removeIf(predicate));
     }
 
-    public abstract ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions);
+    /**
+     * Creates a JSON parser used to parse and register configuration.
+     *
+     * @param combinedFileSchema whether the parser should support the combined
+     *            reachability-metadata.json schema (if false, uses the legacy schema).
+     * @param parserOptions parser-specific options to enable different parsing features.
+     */
+    public abstract ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions);
 
     public abstract boolean supportsCombinedFile();
 

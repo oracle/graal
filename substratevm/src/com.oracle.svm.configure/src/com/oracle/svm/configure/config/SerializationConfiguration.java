@@ -132,8 +132,8 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
-        return SerializationConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), this, parserOptions);
+    public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
+        return SerializationConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), this, parserOptions);
     }
 
     @Override

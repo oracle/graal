@@ -45,9 +45,9 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
 
     protected final ConfigurationConditionResolver<C> conditionResolver;
 
-    public static <C> ResourceConfigurationParser<C> create(boolean strictMetadata, ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry,
+    public static <C> ResourceConfigurationParser<C> create(boolean combinedFileSchema, ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry,
                     EnumSet<ConfigurationParserOption> parserOptions) {
-        if (strictMetadata) {
+        if (combinedFileSchema) {
             return new ResourceMetadataParser<>(conditionResolver, registry, parserOptions);
         } else {
             return new LegacyResourceConfigurationParser<>(conditionResolver, registry, parserOptions);

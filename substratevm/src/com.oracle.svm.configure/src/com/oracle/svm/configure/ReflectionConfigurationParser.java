@@ -62,10 +62,10 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConditionalCon
         return base;
     }
 
-    public static <C, T> ReflectionConfigurationParser<C, T> create(String combinedFileKey, boolean strictMetadata,
+    public static <C, T> ReflectionConfigurationParser<C, T> create(String combinedFileKey, boolean combinedFileSchema,
                     ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
                     EnumSet<ConfigurationParserOption> parserOptions) {
-        if (strictMetadata) {
+        if (combinedFileSchema) {
             return new ReflectionMetadataParser<>(combinedFileKey, conditionResolver, delegate, parserOptions);
         } else {
             return new LegacyReflectionConfigurationParser<>(conditionResolver, delegate, parserOptions);

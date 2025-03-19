@@ -138,9 +138,9 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
-        if (strictMetadata) {
-            throw new IllegalArgumentException("Independent proxy configuration is not supported with strict metadata");
+    public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
+        if (combinedFileSchema) {
+            throw new IllegalArgumentException("Independent proxy configuration is only supported with the legacy metadata schema");
         }
         return new ProxyConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), parserOptions,
                         (cond, interfaces) -> interfaceLists.add(new ConditionalElement<>(cond, interfaces)));

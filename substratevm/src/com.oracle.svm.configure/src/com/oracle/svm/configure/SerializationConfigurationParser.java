@@ -42,9 +42,9 @@ public abstract class SerializationConfigurationParser<C> extends ConditionalCon
     protected final ConfigurationConditionResolver<C> conditionResolver;
     protected final RuntimeSerializationSupport<C> serializationSupport;
 
-    public static <C> SerializationConfigurationParser<C> create(boolean strictMetadata, ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
+    public static <C> SerializationConfigurationParser<C> create(boolean combinedFileSchema, ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
                     EnumSet<ConfigurationParserOption> parserOptions) {
-        if (strictMetadata) {
+        if (combinedFileSchema) {
             return new SerializationMetadataParser<>(conditionResolver, serializationSupport, parserOptions);
         } else {
             return new LegacySerializationConfigurationParser<>(conditionResolver, serializationSupport, parserOptions);

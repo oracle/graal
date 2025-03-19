@@ -60,10 +60,10 @@ import jdk.graal.compiler.util.json.JsonParserException;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(String combinedFileKey, boolean strictMetadata,
+    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(String combinedFileKey, boolean combinedFileSchema,
                     ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry,
                     RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, ImageClassLoader imageClassLoader) {
-        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, conditionResolver,
+        return ReflectionConfigurationParser.create(combinedFileKey, combinedFileSchema, conditionResolver,
                         RegistryAdapter.create(registry, proxyRegistry, serializationSupport, imageClassLoader),
                         ConfigurationFiles.Options.getConfigurationParserOptions());
     }

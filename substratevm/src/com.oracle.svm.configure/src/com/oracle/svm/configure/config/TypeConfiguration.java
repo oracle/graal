@@ -155,8 +155,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
-        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
+    public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
+        return ReflectionConfigurationParser.create(combinedFileKey, combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
     }
 
     @Override

@@ -381,8 +381,8 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
-        return ResourceConfigurationParser.create(strictMetadata, ConfigurationConditionResolver.identityResolver(), new ParserAdapter(this), parserOptions);
+    public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
+        return ResourceConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserAdapter(this), parserOptions);
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer, boolean combinedFile) throws IOException {

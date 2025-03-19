@@ -169,9 +169,9 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata, EnumSet<ConfigurationParserOption> parserOptions) {
-        if (strictMetadata) {
-            throw new IllegalArgumentException("Predefined classes configuration is not supported with strict metadata");
+    public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
+        if (combinedFileSchema) {
+            throw new IllegalArgumentException("Predefined classes configuration is only supported with the legacy metadata schema");
         }
         return new PredefinedClassesConfigurationParser(this::add, parserOptions);
     }
