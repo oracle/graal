@@ -584,7 +584,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageFileSize, int heapObjectCount, long imageHeapSize, int codeAreaSize, int numCompilations, int debugInfoSize) {
+    public void printCreationEnd(int imageFileSize, int heapObjectCount, long imageHeapSize, int codeAreaSize, int numCompilations, int debugInfoSize, int imageDiskFileSize) {
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_OBJECT_COUNT, heapObjectCount);
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
@@ -620,7 +620,11 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         recordJsonMetric(ImageDetailKey.NUM_COMP_UNITS, numCompilations);
         l().a(format, ByteFormattingUtil.bytesToHuman(otherBytes), Utils.toPercentage(otherBytes, imageFileSize))
                         .doclink("other data", "#glossary-other-data").println();
-        l().a("%9s in total", ByteFormattingUtil.bytesToHuman(imageFileSize)).println();
+        l().a("%9s in total image size", ByteFormattingUtil.bytesToHuman(imageFileSize));
+        if (imageDiskFileSize >= 0) {
+            l().a(", %s in total file size", ByteFormattingUtil.bytesToHuman(imageDiskFileSize));
+        }
+        l().println();
         printBreakdowns();
         ImageSingletons.lookup(ProgressReporterFeature.class).afterBreakdowns();
         printRecommendations();

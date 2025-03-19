@@ -24,7 +24,7 @@ Below is the example output when building a native executable of the `HelloWorld
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
 [1/8] Initializing...                                            (2.8s @ 0.15GB)
- Java version: 20+34, vendor version: GraalVM CE 20-dev+34.1
+ Java version: 25+13, vendor version: GraalVM CE 25-dev+13.1
  Graal compiler: optimization level: 2, target machine: x86-64-v3
  C compiler: gcc (linux, x86_64, 12.2.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
@@ -49,7 +49,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
    7.03MB (32.02%) for image heap:   93,301 objects and 5 resources
    8.96MB (40.83%) for debug info generated in 1.0s
  659.13kB ( 2.93%) for other data
-  21.96MB in total
+  21.96MB in total image size, 21.04MB in total file size
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
    4.03MB java.base                        1.14MB byte[] for code metadata
@@ -201,6 +201,10 @@ The progress indicator is printed periodically at an increasing interval.
 ### <a name="stage-creating"></a>Creating Image
 In this stage, the native binary is created and written to disk.
 Debug info is also generated as part of this stage (if requested).
+This section breaks down the total image size as well as [code area](#glossary-code-area) and [image heap](#glossary-image-heap) (see below for more details).
+The total image size is calculated before linking by summing the sizes of the code area, image heap, debug information (if requested and embedded in the binary), and other data.
+The total file size is the actual size of the image on disk after linking.
+Typically, the file size is slightly smaller than the image size due to additional link time optimizations.
 
 #### <a name="glossary-code-area"></a>Code Area
 The code area contains machine code produced by the Graal compiler for all reachable methods.
