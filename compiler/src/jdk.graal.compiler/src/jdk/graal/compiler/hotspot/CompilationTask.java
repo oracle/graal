@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,6 @@ import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -44,6 +42,7 @@ import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -59,6 +58,7 @@ import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
+import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
@@ -349,7 +349,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         // Set any options for this compile.
         String perMethodOptions = Options.PerMethodOptions.getValue(originalOptions);
         if (perMethodOptions != null) {
-            EconomicMap<OptionKey<?>, Object> values;
+            EconomicMap<OptionKey<?>, Object> values = null;
             try {
                 EconomicMap<String, String> optionSettings = null;
                 for (String option : OptionsParser.splitOptions(perMethodOptions)) {
@@ -365,15 +365,15 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                         }
                     } else if (optionSettings != null) {
                         OptionsParser.parseOptionSettingTo(option, optionSettings);
-                    } else {
-                        throw new IllegalArgumentException(Options.PerMethodOptions.getName() + " must start with \"MethodFilter:\" specification");
                     }
                 }
-                if (optionSettings.isEmpty()) {
-                    throw new IllegalArgumentException("No options specified for MethodFilter:");
+                if (optionSettings != null) {
+                    if (optionSettings.isEmpty()) {
+                        throw new IllegalArgumentException("No options specified for MethodFilter:");
+                    }
+                    values = EconomicMap.create();
+                    OptionsParser.parseOptions(optionSettings, values, OptionsParser.getOptionsLoader());
                 }
-                values = EconomicMap.create();
-                OptionsParser.parseOptions(optionSettings, values, OptionsParser.getOptionsLoader());
             } catch (Exception e) {
                 values = null;
                 TTY.println(e.toString());
