@@ -27,8 +27,6 @@ package jdk.graal.compiler.core.common.util;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.nativeimage.ImageInfo;
-
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.util.EventCounter.EventCounterMarker;
 import jdk.graal.compiler.debug.Assertions;
@@ -63,8 +61,7 @@ public final class CompilationAlarm implements AutoCloseable {
         // @formatter:on
     }
 
-    public static final boolean LOG_PROGRESS_DETECTION = !ImageInfo.inImageRuntimeCode() &&
-                    Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
+    public static final boolean LOG_PROGRESS_DETECTION = Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
     /**
      * The previously installed alarm.

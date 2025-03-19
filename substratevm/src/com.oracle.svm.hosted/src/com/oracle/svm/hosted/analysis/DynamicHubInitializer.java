@@ -62,6 +62,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class DynamicHubInitializer {
 
@@ -150,8 +151,10 @@ public class DynamicHubInitializer {
         }
 
         if (RuntimeClassLoading.isSupported()) {
-            hub.setInterpreterType(RuntimeClassLoading.createInterpreterType(hub, type));
+            ResolvedJavaType interpreterType = RuntimeClassLoading.createInterpreterType(hub, type);
+            hub.setInterpreterType(interpreterType);
             heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType);
+            heapScanner.rescanObject(interpreterType.getDeclaredMethods());
         }
     }
 

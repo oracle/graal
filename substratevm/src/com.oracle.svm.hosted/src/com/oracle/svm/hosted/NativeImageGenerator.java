@@ -71,9 +71,12 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -266,6 +269,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
@@ -542,6 +546,8 @@ public class NativeImageGenerator {
 
     protected static void setSystemPropertiesForImageEarly() {
         VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "Expected ImageInfo.inImageBuildtimeCode() to return true");
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode() == NativeImageSupport.inBuildtimeCode(),
+                        "ImageInfo.inImageBuildtimeCode() and NativeImageSupport.inBuildtimeCode() are not in sync");
     }
 
     private static void setSystemPropertiesForImageLate(NativeImageKind imageKind) {
@@ -1075,6 +1081,14 @@ public class NativeImageGenerator {
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
+
+                var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+                loader.classLoaderSupport.getClassesToPreserve().parallel()
+                                .filter(ClassInclusionPolicy::isClassIncludedBase)
+                                .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
+                for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
+                    RuntimeReflection.registerClassLookup(className);
+                }
 
                 registerEntryPointStubs(entryPoints);
             }
@@ -1736,6 +1750,8 @@ public class NativeImageGenerator {
         checkName(bb, null, format);
     }
 
+    private static final Set<String> CHECK_NAME_EXCEPTIONS = Set.of("java.awt.Cursor.DOT_HOTSPOT_SUFFIX");
+
     private static void checkName(BigBang bb, AnalysisMethod method, String format) {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
@@ -1747,7 +1763,9 @@ public class NativeImageGenerator {
         if (lformat.contains("hosted")) {
             report(bb, format, method, "Hosted element used at run time: " + format + ".");
         } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
-            report(bb, format, method, "HotSpot element used at run time: " + format + ".");
+            if (!CHECK_NAME_EXCEPTIONS.contains(format)) {
+                report(bb, format, method, "HotSpot element used at run time: " + format + ".");
+            }
         }
     }
 

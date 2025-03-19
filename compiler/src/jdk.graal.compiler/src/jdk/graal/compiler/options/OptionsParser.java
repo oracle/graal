@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.options;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
@@ -66,23 +64,23 @@ public class OptionsParser {
     /**
      * Compiler options info available in libgraal.
      */
-    public static final LibGraalOptionsInfo libgraalOptions = LibGraalSupport.inLibGraal() ? LibGraalOptionsInfo.create() : null;
+    public static final LibGraalOptionsInfo libgraalOptions = LibGraalSupport.INSTANCE != null ? LibGraalOptionsInfo.create() : null;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
     @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        if (inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        if (LibGraalSupport.inLibGraal()) {
+        if (LibGraalSupport.INSTANCE != null) {
             /*
              * Executing in the context of the libgraal class loader so use it to load the
              * OptionDescriptors.
              */
-            ClassLoader myCL = OptionsParser.class.getClassLoader();
-            return ServiceLoader.load(OptionDescriptors.class, myCL);
+            ClassLoader libgraalLoader = OptionsParser.class.getClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, libgraalLoader);
         } else {
             /*
              * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
@@ -226,14 +224,13 @@ public class OptionsParser {
     public static Object parseOptionValue(OptionDescriptor desc, Object uncheckedValue) {
         Class<?> optionType = desc.getOptionValueType();
         Object value;
-        if (!(uncheckedValue instanceof String)) {
+        if (!(uncheckedValue instanceof String valueString)) {
             if (optionType != uncheckedValue.getClass()) {
                 String type = optionType.getSimpleName();
                 throw new IllegalArgumentException(type + " option '" + desc.getName() + "' must have " + type + " value, not " + uncheckedValue.getClass() + " [toString: " + uncheckedValue + "]");
             }
             value = uncheckedValue;
         } else {
-            String valueString = (String) uncheckedValue;
             if (optionType == Boolean.class) {
                 if ("true".equals(valueString)) {
                     value = Boolean.TRUE;
@@ -360,7 +357,7 @@ public class OptionsParser {
     }
 
     static boolean isEnterpriseOption(OptionDescriptor desc) {
-        if (inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             if (libgraalOptions == null) {
                 return false;
             }

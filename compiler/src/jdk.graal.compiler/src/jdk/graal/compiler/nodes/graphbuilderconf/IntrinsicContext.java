@@ -81,7 +81,6 @@ public class IntrinsicContext {
         this.originalMethod = method;
         this.intrinsicMethod = intrinsic;
         this.bytecodeProvider = bytecodeProvider;
-        assert bytecodeProvider != null;
         this.compilationContext = compilationContext;
         this.allowPartialIntrinsicArgumentMismatch = allowPartialIntrinsicArgumentMismatch;
     }

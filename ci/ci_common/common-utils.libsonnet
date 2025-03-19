@@ -10,6 +10,15 @@
   hyphenize(a_list)::
     std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), a_list)),
 
+  # generate a string that describes the specific hardware being executed on with format: <jdk_name>-<machine_name>-<os>-<arch>
+  jdk_and_hardware(build)::
+    self.hyphenize([
+      if std.objectHasAll(build, 'jdk_name') then build.jdk_name else null,
+      if std.objectHasAll(build, 'machine_name') then build.machine_name else null,
+      if std.objectHasAll(build, 'os') then build.os else null,
+      if std.objectHasAll(build, 'arch') then build.arch else null,
+    ]),
+
   # Pattern for a guard.includes clause that captures all top-level CI files.
   top_level_ci:: ["*.json", "*.jsonnet", "*.libsonnet", "ci/**"],
 

@@ -27,6 +27,9 @@ package com.oracle.svm.interpreter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -43,6 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CremaSupportImpl implements CremaSupport {
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType type) {
         BuildTimeInterpreterUniverse btiUniverse = BuildTimeInterpreterUniverse.singleton();

@@ -879,6 +879,11 @@ suite = {
       },
       "description" : "Native Image API extensions for libgraal.",
       "maven": {
+        # Explicitly set the artifactId here instead of relying on mx automatically
+        # deriving it from the distribution name. This also makes the maven
+        # coordinates stable in case of the (unlikely) event that the distribution
+        # is renamed.
+        "artifactId": "nativeimage-libgraal",
         "tag": ["default", "public"],
       },
     },
@@ -1359,7 +1364,7 @@ CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
 AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
 CFLAGS=
 CXXFLAGS=
-LDFLAGS=
+LDFLAGS=-fuse-ld=lld
 '''
             },
           },

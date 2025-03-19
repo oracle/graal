@@ -512,4 +512,20 @@ public @interface GenerateBytecode {
      */
     boolean enableBytecodeDebugListener() default true;
 
+    /**
+     * Sets the maximum number of stack slots that will be used for parameters annotated with
+     * {@link Variadic}. The value must represent a power of 2 greater than 1 and must not exceed
+     * {@link Short#MAX_VALUE}. The default value is "32". As with {@link #defaultLocalValue()}, it
+     * is possible to specify this limit via an expression. If a constant value is provided, the
+     * limit is validated at compile time; otherwise, it is validated at class initialization.
+     * <p>
+     * The expression supports a subset of Java (see {@link com.oracle.truffle.api.dsl.Cached
+     * Cached}), and may include simple constants (for example, <code>0</code>) or static method
+     * calls. It must evaluate to an <code>int</code>. Note that only static members of the root
+     * node can be bound with the expression.
+     *
+     * @since 25.0
+     */
+    String variadicStackLimit() default "32";
+
 }

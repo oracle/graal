@@ -33,8 +33,17 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
+import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
+import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
+import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
+import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
+import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
@@ -43,10 +52,12 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import sun.util.locale.provider.LocaleDataMetaInfo;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -84,30 +95,38 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     }
 
-    private static final Set<String> SKIPPED_SERVICES = Set.of(
+    private static final Set<String> SKIPPED_SERVICES = Stream.of(
                     // image builder internal ServiceLoader interfaces
-                    "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
-                    "org.graalvm.nativeimage.Platform",
+                    NativeImageClassLoaderPostProcessing.class,
+
+                    /*
+                     * NOTE: Platform.class had to be added to this list since our analysis
+                     * discovers that Platform.includedIn is reachable regardless of fact that it is
+                     * constant folded at registerPlatformPlugins method of
+                     * SubstrateGraphBuilderPlugins. This issue hasn't manifested before because
+                     * implementation classes were instantiated using runtime reflection instead of
+                     * ServiceLoader (and thus weren't reachable in analysis).
+                     */
+                    Platform.class,
+
                     /*
                      * Loaded in java.util.random.RandomGeneratorFactory.FactoryMapHolder, which is
                      * initialized at image build time.
                      */
-                    "java.util.random.RandomGenerator",
-                    "java.security.Provider",                     // see SecurityServicesFeature
-                    "sun.util.locale.provider.LocaleDataMetaInfo", // see LocaleSubstitutions
-                    /* Graal hotspot-specific services */
-                    "jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory",
-                    "jdk.graal.compiler.hotspot.CompilerConfigurationFactory",
-                    "jdk.graal.compiler.hotspot.HotSpotBackendFactory",
-                    "jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
-                    "jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
-                    "jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory");
+                    RandomGenerator.class,
+                    java.security.Provider.class,        // see SecurityServicesFeature
+                    LocaleDataMetaInfo.class,            // see LocaleSubstitutions
 
-    // NOTE: Platform class had to be added to this list since our analysis discovers that
-    // Platform.includedIn is reachable regardless of fact that it is constant folded at
-    // registerPlatformPlugins method of SubstrateGraphBuilderPlugins. This issue hasn't manifested
-    // before because implementation classes were instantiated using runtime reflection instead of
-    // ServiceLoader (and thus weren't reachable in analysis).
+                    /* Graal hotspot-specific services */
+                    HotSpotJVMCIBackendFactory.class,
+                    CompilerConfigurationFactory.class,
+                    HotSpotBackendFactory.class,
+                    DefaultHotSpotLoweringProvider.Extensions.class,
+                    HotSpotInvocationPluginProvider.class,
+                    TruffleCallBoundaryInstrumentationFactory.class)
+
+                    .map(Class::getName)
+                    .collect(Collectors.toUnmodifiableSet());
 
     /**
      * Services that should not be processed here, for example because they are handled by
@@ -116,10 +135,9 @@ public class ServiceLoaderFeature implements InternalFeature {
     private final Set<String> servicesToSkip = new HashSet<>(SKIPPED_SERVICES);
 
     private static final Set<String> SKIPPED_PROVIDERS = Set.of(
-                    /* Graal hotspot-specific service-providers */
-                    "jdk.graal.compiler.hotspot.meta.HotSpotDisassemblerProvider",
                     /* Skip console providers until GR-44085 is fixed */
-                    "jdk.internal.org.jline.JdkConsoleProviderImpl", "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
+                    "jdk.internal.org.jline.JdkConsoleProviderImpl",
+                    "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final Set<String> serviceProvidersToSkip = new HashSet<>(SKIPPED_PROVIDERS);
 
@@ -162,6 +180,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         });
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
     void handleServiceClassIsReachable(DuringAnalysisAccess access, Class<?> serviceProvider, Collection<String> providers) {
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
         for (String provider : providers) {
@@ -189,32 +208,8 @@ public class ServiceLoaderFeature implements InternalFeature {
              *
              * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
              */
-            Constructor<?> nullaryConstructor = null;
-            Method nullaryProviderMethod = null;
-            try {
-                /* Only look for a provider() method if provider class is in an explicit module. */
-                if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
-                    for (Method method : providerClass.getDeclaredMethods()) {
-                        if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
-                                        method.getParameterCount() == 0 && method.getName().equals("provider")) {
-                            if (nullaryProviderMethod == null) {
-                                nullaryProviderMethod = method;
-                            } else {
-                                /* There must be at most one public static provider() method. */
-                                nullaryProviderMethod = null;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                Constructor<?> constructor = providerClass.getDeclaredConstructor();
-                if (Modifier.isPublic(constructor.getModifiers())) {
-                    nullaryConstructor = constructor;
-                }
-            } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                // ignore
-            }
+            Method nullaryProviderMethod = findProviderMethod(providerClass);
+            Constructor<?> nullaryConstructor = findNullaryConstructor(providerClass);
             if (nullaryConstructor != null || nullaryProviderMethod != null) {
                 RuntimeReflection.register(providerClass);
                 if (nullaryConstructor != null) {
@@ -224,7 +219,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                      * the same behavior as using RuntimeReflection.register(nullaryConstructor). In
                      * the first case, the constructor is marked for query purposes only, so this
                      * if-statement cannot be eliminated.
-                     * 
+                     *
                      */
                     RuntimeReflection.register(nullaryConstructor);
                 } else {
@@ -257,5 +252,45 @@ public class ServiceLoaderFeature implements InternalFeature {
             byte[] serviceFileData = registeredProviders.stream().collect(Collectors.joining("\n")).getBytes(StandardCharsets.UTF_8);
             RuntimeResourceAccess.addResource(access.getApplicationClassLoader().getUnnamedModule(), serviceResourceLocation, serviceFileData);
         }
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
+    private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
+        Constructor<?> nullaryConstructor = null;
+        try {
+            Constructor<?> constructor = providerClass.getDeclaredConstructor();
+            if (Modifier.isPublic(constructor.getModifiers())) {
+                nullaryConstructor = constructor;
+            }
+        } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+            // ignore
+        }
+        return nullaryConstructor;
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
+    private static Method findProviderMethod(Class<?> providerClass) {
+        Method nullaryProviderMethod = null;
+        try {
+            /* Only look for a provider() method if provider class is in an explicit module. */
+            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                for (Method method : providerClass.getDeclaredMethods()) {
+                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
+                                    method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                        if (nullaryProviderMethod == null) {
+                            nullaryProviderMethod = method;
+                        } else {
+                            /* There must be at most one public static provider() method. */
+                            nullaryProviderMethod = null;
+                            break;
+                        }
+                    }
+                }
+            }
+
+        } catch (SecurityException | LinkageError e) {
+            // ignore
+        }
+        return nullaryProviderMethod;
     }
 }

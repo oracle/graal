@@ -241,7 +241,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             rawEnter(crb, frameMap, masm, config, isStub);
 
             crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
-            if (!isStub && config.nmethodEntryBarrier != 0) {
+            if (!isStub) {
                 emitNmethodEntryBarrier(crb, masm);
             }
             if (entryPointDecorator != null) {

@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -176,7 +178,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPlugins {
 
-    /** Collection of debug options for SubstrateGraphBuilderPlugins. */
+    /**
+     * Collection of debug options for SubstrateGraphBuilderPlugins.
+     */
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
@@ -388,32 +392,44 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
+    static final class ImageInfoPlugin extends RequiredInvocationPlugin {
+
+        private final JavaConstant returnValue;
+
+        ImageInfoPlugin(String name, JavaConstant returnValue) {
+            super(name);
+            this.returnValue = returnValue;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            b.push(JavaKind.Boolean, ConstantNode.forConstant(returnValue, b.getMetaAccess(), b.getGraph()));
+            return true;
+        }
+    }
+
+    /**
+     * @see ImageInfo#inImageCode()
+     * @see ImageInfo#inImageRuntimeCode()
+     * @see ImageInfo#inImageBuildtimeCode()
+     * @see NativeImageSupport#inBuildtimeCode()
+     * @see NativeImageSupport#inRuntimeCode()
+     * @see LibGraalSupport#inLibGraalRuntime()
+     */
     private static void registerImageInfoPlugins(InvocationPlugins plugins) {
         Registration registration = new Registration(plugins, ImageInfo.class);
-        registration.register(new RequiredInvocationPlugin("inImageCode") {
-            /** See {@link ImageInfo#inImageCode()}. */
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(JavaKind.Boolean, ConstantNode.forConstant(JavaConstant.TRUE, b.getMetaAccess(), b.getGraph()));
-                return true;
-            }
-        });
-        registration.register(new RequiredInvocationPlugin("inImageBuildtimeCode") {
-            /** See {@link ImageInfo#inImageBuildtimeCode()}. */
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(JavaKind.Boolean, ConstantNode.forConstant(JavaConstant.FALSE, b.getMetaAccess(), b.getGraph()));
-                return true;
-            }
-        });
-        registration.register(new RequiredInvocationPlugin("inImageRuntimeCode") {
-            /** See {@link ImageInfo#inImageRuntimeCode()}. */
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(JavaKind.Boolean, ConstantNode.forConstant(JavaConstant.TRUE, b.getMetaAccess(), b.getGraph()));
-                return true;
-            }
-        });
+        registration.register(new ImageInfoPlugin("inImageCode", JavaConstant.TRUE));
+        registration.register(new ImageInfoPlugin("inImageBuildtimeCode", JavaConstant.FALSE));
+        registration.register(new ImageInfoPlugin("inImageRuntimeCode", JavaConstant.TRUE));
+
+        registration = new Registration(plugins, NativeImageSupport.class);
+        registration.register(new ImageInfoPlugin("inBuildtimeCode", JavaConstant.FALSE));
+        registration.register(new ImageInfoPlugin("inRuntimeCode", JavaConstant.TRUE));
+
+        if (!SubstrateOptions.LibGraalClassLoader.getValue().isEmpty()) {
+            registration = new Registration(plugins, LibGraalSupport.class);
+            registration.register(new ImageInfoPlugin("inLibGraalRuntime", JavaConstant.TRUE));
+        }
     }
 
     private static void registerProxyPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
@@ -494,11 +510,11 @@ public class SubstrateGraphBuilderPlugins {
 
     /**
      * Try to extract a Class array from a ValueNode. There are two situations:
-     *
+     * <p>
      * 1. The node is a ConstantNode. Then we get its initial value. However, since Java doesn't
      * have immutable arrays this method cannot guarantee that the array content will not change.
      * Therefore, if <code>exact</code> is set to true we return null.
-     *
+     * <p>
      * 2. The node is a NewArrayNode. Then we track the stores in the array as long as all are
      * constants and there is no control flow split. If the content of the array cannot be
      * determined a null value is returned.

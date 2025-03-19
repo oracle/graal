@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.panama;
 
 import java.lang.foreign.MemorySegment;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -116,6 +117,7 @@ abstract class ClosureArgumentNode extends Node {
             return new NativeString(0);
         }
 
+        @TruffleBoundary(allowInlining = true)
         @Fallback
         Object doString(Object arg) {
             return ((MemorySegment) arg).getString(0);

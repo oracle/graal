@@ -45,15 +45,44 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.CallTarget;
+
 /**
- * Annotation that indicates a parameter taking 0 or more values.
- *
- * An operation can define its last parameter to be variadic, in which case 0 or more values will be
- * collected into an {@code Object[]} and used as the last argument to the operation.
+ * Annotation indicating a parameter that takes zero or more values. If the final parameter of an
+ * operation is annotated with {@code @Variadic}, those values will be collected into an
+ * {@code Object[]} as the last argument.
+ * <p>
+ * This annotation can also be applied to an {@link Operation} class to mark its return type as
+ * variadic. Such return values are flattened into the variadic array when used as one or more
+ * operands to a {@link Variadic} parameter. All specializations of a variadic-return operation must
+ * always return a non-null {@link Object[]} value.
  *
  * @since 24.2
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target(ElementType.PARAMETER)
+@Target({ElementType.PARAMETER, ElementType.TYPE})
 public @interface Variadic {
+
+    /**
+     * Specifies the number of values reserved in the variadic object array. The array is sized
+     * accordingly, which can be useful when passing variadic arguments to a
+     * {@link CallTarget#call(Object...) call} without reallocating the array.
+     *
+     * <pre>
+     * &#64;Operation
+     * static final class FunctionCall {
+     *     &#64;Specialization
+     *     public static Object variadic(CallTarget target, Object function,
+     *                     &#64;Variadic(startOffset = 1) Object[] args,
+     *                     &#64;Cached IndirectCallNode callNode) {
+     *         args[0] = function; // use index 0 for the function instance
+     *         return callNode.call(target, args);
+     *     }
+     * }
+     * </pre>
+     *
+     * @since 25.0
+     */
+    int startOffset() default 0;
+
 }

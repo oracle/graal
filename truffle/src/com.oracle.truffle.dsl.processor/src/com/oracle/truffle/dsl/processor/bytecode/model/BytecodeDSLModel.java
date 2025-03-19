@@ -62,7 +62,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
@@ -107,7 +106,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
     // instructions indexed by # of short immediates (i.e., their lengths are [2, 4, 6, ...]).
-    private InstructionModel[] invalidateInstructions;
+    public InstructionModel[] invalidateInstructions;
 
     public DeclaredType languageClass;
     public boolean enableUncachedInterpreter;
@@ -127,6 +126,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableBlockScoping;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
+    public String variadicStackLimit;
+    public DSLExpression variadicStackLimitExpression;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
@@ -174,9 +175,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel loadConstantInstruction;
     public InstructionModel loadNullInstruction;
     public InstructionModel yieldInstruction;
-    public InstructionModel[] loadVariadicInstruction;
-    public InstructionModel mergeVariadicInstruction;
-    public InstructionModel storeNullInstruction;
+    public InstructionModel loadVariadicInstruction;
+    public InstructionModel splatVariadicInstruction;
+    public InstructionModel createVariadicInstruction;
+    public InstructionModel emptyVariadicInstruction;
     public InstructionModel tagEnterInstruction;
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
@@ -186,6 +188,23 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public final List<CustomOperationModel> instrumentations = new ArrayList<>();
     public ExportsData tagTreeNodeLibrary;
+
+    /**
+     * Whether any custom operation has variadic arguments.
+     */
+    public boolean hasCustomVariadic;
+
+    /**
+     * The maximum variadic offset that was used. <code>maximumVariadicOffset == 0</code> can be
+     * used to optimize whether offsets are used at all.
+     */
+    public int maximumVariadicOffset;
+
+    /**
+     * Whether any instruction has a variadic return. {@link #hasVariadicReturn} implies
+     * {@link #hasCustomVariadic}.
+     */
+    public boolean hasVariadicReturn;
 
     public String getName() {
         return modelName;
@@ -257,23 +276,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public InstructionModel[] getInvalidateInstructions() {
         return invalidateInstructions;
-    }
-
-    private void addInvalidateInstructions() {
-        int maxLength = OPCODE_WIDTH;
-        for (InstructionModel instruction : instructions.values()) {
-            maxLength = Math.max(maxLength, instruction.getInstructionLength());
-        }
-        // Allocate instructions with [0, 1, ..., maxLength - OPCODE_WIDTH] short immediates.
-        int numShortImmediates = (maxLength - OPCODE_WIDTH) / 2;
-        invalidateInstructions = new InstructionModel[numShortImmediates + 1];
-        for (int i = 0; i < numShortImmediates + 1; i++) {
-            InstructionModel model = instruction(InstructionKind.INVALIDATE, "invalidate" + i, signature(void.class));
-            for (int j = 0; j < i; j++) {
-                model.addImmediate(ImmediateKind.SHORT, "invalidated" + j);
-            }
-            invalidateInstructions[i] = model;
-        }
     }
 
     public OperationModel operation(OperationKind kind, String name, String javadoc) {
@@ -361,7 +363,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         model.filteredSpecializations = base.filteredSpecializations;
         model.nodeData = base.nodeData;
         model.nodeType = base.nodeType;
-        model.variadicPopCount = base.variadicPopCount;
         model.quickeningBase = base;
         model.operation = base.operation;
         model.shortCircuitModel = base.shortCircuitModel;
@@ -429,9 +430,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void finalizeInstructions() {
-        if (isBytecodeUpdatable()) {
-            addInvalidateInstructions();
-        }
+        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this);
 
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
         for (var entry : instructions.entrySet()) {
@@ -578,4 +577,5 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
     }
+
 }

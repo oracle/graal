@@ -14,7 +14,7 @@ The heap objects can be serialized to resume execution in a different JVM runnin
 
 ## Usage
 
-Add `org.graalvm.espresso:continuations:24.1.2` to your classpath at compilation time (it will be automatically provided at runtime).
+Add `org.graalvm.espresso:continuations:24.2.0` to your classpath at compilation time (it will be automatically provided at runtime).
 The continuation feature is experimental and needs to be explicitly enabled by using these options: `--experimental-options --java.Continuum=true`.
 
 See an [example usage](serialization.md) of the Continuation API with serialization.

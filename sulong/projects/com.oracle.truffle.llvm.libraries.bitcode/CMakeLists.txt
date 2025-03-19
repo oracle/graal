@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -53,8 +53,11 @@ check_var(GRAALVM_LLVM_LIBS_INCLUDE_DIR)
 check_var(LIBCXX_SRC)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
-add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
-add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-ffile-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-ffile-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME})
+add_compile_options(-ffile-prefix-map=${GRAALVM_LLVM_INCLUDE_DIR}=com.oracle.truffle.llvm.libraries.graalvm.llvm/include)
+add_compile_options(-ffile-prefix-map=${GRAALVM_LLVM_LIBS_INCLUDE_DIR}=com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/include)
+add_compile_options(-ffile-prefix-map=${LIBCXX_SRC}=llvm-project)
 
 if (APPLE)
     set(CMAKE_INSTALL_RPATH "@loader_path")

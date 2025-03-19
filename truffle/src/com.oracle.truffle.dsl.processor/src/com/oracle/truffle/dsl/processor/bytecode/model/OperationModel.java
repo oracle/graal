@@ -150,6 +150,8 @@ public class OperationModel implements PrettyPrintable {
     public boolean isTransparent;
     public boolean isVoid;
     public boolean isVariadic;
+    public int variadicOffset = 0;
+    public boolean variadicReturn;
 
     /**
      * Internal operations are generated and used internally by the DSL. They should not be exposed
@@ -228,8 +230,9 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public OperationModel setVariadic(boolean isVariadic) {
+    public OperationModel setVariadic(boolean isVariadic, int variadicOffset) {
         this.isVariadic = isVariadic;
+        this.variadicOffset = variadicOffset;
         return this;
     }
 

@@ -31,6 +31,7 @@ import java.util.Locale;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction.OperandFlag;
@@ -40,12 +41,10 @@ import jdk.graal.compiler.lir.StandardOp.MoveOp;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public static <T extends LIRInstruction> LIRInstructionClass<T> create(Class<T> c) {
         return new LIRInstructionClass<>(c);
     }
@@ -66,7 +65,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     private final String opcodeConstant;
     private final int opcodeIndex;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public LIRInstructionClass(Class<T> clazz) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
@@ -95,7 +94,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     }
 
     @SuppressWarnings("unchecked")
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public static <T> LIRInstructionClass<T> get(Class<T> clazz) {
         try {
             Field field = clazz.getDeclaredField("TYPE");
