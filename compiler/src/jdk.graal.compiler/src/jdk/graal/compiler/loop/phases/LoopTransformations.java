@@ -567,8 +567,9 @@ public abstract class LoopTransformations {
     }
 
     private static void rewirePreToMainPhis(LoopBeginNode preLoopBegin, LoopFragment mainLoop, LoopFragment preLoop, LoopExitNode preLoopCountedExit, boolean inverted) {
-        // Update the main loop phi initialization to carry from the pre loop
-        for (PhiNode prePhiNode : preLoopBegin.phis()) {
+        // Update the main loop phi initialization to carry from the pre loop, use a snapshot
+        // because guard prox nodes can reference the loop begin and change usage lists
+        for (PhiNode prePhiNode : preLoopBegin.phis().snapshot()) {
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
             rewirePhi(prePhiNode, mainPhiNode, preLoopCountedExit, preLoop, inverted);
         }
