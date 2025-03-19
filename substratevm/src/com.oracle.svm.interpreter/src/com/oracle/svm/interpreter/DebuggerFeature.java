@@ -189,8 +189,8 @@ public class DebuggerFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
         try {
-            enterInterpreterMethod = InterpreterStubSection.class.getMethod("enterInterpreterStub", int.class, Pointer.class);
-            accessImpl.registerAsRoot(enterInterpreterMethod, false, "stub for interpreter");
+            enterInterpreterMethod = InterpreterStubSection.class.getMethod("enterMethodInterpreterStub", int.class, Pointer.class);
+            accessImpl.registerAsRoot(enterInterpreterMethod, true, "stub for interpreter");
 
             // Holds references that must be kept alive in the image heap.
             access.registerAsAccessed(DebuggerSupport.class.getDeclaredField("referencesInImage"));
@@ -199,7 +199,7 @@ public class DebuggerFeature implements InternalFeature {
             accessImpl.registerAsRoot(System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
                             "Allow interpreting methods that call System.arraycopy");
         } catch (NoSuchMethodException | NoSuchFieldException e) {
-            throw VMError.shouldNotReachHereAtRuntime();
+            throw VMError.shouldNotReachHere(e);
         }
 
         registerStringConcatenation(accessImpl);
@@ -212,7 +212,7 @@ public class DebuggerFeature implements InternalFeature {
             // is inlined, therefore it's not needed. Still needed for interpreter execution.
             access.registerAsAccessed(Integer.class.getField("TYPE"));
         } catch (NoSuchFieldException e) {
-            throw VMError.shouldNotReachHereAtRuntime();
+            throw VMError.shouldNotReachHere(e);
         }
 
         methodsProcessedDuringAnalysis = new HashSet<>();

@@ -24,9 +24,8 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
-
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
@@ -85,7 +84,7 @@ public class HotSpotBytecodeParser extends BytecodeParser {
         if (plugin instanceof GeneratedNodeIntrinsicInvocationPlugin nodeIntrinsicPlugin) {
             // Snippets are never parsed in libgraal, and they are the root of the compilation
             // in jargraal, so check the root method for the Snippet annotation.
-            if (inImageRuntimeCode() || graph.method().getAnnotation(Snippet.class) == null) {
+            if (LibGraalSupport.inLibGraalRuntime() || graph.method().getAnnotation(Snippet.class) == null) {
                 throw new PermanentBailoutException(BAD_NODE_INTRINSIC_PLUGIN_CONTEXT + nodeIntrinsicPlugin.getSource().getSimpleName());
             }
         }

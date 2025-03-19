@@ -31,14 +31,17 @@ import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.
 
 import java.util.Collection;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
 import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 
@@ -59,6 +62,10 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
     @Override
     protected byte[] generateEnterStubs(Collection<InterpreterResolvedJavaMethod> methods) {
         AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(target);
+
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            VMError.unimplemented("GR-63035: Add CFI support for interpreter stubs");
+        }
 
         Label interpEnterStub = new Label();
         masm.bind(interpEnterStub);
@@ -96,8 +103,12 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
     }
 
     @Override
-    protected byte[] generateVtableEnterStubs(int maxVtableIndex) {
+    protected byte[] generateVTableEnterStubs(int maxVTableIndex) {
         AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(target);
+
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            VMError.unimplemented("GR-63035: Add CFI support for interpreter stubs");
+        }
 
         Label interpEnterStub = new Label();
         masm.bind(interpEnterStub);
@@ -115,21 +126,18 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
         }
 
         masm.align(getVTableStubSize());
+        recordVTableStubBaseOffset(masm.position());
 
-        int vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-        for (int index = 0; index < maxVtableIndex; index++) {
-            int stubStart = masm.position();
-            int stubEnd = stubStart + getVTableStubSize();
+        for (int vTableIndex = 0; vTableIndex < maxVTableIndex; vTableIndex++) {
+            int expectedStubEnd = masm.position() + getVTableStubSize();
 
-            int offset = index * vTableEntrySize;
-
-            /* pass current vtable offset as hidden argument */
-            masm.mov(AArch64InterpreterStubs.TRAMPOLINE_ARGUMENT, offset);
+            /* pass current vTable index as hidden argument */
+            masm.mov(AArch64InterpreterStubs.TRAMPOLINE_ARGUMENT, vTableIndex);
 
             masm.jmp(interpEnterStub);
 
             masm.align(getVTableStubSize());
-            assert masm.position() == stubEnd;
+            assert masm.position() == expectedStubEnd;
         }
 
         return masm.close(true);
@@ -149,6 +157,7 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
         resolverPatchOffset = annotation.instructionPosition;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub) {
         pltBuffer.markRelocationSite(resolverPatchOffset, AARCH64_R_AARCH64_ADR_PREL_PG_HI21, NativeImage.localSymbolNameForMethod(enterStub), 0);

@@ -52,7 +52,6 @@ import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
@@ -66,11 +65,11 @@ import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -234,7 +233,7 @@ public class HotSpotGraphBuilderPlugins {
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
         StandardGraphBuilderPlugins.registerConstantFieldLoadPlugin(plugins);
-        if (!inImageRuntimeCode()) {
+        if (!LibGraalSupport.inLibGraalRuntime()) {
             // In libgraal all word related operations have been fully processed so this is unneeded
             HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, constantReflection, wordTypes, barrierSet);
             HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin);
@@ -289,7 +288,7 @@ public class HotSpotGraphBuilderPlugins {
             }
 
         });
-        if (!inImageRuntimeCode()) {
+        if (!LibGraalSupport.inLibGraalRuntime()) {
             // In libgraal, all NodeIntrinsics have already been converted into nodes.
             NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
             invocationPlugins.defer(() -> {
@@ -729,7 +728,8 @@ public class HotSpotGraphBuilderPlugins {
         r.register(new InlineOnlyInvocationPlugin("setCurrentThread", Receiver.class, Thread.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
-                GraalError.guarantee(ImageInfo.inImageRuntimeCode() || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
+                GraalError.guarantee(LibGraalSupport.inLibGraalRuntime() || isAnnotatedByChangesCurrentThread(b.getMethod()),
+                                "method changes current Thread but is not annotated ChangesCurrentThread");
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                     receiver.get(true);
                     CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));

@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.Instrumentation;
@@ -53,7 +54,6 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * A factory that creates the {@link CompilerConfiguration} the compiler will use. Each factory must
@@ -275,7 +275,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * loaded from.
      */
     private Object getLoadedFromLocation(boolean verbose) {
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             String justification = "properties initialized via org.graalvm.nativeimage.hosted.RuntimeSystemProperties " +
                             "are not accessible via GraalServices.getSavedProperties()";
             String settings = GraalServices.getSystemProperties(justification).entrySet().stream()//

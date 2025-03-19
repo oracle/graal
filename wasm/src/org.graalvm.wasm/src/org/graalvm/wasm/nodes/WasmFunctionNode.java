@@ -452,13 +452,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         // This loop is implemented to create a separate path for every index. This
                         // guarantees that all values inside the if statement are treated as compile
                         // time constants, since the loop is unrolled.
+                        // We keep track of the sum of the preceding profiles to adjust the
+                        // independent probabilities to conditional ones. This gets explained in
+                        // profileBranchTable().
+                        int precedingSum = 0;
                         for (int i = 0; i < size; i++) {
                             final int indexOffset = offset + 3 + i * 6;
-                            if (profileBranchTable(bytecode, counterOffset, indexOffset + 4, i == index || i == size - 1)) {
+                            int profile = rawPeekU16(bytecode, indexOffset + 4);
+                            if (profileBranchTable(bytecode, counterOffset, profile, precedingSum, i == index || i == size - 1)) {
                                 final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                                 offset = indexOffset + offsetDelta;
                                 continue loop;
                             }
+                            precedingSum += profile;
                         }
                         throw CompilerDirectives.shouldNotReachHere("br_table");
                     }
@@ -485,13 +491,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         // This loop is implemented to create a separate path for every index. This
                         // guarantees that all values inside the if statement are treated as compile
                         // time constants, since the loop is unrolled.
+                        int precedingSum = 0;
                         for (int i = 0; i < size; i++) {
                             final int indexOffset = offset + 6 + i * 6;
-                            if (profileBranchTable(bytecode, counterOffset, indexOffset + 4, i == index || i == size - 1)) {
+                            int profile = rawPeekU16(bytecode, indexOffset + 4);
+                            if (profileBranchTable(bytecode, counterOffset, profile, precedingSum, i == index || i == size - 1)) {
                                 final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                                 offset = indexOffset + offsetDelta;
                                 continue loop;
                             }
+                            precedingSum += profile;
                         }
                         throw CompilerDirectives.shouldNotReachHere("br_table");
                     }
@@ -4658,30 +4667,41 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static boolean profileBranchTable(byte[] data, final int counterOffset, final int profileOffset, boolean condition) {
-        int t = rawPeekU16(data, profileOffset);
+    private static boolean profileBranchTable(byte[] data, final int counterOffset, final int profile, int precedingSum, boolean condition) {
         int sum = rawPeekU16(data, counterOffset);
         boolean val = condition;
         if (val) {
-            if (t == 0) {
+            if (profile == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            if (t == sum) {
+            if (profile == sum) {
                 // Make this branch fold during PE
                 val = true;
             }
         } else {
-            if (t == sum) {
+            if (profile == sum) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            if (t == 0) {
-                // Make this branch fold during PE
-                val = false;
+            if (profile == 0) {
+                // If the profile is 0 there is no need for the calculation below. Additionally, the
+                // predecessor probability may be 1 which could lead to a division by 0 later.
+                return CompilerDirectives.injectBranchProbability(0.0, false);
             }
         }
-        // Clamp probability
-        final double probability = Math.min((double) t / (double) sum, 1.0);
-        return CompilerDirectives.injectBranchProbability(probability, val);
+        /*
+         * The probabilities gathered by profiling are independent of each other. Since we are
+         * injecting probabilities into a cascade of if statements, we need to adjust them. The
+         * injected probability should indicate the probability that this if statement will be
+         * entered given that the previous ones have not been entered. To do that, we keep track of
+         * the probability that the preceding if statements have been entered and adjust this
+         * statement's probability accordingly. When the compiler decides to generate an
+         * IntegerSwitch node from the cascade of if statements, it converts the probabilities back
+         * to independent ones.
+         */
+        final double probability = (double) profile / (double) sum;
+        final double predecessorProbability = (double) precedingSum / sum;
+        final double adjustedProbability = probability / (1 - predecessorProbability);
+        return CompilerDirectives.injectBranchProbability(Math.min(adjustedProbability, 1.0), val);
     }
 
     private int pushDirectCallResult(VirtualFrame frame, int stackPointer, WasmFunction function, Object result, WasmLanguage language) {

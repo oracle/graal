@@ -31,9 +31,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.nativeimage.ImageInfo;
-
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.util.Util;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.Option;
@@ -336,7 +335,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
     public static CompilationWatchDog watch(CompilationIdentifier compilation, OptionValues options,
                     boolean singleShotExecutor, EventHandler eventHandler, ThreadFactory factory) {
         int delay = Options.CompilationWatchDogStartDelay.getValue(options);
-        if (ImageInfo.inImageBuildtimeCode() && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
+        if (NativeImageSupport.inBuildtimeCode() && !Options.CompilationWatchDogStartDelay.hasBeenSet(options)) {
             // Disable watch dog by default when building a native image
             delay = 0;
         }

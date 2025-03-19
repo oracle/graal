@@ -40,7 +40,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 
 import jdk.vm.ci.common.InitTimer;
-import org.graalvm.collections.EconomicSet;
 
 /**
  * The {@link #defaultOptions()} method returns the options values initialized in a HotSpot VM. The
@@ -158,11 +157,6 @@ public class HotSpotGraalOptionValues {
         }
         return baseName;
     }
-
-    /**
-     * The set of libgraal options seen on the command line.
-     */
-    static EconomicSet<String> explicitOptions = EconomicSet.create();
 
     private static OptionValues initializeOptions() {
         EconomicMap<OptionKey<?>, Object> values = parseOptions();

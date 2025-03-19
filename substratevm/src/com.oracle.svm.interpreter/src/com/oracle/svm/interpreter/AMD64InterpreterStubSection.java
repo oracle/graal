@@ -25,26 +25,30 @@
 
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
+
 import java.util.Collection;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.hosted.image.NativeImage;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
 
 public class AMD64InterpreterStubSection extends InterpreterStubSection {
     public AMD64InterpreterStubSection() {
@@ -56,6 +60,10 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
     @Override
     protected byte[] generateEnterStubs(Collection<InterpreterResolvedJavaMethod> methods) {
         AMD64MacroAssembler masm = new AMD64MacroAssembler(target);
+
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            VMError.unimplemented("GR-63035: Add CFI support for interpreter stubs");
+        }
 
         Label interpEnterStub = new Label();
         masm.bind(interpEnterStub);
@@ -80,12 +88,19 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
 
     @Override
     public int getVTableStubSize() {
-        return 16;
+        int branchTargetAlignment = ConfigurationValues.getTarget().wordSize * 2;
+        int stubSize = 10;
+
+        return NumUtil.roundUp(stubSize, branchTargetAlignment);
     }
 
     @Override
-    protected byte[] generateVtableEnterStubs(int maxVtableIndex) {
+    protected byte[] generateVTableEnterStubs(int maxVTableIndex) {
         AMD64MacroAssembler masm = new AMD64MacroAssembler(target);
+
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            VMError.unimplemented("GR-63035: Add CFI support for interpreter stubs");
+        }
 
         Label interpEnterStub = new Label();
         masm.bind(interpEnterStub);
@@ -94,21 +109,18 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
         masm.jmp();
 
         masm.align(getVTableStubSize());
+        recordVTableStubBaseOffset(masm.position());
 
-        int vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-        for (int index = 0; index < maxVtableIndex; index++) {
-            int stubStart = masm.position();
-            int stubEnd = stubStart + getVTableStubSize();
+        for (int vTableIndex = 0; vTableIndex < maxVTableIndex; vTableIndex++) {
+            int expectedStubEnd = masm.position() + getVTableStubSize();
 
-            int offset = index * vTableEntrySize;
-
-            /* pass current vtable offset as hidden argument */
-            masm.movq(AMD64InterpreterStubs.TRAMPOLINE_ARGUMENT, offset);
+            /* pass current vTable index as hidden argument */
+            masm.moveInt(AMD64InterpreterStubs.TRAMPOLINE_ARGUMENT, vTableIndex);
 
             masm.jmp(interpEnterStub);
 
             masm.align(getVTableStubSize());
-            assert masm.position() == stubEnd;
+            assert masm.position() == expectedStubEnd;
         }
 
         return masm.close(true);
@@ -130,6 +142,7 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
         resolverPatchRelocationKind = ObjectFile.RelocationKind.getPCRelative(annotation.operandSize);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub) {
         pltBuffer.markRelocationSite(resolverPatchOffset, resolverPatchRelocationKind, NativeImage.localSymbolNameForMethod(enterStub), resolverKindAddend);

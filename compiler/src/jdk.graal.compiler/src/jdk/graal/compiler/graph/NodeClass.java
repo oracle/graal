@@ -50,6 +50,7 @@ import org.graalvm.collections.Equivalence;
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
@@ -69,8 +70,6 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -89,7 +88,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     /**
      * Gets the {@link NodeClass} associated with a given {@link Class}.
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public static <T> NodeClass<T> create(Class<T> c) {
         assert getUnchecked(c) == null;
         Class<? super T> superclass = c.getSuperclass();
@@ -101,7 +100,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     @SuppressWarnings("unchecked")
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     private static <T> NodeClass<T> getUnchecked(Class<T> clazz) {
         try {
             Field field = clazz.getDeclaredField("TYPE");
@@ -112,7 +111,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public static <T> NodeClass<T> get(Class<T> clazz) {
         NodeClass<T> result = getUnchecked(clazz);
         if (result == null && clazz != NODE_CLASS) {
@@ -150,13 +149,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private final int leafId;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
         this(clazz, superNodeClass, null, 0);
     }
 
     @SuppressWarnings("try")
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @LibGraalSupport.HostedOnly
     private NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         DebugContext debug = DebugContext.forCurrentThread();

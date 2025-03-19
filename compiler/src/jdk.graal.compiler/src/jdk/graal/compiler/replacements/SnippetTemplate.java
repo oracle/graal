@@ -25,13 +25,13 @@
 package jdk.graal.compiler.replacements;
 
 import static java.util.FormattableFlags.ALTERNATE;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.reflect.Array;
@@ -966,7 +966,7 @@ public class SnippetTemplate {
             }
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
-            if (inImageRuntimeCode() || GraalOptions.EagerSnippets.getValue(options)) {
+            if (inRuntimeCode() || GraalOptions.EagerSnippets.getValue(options)) {
                 SnippetParameterInfo snippetParameterInfo = providers.getReplacements().getSnippetParameterInfo(javaMethod);
                 return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver, snippetParameterInfo, type);
             } else {
@@ -1532,7 +1532,7 @@ public class SnippetTemplate {
     }
 
     private static boolean verifyIntrinsicsProcessed(StructuredGraph snippetCopy) {
-        if (inImageRuntimeCode()) {
+        if (inRuntimeCode()) {
             return true;
         }
         for (MethodCallTargetNode target : snippetCopy.getNodes(MethodCallTargetNode.TYPE)) {
@@ -2924,12 +2924,12 @@ public class SnippetTemplate {
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
                 JavaKind kind = signature.getParameterKind(i - offset);
-                assert inImageRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
+                assert inRuntimeCode() || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
-                assert inImageRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
+                assert inRuntimeCode() || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
 
             } else if (args.info.isNonNullParameter(i)) {
                 assert checkNonNull(method, args.info.getParameterName(i), args.values[i]);

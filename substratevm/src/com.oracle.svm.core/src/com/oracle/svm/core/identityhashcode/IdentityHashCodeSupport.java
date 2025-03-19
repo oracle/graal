@@ -33,6 +33,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -83,6 +84,34 @@ public final class IdentityHashCodeSupport {
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");
         return newHashCode;
+    }
+
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
+    public static int computeAbsentIdentityHashCode(Object obj) {
+        /*
+         * This code must not be inlined into the snippet because it could be used in an
+         * interruptible method: the individual reads and writes of the object header and hash salt
+         * could be independently spread across a safepoint check where a GC could happen, during
+         * which addresses, header or salt can change. This could cause inconsistent hash values,
+         * corrupted object headers (when modified by GC), or memory corruption and crashes (when
+         * writing the object header to the object's previous location after is has been moved).
+         */
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word objPtr = Word.objectToUntrackedPointer(obj);
+        Word header = ObjectHeader.readHeaderFromPointer(objPtr);
+        if (oh.hasOptionalIdentityHashField(header)) {
+            /*
+             * Between the snippet and execution of this method, another thread could have set the
+             * header bit and a GC could have triggered and added the field.
+             */
+            int offset = LayoutEncoding.getIdentityHashOffset(obj);
+            return ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+        }
+        if (!oh.hasIdentityHashFromAddress(header)) {
+            oh.setIdentityHashFromAddress(objPtr, header);
+        }
+        return computeHashCodeFromAddress(obj);
     }
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")

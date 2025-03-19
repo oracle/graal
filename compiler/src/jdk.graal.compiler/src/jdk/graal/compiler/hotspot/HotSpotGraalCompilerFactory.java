@@ -25,15 +25,12 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
-import org.graalvm.nativeimage.ImageInfo;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.Option;
@@ -96,7 +93,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     @Override
     public void onSelection() {
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             // When instantiating a JVMCI runtime in the libgraal heap there's no
             // point in delaying HotSpotGraalRuntime initialization as it
             // is very fast (it's compiled and does no class loading) and will
@@ -127,7 +124,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
     }
 
     private static void initializeGraalCompilePolicyFields(OptionValues options) {
-        compileGraalWithC1Only = Options.CompileGraalWithC1Only.getValue(options) && !inImageRuntimeCode();
+        compileGraalWithC1Only = Options.CompileGraalWithC1Only.getValue(options) && !LibGraalSupport.inLibGraalRuntime();
         String optionValue = Options.GraalCompileOnly.getValue(options);
         if (optionValue != null) {
             MethodFilter filter = MethodFilter.parse(optionValue);
@@ -167,11 +164,6 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
-        if (inImageBuildtimeCode() && inImageRuntimeCode()) {
-            // A bunch of code assumes that at most one of these conditions
-            // is true so verify that here.
-            throw new GraalError("Invariant violation: inImageBuildtimeCode && inImageRuntimeCode must not both be true");
-        }
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) runtime;
         checkUnsafeAccess(hsRuntime);
         ensureInitialized();
@@ -203,7 +195,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
      * Exit the VM now if {@code jdk.internal.misc.Unsafe} is not accessible.
      */
     private void checkUnsafeAccess(HotSpotJVMCIRuntime hsRuntime) {
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             // Access checks were performed when building libgraal.
             return;
         }

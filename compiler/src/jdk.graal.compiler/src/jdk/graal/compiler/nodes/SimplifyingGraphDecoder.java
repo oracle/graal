@@ -258,16 +258,10 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
-    /**
-     * Number of {@link IfNode} successor edges.
-     */
-    private static final long IF_NODE_SUCCESSORS_COUNT = 2L;
-
     static {
-        /* Check assumptions made by earlyCanonicalization about IfNode. */
+        /* Check assumption made by earlyCanonicalization about IfNode. */
         Edges edges = IfNode.TYPE.getSuccessorEdges();
-        GraalError.guarantee(edges.getDirectCount() == IF_NODE_SUCCESSORS_COUNT, "%s expected to have 2 direct successors", IfNode.class);
-        GraalError.guarantee(edges.getCount() == IF_NODE_SUCCESSORS_COUNT, "%s expected to have 0 indirect successors", IfNode.class);
+        GraalError.guarantee(edges.getCount() == IfNode.SUCCESSOR_EDGES_COUNT, "%s expected to have 0 indirect successors", IfNode.class);
 
         /* Check assumptions made by earlyCanonicalization about IntegerSwitchNode. */
         edges = IntegerSwitchNode.TYPE.getSuccessorEdges();
@@ -279,15 +273,14 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     protected boolean earlyCanonicalization(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         if (node instanceof IfNode ifNode && ifNode.condition() instanceof LogicConstantNode condition) {
 
-            Edges edges = ifNode.getNodeClass().getSuccessorEdges();
-            long survivingIndex = edges.getIndex(IfNode.class, condition.getValue() ? "trueSuccessor" : "falseSuccessor");
+            long survivingIndex = condition.getValue() ? IfNode.TRUE_SUCCESSOR_EDGE_INDEX : IfNode.FALSE_SUCCESSOR_EDGE_INDEX;
 
             /* Read the surviving successor order id. */
             long successorsByteIndex = methodScope.reader.getByteIndex();
             methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
             int survivingOrderId = readOrderId(methodScope);
             // Reset decode position to first byte after successors
-            methodScope.reader.setByteIndex(successorsByteIndex + (IF_NODE_SUCCESSORS_COUNT * methodScope.orderIdWidth));
+            methodScope.reader.setByteIndex(successorsByteIndex + (IfNode.SUCCESSOR_EDGES_COUNT * methodScope.orderIdWidth));
 
             removeSplit(methodScope, loopScope, ifNode, survivingOrderId);
             return true;
@@ -301,9 +294,8 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             long survivingIndex = switchNode.successorIndexAtKey(value);
 
             /* Read the surviving successor order id. */
-            Edges edges = switchNode.getNodeClass().getSuccessorEdges();
             long size = methodScope.reader.getSVInt();
-            long successorsIndex = edges.getIndex(SwitchNode.class, "successors");
+            long successorsIndex = SwitchNode.SUCCESSORS_EDGE_INDEX;
             long successorsByteIndex = methodScope.reader.getByteIndex() + successorsIndex * methodScope.orderIdWidth;
             methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
             int survivingOrderId = readOrderId(methodScope);

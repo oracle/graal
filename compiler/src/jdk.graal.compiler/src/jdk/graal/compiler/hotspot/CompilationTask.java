@@ -228,7 +228,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private static boolean shouldExitVM(Throwable throwable) {
             // If not in libgraal, don't exit
-            if (!LibGraalSupport.inLibGraal()) {
+            if (LibGraalSupport.INSTANCE == null) {
                 return false;
             }
             // If assertions are not enabled, don't exit.
