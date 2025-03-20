@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ void get_Simple_array_typeid(uint64_t len, void (*ret)(polyglot_typeid typeid)) 
     ret(polyglot_array_typeid(polyglot_VoidPtr_typeid(), len));
 }
 
-#define WRAP(x) ((Simple){ (x) })
+#define WRAP(x) ((Simple) { (x) })
 
 void *simple_array_to_native(VoidPtr *polyglot_array, uint64_t size) {
     Simple *native = (Simple *) malloc(size * sizeof(Simple));
