@@ -80,7 +80,18 @@
   for suite in bench.groups.main_suites
   ],
 
-  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds,
+  local metrics_suites = [bench.dacapo, bench.scala_dacapo, bench.renaissance, bench.specjvm2008],
+
+  local metrics_builds = std.flattenArrays([
+    [
+    c.weekly + hw.x52 + jdk + cc.libgraal + suite + bench.timing,
+    c.weekly + hw.x52 + jdk + cc.libgraal + suite + bench.mem_use,
+    ],
+  for jdk in cc.product_jdks
+  for suite in metrics_suites
+  ]),
+
+  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds + metrics_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(filtered_builds, std.thisFile),
