@@ -302,7 +302,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         });
     }
 
-    private static IntStream streamInts(PrimitiveList.Int.Reader reader) {
+    public static IntStream streamInts(PrimitiveList.Int.Reader reader) {
         return IntStream.range(0, reader.size()).map(reader::get);
     }
 

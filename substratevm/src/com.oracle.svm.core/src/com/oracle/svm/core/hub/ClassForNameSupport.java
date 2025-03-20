@@ -196,8 +196,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
         Object result = null;
         for (var singleton : layeredSingletons()) {
-            result = singleton.forName0(className, classLoader);
-            if (result != null) {
+            Object newResult = singleton.forName0(className, classLoader);
+            result = newResult != null ? newResult : result;
+            /*
+             * The class might have been registered in a shared layer but was not yet available. In
+             * that case, the extension layers need to be checked too.
+             */
+            if (result != null && result != NEGATIVE_QUERY) {
                 break;
             }
         }

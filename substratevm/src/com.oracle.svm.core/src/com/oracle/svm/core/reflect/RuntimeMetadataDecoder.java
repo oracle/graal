@@ -44,23 +44,23 @@ import jdk.graal.compiler.api.replacements.Fold;
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
-    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly);
+    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
-    FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index);
+    FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index, int layerId);
 
-    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly);
+    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
-    MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index);
+    MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index, int layerId);
 
-    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly);
+    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
-    ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index);
+    ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index, int layerId);
 
     Class<?>[] parseClasses(int index, DynamicHub declaringType);
 
     Class<?>[] parseAllClasses();
 
-    RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
+    RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index, int layerId);
 
     Object[] parseObjects(int index, DynamicHub declaringType);
 

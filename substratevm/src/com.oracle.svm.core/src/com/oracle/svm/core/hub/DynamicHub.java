@@ -75,10 +75,13 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.function.BiFunction;
+import java.util.function.IntFunction;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -686,10 +689,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classFlags) {
         assert companion.reflectionMetadata == null;
-        companion.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, classFlags);
+        ReflectionMetadata reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, classFlags);
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            LayeredReflectionMetadataSingleton.currentLayer().setReflectionMetadata(this, reflectionMetadata);
+        } else {
+            companion.reflectionMetadata = reflectionMetadata;
+        }
     }
 
     private ReflectionMetadata reflectionMetadata() {
+        assert !ImageLayerBuildingSupport.buildingImageLayer() : "The non-layered reflection metadata should never be accessed in a layered context";
         return companion.reflectionMetadata;
     }
 
@@ -700,7 +709,20 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private boolean isClassFlagSet(int mask) {
-        return (reflectionMetadata() != null && (reflectionMetadata().classFlags & mask) != 0);
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            for (var reflectionMetadata : LayeredReflectionMetadataSingleton.singletons()) {
+                if (isClassFlagSet(mask, reflectionMetadata.getReflectionMetadata(this))) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            return isClassFlagSet(mask, reflectionMetadata());
+        }
+    }
+
+    private static boolean isClassFlagSet(int mask, ReflectionMetadata reflectionMetadata) {
+        return reflectionMetadata != null && (reflectionMetadata.classFlags & mask) != 0;
     }
 
     /** Executed at runtime. */
@@ -962,7 +984,19 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public int getClassAccessFlags() {
-        return reflectionMetadata() != null ? (reflectionMetadata().classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            int classAccessFlags = 0;
+            for (var reflectionMetadata : LayeredReflectionMetadataSingleton.singletons()) {
+                classAccessFlags |= getClassAccessFlags(reflectionMetadata.getReflectionMetadata(this));
+            }
+            return classAccessFlags;
+        } else {
+            return getClassAccessFlags(reflectionMetadata());
+        }
+    }
+
+    private int getClassAccessFlags(ReflectionMetadata reflectionMetadata) {
+        return reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
     }
 
     @Substitute
@@ -1438,12 +1472,29 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     private RecordComponent[] getRecordComponents0() {
         checkClassFlag(ALL_RECORD_COMPONENTS_FLAG, "getRecordComponents");
-        if (reflectionMetadata() == null || reflectionMetadata().recordComponentsEncodingIndex == NO_DATA) {
+        int layerNum = 0;
+        int recordComponentsEncodingIndex = NO_DATA;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            for (var singleton : LayeredReflectionMetadataSingleton.singletons()) {
+                layerNum++;
+                ReflectionMetadata reflectionMetadata = singleton.getReflectionMetadata(this);
+                if (reflectionMetadata != null && reflectionMetadata.recordComponentsEncodingIndex != NO_DATA) {
+                    recordComponentsEncodingIndex = reflectionMetadata.recordComponentsEncodingIndex;
+                    break;
+                }
+            }
+        } else {
+            ReflectionMetadata reflectionMetadata = reflectionMetadata();
+            if (reflectionMetadata != null) {
+                recordComponentsEncodingIndex = reflectionMetadata.recordComponentsEncodingIndex;
+            }
+        }
+        if (recordComponentsEncodingIndex == NO_DATA) {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw VMError.unsupportedFeature("Record components not available for record class " + getTypeName() + ". " +
                             "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(this, reflectionMetadata().recordComponentsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(this, recordComponentsEncodingIndex, layerNum);
     }
 
     @KeepOriginal
@@ -1917,26 +1968,38 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     private Field[] getDeclaredFields0(boolean publicOnly) {
-        if (reflectionMetadata() == null || reflectionMetadata().fieldsEncodingIndex == NO_DATA) {
+        return getElements((reflectionMetadata, layerNum) -> getDeclaredFields0(publicOnly, reflectionMetadata, layerNum), Field[]::new);
+    }
+
+    private Field[] getDeclaredFields0(boolean publicOnly, ReflectionMetadata reflectionMetadata, int layerNum) {
+        if (reflectionMetadata == null || reflectionMetadata.fieldsEncodingIndex == NO_DATA) {
             return new Field[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(this, reflectionMetadata().fieldsEncodingIndex, publicOnly);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(this, reflectionMetadata.fieldsEncodingIndex, publicOnly, layerNum);
     }
 
     @Substitute
     private Method[] getDeclaredMethods0(boolean publicOnly) {
-        if (reflectionMetadata() == null || reflectionMetadata().methodsEncodingIndex == NO_DATA) {
+        return getElements((reflectionMetadata, layerNum) -> getDeclaredMethods0(publicOnly, reflectionMetadata, layerNum), Method[]::new);
+    }
+
+    private Method[] getDeclaredMethods0(boolean publicOnly, ReflectionMetadata reflectionMetadata, int layerNum) {
+        if (reflectionMetadata == null || reflectionMetadata.methodsEncodingIndex == NO_DATA) {
             return new Method[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(this, reflectionMetadata().methodsEncodingIndex, publicOnly);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(this, reflectionMetadata.methodsEncodingIndex, publicOnly, layerNum);
     }
 
     @Substitute
     private Constructor<?>[] getDeclaredConstructors0(boolean publicOnly) {
-        if (reflectionMetadata() == null || reflectionMetadata().constructorsEncodingIndex == NO_DATA) {
+        return getElements((reflectionMetadata, layerNum) -> getDeclaredConstructors0(publicOnly, reflectionMetadata, layerNum), Constructor<?>[]::new);
+    }
+
+    private Constructor<?>[] getDeclaredConstructors0(boolean publicOnly, ReflectionMetadata reflectionMetadata, int layerNum) {
+        if (reflectionMetadata == null || reflectionMetadata.constructorsEncodingIndex == NO_DATA) {
             return new Constructor<?>[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(this, reflectionMetadata().constructorsEncodingIndex, publicOnly);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(this, reflectionMetadata.constructorsEncodingIndex, publicOnly, layerNum);
     }
 
     @Substitute
@@ -2227,24 +2290,49 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public FieldDescriptor[] getReachableFields() {
-        if (reflectionMetadata() == null || reflectionMetadata().fieldsEncodingIndex == NO_DATA) {
+        return getElements(this::getReachableFields, FieldDescriptor[]::new);
+    }
+
+    private FieldDescriptor[] getReachableFields(ReflectionMetadata reflectionMetadata, int layerNum) {
+        if (reflectionMetadata == null || reflectionMetadata.fieldsEncodingIndex == NO_DATA) {
             return new FieldDescriptor[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableFields(this, reflectionMetadata().fieldsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableFields(this, reflectionMetadata.fieldsEncodingIndex, layerNum);
     }
 
     public MethodDescriptor[] getReachableMethods() {
-        if (reflectionMetadata() == null || reflectionMetadata().methodsEncodingIndex == NO_DATA) {
+        return getElements(this::getReachableMethods, MethodDescriptor[]::new);
+    }
+
+    private MethodDescriptor[] getReachableMethods(ReflectionMetadata reflectionMetadata, int layerNum) {
+        if (reflectionMetadata == null || reflectionMetadata.methodsEncodingIndex == NO_DATA) {
             return new MethodDescriptor[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableMethods(this, reflectionMetadata().methodsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableMethods(this, reflectionMetadata.methodsEncodingIndex, layerNum);
     }
 
     public ConstructorDescriptor[] getReachableConstructors() {
-        if (reflectionMetadata() == null || reflectionMetadata().constructorsEncodingIndex == NO_DATA) {
+        return getElements(this::getReachableConstructors, ConstructorDescriptor[]::new);
+    }
+
+    private ConstructorDescriptor[] getReachableConstructors(ReflectionMetadata reflectionMetadata, int layerNum) {
+        if (reflectionMetadata == null || reflectionMetadata.constructorsEncodingIndex == NO_DATA) {
             return new ConstructorDescriptor[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableConstructors(this, reflectionMetadata().constructorsEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReachableConstructors(this, reflectionMetadata.constructorsEncodingIndex, layerNum);
+    }
+
+    private <T> T[] getElements(BiFunction<ReflectionMetadata, Integer, T[]> elementsAccessor, IntFunction<T[]> generator) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            Collection<T> elements = new ArrayList<>();
+            var layeredReflectionMetadata = LayeredReflectionMetadataSingleton.singletons();
+            for (int layerNum = 0; layerNum < layeredReflectionMetadata.length; layerNum++) {
+                Collections.addAll(elements, elementsAccessor.apply(layeredReflectionMetadata[layerNum].getReflectionMetadata(this), layerNum));
+            }
+            return elements.toArray(generator);
+        } else {
+            return elementsAccessor.apply(reflectionMetadata(), 0);
+        }
     }
 }
 
