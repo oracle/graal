@@ -122,7 +122,8 @@ public final class RecordBuffer {
     }
 
     public void skip(long nr) {
-        index += nr;
+        assert nr == (int) nr;
+        index += (int) nr;
     }
 
     public void setIndex(int index) {

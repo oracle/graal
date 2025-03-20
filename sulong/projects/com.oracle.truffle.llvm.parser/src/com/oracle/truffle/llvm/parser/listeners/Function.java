@@ -29,12 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -51,6 +59,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CleanupRetInstr
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugInstruction.DebugInstructionKind;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
@@ -92,11 +102,6 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public final class Function implements ParserListener {
 
@@ -252,12 +257,19 @@ public final class Function implements ParserListener {
                 // since we consume only bitcode after linking, it's safe to ignore
                 return;
 
+            case INSTRUCTION_DEBUG_RECORD_ASSIGN:
+                // https://llvm.org/docs/AssignmentTracking.html
+                // not used by Sulong
+                // parseDebugInstruction(opCode, buffer);
+                return;
+
             case INSTRUCTION_DEBUG_RECORD_VALUE:
             case INSTRUCTION_DEBUG_RECORD_DECLARE:
-            case INSTRUCTION_DEBUG_RECORD_ASSIGN:
             case INSTRUCTION_DEBUG_RECORD_VALUE_SIMPLE:
+                parseDebugInstruction(opCode, buffer);
+                return;
+
             case INSTRUCTION_DEBUG_RECORD_LABEL:
-                // TODO parse debug info
                 return;
 
             default:
@@ -465,6 +477,10 @@ public final class Function implements ParserListener {
     private void emit(VoidInstruction instruction) {
         instructionBlock.append(instruction);
         scope.addInstruction(instruction);
+    }
+
+    private void emitDebug(DebugInstruction instruction) {
+        instructionBlock.addDebug(instruction);
     }
 
     private static final int INVOKE_HASEXPLICITFUNCTIONTYPE_SHIFT = 13;
@@ -849,6 +865,32 @@ public final class Function implements ParserListener {
     private void applyDebugLocation() {
         final int lastInstructionIndex = instructionBlock.getInstructionCount() - 1;
         instructionBlock.getInstruction(lastInstructionIndex).setDebugLocation(lastLocation);
+    }
+
+    private void parseDebugInstruction(int opCode, RecordBuffer buffer) {
+        MDLocation dil = (MDLocation) scope.getMetadata().getOrNull(buffer.readInt());
+        MDLocalVariable variable = (MDLocalVariable) scope.getMetadata().getOrNull(buffer.readInt());
+        MDExpression expression = (MDExpression) scope.getMetadata().getOrNull(buffer.readInt());
+
+        MDBaseNode value;
+        if (opCode == INSTRUCTION_DEBUG_RECORD_VALUE_SIMPLE) {
+            // this is never forward referenced, see comment and assert in BitcodeReader.cpp:6517
+            int index = readIndexSkipType(buffer);
+            SymbolImpl symbol = scope.getSymbols().getOrNull(index);
+            value = MDValue.create(symbol);
+        } else {
+            value = scope.getMetadata().getOrNull(buffer.readInt());
+        }
+
+        switch (opCode) {
+            case INSTRUCTION_DEBUG_RECORD_DECLARE:
+                emitDebug(new DebugInstruction(DebugInstructionKind.DECLARE, dil, variable, expression, value));
+                break;
+            case INSTRUCTION_DEBUG_RECORD_VALUE:
+            case INSTRUCTION_DEBUG_RECORD_VALUE_SIMPLE:
+                emitDebug(new DebugInstruction(DebugInstructionKind.VALUE, dil, variable, expression, value));
+                break;
+        }
     }
 
     private void createAtomicStore(RecordBuffer buffer) {
