@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,31 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.SubstrateOptions;
 
-final class ForeignFunctionsEnabled implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return SubstrateOptions.ForeignAPISupport.getValue();
+/**
+ * Set of predicates used to control activation of substitutions (depending on method
+ * {@link ForeignFunctionsRuntime#areFunctionCallsSupported()}) if FFM API support is enabled. In
+ * case of the FFM API support is disabled entirely, substitutions in
+ * {@link com.oracle.svm.core.jdk.ForeignDisabledSubstitutions} will be used.
+ */
+public final class ForeignAPIPredicates {
+    public static final class Enabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return SubstrateOptions.ForeignAPISupport.getValue();
+        }
+    }
+
+    public static final class FunctionCallsSupported implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return SubstrateOptions.ForeignAPISupport.getValue() && ForeignFunctionsRuntime.areFunctionCallsSupported();
+        }
+    }
+
+    public static final class FunctionCallsUnsupported implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return SubstrateOptions.ForeignAPISupport.getValue() && !ForeignFunctionsRuntime.areFunctionCallsSupported();
+        }
     }
 }

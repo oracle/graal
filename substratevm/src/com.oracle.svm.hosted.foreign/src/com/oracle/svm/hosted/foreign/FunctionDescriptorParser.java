@@ -28,12 +28,11 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.foreign.AbiUtils;
 
 /**
  * Parses a string into a {@link java.lang.foreign.FunctionDescriptor}. The syntax is as follows
@@ -65,10 +64,12 @@ public final class FunctionDescriptorParser {
     private static final class Impl {
         private final String layout;
         private int at;
+        private final Map<String, MemoryLayout> canonicalLayouts;
 
-        private Impl(String input) {
+        private Impl(String input, Map<String, MemoryLayout> canonicalLayouts) {
             this.layout = input;
             this.at = 0;
+            this.canonicalLayouts = canonicalLayouts;
         }
 
         private char peek() {
@@ -209,10 +210,10 @@ public final class FunctionDescriptorParser {
 
         private MemoryLayout parseValueLayout() {
             String name = consumeName();
-            if (!AbiUtils.singleton().canonicalLayouts().containsKey(name)) {
+            if (!canonicalLayouts.containsKey(name)) {
                 handleError("Unknown value layout: " + name + " at " + this.at + " in " + this.layout);
             }
-            return AbiUtils.singleton().canonicalLayouts().get(name);
+            return canonicalLayouts.get(name);
         }
 
         private void checkDone() {
@@ -222,9 +223,9 @@ public final class FunctionDescriptorParser {
         }
     }
 
-    public static FunctionDescriptor parse(String input) {
+    public static FunctionDescriptor parse(String input, Map<String, MemoryLayout> canonicalLayouts) {
         try {
-            Impl parser = new Impl(input);
+            Impl parser = new Impl(input, canonicalLayouts);
             FunctionDescriptor res = parser.parseDescriptor();
             parser.checkDone();
             return res;
