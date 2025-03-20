@@ -1,0 +1,5 @@
+[[rule]]
+files = ["mx_sdk_benchmark.py"]
+any = [
+    "patrick.ziegler@oracle.com",
+]
