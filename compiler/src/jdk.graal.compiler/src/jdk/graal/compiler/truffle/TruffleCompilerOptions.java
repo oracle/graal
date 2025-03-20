@@ -24,31 +24,38 @@
  */
 package jdk.graal.compiler.truffle;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.java.BytecodeParserOptions;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionGroup;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
 
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor.Type;
 
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.java.BytecodeParserOptions;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsContainer;
+import jdk.graal.compiler.options.OptionsParser;
+
 /*
  * Do not refer to any compiler classes here to guarantee lazy class loading.
  */
-@OptionGroup(prefix = "compiler.", registerAsService = false)
-public class TruffleCompilerOptions {
+public class TruffleCompilerOptions implements OptionsContainer {
+    @Override
+    public boolean optionsAreServiceLoadable() {
+        return false;
+    }
+
+    @Override
+    public String getNamePrefix() {
+        return "compiler.";
+    }
 
     //@formatter:off
 
@@ -129,8 +136,8 @@ public class TruffleCompilerOptions {
             }
             String[] strings = s.split(",");
             EnumSet<CompilationTier> tiers = EnumSet.noneOf(CompilationTier.class);
-            for (int i = 0; i < strings.length; i++) {
-                tiers.add(CompilationTier.parse(strings[i]));
+            for(String string: strings){
+                tiers.add(CompilationTier.parse(string));
             }
             return Collections.unmodifiableSet(tiers);
         }
@@ -316,12 +323,12 @@ public class TruffleCompilerOptions {
     }
 
     public static TruffleCompilerOptionDescriptor[] listOptions() {
-        List<TruffleCompilerOptionDescriptor> convertedDescriptors = new ArrayList<>();
-
-        for (OptionDescriptor descriptor : TruffleCompilerImpl.OPTION_DESCRIPTORS) {
-            convertedDescriptors.add(createCompilerOptionDescriptor(descriptor));
+        TruffleCompilerOptionDescriptor[] convertedDescriptors = new TruffleCompilerOptionDescriptor[TruffleCompilerImpl.OPTION_DESCRIPTORS.size()];
+        int i = 0;
+        for (OptionDescriptor descriptor : TruffleCompilerImpl.OPTION_DESCRIPTORS.getValues()) {
+            convertedDescriptors[i++] = createCompilerOptionDescriptor(descriptor);
         }
-        return convertedDescriptors.toArray(new TruffleCompilerOptionDescriptor[convertedDescriptors.size()]);
+        return convertedDescriptors;
     }
 
     private static TruffleCompilerOptionDescriptor createCompilerOptionDescriptor(OptionDescriptor d) {
@@ -329,16 +336,11 @@ public class TruffleCompilerOptions {
     }
 
     private static Type matchGraalOptionType(OptionDescriptor d) {
-        switch (d.getOptionType()) {
-            case User:
-                return Type.USER;
-            case Expert:
-                return Type.EXPERT;
-            case Debug:
-                return Type.DEBUG;
-            default:
-                return Type.DEBUG;
-        }
+        return switch (d.getOptionType()) {
+            case User -> Type.USER;
+            case Expert -> Type.EXPERT;
+            case Debug -> Type.DEBUG;
+        };
     }
 
     static Object parseCustom(OptionDescriptor descriptor, String uncheckedValue) {
@@ -374,7 +376,7 @@ public class TruffleCompilerOptions {
         try {
             Object value = TruffleCompilerOptions.parseCustom(descriptor, uncheckedValue);
             if (value == null) {
-                value = OptionsParser.parseOptionValue(descriptor, uncheckedValue);
+                OptionsParser.parseOptionValue(descriptor, uncheckedValue);
             }
             return null;
         } catch (IllegalArgumentException e) {

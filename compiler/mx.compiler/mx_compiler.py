@@ -1321,17 +1321,15 @@ class GraalArchiveParticipant:
             if self.isTest:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
-                # Need to create service files for the providers of the
-                # jdk.internal.vm.ci.options.Options service created by
-                # jdk.internal.vm.ci.options.processor.OptionProcessor.
                 version_prefix = 'META-INF/versions/'
                 if arcname.startswith(version_prefix):
-                    # If OptionDescriptor is version-specific, get version
+                    # If OptionDescriptors is version-specific, get version
                     # from arcname and adjust arcname to non-version form
                     version, _, arcname = arcname[len(version_prefix):].partition('/')
                 else:
                     version = None
-                provider = arcname[:-len('.class'):].replace('/', '.')
+
+                provider = arcname[0:-len('.class')].replace("/", ".")
                 service = 'jdk.graal.compiler.options.OptionDescriptors'
                 add_serviceprovider(service, provider, version)
         return False

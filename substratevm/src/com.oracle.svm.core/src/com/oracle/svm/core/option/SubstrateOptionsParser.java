@@ -27,7 +27,6 @@ package com.oracle.svm.core.option;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -116,7 +115,7 @@ public class SubstrateOptionsParser {
         return true;
     }
 
-    public static void collectOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
+    public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
         CommonOptionParser.collectOptions(optionDescriptors, optionDescriptorConsumer);
     }
 
