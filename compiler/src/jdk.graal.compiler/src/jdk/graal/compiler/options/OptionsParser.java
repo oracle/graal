@@ -80,7 +80,7 @@ public class OptionsParser {
              * OptionDescriptors.
              */
             ClassLoader libgraalLoader = OptionsParser.class.getClassLoader();
-            return ServiceLoader.load(OptionDescriptors.class, libgraalLoader);
+            return OptionsContainer.load(libgraalLoader);
         } else {
             /*
              * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
@@ -88,7 +88,7 @@ public class OptionsParser {
              * (instead of the platform class loader) to load the OptionDescriptors.
              */
             ClassLoader loader = ClassLoader.getSystemClassLoader();
-            return ServiceLoader.load(OptionDescriptors.class, loader);
+            return OptionsContainer.load(loader);
         }
     }
 
@@ -255,9 +255,9 @@ public class OptionsParser {
                     } else if (optionType == Double.class) {
                         value = Double.parseDouble(valueString);
                     } else if (optionType == Integer.class) {
-                        value = Integer.valueOf((int) parseLong(valueString));
+                        value = (int) parseLong(valueString);
                     } else if (optionType == Long.class) {
-                        value = Long.valueOf(parseLong(valueString));
+                        value = parseLong(valueString);
                     } else {
                         throw new IllegalArgumentException("Wrong value for option '" + desc.getName() + "'");
                     }

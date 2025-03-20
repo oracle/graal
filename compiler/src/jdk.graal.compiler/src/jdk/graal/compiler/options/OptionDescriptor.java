@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.options;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -40,7 +38,7 @@ public final class OptionDescriptor {
     private final String help;
     private final List<String> extraHelp;
     private final OptionKey<?> optionKey;
-    private final Class<?> declaringClass;
+    private final OptionsContainer container;
     private final String fieldName;
     private final OptionStability stability;
     private final boolean deprecated;
@@ -52,23 +50,23 @@ public final class OptionDescriptor {
                     OptionType optionType,
                     Class<?> optionValueType,
                     String help,
-                    Class<?> declaringClass,
+                    Object container,
                     String fieldName,
                     OptionKey<?> option) {
-        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, OptionStability.EXPERIMENTAL, false, "");
+        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, container, fieldName, option, OptionStability.EXPERIMENTAL, false, "");
     }
 
     public static OptionDescriptor create(String name,
                     OptionType optionType,
                     Class<?> optionValueType,
                     String help,
-                    Class<?> declaringClass,
+                    Object container,
                     String fieldName,
                     OptionKey<?> option,
                     OptionStability stability,
                     boolean deprecated,
                     String deprecationMessage) {
-        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, stability, deprecated, deprecationMessage);
+        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, container, fieldName, option, stability, deprecated, deprecationMessage);
     }
 
     public static OptionDescriptor create(String name,
@@ -76,21 +74,26 @@ public final class OptionDescriptor {
                     Class<?> optionValueType,
                     String help,
                     String[] extraHelp,
-                    Class<?> declaringClass,
+                    Object container,
                     String fieldName,
                     OptionKey<?> option,
                     OptionStability stability,
                     boolean deprecated,
                     String deprecationMessage) {
+        OptionsContainer oc = OptionsContainer.asContainer(container);
+        Class<?> declaringClass = oc.getDeclaringClass();
         assert option != null : declaringClass + "." + fieldName;
         OptionDescriptor result = option.getDescriptor();
         if (result == null) {
-            List<String> extraHelpList = extraHelp == null || extraHelp.length == 0 ? Collections.emptyList() : Collections.unmodifiableList(Arrays.asList(extraHelp));
-            result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, declaringClass, fieldName, option, stability, deprecated, deprecationMessage);
+            List<String> extraHelpList = extraHelp == null ? List.of() : List.of(extraHelp);
+            result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, oc, fieldName, option, stability, deprecated, deprecationMessage);
             option.setDescriptor(result);
         }
-        assert result.name.equals(name) && result.optionValueType == optionValueType && result.declaringClass == declaringClass && result.fieldName.equals(fieldName) &&
-                        result.optionKey == option : result + " must match with args";
+        assert result.name.equals(name) : result.name + " != " + name;
+        assert result.optionValueType == optionValueType : result.optionValueType + " != " + optionValueType;
+        assert result.getDeclaringClass() == declaringClass : result.getDeclaringClass() + " != " + declaringClass;
+        assert result.fieldName.equals(fieldName) : result.fieldName + " != " + fieldName;
+        assert result.optionKey == option : result.optionKey + " != " + option;
         return result;
     }
 
@@ -99,7 +102,7 @@ public final class OptionDescriptor {
                     Class<?> optionValueType,
                     String help,
                     List<String> extraHelp,
-                    Class<?> declaringClass,
+                    OptionsContainer container,
                     String fieldName,
                     OptionKey<?> optionKey,
                     OptionStability stability,
@@ -111,7 +114,7 @@ public final class OptionDescriptor {
         this.help = help;
         this.extraHelp = extraHelp;
         this.optionKey = optionKey;
-        this.declaringClass = declaringClass;
+        this.container = container;
         this.fieldName = fieldName;
         this.stability = stability;
         this.deprecated = deprecated || deprecationMessage != null && !deprecationMessage.isEmpty();
@@ -128,7 +131,7 @@ public final class OptionDescriptor {
     }
 
     /**
-     * Gets a descriptive help message for the option. This message should be self contained without
+     * Gets a descriptive help message for the option. This message should be self-contained without
      * relying on {@link #getExtraHelp() extra help lines}.
      *
      * @see Option#help()
@@ -150,7 +153,7 @@ public final class OptionDescriptor {
      * a user specified value for the option from the environment.
      */
     public String getName() {
-        return name;
+        return container.prefixed(name);
     }
 
     /**
@@ -167,8 +170,18 @@ public final class OptionDescriptor {
         return optionKey;
     }
 
+    /**
+     * Gets metadata about the class declaring the option.
+     */
+    public OptionsContainer getContainer() {
+        return container;
+    }
+
+    /**
+     * Gets the class declaring the option.
+     */
     public Class<?> getDeclaringClass() {
-        return declaringClass;
+        return container.getDeclaringClass();
     }
 
     public String getFieldName() {
@@ -194,16 +207,6 @@ public final class OptionDescriptor {
      */
     public boolean isDeprecated() {
         return deprecated;
-    }
-
-    /**
-     * Determines if this descriptor is service loaded.
-     *
-     * @see OptionGroup#registerAsService()
-     */
-    public boolean isServiceLoaded() {
-        OptionGroup group = getDeclaringClass().getAnnotation(OptionGroup.class);
-        return group == null || group.registerAsService();
     }
 
     /**
