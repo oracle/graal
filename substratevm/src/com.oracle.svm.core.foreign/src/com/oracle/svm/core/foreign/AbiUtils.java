@@ -79,6 +79,7 @@ import jdk.internal.foreign.abi.Binding;
 import jdk.internal.foreign.abi.CallingSequence;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.NativeEntryPoint;
+import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.aarch64.AArch64Architecture;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
@@ -696,7 +697,6 @@ class ABIs {
 
         @Override
         public void checkLibrarySupport() {
-            fail();
         }
 
         @Override
@@ -716,7 +716,7 @@ class ABIs {
 
         @Override
         public TrampolineTemplate generateTrampolineTemplate() {
-            return fail();
+            return null;
         }
     }
 
@@ -763,33 +763,7 @@ class ABIs {
 
         @Override
         public Map<String, MemoryLayout> canonicalLayouts() {
-            return Map.ofEntries(
-                            // specified canonical layouts
-                            Map.entry("bool", ValueLayout.JAVA_BOOLEAN),
-                            Map.entry("char", ValueLayout.JAVA_BYTE),
-                            Map.entry("short", ValueLayout.JAVA_SHORT),
-                            Map.entry("int", ValueLayout.JAVA_INT),
-                            Map.entry("float", ValueLayout.JAVA_FLOAT),
-                            Map.entry("long", (ValueLayout) ValueLayout.JAVA_LONG),
-                            Map.entry("long long", ValueLayout.JAVA_LONG),
-                            Map.entry("double", ValueLayout.JAVA_DOUBLE),
-                            Map.entry("void*", ValueLayout.ADDRESS),
-                            Map.entry("size_t", (ValueLayout) ValueLayout.JAVA_LONG),
-                            Map.entry("wchar_t", (ValueLayout) ValueLayout.JAVA_INT),
-                            // unspecified size-dependent layouts
-                            Map.entry("int8_t", ValueLayout.JAVA_BYTE),
-                            Map.entry("int16_t", ValueLayout.JAVA_SHORT),
-                            Map.entry("int32_t", ValueLayout.JAVA_INT),
-                            Map.entry("int64_t", ValueLayout.JAVA_LONG),
-                            // unspecified JNI layouts
-                            Map.entry("jboolean", ValueLayout.JAVA_BOOLEAN),
-                            Map.entry("jchar", ValueLayout.JAVA_CHAR),
-                            Map.entry("jbyte", ValueLayout.JAVA_BYTE),
-                            Map.entry("jshort", ValueLayout.JAVA_SHORT),
-                            Map.entry("jint", ValueLayout.JAVA_INT),
-                            Map.entry("jlong", ValueLayout.JAVA_LONG),
-                            Map.entry("jfloat", ValueLayout.JAVA_FLOAT),
-                            Map.entry("jdouble", ValueLayout.JAVA_DOUBLE));
+            return SharedUtils.canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
         }
 
         @Override
@@ -937,36 +911,6 @@ class ABIs {
             return storages;
         }
 
-        protected static Map<String, MemoryLayout> canonicalLayouts(ValueLayout longLayout, ValueLayout sizetLayout, ValueLayout wchartLayout) {
-            return Map.ofEntries(
-                            // specified canonical layouts
-                            Map.entry("bool", ValueLayout.JAVA_BOOLEAN),
-                            Map.entry("char", ValueLayout.JAVA_BYTE),
-                            Map.entry("short", ValueLayout.JAVA_SHORT),
-                            Map.entry("int", ValueLayout.JAVA_INT),
-                            Map.entry("float", ValueLayout.JAVA_FLOAT),
-                            Map.entry("long", longLayout),
-                            Map.entry("long long", ValueLayout.JAVA_LONG),
-                            Map.entry("double", ValueLayout.JAVA_DOUBLE),
-                            Map.entry("void*", ValueLayout.ADDRESS),
-                            Map.entry("size_t", sizetLayout),
-                            Map.entry("wchar_t", wchartLayout),
-                            // unspecified size-dependent layouts
-                            Map.entry("int8_t", ValueLayout.JAVA_BYTE),
-                            Map.entry("int16_t", ValueLayout.JAVA_SHORT),
-                            Map.entry("int32_t", ValueLayout.JAVA_INT),
-                            Map.entry("int64_t", ValueLayout.JAVA_LONG),
-                            // unspecified JNI layouts
-                            Map.entry("jboolean", ValueLayout.JAVA_BOOLEAN),
-                            Map.entry("jchar", ValueLayout.JAVA_CHAR),
-                            Map.entry("jbyte", ValueLayout.JAVA_BYTE),
-                            Map.entry("jshort", ValueLayout.JAVA_SHORT),
-                            Map.entry("jint", ValueLayout.JAVA_INT),
-                            Map.entry("jlong", ValueLayout.JAVA_LONG),
-                            Map.entry("jfloat", ValueLayout.JAVA_FLOAT),
-                            Map.entry("jdouble", ValueLayout.JAVA_DOUBLE));
-        }
-
         @Override
         public Registers upcallSpecialArgumentsRegisters() {
             return new Registers(AMD64.r10, AMD64.r11);
@@ -1058,7 +1002,7 @@ class ABIs {
 
         @Override
         public Map<String, MemoryLayout> canonicalLayouts() {
-            return canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
+            return SharedUtils.canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
         }
     }
 
@@ -1114,7 +1058,7 @@ class ABIs {
 
         @Override
         public Map<String, MemoryLayout> canonicalLayouts() {
-            return canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
+            return SharedUtils.canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
         }
     }
 

@@ -46,7 +46,7 @@ import jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64Linker;
 import jdk.internal.foreign.abi.x64.sysv.SysVx64Linker;
 import jdk.internal.foreign.abi.x64.windows.Windowsx64Linker;
 
-@TargetClass(AbstractLinker.class)
+@TargetClass(value = AbstractLinker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 public final class Target_jdk_internal_foreign_abi_AbstractLinker {
     // Checkstyle: stop
     @Alias //
@@ -59,7 +59,7 @@ public final class Target_jdk_internal_foreign_abi_AbstractLinker {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "jdk.internal.foreign.abi.SoftReferenceCache")
+@TargetClass(className = "jdk.internal.foreign.abi.SoftReferenceCache", onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_SoftReferenceCache {
 }
 
@@ -92,7 +92,7 @@ record UpcallStubFactoryDecorator(UpcallStubFactory delegate) implements UpcallS
     }
 }
 
-@TargetClass(value = SysVx64Linker.class, onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(value = SysVx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
 
     @Substitute
@@ -101,7 +101,7 @@ final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
     }
 }
 
-@TargetClass(value = Windowsx64Linker.class, onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(value = Windowsx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
 
     @Substitute
@@ -110,7 +110,7 @@ final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
     }
 }
 
-@TargetClass(value = MacOsAArch64Linker.class, onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(value = MacOsAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
 
     @Substitute
@@ -119,7 +119,7 @@ final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
     }
 }
 
-@TargetClass(value = LinuxAArch64Linker.class, onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(value = LinuxAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_linux_LinuxAArch64Linker {
 
     @Substitute
