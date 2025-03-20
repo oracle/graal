@@ -692,7 +692,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return LANGUAGE.createOptionDescriptorsUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
-    void patch(SandboxPolicy newSandboxPolicy,
+    boolean patch(SandboxPolicy newSandboxPolicy,
                     DispatchOutputStream newOut,
                     DispatchOutputStream newErr,
                     InputStream newIn,
@@ -713,7 +713,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
-        this.internalResourceRoots.patch();
+        if (!this.internalResourceRoots.patch(this)) {
+            return false;
+        }
 
         if (PreInitContextHostLanguage.isInstance(hostLanguage)) {
             this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(newHostLanguage), HOST_LANGUAGE_INDEX, null);
@@ -764,6 +766,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         validateSandbox();
         printDeprecatedOptionsWarning(deprecatedDescriptors);
+        return true;
     }
 
     static LogHandler createLogHandler(LogConfig logConfig, DispatchOutputStream errDispatchOutputStream, SandboxPolicy sandboxPolicy) {
