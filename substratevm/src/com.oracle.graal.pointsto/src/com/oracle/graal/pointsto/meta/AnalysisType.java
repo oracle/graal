@@ -1228,7 +1228,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getJavaKind).thenComparing(ResolvedJavaField::getName);
+    /**
+     * Sort fields by the field's name *and* type. Note that sorting by name is not enough as the
+     * class file format doesn't disallow duplicated names with differing types in the same class.
+     * Even though you cannot declare duplicated names in source code the class file can be
+     * manipulated such that two fields will have the same name.
+     */
+    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
 
     private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
         ResolvedJavaField[] localOriginals = originals;
