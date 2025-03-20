@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.nodes.java;
 
+import static jdk.graal.compiler.core.common.GraalOptions.SpeculateVirtualLocks;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
@@ -34,11 +35,15 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.MonitorEnter;
+import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * The {@code MonitorEnterNode} represents the acquisition of a monitor.
@@ -48,12 +53,34 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
 
     public static final NodeClass<MonitorEnterNode> TYPE = NodeClass.create(MonitorEnterNode.class);
 
+    /**
+     * Some configurations where {@link PlatformConfigurationProvider#areLocksSideEffectFree()}
+     * returns true might speculatively attempt to acquire virtual locks. If this speculation fails
+     * then these locks should not be considered virtualizable.
+     */
+    public static final SpeculationReasonGroup MONITOR_ENTER_NO_SIDE_EFFECT = new SpeculationReasonGroup("MonitorEnterNoSideEffect");
+
+    /**
+     * True if this was inserted by a {@link jdk.graal.compiler.nodes.virtual.CommitAllocationNode}.
+     * This means that lock stack of the {@link #stateAfter} doesn't necessarily match the top of
+     * the stack.
+     */
+    private boolean isSynthetic;
+
     public MonitorEnterNode(ValueNode object, MonitorIdNode monitorId) {
         this(TYPE, object, monitorId);
     }
 
     public MonitorEnterNode(NodeClass<? extends MonitorEnterNode> c, ValueNode object, MonitorIdNode monitorId) {
         super(c, object, monitorId);
+    }
+
+    public void setSynthetic() {
+        isSynthetic = true;
+    }
+
+    public boolean isSynthetic() {
+        return isSynthetic;
     }
 
     @Override
@@ -64,13 +91,25 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
     @Override
     public void virtualize(VirtualizerTool tool) {
         if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
-            return;
+            // If locks have side effects then we can speculate that they can be safely acquired by
+            // the CommitAllocationNode lowering. If that fails then they cannot be virtualized.
+            if (!SpeculateVirtualLocks.getValue(tool.getOptions())) {
+                return;
+            }
+            SpeculationLog speculationLog = graph().getSpeculationLog();
+            if (speculationLog == null || !speculationLog.maySpeculate(MONITOR_ENTER_NO_SIDE_EFFECT.createSpeculationReason())) {
+                return;
+            }
         }
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;
             if (virtual.hasIdentity()) {
                 tool.addLock(virtual, getMonitorId());
+                if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
+                    // Ensure that the locks appear to have been acquired in the nearest FrameState.
+                    tool.ensureAdded(new StateSplitProxyNode(stateAfter));
+                }
                 tool.delete();
             }
         }

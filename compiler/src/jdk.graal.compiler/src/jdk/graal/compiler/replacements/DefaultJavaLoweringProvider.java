@@ -1126,13 +1126,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         /*
          * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
-         * state. It will be the state from before the allocation occurred instead of a valid state
-         * after the locking is performed. In practice this should be fine since these are newly
-         * allocated objects. The bytecodes themselves permit allocating an object, doing a
-         * monitorenter and then dropping all references to the object which would produce the same
-         * state, though that would normally produce an IllegalMonitorStateException. In HotSpot
-         * some form of fast path locking should always occur so the FrameState should never
-         * actually be used.
+         * state. The FrameState on the CommitAllocationNode is the nearest previous side effecting
+         * FrameState. The objects being materialized correspond to some side effecting state which
+         * most likely no longer exists as the virtualization of the objects means operations like
+         * storing to the virtual object are no longer side effecting.
+         *
+         * In Substrate and versions of HotSpot that used stack locking, acquiring these locks
+         * doesn't create any global side effects so it was always ok if we deoptimized after
+         * acquiring these locks.
+         *
+         * Starting with the introduction of lightweight locking in HotSpot and some features of
+         * Loom, acquiring locks created global side effects that must be cleaned up unlocking of
+         * these objects. This means PEA must treat MonitorEnterNodes as having a side effect even
+         * after being virtualized to ensure that the lock is released after being acquired..
+         * Additionally we must ensure that the MonitorEnterNodes can't deoptimize as it will use
+         * the FrqmeState where the locks are still virtual and the lock acquired by the
+         * MonitorEnterNode won't be released.
          */
         ArrayList<MonitorEnterNode> enters = null;
         FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
@@ -1145,11 +1154,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             locks = newList;
         }
 
+        insertionPoint = maybeEmitLockingCheck(locks, insertionPoint, stateBefore);
+
         int lastDepth = -1;
         for (MonitorIdNode monitorId : locks) {
             GraalError.guarantee(lastDepth < monitorId.getLockDepth(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
             lastDepth = monitorId.getLockDepth();
             MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[commit.getObjectIndex(monitorId)], monitorId));
+            enter.setSynthetic();
             graph.addAfterFixed(insertionPoint, enter);
             enter.setStateAfter(stateBefore.duplicate());
             insertionPoint = enter;
@@ -1178,6 +1190,17 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         // Insert the required ALLOCATION_INIT barrier after all objects are initialized.
         graph.addAfterFixed(insertAfter, graph.add(MembarNode.forInitialization()));
+    }
+
+    /**
+     * Emit any extra checks before acquired locks on the thread local objects.
+     *
+     * @param locks the locks to be acquired in order
+     * @param insertionPoint the fixed node to insert new nodes after
+     * @param stateBefore the state used by the {@link CommitAllocationNode}
+     */
+    protected FixedWithNextNode maybeEmitLockingCheck(List<MonitorIdNode> locks, FixedWithNextNode insertionPoint, FrameState stateBefore) {
+        return insertionPoint;
     }
 
     public abstract int fieldOffset(ResolvedJavaField field);
