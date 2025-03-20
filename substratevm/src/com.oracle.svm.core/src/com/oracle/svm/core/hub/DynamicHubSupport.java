@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.EnumSet;
 
 import org.graalvm.nativeimage.Platform;
@@ -35,6 +37,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
@@ -54,9 +58,21 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
     }
 
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static DynamicHubSupport forLayer(int layerIndex) {
-        return MultiLayeredImageSingleton.getForLayer(DynamicHubSupport.class, layerIndex);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static DynamicHubSupport forLayer(int layerId) {
+        return MultiLayeredImageSingleton.getForLayer(DynamicHubSupport.class, layerId);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static InstanceReferenceMap getInstanceReferenceMap(DynamicHub hub) {
+        NonmovableArray<Byte> referenceMapEncoding = forLayer(hub.getLayerId()).getReferenceMapEncoding();
+        return InstanceReferenceMapDecoder.getReferenceMap(referenceMapEncoding, hub.getReferenceMapIndex());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean hasEmptyReferenceMap(DynamicHub hub) {
+        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(hub);
+        return InstanceReferenceMapDecoder.isEmpty(referenceMap);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -78,7 +94,7 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
         this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public NonmovableArray<Byte> getReferenceMapEncoding() {
         return NonmovableArrays.fromImageHeap(referenceMapEncoding);
     }
