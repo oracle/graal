@@ -234,6 +234,11 @@ final class InstrumentCache {
                 throw InternalResourceCache.throwDuplicateOptionalResourceException(old, resource);
             }
         }
+        for (String optionalResourceId : reg.optionalResources()) {
+            if (!resources.containsKey(optionalResourceId)) {
+                resources.put(optionalResourceId, new InternalResourceCache(id, optionalResourceId, InternalResourceCache.nonExistingResource(id, optionalResourceId)));
+            }
+        }
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
