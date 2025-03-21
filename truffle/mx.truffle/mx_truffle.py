@@ -1670,10 +1670,13 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                  os.path.join(self.out_dir, 'libffi-3.4.6'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
-                              '--with-pic',
-                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3', '-fvisibility=hidden'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
-                              'CPPFLAGS="-DNO_JAVA_RAW_API"',
-                             ]
+                              '--with-pic']
+
+            if mx.get_os() == 'darwin':
+                configure_args += ['--disable-multi-os-directory']
+
+            configure_args += [' CFLAGS="{}"'.format(' '.join(['-g', '-O3', '-fvisibility=hidden'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
+                               'CPPFLAGS="-DNO_JAVA_RAW_API"']
 
             self.delegate.buildEnv = dict(
                 SOURCES=os.path.basename(self.delegate.dir),
