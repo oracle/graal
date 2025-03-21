@@ -52,6 +52,7 @@ import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerSampleWriter;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
@@ -133,6 +134,49 @@ public class JfrStackTraceRepository implements JfrRepository {
         } finally {
             JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
         }
+    }
+
+    /** Don't store to the stacktrace repo here (it may not belong in this epoch). */
+    @NeverInline("Starting a stack walk in the caller frame.")
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
+    public boolean recordStackTraceDataToBuffer(int skipCount, SamplerBuffer rawStackTraceData) {
+        if (DeoptimizationSupport.enabled() || rawStackTraceData.isNull()) {
+            /* Stack traces are not supported if JIT compilation is used (GR-43686). */
+            return false;
+        }
+
+        /**
+         * The JFR sampler does not share the same buffers as the leak profiler. There is no risk of
+         * races between them.
+         */
+        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
+        if (rawStackTraceData.isNull() || !SamplerSampleWriterDataAccess.initialize(data, skipCount, true, rawStackTraceData)) {
+            return false;
+        }
+
+        assert SamplerSampleWriterDataAccess.verify(data);
+        assert data.getCurrentPos().unsignedRemainder(Long.BYTES).equal(0);
+
+        /*
+         * Start a stack trace and do a stack walk. Note that the data will only be committed to the
+         * buffer if it is a new stack trace.
+         */
+        SamplerSampleWriter.begin(data);
+        Pointer sp = KnownIntrinsics.readCallerStackPointer();
+        CodePointer ip = FrameAccess.singleton().readReturnAddress(CurrentIsolate.getCurrentThread(), sp);
+        int errorCode = JfrStackWalker.walkCurrentThread(data, ip, sp, false);
+
+        /*
+         * If writing the raw data to the buffer succeeded, commit it here. Do not attempt
+         * deduplication yet since the event data this stack trace corresponds to may not be emitted
+         * until a much later epoch.
+         */
+        return switch (errorCode) {
+            case JfrStackWalker.NO_ERROR, JfrStackWalker.TRUNCATED -> SamplerSampleWriter.end(data, SamplerSampleWriter.JFR_STACK_TRACE_END);
+            case JfrStackWalker.BUFFER_SIZE_EXCEEDED -> false;
+            case JfrStackWalker.UNPARSEABLE_STACK -> throw VMError.shouldNotReachHere("Only the async sampler may encounter an unparseable stack.");
+            default -> throw VMError.shouldNotReachHere("Unexpected return value");
+        };
     }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
