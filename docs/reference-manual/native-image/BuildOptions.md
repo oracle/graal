@@ -32,7 +32,7 @@ Run `native-image --help` for help on build options.
 * `-cp, -classpath, --class-path <class search path of directories and ZIP/JAR files>`: a `:` (`;` on Windows) separated list of directories, JAR archives, and ZIP archives to search for class files
 * `-p <module path>, --module-path <module path>`: a `:` (`;` on Windows) separated list of directories. Each directory is a directory of modules.
 * `--add-modules <module name>[,<module name>...]`: add root modules to resolve in addition to the initial module. `<module name>` can also be `ALL-DEFAULT`, `ALL-SYSTEM`, `ALL-MODULE-PATH`.
-* `-D<name>=<value>`: set a system property at image build-time only
+* `-D<name>=<value>`: set a system property for image build time only
 * `-J<flag>`: pass an option directly to the JVM running the `native-image` builder
 * `--diagnostics-mode`: enable diagnostics output: class initialization, substitutions, etc.
 * `--enable-preview`: allow classes to depend on preview features of this release
