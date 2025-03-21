@@ -71,6 +71,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
@@ -411,6 +412,8 @@ public class LocalizationFeature implements InternalFeature {
                 addCharset(c);
             }
         } else {
+            addCharset(Charset.forName(
+                SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding")));
             addCharset(defaultCharset);
             addCharset(StandardCharsets.US_ASCII);
             addCharset(StandardCharsets.ISO_8859_1);
