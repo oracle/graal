@@ -87,7 +87,7 @@ public class TStringUTF32Tests extends TStringTestBase {
         return ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? TruffleString.Encoding.UTF_32BE : TruffleString.Encoding.UTF_32LE;
     }
 
-    private byte[] getByteSwappedArray(String s) {
+    private static byte[] getByteSwappedArray(String s) {
         byte[] array = new byte[s.length() << 2];
         int i = 0;
         for (int cp : s.codePoints().toArray()) {

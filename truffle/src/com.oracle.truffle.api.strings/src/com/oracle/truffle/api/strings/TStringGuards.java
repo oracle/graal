@@ -76,6 +76,10 @@ final class TStringGuards {
         return TSCodeRange.isValid(codeRange);
     }
 
+    static boolean isUpToValid(int codeRange) {
+        return TSCodeRange.isUpToValid(codeRange);
+    }
+
     static boolean isBroken(int codeRange) {
         return TSCodeRange.isBroken(codeRange);
     }
@@ -112,9 +116,10 @@ final class TStringGuards {
         return TSCodeRange.isFixedWidth(codeRangeA, codeRangeB);
     }
 
-    static boolean indexOfCannotMatch(Node node, int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, Encoding encoding,
-                    TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
-        return regionLength < getCodePointLengthNodeB.execute(node, b, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
+    static boolean indexOfCannotMatch(Node node, int codeRangeA,
+                    AbstractTruffleString b, byte[] arrayB, long offsetB, int codeRangeB,
+                    int regionLength, Encoding encoding, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
+        return regionLength < getCodePointLengthNodeB.execute(node, b, arrayB, offsetB, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
     static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, byte[] mask, int regionLength) {
@@ -223,6 +228,10 @@ final class TStringGuards {
         return Encoding.isSupported(encoding);
     }
 
+    static boolean isSupportedEncodingWithCompaction(Encoding encoding) {
+        return Encoding.isSupportedWithCompaction(encoding.id);
+    }
+
     static boolean isSupportedEncoding(Encoding encoding) {
         return encoding.isSupported();
     }
@@ -292,9 +301,7 @@ final class TStringGuards {
     }
 
     static boolean isBuiltin(DecodingErrorHandler errorHandler) {
-        boolean ret = errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
-        CompilerAsserts.partialEvaluationConstant(ret);
-        return ret;
+        return errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
     }
 
     static boolean isBuiltin(TranscodingErrorHandler errorHandler) {
