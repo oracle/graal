@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.nodes;
 
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -58,7 +57,7 @@ public final class WasmFunctionBaseNode extends Node {
         this.functionNode = functionNode;
     }
 
-    public void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
-        functionNode.execute(frame, context, instance);
+    public void execute(VirtualFrame frame, WasmInstance instance) {
+        functionNode.execute(frame, instance);
     }
 }

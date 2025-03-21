@@ -50,9 +50,10 @@ import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.debugging.DebugLineSection;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugFunction;
-import org.graalvm.wasm.debugging.representation.DebugObjectDisplayValue;
+import org.graalvm.wasm.debugging.representation.DebugScopeDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
@@ -69,6 +70,7 @@ import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -138,7 +140,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @TruffleBoundary
     private DebugFunction debugFunction() {
         if (module.hasDebugInfo()) {
-            final EconomicMap<Integer, DebugFunction> debugFunctions = module.debugFunctions(this);
+            final EconomicMap<Integer, DebugFunction> debugFunctions = module.debugFunctions();
             if (debugFunctions.containsKey(functionSourceLocation)) {
                 return debugFunctions.get(functionSourceLocation);
             }
@@ -156,7 +158,14 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     public SourceSection getSourceSection() {
         final DebugFunction debugFunction = debugFunction();
         if (debugFunction != null) {
-            return debugFunction.sourceSection();
+            if (debugFunction.hasSourceSection()) {
+                return debugFunction.getSourceSection();
+            } else {
+                final WasmContext context = WasmContext.get(this);
+                if (context != null) {
+                    return debugFunction.computeSourceSection(context.debugSourceLoader(), context.environment());
+                }
+            }
         }
         return null;
     }
@@ -176,9 +185,19 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         if (debugFunction == null) {
                             return this;
                         }
-                        final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugFunction, module, functionIndex);
+                        final Source source = debugFunction.computeSourceSection(context.debugSourceLoader(), context.environment()).getSource();
+                        if (source == null) {
+                            return this;
+                        }
+                        final int functionStartOffset = module.functionSourceCodeStartOffset(functionIndex);
+                        if (functionStartOffset == -1) {
+                            return this;
+                        }
+                        final int functionEndOffset = module.functionSourceCodeEndOffset(functionIndex);
+                        final DebugLineSection debugLineSection = debugFunction.lineMap().getLineIndexMap(functionStartOffset, functionEndOffset);
+                        final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugLineSection, source);
                         final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
-                        final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugFunction.lineMap().sourceLocationToLineMap());
+                        final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
                         final WasmFunctionNode functionNodeDuplicate = new WasmFunctionNode(functionNode, bytecode, support::notifyLine);
                         return new WasmInstrumentableFunctionNode(this, functionNodeDuplicate, support);
                     }
@@ -208,7 +227,17 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         assert debugFunction != null;
         final DebugContext context = new DebugContext(instrumentation.currentSourceLocation());
         final MaterializedFrame materializedFrame = frame.materialize();
-        return DebugObjectDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this, !WasmContext.get(this).getContextOptions().debugCompDirectory().isEmpty());
+        SourceSection sourceSection = null;
+        if (debugFunction.hasSourceSection()) {
+            sourceSection = debugFunction.getSourceSection();
+        } else {
+            final WasmContext wasmContext = WasmContext.get(this);
+            if (wasmContext != null) {
+                sourceSection = debugFunction.computeSourceSection(wasmContext.debugSourceLoader(), wasmContext.environment());
+            }
+        }
+
+        return DebugScopeDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this, sourceSection);
     }
 
     @Override
@@ -223,9 +252,19 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeI32IntoStack(MaterializedFrame frame, int index, int value) {
+        frame.setIntStatic(localCount() + index, value);
+    }
+
+    @Override
     @TruffleBoundary
     public long loadI64FromStack(MaterializedFrame frame, int index) {
         return frame.getLongStatic(localCount() + index);
+    }
+
+    @Override
+    public void storeI64IntoStack(MaterializedFrame frame, int index, long value) {
+        frame.setLongStatic(localCount() + index, value);
     }
 
     @Override
@@ -235,9 +274,19 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeF32IntoStack(MaterializedFrame frame, int index, float value) {
+        frame.setFloatStatic(localCount() + index, value);
+    }
+
+    @Override
     @TruffleBoundary
     public double loadF64FromStack(MaterializedFrame frame, int index) {
         return frame.getDoubleStatic(localCount() + index);
+    }
+
+    @Override
+    public void storeF64IntoStack(MaterializedFrame frame, int index, double value) {
+        frame.setDoubleStatic(localCount() + index, value);
     }
 
     @Override
@@ -252,9 +301,19 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeI32IntoLocals(MaterializedFrame frame, int index, int value) {
+        frame.setIntStatic(index, value);
+    }
+
+    @Override
     @TruffleBoundary
     public long loadI64FromLocals(MaterializedFrame frame, int index) {
         return frame.getLongStatic(index);
+    }
+
+    @Override
+    public void storeI64IntoLocals(MaterializedFrame frame, int index, long value) {
+        frame.setLongStatic(index, value);
     }
 
     @Override
@@ -264,9 +323,19 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeF32IntoLocals(MaterializedFrame frame, int index, float value) {
+        frame.setFloatStatic(index, value);
+    }
+
+    @Override
     @TruffleBoundary
     public double loadF64FromLocals(MaterializedFrame frame, int index) {
         return frame.getDoubleStatic(index);
+    }
+
+    @Override
+    public void storeF64IntoLocals(MaterializedFrame frame, int index, double value) {
+        frame.setDoubleStatic(index, value);
     }
 
     @Override
@@ -283,6 +352,15 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeI32IntoGlobals(MaterializedFrame frame, int index, int value) {
+        WasmInstance instance = instance(frame);
+        if (instance.module().isGlobalMutable(index)) {
+            final int address = instance.globalAddress(index);
+            instance.store().globals().storeInt(address, value);
+        }
+    }
+
+    @Override
     @TruffleBoundary
     public long loadI64FromGlobals(MaterializedFrame frame, int index) {
         WasmInstance instance = instance(frame);
@@ -291,15 +369,34 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeI64IntoGlobals(MaterializedFrame frame, int index, long value) {
+        WasmInstance instance = instance(frame);
+        if (instance.module().isGlobalMutable(index)) {
+            final int address = instance.globalAddress(index);
+            instance.store().globals().storeLong(address, value);
+        }
+    }
+
+    @Override
     @TruffleBoundary
     public float loadF32FromGlobals(MaterializedFrame frame, int index) {
-        return Float.floatToRawIntBits(loadI32FromGlobals(frame, index));
+        return Float.intBitsToFloat(loadI32FromGlobals(frame, index));
+    }
+
+    @Override
+    public void storeF32IntoGlobals(MaterializedFrame frame, int index, float value) {
+        storeI32IntoGlobals(frame, index, Float.floatToRawIntBits(value));
     }
 
     @Override
     @TruffleBoundary
     public double loadF64FromGlobals(MaterializedFrame frame, int index) {
-        return Double.doubleToRawLongBits(loadI64FromGlobals(frame, index));
+        return Double.longBitsToDouble(loadI64FromGlobals(frame, index));
+    }
+
+    @Override
+    public void storeF64IntoGlobals(MaterializedFrame frame, int index, double value) {
+        storeI64IntoGlobals(frame, index, Double.doubleToRawLongBits(value));
     }
 
     @Override
@@ -316,10 +413,22 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeI8IntoMemory(MaterializedFrame frame, long address, byte value) {
+        final WasmMemory memory = memory0(frame);
+        zeroMemoryLib.store_i32_8(memory, this, address, value);
+    }
+
+    @Override
     @TruffleBoundary
     public short loadI16FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
         return (short) zeroMemoryLib.load_i32_16s(memory, this, address);
+    }
+
+    @Override
+    public void storeI16IntoMemory(MaterializedFrame frame, long address, short value) {
+        final WasmMemory memory = memory0(frame);
+        zeroMemoryLib.store_i32_16(memory, this, address, value);
     }
 
     @Override
@@ -330,10 +439,22 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeI32IntoMemory(MaterializedFrame frame, long address, int value) {
+        final WasmMemory memory = memory0(frame);
+        zeroMemoryLib.store_i32(memory, this, address, value);
+    }
+
+    @Override
     @TruffleBoundary
     public long loadI64FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
         return zeroMemoryLib.load_i64(memory, this, address);
+    }
+
+    @Override
+    public void storeI64IntoMemory(MaterializedFrame frame, long address, long value) {
+        final WasmMemory memory = memory0(frame);
+        zeroMemoryLib.store_i64(memory, this, address, value);
     }
 
     @Override
@@ -344,10 +465,22 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @Override
+    public void storeF32IntoMemory(MaterializedFrame frame, long address, float value) {
+        final WasmMemory memory = memory0(frame);
+        zeroMemoryLib.store_f32(memory, this, address, value);
+    }
+
+    @Override
     @TruffleBoundary
     public double loadF64FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
         return zeroMemoryLib.load_f64(memory, this, address);
+    }
+
+    @Override
+    public void storeF64IntoMemory(MaterializedFrame frame, long address, double value) {
+        final WasmMemory memory = memory0(frame);
+        zeroMemoryLib.store_f64(memory, this, address, value);
     }
 
     private byte[] loadByteArrayFromMemory(MaterializedFrame frame, long address, int length) {

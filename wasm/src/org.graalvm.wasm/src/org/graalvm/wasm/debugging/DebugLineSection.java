@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,49 +39,21 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.debugging.data;
+package org.graalvm.wasm.debugging;
 
-import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.debugging.encoding.Attributes;
-import org.graalvm.wasm.debugging.parser.DebugData;
-import org.graalvm.wasm.debugging.parser.DebugParserContext;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 /**
- * Utility class used for resolving the data of a debug entry.
+ * Represents the lines of a given source offset range and a mapping of source offsets to line
+ * indices. The line indices are assigned in their order of appearance in the source code. Offsets
+ * associated with the same line number have the same line number index.
+ * 
+ * @param uniqueLines
+ * @param offsetToLineIndexMap
  */
-public final class DebugDataUtil {
-    private DebugDataUtil() {
-    }
-
-    /**
-     * Extracts the pcs from the given data.
-     * 
-     * @param data the debug data.
-     * @param context the current debug context.
-     * @return the pc values int an int array or null, if the pcs are not present or malformed.
-     */
-    public static int[] readPcsOrNull(DebugData data, DebugParserContext context) {
-        int lowPc = data.asU32OrDefault(Attributes.LOW_PC, -1);
-        if (lowPc == -1) {
-            return null;
-        }
-        int highPc = data.asU32OrDefault(Attributes.HIGH_PC, -1);
-        if (highPc != -1) {
-            if (data.isConstant(Attributes.HIGH_PC)) {
-                highPc = lowPc + highPc;
-            }
-        } else {
-            final int rangeOffset = data.asU32OrDefault(Attributes.RANGES, -1);
-            if (rangeOffset == -1) {
-                return null;
-            }
-            final IntArrayList ranges = context.readRangeSectionOrNull(rangeOffset);
-            if (ranges == null || ranges.size() < 2) {
-                return null;
-            }
-            lowPc = ranges.get(0);
-            highPc = ranges.get(ranges.size() - 1);
-        }
-        return new int[]{lowPc, highPc};
+public record DebugLineSection(EconomicSet<Integer> uniqueLines, EconomicMap<Integer, Integer> offsetToLineIndexMap) {
+    public boolean isEmpty() {
+        return uniqueLines.isEmpty();
     }
 }

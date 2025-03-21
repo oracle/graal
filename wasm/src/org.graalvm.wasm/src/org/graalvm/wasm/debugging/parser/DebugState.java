@@ -113,7 +113,7 @@ public class DebugState {
     }
 
     public void addRow() {
-        if (isStatement && !ignore) {
+        if (!ignore) {
             lineMaps[file].add(pc, line);
         }
         discriminator = 0;

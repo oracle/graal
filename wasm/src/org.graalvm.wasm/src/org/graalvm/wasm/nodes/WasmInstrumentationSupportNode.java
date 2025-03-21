@@ -41,12 +41,9 @@
 
 package org.graalvm.wasm.nodes;
 
-import java.util.SortedSet;
-
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.wasm.WasmConstant;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.debugging.DebugLineMap;
-import org.graalvm.wasm.debugging.data.DebugFunction;
+import org.graalvm.wasm.debugging.DebugLineSection;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -64,43 +61,28 @@ import com.oracle.truffle.api.source.Source;
 public final class WasmInstrumentationSupportNode extends Node {
     @Children private final WasmBaseStatementNode[] statementNodes;
 
-    private final int lineOffset;
     private int sourceLocation;
 
     @TruffleBoundary
-    public WasmInstrumentationSupportNode(DebugFunction debugFunction, WasmModule module, int functionIndex) {
-        final DebugLineMap sourceLineMap = debugFunction.lineMap();
-        final Source source = debugFunction.sourceSection().getSource();
-        final int startOffset = module.functionSourceCodeStartOffset(functionIndex);
-        if (sourceLineMap != null && startOffset != -1) {
-            final int endOffset = module.functionSourceCodeEndOffset(functionIndex);
-
-            final int startElement = sourceLineMap.getFirstLine(startOffset, endOffset);
-            final int endElement = sourceLineMap.getLastLine(startOffset, endOffset) + 1;
-
-            final SortedSet<Integer> lineSet = sourceLineMap.lines().tailSet(startElement).headSet(endElement);
-            final int length = endElement - startElement;
-            statementNodes = lineSet.isEmpty() ? null : new WasmBaseStatementNode[length + 1];
-            lineOffset = startElement;
-            // start of the function, calculate sub array offset and length of all lines
-            for (int line : lineSet) {
-                int pc = sourceLineMap.getSourceLocation(line);
-                if (pc < startOffset || pc > endOffset) {
-                    break;
-                }
-                statementNodes[line - startElement] = new WasmStatementNode(line, source);
+    public WasmInstrumentationSupportNode(DebugLineSection lineSection, Source source) {
+        if (!lineSection.isEmpty()) {
+            // the nodes in the set appear in index order
+            final EconomicSet<Integer> lines = lineSection.uniqueLines();
+            statementNodes = new WasmBaseStatementNode[lines.size()];
+            int i = 0;
+            for (int line : lines) {
+                statementNodes[i++] = new WasmStatementNode(line, source);
             }
         } else {
             statementNodes = null;
-            lineOffset = 0;
         }
     }
 
-    public void notifyLine(VirtualFrame frame, int currentLine, int nextLine, int currentSourceLocation) {
-        CompilerAsserts.partialEvaluationConstant(currentLine);
-        CompilerAsserts.partialEvaluationConstant(nextLine);
-        final InstrumentableNode.WrapperNode currentLineWrapper = getWrapperAt(currentLine - lineOffset);
-        final InstrumentableNode.WrapperNode nextLineWrapper = getWrapperAt(nextLine - lineOffset);
+    public void notifyLine(VirtualFrame frame, int currentLineIndex, int nextLineIndex, int currentSourceLocation) {
+        CompilerAsserts.partialEvaluationConstant(currentLineIndex);
+        CompilerAsserts.partialEvaluationConstant(nextLineIndex);
+        final InstrumentableNode.WrapperNode currentLineWrapper = getWrapperAt(currentLineIndex);
+        final InstrumentableNode.WrapperNode nextLineWrapper = getWrapperAt(nextLineIndex);
         if (currentLineWrapper == nextLineWrapper) {
             return;
         }

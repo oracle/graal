@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,45 +43,48 @@ package org.graalvm.wasm.debugging.representation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
+import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.data.DebugObject;
+import org.graalvm.wasm.nodes.WasmDataAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * Represents an object scope in the debug environment.
- */
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-public final class DebugObjectDisplayValue extends DebugDisplayValue implements TruffleObject {
+public final class DebugScopeDisplayValue extends DebugDisplayValue implements TruffleObject {
+    private final String name;
     private final DebugContext context;
     private final DebugLocation location;
-    private final String name;
     private final EconomicMap<String, DebugObject> members;
+    private final DebugScopeDisplayValue parentScope;
+    private final SourceSection sourceSection;
 
-    private DebugObjectDisplayValue(DebugContext context, DebugLocation location, String name, EconomicMap<String, DebugObject> members) {
-        assert context != null : "the context provided to a debug object display value must not be null";
-        assert location != null : "the location provided to a debug object display value must not be null";
-        assert members != null : "the list of members provided to a debug object display value must not be null";
+    public DebugScopeDisplayValue(String name, DebugContext context, DebugLocation location, EconomicMap<String, DebugObject> members, DebugScopeDisplayValue parentScope,
+                    SourceSection sourceSection) {
+        this.name = Objects.requireNonNull(name);
         this.context = context;
         this.location = location;
-        this.name = name;
         this.members = members;
+        this.parentScope = parentScope;
+        this.sourceSection = sourceSection;
     }
 
-    @TruffleBoundary
-    public static Object fromDebugObject(DebugObject object, DebugContext context, DebugLocation location) {
+    private static DebugScopeDisplayValue createScope(String name, DebugContext context, DebugLocation location, DebugObject object, DebugScopeDisplayValue parentScope, SourceSection sourceSection) {
         final EconomicMap<String, DebugObject> members = EconomicMap.create();
         final int count = object.memberCount();
         for (int i = 0; i < count; i++) {
@@ -90,17 +93,48 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
                 members.put(member.toDisplayString(), member);
             }
         }
-        return new DebugObjectDisplayValue(context, location, object.toString(), members);
+        return new DebugScopeDisplayValue(name, context, location, members, parentScope, sourceSection);
     }
 
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
+    @TruffleBoundary
+    public static Object fromDebugFunction(DebugFunction function, DebugContext context, MaterializedFrame frame, WasmDataAccess dataAccess, SourceSection sourceSection) {
+        final DebugLocation frameBase = function.frameBaseOrNull(frame, dataAccess);
+        if (frameBase == null) {
+            return DebugConstantDisplayValue.UNDEFINED;
+        }
+        DebugScopeDisplayValue scope = null;
+        if (function.hasGlobals()) {
+            scope = createScope("Globals", context, frameBase, function.globals(), scope, null);
+        }
+        return createScope("Locals", context, frameBase, function.locals(), scope, sourceSection);
     }
 
     @ExportMessage
     boolean isScope() {
         return true;
+    }
+
+    @ExportMessage
+    boolean hasScopeParent() {
+        return parentScope != null;
+    }
+
+    @ExportMessage
+    Object getScopeParent() throws UnsupportedMessageException {
+        if (parentScope == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return parentScope;
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return sourceSection != null;
+    }
+
+    @ExportMessage
+    SourceSection getSourceLocation() {
+        return sourceSection;
     }
 
     @ExportMessage
@@ -115,7 +149,12 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
 
     @ExportMessage
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return name != null ? name : "";
+        return name;
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
     @ExportMessage
@@ -128,12 +167,20 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
         return resolveDebugObject(memberObject, context, location);
     }
 
+    private List<String> memberNames() {
+        final List<String> names = new ArrayList<>(0);
+        for (String name : members.getKeys()) {
+            names.add(name);
+        }
+        return names;
+    }
+
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        final List<String> names = new ArrayList<>(members.size());
-        for (String name : members.getKeys()) {
-            names.add(name);
+        final List<String> names = memberNames();
+        if (parentScope != null) {
+            names.addAll(parentScope.memberNames());
         }
         return new WasmVariableNamesObject(names);
     }
@@ -157,7 +204,9 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
             throw UnknownIdentifierException.create(member);
         }
         final DebugObject memberObject = members.get(member);
-        writeDebugObject(memberObject, context, location, value, lib);
+        if (memberObject.isModifiableValue()) {
+            memberObject.setValue(context, location, value, lib);
+        }
     }
 
     @ExportMessage

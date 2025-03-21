@@ -65,7 +65,6 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean constantRandomGet;
     @CompilationFinal private boolean directByteBufferMemoryAccess;
 
-    @CompilationFinal private String debugCompDirectory;
     private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
@@ -93,7 +92,6 @@ public final class WasmContextOptions {
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
-        this.debugCompDirectory = readStringOption(WasmOptions.DebugCompDirectory);
     }
 
     private void checkOptionDependencies() {
@@ -106,10 +104,6 @@ public final class WasmContextOptions {
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
-        return key.getValue(optionValues);
-    }
-
-    private String readStringOption(OptionKey<String> key) {
         return key.getValue(optionValues);
     }
 
@@ -173,10 +167,6 @@ public final class WasmContextOptions {
         return directByteBufferMemoryAccess;
     }
 
-    public String debugCompDirectory() {
-        return debugCompDirectory;
-    }
-
     @Override
     public int hashCode() {
         int hash = 5;
@@ -193,7 +183,6 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
-        hash = 53 * hash + (this.debugCompDirectory.hashCode());
         return hash;
     }
 
@@ -245,9 +234,6 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.directByteBufferMemoryAccess != other.directByteBufferMemoryAccess) {
-            return false;
-        }
-        if (!this.debugCompDirectory.equals(other.debugCompDirectory)) {
             return false;
         }
         return true;

@@ -43,7 +43,6 @@ package org.graalvm.wasm.nodes;
 import java.util.Arrays;
 
 import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
@@ -93,13 +92,13 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     protected void doFixedMemoryImpl(VirtualFrame frame, WasmInstance instance,
                     @CachedLibrary(value = "instance.memory(0)") @SuppressWarnings("unused") WasmMemoryLibrary cachedMemoryLib0,
                     @Cached("createMemoryLibs1(cachedMemoryLib0)") @SuppressWarnings("unused") WasmMemoryLibrary[] cachedMemoryLibs,
-                    @Cached(value = "createSpecializedFunctionNode(cachedMemoryLibs)", adopt = false) WasmInstrumentableFunctionNode specializedFunctionNode) {
+                    @Cached(value = "createSpecializedFunctionNode(cachedMemoryLibs)", adopt = false) WasmFunctionBaseNode specializedFunctionNode) {
         specializedFunctionNode.execute(frame, instance);
     }
 
     @Specialization(replaces = "doFixedMemoryImpl")
     protected void doDispatched(VirtualFrame frame, WasmInstance instance,
-                    @Cached(value = "createDispatchedFunctionNode()", adopt = false) WasmInstrumentableFunctionNode dispatchedFunctionNode) {
+                    @Cached(value = "createDispatchedFunctionNode()", adopt = false) WasmFunctionBaseNode dispatchedFunctionNode) {
         dispatchedFunctionNode.execute(frame, instance);
     }
 

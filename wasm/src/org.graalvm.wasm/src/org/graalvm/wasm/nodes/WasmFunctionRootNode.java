@@ -57,6 +57,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -277,7 +278,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
     private DebugFunction debugFunction() {
         if (module().hasDebugInfo()) {
             int functionSourceLocation = module().functionSourceCodeStartOffset(codeEntry.functionIndex());
-            final EconomicMap<Integer, DebugFunction> debugFunctions = module().debugFunctions(this);
+            final EconomicMap<Integer, DebugFunction> debugFunctions = module().debugFunctions();
             if (debugFunctions.containsKey(functionSourceLocation)) {
                 return debugFunctions.get(functionSourceLocation);
             }
@@ -303,7 +304,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
         if (debugFunction == null) {
             return false;
         }
-        return debugFunction.sourceSection() != null;
+        return debugFunction.filePath() != null;
     }
 
     @Override
@@ -312,7 +313,14 @@ public class WasmFunctionRootNode extends WasmRootNode {
         if (sourceSection == null) {
             final DebugFunction debugFunction = debugFunction();
             if (debugFunction != null) {
-                sourceSection = debugFunction.sourceSection();
+                if (debugFunction.hasSourceSection()) {
+                    sourceSection = debugFunction.getSourceSection();
+                } else {
+                    final WasmContext context = WasmContext.get(this);
+                    if (context != null) {
+                        sourceSection = debugFunction.computeSourceSection(context.debugSourceLoader(), context.environment());
+                    }
+                }
             } else {
                 sourceSection = module().source().createUnavailableSection();
             }

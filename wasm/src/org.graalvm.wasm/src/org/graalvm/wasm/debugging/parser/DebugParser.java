@@ -605,19 +605,36 @@ public class DebugParser {
             read1();
         }
 
-        final List<String> paths = new ArrayList<>();
+        final Path cPath;
+        try {
+            cPath = Path.of(compilationPath);
+        } catch (InvalidPathException e) {
+            throw new WasmDebugException(e.getMessage());
+        }
+
+        final List<Path> paths = new ArrayList<>();
+        paths.add(cPath);
 
         // read included directories
         byte lastByte = peek1();
         while (lastByte != 0) {
-            paths.add(readString());
+            try {
+                final Path dirPath = Path.of(readString());
+                if (dirPath.isAbsolute()) {
+                    paths.add(dirPath);
+                } else {
+                    paths.add(cPath.resolve(dirPath));
+                }
+            } catch (InvalidPathException e) {
+                throw new WasmDebugException(e.getMessage());
+            }
             lastByte = peek1();
         }
         read1();
 
         final List<Path> filePaths = new ArrayList<>();
         try {
-            filePaths.add(Paths.get(compilationPath));
+            filePaths.add(cPath);
         } catch (InvalidPathException e) {
             throw new WasmDebugException(e.getMessage());
         }
@@ -629,12 +646,12 @@ public class DebugParser {
             readUnsignedInt();
             readUnsignedInt();
             lastByte = peek1();
-            final String containingPath = pathIndex == 0 ? compilationPath : paths.get(pathIndex - 1);
             try {
-                if (containingPath.startsWith(compilationPath)) {
-                    filePaths.add(Paths.get(containingPath, name));
+                final Path filePath = Paths.get(name);
+                if (filePath.isAbsolute()) {
+                    filePaths.add(filePath);
                 } else {
-                    filePaths.add(Paths.get(compilationPath, containingPath, name));
+                    filePaths.add(paths.get(pathIndex).resolve(filePath));
                 }
             } catch (InvalidPathException e) {
                 throw new WasmDebugException(e.getMessage());

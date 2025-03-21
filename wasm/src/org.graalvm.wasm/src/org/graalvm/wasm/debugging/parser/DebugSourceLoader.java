@@ -41,15 +41,12 @@
 
 package org.graalvm.wasm.debugging.parser;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
@@ -64,11 +61,10 @@ public class DebugSourceLoader {
      * 
      * @param path the path of the source
      * @param language the source language
-     * @param testMode if true, load the source as a resource instead of from the file system.
      * @param env Truffle environment used to access source files
      */
     @TruffleBoundary
-    public Source load(Path path, String language, boolean testMode, TruffleLanguage.Env env) {
+    public Source load(Path path, String language, TruffleLanguage.Env env) {
         if (path == null || language == null) {
             return null;
         }
@@ -79,23 +75,9 @@ public class DebugSourceLoader {
         if (cache.containsKey(path)) {
             return cache.get(path);
         }
-        Source s;
-        try {
-            Reader reader;
-            if (testMode) {
-                InputStream stream = DebugSourceLoader.class.getResourceAsStream(path.toString());
-                if (stream == null) {
-                    return null;
-                }
-                reader = new InputStreamReader(stream);
-            } else {
-                reader = env.getPublicTruffleFile(path.toString()).newBufferedReader();
-            }
-            s = Source.newBuilder(language, reader, fileName.toString()).build();
-        } catch (IOException | SecurityException e) {
-            return null;
-        }
-        cache.put(path, s);
-        return s;
+        final TruffleFile file = env.getInternalTruffleFile(path.toString());
+        final Source source = Source.newBuilder(language, file).content(Source.CONTENT_NONE).build();
+        cache.put(path, source);
+        return source;
     }
 }

@@ -42,82 +42,94 @@
 package org.graalvm.wasm.debugging;
 
 import java.nio.file.Path;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.TreeMap;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Representation of a source location to source code line number mapping.
  */
 public final class DebugLineMap {
     private final Path filePath;
-    private final SortedSet<Integer> lines;
-    private final EconomicMap<Integer, Integer> sourceLocationToLineMap;
-    private final EconomicMap<Integer, Integer> lineToSourceLocationMap;
+    private final TreeMap<Integer, Integer> sourceOffsetToLineMap;
+    private final TreeMap<Integer, Integer> lineToSourceOffsetMap;
 
     public DebugLineMap(Path filePath) {
         this.filePath = filePath;
-        this.lines = new TreeSet<>();
-        this.sourceLocationToLineMap = EconomicMap.create();
-        this.lineToSourceLocationMap = EconomicMap.create();
+        this.sourceOffsetToLineMap = new TreeMap<>();
+        this.lineToSourceOffsetMap = new TreeMap<>();
     }
 
-    public void add(int sourceLocation, int line) {
-        if (!lines.contains(line)) {
-            lines.add(line);
-            lineToSourceLocationMap.put(line, sourceLocation);
+    public void add(int sourceOffset, int line) {
+        if (line == 0) {
+            // invalid line
+            return;
         }
-        sourceLocationToLineMap.put(sourceLocation, line);
+        if (!lineToSourceOffsetMap.containsKey(line)) {
+            lineToSourceOffsetMap.put(line, sourceOffset);
+        }
+        sourceOffsetToLineMap.put(sourceOffset, line);
     }
 
     public Path getFilePath() {
         return filePath;
     }
 
-    public int getFirstLine(int startSourceLocation, int endSourceLocation) {
-        for (int i = startSourceLocation; i <= endSourceLocation; i++) {
-            final int line = getLine(i);
-            if (line != -1) {
-                return line;
-            }
+    /**
+     * @param startOffset The start offset
+     * @param endOffset The end offset
+     * @return The next line, if one exists in the given offset range, -1 otherwise.
+     */
+    public int getNextLine(int startOffset, int endOffset) {
+        final Integer location = sourceOffsetToLineMap.ceilingKey(startOffset);
+        if (location == null) {
+            return -1;
+        }
+        if (location <= endOffset) {
+            return sourceOffsetToLineMap.get(location);
         }
         return -1;
     }
 
-    public int getLastLine(int startSourceLocation, int endSourceLocation) {
-        for (int i = endSourceLocation; i >= startSourceLocation; i--) {
-            final int line = getLine(i);
-            if (line != -1) {
-                return line;
+    /**
+     * 
+     * @param startOffset The start offset
+     * @param endOffset The end offset
+     * @return A {@link DebugLineSection} for the given offset range.
+     */
+    public DebugLineSection getLineIndexMap(int startOffset, int endOffset) {
+        final EconomicSet<Integer> uniqueLines = EconomicSet.create();
+        final EconomicMap<Integer, Integer> offsetToLineIndexMap = EconomicMap.create();
+        final EconomicMap<Integer, Integer> lineToLineIndexMap = EconomicMap.create();
+        int location = startOffset;
+        while (location <= endOffset) {
+            final Integer nextLocation = sourceOffsetToLineMap.ceilingKey(location);
+            if (nextLocation == null) {
+                break;
             }
+            final int line = sourceOffsetToLineMap.get(nextLocation);
+            if (!uniqueLines.contains(line)) {
+                uniqueLines.add(line);
+                lineToLineIndexMap.put(line, lineToLineIndexMap.size());
+            }
+            final int lineIndex = lineToLineIndexMap.get(line);
+            offsetToLineIndexMap.put(nextLocation, lineIndex);
+            location = nextLocation + 1;
         }
-        return -1;
-    }
-
-    private int getLine(int sourceLocation) {
-        return sourceLocationToLineMap.get(sourceLocation, -1);
-    }
-
-    public int getSourceLocation(int line) {
-        return lineToSourceLocationMap.get(line, -1);
-    }
-
-    public int size() {
-        return lineToSourceLocationMap.size();
+        return new DebugLineSection(uniqueLines, offsetToLineIndexMap);
     }
 
     /**
-     * @return A set of all lines that are part of this line mapping.
+     * 
+     * @param line The line
+     * @return The source offset of the line, if it exists, -1 otherwise.
      */
-    public SortedSet<Integer> lines() {
-        return lines;
-    }
-
-    /**
-     * @return A mapping from source location to line numbers.
-     */
-    public EconomicMap<Integer, Integer> sourceLocationToLineMap() {
-        return sourceLocationToLineMap;
+    public int getSourceOffset(int line) {
+        final Integer value = lineToSourceOffsetMap.get(line);
+        if (value == null) {
+            return -1;
+        }
+        return value;
     }
 }

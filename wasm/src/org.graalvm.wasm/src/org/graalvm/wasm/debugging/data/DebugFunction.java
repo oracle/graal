@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,16 @@
 
 package org.graalvm.wasm.debugging.data;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.graalvm.wasm.debugging.DebugLineMap;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.objects.DebugScopeValue;
+import org.graalvm.wasm.debugging.parser.DebugSourceLoader;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -57,19 +60,24 @@ import com.oracle.truffle.api.source.SourceSection;
 public class DebugFunction extends DebugType {
     private final String name;
     private final DebugLineMap lineMap;
-    private final SourceSection sourceSection;
+    private final Path filePath;
+    private final String language;
+    private final int startLine;
+    private SourceSection sourceSection;
     private final byte[] frameBaseExpression;
     private final List<DebugObject> variables;
     private final List<DebugObject> globals;
 
-    public DebugFunction(String name, DebugLineMap lineMap, SourceSection sourceSection, byte[] frameBaseExpression, List<DebugObject> variables, List<DebugObject> globals) {
+    public DebugFunction(String name, DebugLineMap lineMap, Path filePath, String language, int startLine, byte[] frameBaseExpression, List<DebugObject> variables, List<DebugObject> globals) {
         assert lineMap != null : "the source code to bytecode line map of a debug function must not be null";
         assert frameBaseExpression != null : "the expression for calculating the frame base of a debug function must not be null";
         assert variables != null : "the list of variables of a debug function must not be null";
         assert globals != null : "the list of globals of a debug function must not be null";
         this.name = name;
         this.lineMap = lineMap;
-        this.sourceSection = sourceSection;
+        this.filePath = filePath;
+        this.language = language;
+        this.startLine = startLine;
         this.frameBaseExpression = frameBaseExpression;
         this.variables = variables;
         this.globals = globals;
@@ -89,7 +97,7 @@ public class DebugFunction extends DebugType {
      * @return Whether globals are defined or not.
      */
     public boolean hasGlobals() {
-        return globals.size() != 0;
+        return !globals.isEmpty();
     }
 
     /**
@@ -117,9 +125,44 @@ public class DebugFunction extends DebugType {
     }
 
     /**
-     * @return The source section of the function.
+     * @return The file path of the function.
      */
-    public SourceSection sourceSection() {
+    public Path filePath() {
+        return filePath;
+    }
+
+    /**
+     * @return The source language of the function.
+     */
+    public String language() {
+        return language;
+    }
+
+    /**
+     * @return Whether the source section of this function has already been computed.
+     * @see #computeSourceSection(DebugSourceLoader, TruffleLanguage.Env)
+     */
+    public boolean hasSourceSection() {
+        return sourceSection != null;
+    }
+
+    /**
+     * @return The already computed source section of the function. <code>null</code>, if it has not
+     *         been computed, yet.
+     * @see #hasSourceSection()
+     */
+    public SourceSection getSourceSection() {
+        assert hasSourceSection();
+        return sourceSection;
+    }
+
+    /**
+     * Computes the source section for the function.
+     */
+    public SourceSection computeSourceSection(DebugSourceLoader sourceLoader, TruffleLanguage.Env environment) {
+        if (sourceSection == null) {
+            sourceSection = sourceLoader.load(filePath, language, environment).createSection(startLine);
+        }
         return sourceSection;
     }
 

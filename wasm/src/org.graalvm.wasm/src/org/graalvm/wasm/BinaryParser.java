@@ -576,7 +576,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode,
-                    int codeEntryIndex, EconomicMap<Integer, Integer> sourceLocationToLineMap) {
+                    int codeEntryIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap) {
         final ParserState state = new ParserState(bytecode);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
@@ -584,11 +584,11 @@ public class BinaryParser extends BinaryStreamParser {
 
         int opcode;
         end: while (offset < sourceCodeEndOffset) {
-            // Insert a debug instruction if a line mapping exists.
-            if (sourceLocationToLineMap != null) {
-                final Integer value = sourceLocationToLineMap.get(offset);
-                if (value != null) {
-                    bytecode.addNotify(value, offset);
+            // Insert a debug instruction if a line mapping (line index) exists.
+            if (offsetToLineIndexMap != null) {
+                final Integer lineIndex = offsetToLineIndexMap.get(offset);
+                if (lineIndex != null) {
+                    bytecode.addNotify(lineIndex, offset);
                 }
             }
 
@@ -714,6 +714,10 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.RETURN: {
+                    if (offsetToLineIndexMap != null) {
+                        // Make sure we exit the current statement before leaving the function
+                        bytecode.addNotify(-1, -1);
+                    }
                     state.addReturn(multiValue);
 
                     // This instruction is stack-polymorphic
@@ -1020,22 +1024,27 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         final int bytecodeEndOffset = bytecode.location();
-        bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeEndOffset - bytecodeStartOffset, locals.length, resultTypes.length);
-        for (byte local : locals) {
-            bytecode.addByte(local);
-        }
-        if (locals.length != 0) {
-            bytecode.addByte((byte) 0);
-        }
-        for (byte result : resultTypes) {
-            bytecode.addByte(result);
-        }
-        if (resultTypes.length != 0) {
-            bytecode.addByte((byte) 0);
-        }
-        if (sourceLocationToLineMap == null) {
+
+        if (offsetToLineIndexMap == null) {
+            bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeEndOffset - bytecodeStartOffset, locals.length, resultTypes.length);
+            for (byte local : locals) {
+                bytecode.addByte(local);
+            }
+            if (locals.length != 0) {
+                bytecode.addByte((byte) 0);
+            }
+            for (byte result : resultTypes) {
+                bytecode.addByte(result);
+            }
+            if (resultTypes.length != 0) {
+                bytecode.addByte((byte) 0);
+            }
+
             // Do not override the code entry offset when rereading the function.
             module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
+        } else {
+            // Make sure we notify a statement exit before leaving the function
+            bytecode.addNotify(-1, -1);
         }
         return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset, state.usesMemoryZero());
     }
@@ -3249,17 +3258,17 @@ public class BinaryParser extends BinaryStreamParser {
      * Creates a runtime bytecode of a function with added debug opcodes.
      *
      * @param functionIndex the function index
-     * @param sourceLocationToLineMap a mapping from source code locations to source code lines
-     *            numbers (extracted from debugging information)
+     * @param offsetToLineIndexMap a mapping from source code locations to line indices in the line
+     *            index map
      */
     @TruffleBoundary
-    public byte[] createFunctionDebugBytecode(int functionIndex, EconomicMap<Integer, Integer> sourceLocationToLineMap) {
+    public byte[] createFunctionDebugBytecode(int functionIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap) {
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
         final int codeEntryIndex = functionIndex - module.numImportedFunctions();
         final CodeEntry codeEntry = BytecodeParser.readCodeEntry(module, module.bytecode(), codeEntryIndex);
         offset = module.functionSourceCodeInstructionOffset(functionIndex);
         final int endOffset = module.functionSourceCodeEndOffset(functionIndex);
-        readFunction(functionIndex, codeEntry.localTypes(), codeEntry.resultTypes(), endOffset, true, bytecode, codeEntryIndex, sourceLocationToLineMap);
+        readFunction(functionIndex, codeEntry.localTypes(), codeEntry.resultTypes(), endOffset, true, bytecode, codeEntryIndex, offsetToLineIndexMap);
         return bytecode.toArray();
     }
 }

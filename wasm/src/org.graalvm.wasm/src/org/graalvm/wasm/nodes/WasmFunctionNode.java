@@ -259,7 +259,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings({"UnusedAssignment", "hiding"})
-    public Object executeBodyFromOffset(WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
+    public Object executeBodyFromOffset(WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLineIndex) {
         final int localCount = codeEntry.localCount();
         final byte[] bytecode = this.bytecode;
 
@@ -271,7 +271,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         int offset = startOffset;
         int stackPointer = startStackPointer;
-        int line = startLine;
+        int lineIndex = startLineIndex;
 
         final WasmStore store = instance.store();
         // Note: The module may not have any memories.
@@ -306,9 +306,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int resultCount = codeEntry.resultCount();
                     unwindStack(frame, stackPointer, localCount, resultCount);
                     dropStack(frame, stackPointer, localCount + resultCount);
-                    if (notifyFunction != null) {
-                        notifyFunction.notifyLine(frame, line, -1, -1);
-                    }
                     return WasmConstant.RETURN_VALUE;
                 }
                 case Bytecode.LABEL_U8: {
@@ -384,7 +381,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         backEdgeCounter.count = 0;
                     }
                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, line), null, frame);
+                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
                         if (result != null) {
                             if (backEdgeCounter.count > 0) {
                                 LoopNode.reportLoopCount(this, backEdgeCounter.count);
@@ -1701,12 +1698,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.NOTIFY: {
-                    final int nextLine = rawPeekI32(bytecode, offset);
+                    final int nextLineIndex = rawPeekI32(bytecode, offset);
                     final int sourceCodeLocation = rawPeekI32(bytecode, offset + 4);
                     offset += 8;
                     assert notifyFunction != null;
-                    notifyFunction.notifyLine(frame, line, nextLine, sourceCodeLocation);
-                    line = nextLine;
+                    notifyFunction.notifyLine(frame, lineIndex, nextLineIndex, sourceCodeLocation);
+                    lineIndex = nextLineIndex;
                     break;
                 }
                 default:

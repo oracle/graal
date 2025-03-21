@@ -52,23 +52,15 @@ import org.graalvm.wasm.debugging.encoding.Attributes;
 import org.graalvm.wasm.debugging.languages.DebugLanguageSupport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.source.Source;
 
 /**
  * Extracts the debug information and converts it to an internal representation of values.
  */
 public class DebugTranslator {
     private final DebugParser parser;
-    private final DebugSourceLoader sourceLoader;
-    private final String testCompDir;
-    private final TruffleLanguage.Env env;
 
-    public DebugTranslator(byte[] data, String testCompDir, TruffleLanguage.Env env) {
+    public DebugTranslator(byte[] data) {
         this.parser = new DebugParser(data);
-        this.sourceLoader = new DebugSourceLoader();
-        this.testCompDir = testCompDir;
-        this.env = env;
     }
 
     @TruffleBoundary
@@ -115,9 +107,6 @@ public class DebugTranslator {
         if (compDir == null) {
             return null;
         }
-        if (!testCompDir.isEmpty()) {
-            compDir = testCompDir;
-        }
         final int lineOffset = DebugUtil.getLineOffsetOrUndefined(customData, debugInfoOffset);
         final int lineLength = DebugUtil.getLineLengthOrUndefined(customData, debugInfoOffset);
         if (lineOffset == DebugUtil.UNDEFINED || lineLength == DebugUtil.UNDEFINED) {
@@ -128,21 +117,20 @@ public class DebugTranslator {
             return null;
         }
         int nullSources = 0;
-        Source[] fileSources = new Source[fileLineMaps.length];
-        for (int i = 0; i < fileSources.length; i++) {
+        final Path[] filePaths = new Path[fileLineMaps.length];
+        for (int i = 0; i < filePaths.length; i++) {
             final DebugLineMap lineMap = fileLineMaps[i];
             if (lineMap != null) {
-                final Path path = lineMap.getFilePath();
-                fileSources[i] = sourceLoader.load(path, languageName, !testCompDir.isEmpty(), env);
+                filePaths[i] = lineMap.getFilePath();
             }
-            if (fileSources[i] == null) {
+            if (filePaths[i] == null) {
                 nullSources++;
             }
         }
-        if (nullSources == fileSources.length) {
+        if (nullSources == filePaths.length) {
             return null;
         }
-        return new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, fileSources, objectFactory);
+        return new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, filePaths, languageName, objectFactory);
     }
 
     private boolean parseFunctions(DebugParserContext context, DebugData data) {

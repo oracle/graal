@@ -41,6 +41,7 @@
 
 package org.graalvm.wasm.debugging.data;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -71,8 +72,6 @@ import org.graalvm.wasm.debugging.parser.DebugUtil;
 import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Represents a factory that creates the internal representation of all types and objects in the
@@ -158,7 +157,7 @@ public abstract class DebugObjectFactory {
             return null;
         }
         final IntArrayList dimensionLengths = new IntArrayList();
-        forEachChild(data, Tags.SUBRANGE_TYPE, s -> dimensionLengths.add(s.asI32OrDefault(Attributes.COUNT, 0)));
+        forEachChild(data, Tags.SUBRANGE_TYPE, s -> dimensionLengths.add(s.asU32OrDefault(Attributes.COUNT, 0)));
         return createArrayType(name, elementType, dimensionLengths.toArray());
     }
 
@@ -376,15 +375,15 @@ public abstract class DebugObjectFactory {
         final String name;
         final DebugData specData = context.dataOrNull(data.asI32OrDefault(Attributes.SPECIFICATION));
         if (specData != null) {
-            final int fileIndexValue = specData.asI32OrDefault(Attributes.DECL_FILE);
+            final int fileIndexValue = specData.asU32OrDefault(Attributes.DECL_FILE);
             if (fileIndexValue != DebugUtil.DEFAULT_I32) {
                 fileIndex = fileIndexValue;
             } else {
-                fileIndex = data.asI32OrDefault(Attributes.DECL_FILE, -1);
+                fileIndex = data.asU32OrDefault(Attributes.DECL_FILE, -1);
             }
             name = specData.asStringOrNull(Attributes.NAME);
         } else {
-            fileIndex = data.asI32OrDefault(Attributes.DECL_FILE, -1);
+            fileIndex = data.asU32OrDefault(Attributes.DECL_FILE, -1);
             name = data.asStringOrNull(Attributes.NAME);
         }
 
@@ -408,18 +407,12 @@ public abstract class DebugObjectFactory {
         assert pcs.length == 2 : "the pc range of a debug subprogram (function) must contain exactly two values (start pc and end pc)";
         final int scopeStartPc = pcs[0];
         final int scopeEndPc = pcs[1];
-        final int startLine = lineMap.getFirstLine(scopeStartPc, scopeEndPc);
+        final int startLine = lineMap.getNextLine(scopeStartPc, scopeEndPc);
         if (startLine == -1) {
             return null;
         }
 
-        final Source source = context.sourceOrNull(fileIndex);
-        final SourceSection sourceSection;
-        if (source != null) {
-            sourceSection = source.createSection(startLine);
-        } else {
-            sourceSection = null;
-        }
+        final Path path = context.pathOrNull(fileIndex);
 
         final byte[] frameBaseExpression = data.asByteArrayOrNull(Attributes.FRAME_BASE);
         if (frameBaseExpression == null) {
@@ -430,7 +423,7 @@ public abstract class DebugObjectFactory {
         parseChildren(context, functionScope, data);
         final List<DebugObject> globals = context.globals();
         final List<DebugObject> variables = functionScope.variables();
-        final DebugFunction function = new DebugFunction(name, lineMap, sourceSection, frameBaseExpression, variables, globals);
+        final DebugFunction function = new DebugFunction(name, lineMap, path, context.language(), startLine, frameBaseExpression, variables, globals);
         if (name != null) {
             context.addFunction(scopeStartPc, function);
         }
@@ -470,12 +463,32 @@ public abstract class DebugObjectFactory {
                 locationExpression = context.readLocationListOrNull(location);
             }
         }
-        final int fileIndex = data.asI32OrDefault(Attributes.DECL_FILE, scope.fileIndex());
-        final int startLineNumber = data.asI32OrDefault(Attributes.DECL_LINE, -1);
-        final int startLocation = context.sourceLocationOrDefault(fileIndex, startLineNumber, -1);
+        // check if the spec data contains the relevant information instead
+        if (locationExpression == null && specData != null) {
+            locationExpression = specData.asByteArrayOrNull(Attributes.LOCATION);
+            if (locationExpression == null) {
+                final int location = data.asI32OrDefault(Attributes.LOCATION);
+                if (location != DebugUtil.DEFAULT_I32) {
+                    locationExpression = context.readLocationListOrNull(location);
+                }
+            }
+        }
+        int fileIndex = data.asU32OrDefault(Attributes.DECL_FILE, -1);
+        if (fileIndex == -1) {
+            if (specData != null) {
+                fileIndex = specData.asU32OrDefault(Attributes.DECL_FILE, scope.fileIndex());
+            } else {
+                fileIndex = scope.fileIndex();
+            }
+        }
+        int startLineNumber = data.asU32OrDefault(Attributes.DECL_LINE, -1);
+        if (startLineNumber == -1 && specData != null) {
+            startLineNumber = specData.asU32OrDefault(Attributes.DECL_LINE, -1);
+        }
+        int startLocation = context.sourceOffsetOrDefault(fileIndex, startLineNumber, scope.startLocation());
         final int endLocation = scope.endLocation();
         final DebugObject variable;
-        if (locationExpression != null) {
+        if (startLocation != -1 && locationExpression != null) {
             variable = new DebugVariable(name, type, locationExpression, startLocation, endLocation);
         } else {
             variable = DebugConstantObject.UNDEFINED;
