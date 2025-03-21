@@ -72,8 +72,11 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
         return new FilterTypeFlow(methodFlows, this);
     }
 
+    /**
+     * Filter the incoming type state using the checked type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         TypeState result;
         if (isExact) {
             /*

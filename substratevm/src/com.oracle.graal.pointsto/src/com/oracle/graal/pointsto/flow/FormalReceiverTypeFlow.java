@@ -48,8 +48,11 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
         return new FormalReceiverTypeFlow(this, methodFlows);
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the incoming value using the receiver's
          * declared type.

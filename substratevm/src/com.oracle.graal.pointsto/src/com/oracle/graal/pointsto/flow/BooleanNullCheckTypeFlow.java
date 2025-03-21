@@ -48,8 +48,14 @@ public class BooleanNullCheckTypeFlow extends BooleanCheckTypeFlow {
         return new BooleanNullCheckTypeFlow(methodFlows, this);
     }
 
+    /**
+     * Creates a primitive type state that corresponds to the result of a null check of the incoming
+     * value.
+     *
+     * @return can be either empty, true, false, or any.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         var hasNull = newState.canBeNull();
         var hasTypes = newState.typesCount() > 0;
         return convertToBoolean(bb, hasNull, hasTypes);

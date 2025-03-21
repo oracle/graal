@@ -63,25 +63,21 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
     }
 
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        return super.addState(bb, eval(bb));
-    }
-
-    @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * If an input saturated, it does not mean that the condition has to always saturate as
          * well, e.g. Any == {5} will return {5}.
          */
-        super.addState(bb, eval(bb));
+        addState(bb, TypeState.forEmpty());
     }
 
     /**
-     * Compares the type states of left and right.
+     * Computes new type state of this flow by comparing the type states of left and right.
      *
      * @return can be either empty, true, false, or any.
      */
-    public TypeState eval(PointsToAnalysis bb) {
+    @Override
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         var leftState = left.getOutputState(bb);
         var rightState = right.getOutputState(bb);
         if (leftState.isEmpty() || rightState.isEmpty()) {

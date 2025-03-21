@@ -647,6 +647,27 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         }
     }
 
+    @Override
+    public void afterAnalysis() {
+        /*
+         * Only verify in the context-insensitive configuration as context-sensitive analysis is not
+         * compatible with predicates.
+         */
+        assert !PointstoOptions.AnalysisContextSensitivity.getValue(options).equals("insens") || validateFixedPointState();
+    }
+
+    /**
+     * This method checks that the typeflow graph is in a valid state when a fixed point is reached.
+     * The goal of this check is to detect cases where the analysis did not propagate all updates
+     * correctly (e.g. due to a concurrency bug) and provide concrete localized counter-examples to
+     * ease the debugging of such issues.
+     * <p/>
+     * As these checks can be expensive, this method should be executed only if asserts are enabled.
+     */
+    public boolean validateFixedPointState() {
+        return universe.getMethods().parallelStream().allMatch(m -> m.validateFixedPointState(this));
+    }
+
     @SuppressWarnings("try")
     public boolean doTypeflow() throws InterruptedException {
         boolean didSomeWork;

@@ -45,8 +45,11 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         super(original, methodFlows);
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the stored value using the field's
          * declared type.

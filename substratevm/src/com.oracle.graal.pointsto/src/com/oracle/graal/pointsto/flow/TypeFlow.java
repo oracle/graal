@@ -526,11 +526,9 @@ public abstract class TypeFlow<T> {
         PointsToStats.registerTypeFlowUpdate(bb, this, add);
         TypeState before;
         TypeState after;
-        TypeState filteredAdd;
         do {
             before = state;
-            filteredAdd = filter(bb, add);
-            after = TypeState.forUnion(bb, before, filteredAdd);
+            after = newState(bb, add, before);
             if (after.equals(before)) {
                 return false;
             }
@@ -546,6 +544,14 @@ public abstract class TypeFlow<T> {
         }
 
         return true;
+    }
+
+    /**
+     * Side-effect-free method for retrieving the next type state of this flow.
+     */
+    private TypeState newState(PointsToAnalysis bb, TypeState add, TypeState before) {
+        TypeState filteredAdd = processInputState(bb, add);
+        return TypeState.forUnion(bb, before, filteredAdd);
     }
 
     protected void propagateState(PointsToAnalysis bb, boolean postFlow, TypeState newState) {
@@ -787,7 +793,13 @@ public abstract class TypeFlow<T> {
         ConcurrentLightHashSet.clear(this, INPUTS_UPDATER);
     }
 
-    public TypeState filter(@SuppressWarnings("unused") PointsToAnalysis bb, TypeState newState) {
+    /**
+     * Hook for subclasses to transform the incoming type state based on the semantics of the given
+     * flow. Most flows perform only filtering, but in some cases, e.g.
+     * {@link BooleanInstanceOfCheckTypeFlow}, an incoming object type state is transformed into a
+     * primitive state.
+     */
+    protected TypeState processInputState(@SuppressWarnings("unused") PointsToAnalysis bb, TypeState newState) {
         return newState;
     }
 
@@ -952,6 +964,9 @@ public abstract class TypeFlow<T> {
         for (TypeFlow<?> predicatedFlow : getPredicatedFlows()) {
             swapAtPredicated(bb, newFlow, predicatedFlow);
         }
+        if (isSaturated()) {
+            AtomicUtils.atomicMark(this, PREDICATE_TRIGGERED_UPDATER);
+        }
     }
 
     protected void swapAtUse(PointsToAnalysis bb, TypeFlow<?> newFlow, TypeFlow<?> use) {
@@ -1064,6 +1079,53 @@ public abstract class TypeFlow<T> {
         source = newSource;
 
         validateSource();
+    }
+
+    /**
+     * @see PointsToAnalysis#validateFixedPointState
+     */
+    public boolean validateFixedPointState(BigBang bb) {
+        if (!isFlowEnabled()) {
+            assert !isSaturated() : "Flows cannot be saturated before they are enabled " + this;
+            assert !predicateAlreadyTriggered() : "This flow is disabled, predicate edge should not have been triggered " + this;
+            return true;
+        }
+        if (!isSaturated() && state.isEmpty()) {
+            assert !predicateAlreadyTriggered() : "Predicate edge should only be triggered after the state becomes non-empty or the flow saturates " + this;
+            return true;
+        }
+        /* This flow is either saturated or has non-empty state */
+        if (this instanceof InvokeTypeFlow) {
+            assert getPredicatedFlows().isEmpty() : "Invoke flows should have no predicated flows " + this;
+            assert !predicateAlreadyTriggered() : "Invoke flows should not use their predicate edge at all" + this;
+        } else {
+            assert predicateAlreadyTriggered() : "This flow is either saturated or has non-empty state, therefore the predicate edge should have been already triggered " + this;
+            for (TypeFlow<?> predicated : getPredicatedFlows()) {
+                assert predicated.isFlowEnabled() : "Predicate edge was triggered, therefore " + predicated + " should have been enabled from " + this;
+            }
+        }
+        PointsToAnalysis pta = (PointsToAnalysis) bb;
+        if (isSaturated()) {
+            assert getUses().isEmpty() : "Uses of saturated flows should have been removed by now " + this + " " + getUses();
+            assert getObservers().isEmpty() : "Observers of saturated flows should have been removed by now " + this + " " + getObservers();
+        } else {
+            for (TypeFlow<?> use : getUses()) {
+                /*
+                 * The type state of saturated flows is not updated anymore. FormalReceiverTypeFlow
+                 * has a special update method.
+                 */
+                if (use.isSaturated() || use instanceof FormalReceiverTypeFlow) {
+                    continue;
+                }
+                /*
+                 * Ensure that the type state was propagated correctly along this use edge.
+                 */
+                var nextState = use.newState(pta, state, use.state);
+                assert nextState.equals(use.state) || (!use.isFlowEnabled() && INPUT_SATURATED_UPDATER.get(use) == SIGNAL_RECEIVED) : "State from " + this + " to " + use +
+                                " was not propagated correctly: " + use.state + " " + state + " => " + nextState;
+            }
+        }
+        return true;
     }
 
     public String formatSource() {
