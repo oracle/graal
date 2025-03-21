@@ -221,6 +221,11 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     @Override
+    public boolean isFiller() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return name;
     }
