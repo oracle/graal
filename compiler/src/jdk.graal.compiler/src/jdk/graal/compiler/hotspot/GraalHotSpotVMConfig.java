@@ -400,8 +400,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, JDK > 21 ? "int64_t" : null);
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t");
-    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
-    public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
+    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1, JDK < 25);
+    public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*", -1, JDK < 25);
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK > 21 ? "int64_t" : "JavaThread*");
 
     public final int contEntryOffset = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
@@ -454,6 +454,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class, -1, !g1LowLatencyPostWriteBarrierSupport);
     public final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class, -1, !g1LowLatencyPostWriteBarrierSupport);
     public final int g1CardTableBaseOffset = getConstant("G1ThreadLocalData::card_table_base_offset", Integer.class, -1, g1LowLatencyPostWriteBarrierSupport);
+
+    public final int shenandoahGCStateOffset = getConstant("ShenandoahThreadLocalData::gc_state_offset", Integer.class);
 
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
@@ -624,6 +626,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing = getZGCAddressField("ZBarrierSetRuntime::store_barrier_on_oop_field_without_healing");
     public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("ZBarrierSetRuntime::load_barrier_on_oop_array");
     public final int zPointerLoadShift = getConstant("ZPointerLoadShift", Integer.class, -1, osArch.equals("aarch64") && zgcSupport);
+
+    public final long shenandoahLoadBarrierStrong = getAddress("ShenandoahRuntime::load_reference_barrier_strong");
+    public final long shenandoahLoadBarrierStrongNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_strong_narrow");
+    public final long shenandoahLoadBarrierWeak = getAddress("ShenandoahRuntime::load_reference_barrier_weak");
+    public final long shenandoahLoadBarrierWeakNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_weak_narrow");
+    public final long shenandoahLoadBarrierPhantom = getAddress("ShenandoahRuntime::load_reference_barrier_phantom");
+    public final long shenandoahLoadBarrierPhantomNarrow = getAddress("ShenandoahRuntime::load_reference_barrier_phantom_narrow");
 
     // aarch64 specific nmethod entry barrier support
     // @formatter:off

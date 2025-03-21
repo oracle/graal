@@ -882,11 +882,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = read.graph();
         JavaKind valueKind = read.getReadKind();
         Stamp loadStamp = loadStamp(read.stamp(NodeView.DEFAULT), valueKind, read.isCompressible());
-
         ReadNode memoryRead = graph.add(new ReadNode(read.getAddress(), read.getLocationIdentity(), loadStamp, read.getBarrierType(), read.getMemoryOrder()));
 
         GuardingNode guard = read.getGuard();
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead, read.isCompressible());
+        boolean narrow = useCompressedOops(valueKind, read.isCompressible());
+        readValue = barrierSet.addLoadBarrier(graph, readValue, memoryRead.getAddress(), memoryRead.getBarrierType(), narrow);
         if (guard == null) {
             // An unsafe read must not float otherwise it may float above
             // a test guaranteeing the read is safe.

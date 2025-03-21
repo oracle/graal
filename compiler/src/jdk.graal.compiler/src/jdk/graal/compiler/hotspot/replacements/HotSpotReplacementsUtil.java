@@ -717,6 +717,11 @@ public class HotSpotReplacementsUtil {
         return config.useCondCardMark;
     }
 
+    @Fold
+    public static int shenandoahGCStateOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.shenandoahGCStateOffset;
+    }
+
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
 
     @Fold

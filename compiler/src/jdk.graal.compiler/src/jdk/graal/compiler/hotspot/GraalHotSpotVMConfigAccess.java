@@ -190,7 +190,7 @@ public class GraalHotSpotVMConfigAccess {
             List<String> messages = new ArrayList<>();
             if (!missing.isEmpty()) {
                 messages.add(String.format("VM config values missing that should be present in %s:%n    %s", runtime,
-                                missing.stream().sorted().collect(Collectors.joining(System.lineSeparator() + "    "))));
+                                missing.stream().sorted().collect(Collectors.joining(  " /   "))));
             }
             if (!unexpected.isEmpty()) {
                 messages.add(String.format("VM config values not expected to be present in %s:%n    %s", runtime,
