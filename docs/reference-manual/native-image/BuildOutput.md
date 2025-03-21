@@ -283,6 +283,12 @@ This feature is currently only available for code compiled by Graal for Linux AM
 
 The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
 
+#### <a name="recommendation-futr"></a>`FUTR`: Use the Correct Semantics and Prepare for Future Releases
+
+Use `--future-defaults=all` to enable all features that are planned to be default in a future GraalVM release.
+This option is unlikely to affect your program's behavior but guarantees that it adheres to the correct execution semantics.
+Additionally, it safeguards against unexpected changes in future GraalVM updates.
+
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
 The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/22/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
