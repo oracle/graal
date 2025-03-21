@@ -99,10 +99,7 @@ public class StackSlotLimitTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void test1() {
-        // OptionValues options = new OptionValues(getInitialOptions(), HighTier.Options.Inline,
-        // false);
-        OptionValues options = getInitialOptions();
-        test(options, "testSnippet1");
+        test("testSnippet1");
     }
 
     @Override
