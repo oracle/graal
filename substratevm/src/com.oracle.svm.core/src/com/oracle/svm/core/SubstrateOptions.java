@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -76,6 +77,7 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.amd64.AMD64;
 
 public class SubstrateOptions {
 
@@ -679,9 +681,6 @@ public class SubstrateOptions {
                     "After the library path, a comma-separated list of options specific to the library can be used.", type = OptionType.User)//
     public static final RuntimeOptionKey<String> JVMTIAgentPath = new RuntimeOptionKey<>(null);
 
-    @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
-    public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
-
     public static final String BUILD_ARTIFACTS_FILE_NAME = "build-artifacts.json";
     @Option(help = "Create a " + BUILD_ARTIFACTS_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
                     "docs/reference-manual/native-image/assets/build-artifacts-schema-v0.9.0.json", type = OptionType.User)//
@@ -972,7 +971,15 @@ public class SubstrateOptions {
      */
     @Fold
     public static int codeAlignment() {
-        return CodeAlignment.getValue();
+        int value = ConcealedOptions.CodeAlignment.getValue();
+        if (value > 0) {
+            return value;
+        }
+
+        if (ConfigurationValues.getTarget().arch instanceof AMD64 && optimizationLevel() != OptimizationLevel.SIZE) {
+            return 32;
+        }
+        return 16;
     }
 
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
@@ -1121,11 +1128,13 @@ public class SubstrateOptions {
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
 
-        /**
-         * Use {@link SubstrateOptions#getAllocatePrefetchStyle()} instead.
-         */
+        /** Use {@link SubstrateOptions#getAllocatePrefetchStyle()} instead. */
         @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
         public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
+
+        /** Use {@link SubstrateOptions#codeAlignment()} instead. */
+        @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
+        public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);
     }
 
     @Fold
