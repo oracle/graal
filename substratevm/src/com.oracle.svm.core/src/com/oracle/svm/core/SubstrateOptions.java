@@ -224,6 +224,13 @@ public class SubstrateOptions {
     public static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
     public static OptionEnabledHandler<Boolean> imageLayerCreateEnabledHandler;
 
+    @APIOption(name = "-javaagent", valueSeparator = ':')//
+    @Option(help = "Enable the specified java agent in native image. Usage: -javaagent:<jarpath>[=<options>]. " +
+                    "The java agent will run at image build time to take its effects in the output native image. " +
+                    "Be noticed: The java agent's premain method will be re-executed at native image runtime. " +
+                    "The agent should isolate the executions according to runtime environment.", type = User, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> JavaAgent = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
     @Fold
     public static boolean getSourceLevelDebug() {
         return SourceLevelDebug.getValue();
