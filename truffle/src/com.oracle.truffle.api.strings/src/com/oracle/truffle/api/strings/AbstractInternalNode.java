@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
-@ImportStatic({TStringGuards.class, Encoding.class})
+@ImportStatic({TStringGuards.class, Encoding.class, JCodings.class})
 @GenerateUncached(value = true, inherit = true)
 @GenerateInline(value = true, inherit = true)
 @GenerateCached(value = false, inherit = true)
