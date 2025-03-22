@@ -400,8 +400,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, JDK > 21 ? "int64_t" : null);
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t");
-    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
-    public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
+    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1, JDK == 21);
+    public final int objectMonitorEntryList = getFieldOffset(JDK == 21 ? "ObjectMonitor::_EntryList" : "ObjectMonitor::_entry_list", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK > 21 ? "int64_t" : "JavaThread*");
 
     public final int contEntryOffset = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
