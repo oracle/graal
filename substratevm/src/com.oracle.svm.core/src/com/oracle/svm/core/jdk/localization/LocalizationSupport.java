@@ -86,7 +86,7 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create();
+    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create("registeredBundles");
 
     public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
         this.allLocales = locales.toArray(new Locale[0]);
