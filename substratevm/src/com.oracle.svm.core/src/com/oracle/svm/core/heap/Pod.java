@@ -332,7 +332,7 @@ public final class Pod<T> {
             }
         }
 
-        private final EconomicMap<PodSpec, PodInfo> pods = ImageHeapMap.create();
+        private final EconomicMap<PodSpec, PodInfo> pods = ImageHeapMap.create("pods");
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public RuntimeSupport() {

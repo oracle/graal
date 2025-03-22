@@ -109,7 +109,7 @@ public final class PredefinedClassesSupport {
     private final ReentrantLock lock = new ReentrantLock();
 
     /** Predefined classes by hash. */
-    private final EconomicMap<String, Class<?>> predefinedClassesByHash = ImageHeapMap.create();
+    private final EconomicMap<String, Class<?>> predefinedClassesByHash = ImageHeapMap.create("predefinedClassesByHash");
 
     /** Predefined classes which have already been loaded, by name. */
     private final EconomicMap<String, Class<?>> loadedClassesByName = EconomicMap.create();
