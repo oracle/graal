@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57063 Bytecode-DSL: The `@Variadic` annotation can now also be used on `@Operation` annotated classes to indicate that the operation produces a dynamic variadic return value. Dynamic variadic return values are efficiently flattened into the object array of a variadic operand.
 * GR-57063 Bytecode-DSL: Added a `variadicStackLimit` parameter to `@GenerateBytecode` that allows to specify how many variable arguments are stored on the stack before they are collapsed into an object array. 
 * GR-50017 TruffleStringIterator.NextNode and TruffleStringIterator.PreviousNode now require the iterated string's encoding as a parameter for performance reasons.
+* GR-63075 Java host interop again inherits public method methods from non-public base classes if public access is enabled. This was originally changed in 24.1.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

@@ -271,5 +271,17 @@
     "methods": [
       { "name": "getIsolate", "parameterTypes": ["java.lang.Object"] }
     ]
+  },
+  {
+    "name": "com.oracle.truffle.api.test.host.GR63075Test$BaseClass",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.host.GR63075Test$SubClass",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.host.GR63075Test$NonPublicSubClass",
+    "allPublicMethods": true
   }
 ]
