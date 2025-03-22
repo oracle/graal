@@ -1362,6 +1362,20 @@ native_image = mx_sdk_vm.GraalVmJreComponent(
             headers=False,
             home_finder=False,
         ),
+        mx_sdk_vm.LibraryConfig(
+            use_modules='image',
+            destination="<lib:native-image-reflection-agent>",
+            jvm_library=True,
+            jar_distributions=[
+                'substratevm:JVMTI_AGENT_BASE',
+                'substratevm:SVM_REFLECTION_AGENT',
+            ],
+            build_args=driver_build_args + [
+                '--features=com.oracle.svm.reflectionagent.NativeImageReflectionAgent$RegistrationFeature',
+            ],
+            headers=False,
+            home_finder=False,
+        ),
     ],
     installable=True,
     stability="earlyadopter",

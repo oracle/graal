@@ -1390,4 +1390,7 @@ public class SubstrateOptions {
 
     @Option(help = "file:doc-files/LibGraalClassLoader.txt")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
+
+    @Option(help = "Enable the deterministic, bytecode level analysis for constant reflection usage.")//
+    public static final HostedOptionKey<Boolean> EnableStrictReflection = new HostedOptionKey<>(true);
 }

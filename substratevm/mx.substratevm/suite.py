@@ -265,6 +265,7 @@ suite = {
             "shadedDependencies" : [
                 "compiler:ASM_9.7.1",
                 "compiler:ASM_TREE_9.7.1",
+                "compiler:ASM_ANALYSIS_9.7.1",
             ],
             "class" : "ShadedLibraryProject",
             "shade" : {
@@ -1491,6 +1492,32 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.reflectionagent": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "JVMTI_AGENT_BASE",
+                "com.oracle.svm.configure",
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.loader",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "21+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1689,6 +1716,7 @@ suite = {
                             org.graalvm.nativeimage.agent.jvmtibase,
                             org.graalvm.nativeimage.agent.tracing,
                             org.graalvm.nativeimage.agent.diagnostics,
+                            org.graalvm.nativeimage.agent.reflection,
                             com.oracle.svm.svm_enterprise,
                             com.oracle.svm.svm_enterprise.llvm,
                             com.oracle.svm_enterprise.ml_dataset,
@@ -1714,6 +1742,7 @@ suite = {
                     "com.oracle.svm.hosted.fieldfolding           to jdk.graal.compiler",
                     "com.oracle.svm.hosted.phases                 to jdk.graal.compiler",
                     "com.oracle.svm.hosted.reflect                to jdk.graal.compiler",
+                    "com.oracle.svm.shaded.org.objectweb.asm",
                 ],
                 "requires": [
                     "java.management",
@@ -2118,6 +2147,30 @@ suite = {
             "maven": False,
         },
 
+        "SVM_REFLECTION_AGENT": {
+            "subDir": "src",
+            "description" : "Native-image agent for constant reflection detection",
+            "dependencies": [
+                "com.oracle.svm.reflectionagent",
+                "com.oracle.svm.configure",
+            ],
+            "distDependencies": [
+                "JVMTI_AGENT_BASE",
+                "LIBRARY_SUPPORT",
+                "SVM_CONFIGURE"
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.reflection",
+                "exports" : [
+                    "com.oracle.svm.reflectionagent",
+                ],
+                "requires": [
+                  "org.graalvm.nativeimage.builder",
+                ],
+            },
+            "maven": False,
+        },
+
         "SVM_CONFIGURE": {
             "subDir": "src",
             "description" : "SubstrateVM native-image configuration tool",
@@ -2132,6 +2185,7 @@ suite = {
                 "name" : "org.graalvm.nativeimage.configure",
                 "exports" : [
                     "* to org.graalvm.nativeimage.agent.tracing",
+                    "* to org.graalvm.nativeimage.agent.reflection",
                     "com.oracle.svm.configure",
                     "com.oracle.svm.configure.command",
                 ],
@@ -2167,7 +2221,7 @@ suite = {
                     "org.graalvm.collections",
                 ],
                 "exports" : [
-                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,nativeimage.agent.reflection,org,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
