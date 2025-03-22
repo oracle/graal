@@ -29,6 +29,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +39,8 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -168,6 +172,43 @@ public final class ConfigurationFiles {
 
         @Option(help = "Warn when reflection and JNI configuration files have elements that could not be found on the classpath or modulepath.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> WarnAboutMissingReflectionOrJNIMetadataElements = new HostedOptionKey<>(false);
+
+        /**
+         * Converts hosted options to a set of {@link ConfigurationParserOption parser options} used
+         * by {@link com.oracle.svm.configure.ConfigurationParser}.
+         */
+        public static EnumSet<ConfigurationParserOption> getConfigurationParserOptions() {
+            EnumSet<ConfigurationParserOption> result = EnumSet.noneOf(ConfigurationParserOption.class);
+            if (StrictConfiguration.getValue()) {
+                result.add(ConfigurationParserOption.STRICT_CONFIGURATION);
+            }
+            if (WarnAboutMissingReflectionOrJNIMetadataElements.getValue()) {
+                result.add(ConfigurationParserOption.PRINT_MISSING_ELEMENTS);
+            }
+            if (TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+                result.add(ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
+            }
+            if (TreatAllNameEntriesAsType.getValue()) {
+                result.add(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE);
+            }
+            return result;
+        }
+
+        /**
+         * Like {@link #getConfigurationParserOptions()}, but overrides the hosted options with
+         * specific includes and excludes sets.
+         */
+        public static EnumSet<ConfigurationParserOption> getConfigurationParserOptions(EnumSet<ConfigurationParserOption> includes, EnumSet<ConfigurationParserOption> excludes) {
+            assert includes == null || excludes == null || Collections.disjoint(includes, excludes);
+            EnumSet<ConfigurationParserOption> result = getConfigurationParserOptions();
+            if (includes != null) {
+                result.addAll(includes);
+            }
+            if (excludes != null) {
+                result.removeAll(excludes);
+            }
+            return result;
+        }
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {

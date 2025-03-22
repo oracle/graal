@@ -32,10 +32,10 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 
 import jdk.graal.compiler.java.LambdaUtils;
 

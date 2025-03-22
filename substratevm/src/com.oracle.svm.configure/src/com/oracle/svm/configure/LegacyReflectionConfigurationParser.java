@@ -22,10 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,7 +34,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.util.TypeResult;
 
 final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigurationParser<C, T> {
 
@@ -43,12 +45,15 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated", "serializable");
 
-    private final boolean treatAllNameEntriesAsType;
+    LegacyReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, delegate, parserOptions);
+    }
 
-    LegacyReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
-                    boolean printMissingElements, boolean treatAllNameEntriesAsType) {
-        super(conditionResolver, delegate, strictConfiguration, printMissingElements);
-        this.treatAllNameEntriesAsType = treatAllNameEntriesAsType;
+    @Override
+    protected EnumSet<ConfigurationParserOption> supportedOptions() {
+        EnumSet<ConfigurationParserOption> base = super.supportedOptions();
+        base.add(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE);
+        return base;
     }
 
     @Override
@@ -60,7 +65,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
     protected void parseClass(EconomicMap<String, Object> data) {
         checkAttributes(data, "reflection class descriptor object", List.of(NAME_KEY), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
 
-        Optional<TypeDescriptorWithOrigin> type = parseName(data, treatAllNameEntriesAsType);
+        Optional<TypeDescriptorWithOrigin> type = parseName(data, checkOption(ConfigurationParserOption.TREAT_ALL_NAME_ENTRIES_AS_TYPE));
         if (type.isEmpty()) {
             return;
         }

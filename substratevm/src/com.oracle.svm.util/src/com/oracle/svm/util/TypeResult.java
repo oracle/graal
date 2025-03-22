@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.util;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Encode the result of loading a class. It contains either a type object, if the loading is
@@ -92,7 +90,7 @@ public final class TypeResult<T> {
         if (type != null) {
             return type;
         } else {
-            throw VMError.shouldNotReachHere("Type " + name + " not found", exception);
+            throw new IllegalStateException("Type " + name + " not found", exception);
         }
     }
 }

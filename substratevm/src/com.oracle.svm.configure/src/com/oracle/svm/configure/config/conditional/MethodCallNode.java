@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
 
 /**
  * Models a call tree. Each node represents a method invocation, and each edge represents a call

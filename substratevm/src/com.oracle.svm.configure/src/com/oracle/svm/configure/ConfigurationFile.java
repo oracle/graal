@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.RESOURCES_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.SERIALIZATION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.RESOURCES_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.SERIALIZATION_KEY;
 
 import java.util.Arrays;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.util;
 
-import java.net.URI;
+import java.util.IllformedLocaleException;
+import java.util.Locale;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+public class LocaleUtil {
 
-final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
-        super(conditionResolver, registry, strictConfiguration);
-    }
-
-    @Override
-    public void parseAndRegister(Object json, URI origin) {
-        Object resourcesJson = getFromGlobalFile(json, RESOURCES_KEY);
-        if (resourcesJson != null) {
-            parseGlobsObject(resourcesJson, origin);
+    /**
+     * @return locale for given tag or null for invalid ones
+     */
+    @SuppressWarnings("deprecation")
+    public static Locale parseLocaleFromTag(String tag) {
+        try {
+            return new Locale.Builder().setLanguageTag(tag).build();
+        } catch (IllformedLocaleException ex) {
+            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
+            String[] parts = tag.split("-");
+            switch (parts.length) {
+                case 1:
+                    return new Locale(parts[0]);
+                case 2:
+                    return new Locale(parts[0], parts[1]);
+                case 3:
+                    return new Locale(parts[0], parts[1], parts[2]);
+                default:
+                    return null;
+            }
         }
-        Object bundlesJson = getFromGlobalFile(json, BUNDLES_KEY);
-        if (bundlesJson != null) {
-            parseBundlesObject(bundlesJson);
-        }
-    }
-
-    @Override
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
-        return parseCondition(condition, true);
     }
 }

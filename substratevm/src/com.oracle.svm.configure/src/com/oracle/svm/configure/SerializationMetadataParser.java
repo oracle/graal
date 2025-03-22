@@ -22,9 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,12 +33,13 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.LogUtils;
 
 final class SerializationMetadataParser<C> extends SerializationConfigurationParser<C> {
 
-    SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
-        super(conditionResolver, serializationSupport, strictConfiguration);
+    SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, serializationSupport, parserOptions);
     }
 
     @Override

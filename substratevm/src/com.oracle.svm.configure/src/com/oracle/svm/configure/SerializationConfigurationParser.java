@@ -23,33 +23,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+
 import jdk.graal.compiler.util.json.JsonParserException;
 
-public abstract class SerializationConfigurationParser<C> extends ConfigurationParser {
+public abstract class SerializationConfigurationParser<C> extends ConditionalConfigurationParser {
 
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
 
     protected final ConfigurationConditionResolver<C> conditionResolver;
     protected final RuntimeSerializationSupport<C> serializationSupport;
 
-    public static <C> SerializationConfigurationParser<C> create(boolean strictMetadata, ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
-                    boolean strictConfiguration) {
-        if (strictMetadata) {
-            return new SerializationMetadataParser<>(conditionResolver, serializationSupport, strictConfiguration);
+    public static <C> SerializationConfigurationParser<C> create(boolean combinedFileSchema, ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
+                    EnumSet<ConfigurationParserOption> parserOptions) {
+        if (combinedFileSchema) {
+            return new SerializationMetadataParser<>(conditionResolver, serializationSupport, parserOptions);
         } else {
-            return new LegacySerializationConfigurationParser<>(conditionResolver, serializationSupport, strictConfiguration);
+            return new LegacySerializationConfigurationParser<>(conditionResolver, serializationSupport, parserOptions);
         }
     }
 
-    public SerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
-        super(strictConfiguration);
+    public SerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
+                    EnumSet<ConfigurationParserOption> parserOptions) {
+        super(parserOptions);
         this.serializationSupport = serializationSupport;
         this.conditionResolver = conditionResolver;
     }

@@ -1228,6 +1228,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
+        'substratevm:SVM_CONFIGURE',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
