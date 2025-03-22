@@ -105,6 +105,7 @@ import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
@@ -942,6 +943,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 for (int i = 0; i < cp.parameterTypes.length; i++) {
                     b.getParameterNames().set(i, new Text.Reader(cp.parameterTypes[i].getName()));
                 }
+                return true;
+            } else if (pointer instanceof CGlobalDataBasePointer) {
+                builder.setCGlobalDataBasePointer(Void.VOID);
                 return true;
             }
         }

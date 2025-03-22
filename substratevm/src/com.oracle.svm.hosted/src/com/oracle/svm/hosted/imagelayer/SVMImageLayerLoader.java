@@ -1415,6 +1415,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                             .map(this::lookupBaseLayerTypeInHostVM).toArray(Class[]::new);
             values[i] = new RelocatableConstant(new CEntryPointLiteralCodePointer(definingClass, methodName, parameterTypes), cEntryPointerLiteralPointerType);
             return true;
+        } else if (constantRef.isCGlobalDataBasePointer()) {
+            values[i] = new AnalysisFuture<>(() -> {
+                throw AnalysisError.shouldNotReachHere("Reading the CGlobalData base address of the base image is not implemented.");
+            });
+            return true;
         }
         return false;
     }
