@@ -35,8 +35,6 @@ import java.util.Base64;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-import com.oracle.svm.core.util.VMError;
-
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class JsonFileWriter implements Closeable {
@@ -75,7 +73,7 @@ public class JsonFileWriter implements Closeable {
             }
             writeEntry(str.toString());
         } catch (IOException e) {
-            throw VMError.shouldNotReachHere(e);
+            throw new RuntimeException("StringWriter should not throw IOExceptions", e);
         }
     }
 

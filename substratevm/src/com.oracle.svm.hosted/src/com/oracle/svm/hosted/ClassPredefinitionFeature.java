@@ -44,10 +44,10 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
+import com.oracle.svm.configure.PredefinedClassesRegistry;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.configure.PredefinedClassesRegistry;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -92,7 +92,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
-        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.StrictConfiguration.getValue());
+        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.getConfigurationParserOptions());
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());

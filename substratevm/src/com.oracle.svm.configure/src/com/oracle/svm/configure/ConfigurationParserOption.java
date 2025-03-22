@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.configure;
 
-package com.oracle.svm.core.configure;
+/**
+ * {@link ConfigurationParser} options that control parsing behaviour. Options are not necessarily
+ * supported by all parsers.
+ */
+public enum ConfigurationParserOption {
+    /**
+     * Fail when a configuration file has incorrect schema (e.g., extraneous fields).
+     */
+    STRICT_CONFIGURATION,
 
-import java.util.Comparator;
-import java.util.function.Function;
+    /**
+     * Log a warning for each reflection element (e.g., class, field) that could not be resolved.
+     */
+    PRINT_MISSING_ELEMENTS,
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+    /**
+     * Treat the legacy "typeReachable" condition as a "typeReached" condition checked at run time.
+     */
+    TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED,
 
-public record ConditionalElement<T>(UnresolvedConfigurationCondition condition, T element) {
-
-    public static <T extends Comparable<T>> Comparator<ConditionalElement<T>> comparator() {
-        return (o1, o2) -> Comparator
-                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element)
-                        .thenComparing(ConditionalElement::condition)
-                        .compare(o1, o2);
-    }
-
-    public static <T> Comparator<ConditionalElement<T>> comparator(Comparator<T> elementComparator) {
-        return (o1, o2) -> Comparator
-                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::element, elementComparator)
-                        .thenComparing(ConditionalElement::condition)
-                        .compare(o1, o2);
-    }
+    /**
+     * Treat the "name" entry in a legacy reflection configuration as a "type" entry.
+     */
+    TREAT_ALL_NAME_ENTRIES_AS_TYPE
 }

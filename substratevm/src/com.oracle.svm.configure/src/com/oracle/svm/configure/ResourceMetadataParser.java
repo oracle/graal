@@ -22,42 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.configure;
 
-package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
+import java.net.URI;
+import java.util.EnumSet;
 
-import java.util.List;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.util.StringUtil;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
-public class GlobUtils {
+final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
+    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, registry, parserOptions);
+    }
 
-    /* list of glob wildcards we are always escaping because they are not supported yet */
-    public static final List<Character> ALWAYS_ESCAPED_GLOB_WILDCARDS = List.of('?', '[', ']', '{', '}');
-
-    public static String transformToTriePath(String resource, String module) {
-        String resolvedModuleName;
-        if (module == null || module.isEmpty()) {
-            resolvedModuleName = "ALL_UNNAMED";
-        } else {
-            resolvedModuleName = StringUtil.toSlashSeparated(module);
+    @Override
+    public void parseAndRegister(Object json, URI origin) {
+        Object resourcesJson = getFromGlobalFile(json, RESOURCES_KEY);
+        if (resourcesJson != null) {
+            parseGlobsObject(resourcesJson, origin);
         }
-
-        /* prepare for concatenation */
-        if (!resolvedModuleName.endsWith("/")) {
-            resolvedModuleName += "/";
+        Object bundlesJson = getFromGlobalFile(json, BUNDLES_KEY);
+        if (bundlesJson != null) {
+            parseBundlesObject(bundlesJson);
         }
+    }
 
-        /*
-         * if somebody wrote resource like: /foo/bar/** we already append / in resolvedModuleName,
-         * and we don't want module//foo/bar/**
-         */
-        String resolvedResourceName;
-        if (resource.startsWith("/")) {
-            resolvedResourceName = resource.substring(1);
-        } else {
-            resolvedResourceName = resource;
-        }
-
-        return resolvedModuleName + resolvedResourceName;
+    @Override
+    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition) {
+        return parseCondition(condition, true);
     }
 }

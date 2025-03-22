@@ -22,39 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
+import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
-public record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTypeDescriptor {
+public record ProxyConfigurationTypeDescriptor(List<String> interfaceNames) implements ConfigurationTypeDescriptor {
 
-    public NamedConfigurationTypeDescriptor(String name) {
-        this.name = ConfigurationTypeDescriptor.checkQualifiedJavaName(name);
+    public ProxyConfigurationTypeDescriptor(List<String> interfaceNames) {
+        this.interfaceNames = interfaceNames.stream().map(ConfigurationTypeDescriptor::checkQualifiedJavaName).toList();
     }
 
     @Override
     public Kind getDescriptorType() {
-        return Kind.NAMED;
+        return Kind.PROXY;
     }
 
     @Override
     public String toString() {
-        return name;
+        return "Proxy[" + String.join(", ", interfaceNames) + "]";
     }
 
     @Override
     public Collection<String> getAllQualifiedJavaNames() {
-        return Collections.singleton(name);
+        return interfaceNames;
     }
 
     @Override
     public int compareTo(ConfigurationTypeDescriptor other) {
-        if (other instanceof NamedConfigurationTypeDescriptor namedOther) {
-            return name.compareTo(namedOther.name);
+        if (other instanceof ProxyConfigurationTypeDescriptor proxyOther) {
+            return Arrays.compare(interfaceNames.toArray(String[]::new), proxyOther.interfaceNames.toArray(String[]::new));
         } else {
             return getDescriptorType().compareTo(other.getDescriptorType());
         }
@@ -62,6 +64,9 @@ public record NamedConfigurationTypeDescriptor(String name) implements Configura
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.quote(name);
+        writer.appendObjectStart();
+        writer.quote("proxy").appendFieldSeparator();
+        JsonPrinter.printCollection(writer, interfaceNames, null, (String p, JsonWriter w) -> w.quote(p));
+        writer.appendObjectEnd();
     }
 }

@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;

@@ -38,16 +38,16 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.TypeResult;
 
 public class RegistryAdapter implements ReflectionConfigurationParserDelegate<ConfigurationCondition, Class<?>> {
     private final ReflectionRegistry registry;

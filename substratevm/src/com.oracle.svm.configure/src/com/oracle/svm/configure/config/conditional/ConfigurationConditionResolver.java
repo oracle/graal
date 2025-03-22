@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.configure.config.conditional;
 
-package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.util.GlobUtils;
+import com.oracle.svm.util.TypeResult;
 
-final class StarTrieNode<C> extends GlobTrieNode<C> {
-    private final boolean matchingWholeLevel;
+public interface ConfigurationConditionResolver<T> {
 
-    StarTrieNode(String content) {
-        super(content);
-        this.matchingWholeLevel = false;
+    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
+        return new ConfigurationConditionResolver<>() {
+            @Override
+            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+                return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
+            }
+
+            @Override
+            public UnresolvedConfigurationCondition alwaysTrue() {
+                return UnresolvedConfigurationCondition.alwaysTrue();
+            }
+        };
     }
 
-    StarTrieNode(boolean matchesWholeLevel) {
-        super(GlobUtils.STAR);
-        this.matchingWholeLevel = matchesWholeLevel;
-    }
+    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
 
-    public boolean isMatchingWholeLevel() {
-        return matchingWholeLevel;
-    }
-
-    public boolean hasChildrenOnThisLevel() {
-        return this.getChildren().stream().anyMatch(child -> !child.isNewLevel());
-    }
+    T alwaysTrue();
 }

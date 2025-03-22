@@ -22,11 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.util.List;
 
-import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.TypeResult;
 
 public interface ReflectionConfigurationParserDelegate<C, T> {
 

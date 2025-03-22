@@ -22,10 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -33,12 +34,13 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.util.GlobUtils;
+import com.oracle.svm.util.TypeResult;
 
 final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationParser<C> {
-    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
-        super(conditionResolver, registry, strictConfiguration);
+    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, registry, parserOptions);
     }
 
     @Override
@@ -120,7 +122,7 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
         /* Parse fully literal regex as globs */
         if (value.startsWith("\\Q") && value.endsWith("\\E") && value.indexOf("\\E") == value.lastIndexOf("\\E")) {
             String globValue = value.substring("\\Q".length(), value.length() - "\\E".length());
-            if (CompressedGlobTrie.validatePattern(globValue).isEmpty()) {
+            if (GlobUtils.validatePattern(globValue).isEmpty()) {
                 globRegistry.accept(resolvedConfigurationCondition.get(), null, globValue);
                 return;
             }

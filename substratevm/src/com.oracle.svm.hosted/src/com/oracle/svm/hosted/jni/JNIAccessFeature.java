@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.jni;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -61,13 +61,13 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;

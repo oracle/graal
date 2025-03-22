@@ -22,17 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.configure;
 
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.util.json.JsonParserException;
@@ -45,9 +47,9 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
 
     private final ProxyConfigurationParser<C> proxyConfigurationParser;
 
-    LegacySerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
-        super(conditionResolver, serializationSupport, strictConfiguration);
-        this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, strictConfiguration, serializationSupport::registerProxyClass);
+    LegacySerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, EnumSet<ConfigurationParserOption> parserOptions) {
+        super(conditionResolver, serializationSupport, parserOptions);
+        this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, parserOptions, serializationSupport::registerProxyClass);
     }
 
     @Override
@@ -70,7 +72,9 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
             throw new JsonParserException("Second-level of document must be arrays of serialization descriptor objects");
         }
 
-        parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "The types property must be an array of serialization descriptor objects"), false);
+        parseSerializationTypes(
+                        asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "The types property must be an array of serialization descriptor objects"),
+                        false);
         parseSerializationTypes(
                         asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY),
                                         "The lambdaCapturingTypes property must be an array of serialization descriptor objects"),
@@ -88,7 +92,8 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         if (lambdaCapturingType) {
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CONDITIONAL_KEY));
         } else {
-            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY),
+                            Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
         NamedConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
