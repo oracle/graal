@@ -69,8 +69,11 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements Glo
         }
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */
             return update;

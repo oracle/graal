@@ -606,7 +606,8 @@ public abstract class StrengthenGraphs {
                  * trigger. But when only running the reachability analysis, there is no detailed
                  * list of callees.
                  */
-                unreachableInvoke(invoke, tool);
+                unreachableInvoke(invoke, tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
+                                ": target method is not marked as simply implementation invoked");
                 /* Invoke is unreachable, there is no point in improving any types further. */
                 return;
             }
@@ -616,12 +617,19 @@ public abstract class StrengthenGraphs {
                 /* No points-to analysis results. */
                 return;
             }
+            if (!invokeFlow.isFlowEnabled()) {
+                unreachableInvoke(invoke, tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
+                                ": flow is not enabled by its predicate " + invokeFlow.getPredicate());
+                /* Invoke is unreachable, there is no point in improving any types further. */
+                return;
+            }
 
             Collection<AnalysisMethod> callees = invokeFlow.getOriginalCallees();
             if (callees.isEmpty()) {
                 if (isClosedTypeWorld) {
                     /* Invoke is unreachable, there is no point in improving any types further. */
-                    unreachableInvoke(invoke, tool);
+                    unreachableInvoke(invoke, tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
+                                    ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
                 }
                 /* In open world we cannot make any assumptions about an invoke with 0 callees. */
                 return;
@@ -833,7 +841,7 @@ public abstract class StrengthenGraphs {
         /**
          * The invoke has no callee, i.e., it is unreachable.
          */
-        private void unreachableInvoke(Invoke invoke, SimplifierTool tool) {
+        private void unreachableInvoke(Invoke invoke, SimplifierTool tool, Supplier<String> messageSupplier) {
             if (invoke.getInvokeKind() != CallTargetNode.InvokeKind.Static) {
                 /*
                  * Ensure that a null check for the receiver remains in the graph. There should be
@@ -842,8 +850,7 @@ public abstract class StrengthenGraphs {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + getQualifiedName(graph) + ", node " + invoke +
-                            ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
+            makeUnreachable(invoke.asFixedNode(), tool, messageSupplier);
         }
 
         /**
@@ -962,7 +969,13 @@ public abstract class StrengthenGraphs {
              */
             boolean hasUsages = node.usages().filter(n -> !(n instanceof FrameState)).isNotEmpty();
 
-            TypeState nodeTypeState = nodeFlow.isFlowEnabled() ? methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow) : TypeState.forEmpty();
+            if (!nodeFlow.isFlowEnabled()) {
+                makeUnreachable(anchorPoint.next(), tool,
+                                () -> "method " + getQualifiedName(graph) + ", node " + node + ": flow is not enabled by its predicate " + nodeFlow.getPredicate());
+                unreachableValues.add(node);
+                return null;
+            }
+            TypeState nodeTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow);
 
             if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();

@@ -74,25 +74,24 @@ public class ConditionalFlow extends TypeFlow<BytecodePosition> {
          * GR-58387: This could stop the propagation of saturation, so it can be problematic for
          * open-world analysis.
          */
-        super.addState(bb, eval(bb));
+        addState(bb, TypeState.forEmpty());
     }
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        super.addState(bb, eval(bb));
+        addState(bb, TypeState.forEmpty());
     }
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        super.addState(bb, eval(bb));
+        addState(bb, TypeState.forEmpty());
     }
 
+    /**
+     * Depending on the state of the condition, return none, one, or both of the true/false inputs.
+     */
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        return super.addState(bb, eval(bb));
-    }
-
-    private TypeState eval(PointsToAnalysis bb) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         TypeState trueState = trueValue.getOutputState(bb);
         TypeState falseState = falseValue.getOutputState(bb);
         if (condition.isSaturated()) {

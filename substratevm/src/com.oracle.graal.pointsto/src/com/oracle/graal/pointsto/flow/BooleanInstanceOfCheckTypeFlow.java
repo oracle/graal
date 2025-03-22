@@ -57,8 +57,14 @@ public class BooleanInstanceOfCheckTypeFlow extends BooleanCheckTypeFlow {
         return new BooleanInstanceOfCheckTypeFlow(methodFlows, this);
     }
 
+    /**
+     * Creates a primitive type state that corresponds to the result of a type check of the incoming
+     * value.
+     * 
+     * @return can be either empty, true, false, or any.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         TypeState canBeTrue;
         TypeState canBeFalse;
         if (isExact) {
