@@ -1676,7 +1676,7 @@ final class InstrumentationHandler {
      * materialized subtrees only. The new materialized subtrees are not instrumented at all, that
      * is why we have to apply all bindings there. For the original nodes, applying just the new
      * execution binding is sufficient, because the other bindings were applied when they were
-     * added. Please note that this example is siplified for better readability, in particular, it
+     * added. Please note that this example is simplified for better readability, in particular, it
      * does not include find sources operations.
      *
      * <pre>
@@ -2693,8 +2693,8 @@ final class InstrumentationHandler {
 
         private void verifySourceOnly(SourceSectionFilter filter) {
             if (!filter.isSourceOnly()) {
-                throw new IllegalArgumentException(String.format("The attached filter %s uses filters that require source sections to verifiy. " +
-                                "Source listeners can only use filter critera based on Source objects like mimeTypeIs or sourceIs.", filter));
+                throw new IllegalArgumentException(String.format("The attached filter %s uses filters that require source sections to verify. " +
+                                "Source listeners can only use filter criteria based on Source objects like mimeTypeIs or sourceIs.", filter));
             }
         }
 

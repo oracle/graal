@@ -75,7 +75,7 @@ public final class GraphSource {
     private final Map<Location, Object> nodeMap = new HashMap<>();
 
     /**
-     * Cache of all locations, to cannonicalize stack entries in the graph
+     * Cache of all locations, to canonicalize stack entries in the graph
      */
     private final Map<Location, Location> uniqueLocations = new HashMap<>();
 
