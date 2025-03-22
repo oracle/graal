@@ -67,6 +67,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -890,6 +891,7 @@ public class SubstrateDiagnostics {
             log.string("Runtime information:").indent(true);
             log.string("Isolate id: ").signed(Isolates.getIsolateId()).newline();
             log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
+            log.string("CGlobalData base: ").zhex(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.getPointer()).newline();
 
             if (Container.singleton().isContainerized()) {
                 log.string("CPU cores (container): ");

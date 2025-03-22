@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 import org.graalvm.word.WordBase;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -314,8 +314,7 @@ public final class NativeImageHeapWriter {
      */
     private void addNonDataRelocation(RelocatableBuffer buffer, int index, RelocatedPointer pointer) {
         mustBeReferenceAligned(index);
-        assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
-        assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
+        assert pointer instanceof MethodPointer || pointer instanceof CGlobalDataBasePointer : "unknown relocated pointer " + pointer;
         int pointerSize = ConfigurationValues.getTarget().wordSize;
         addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
     }
