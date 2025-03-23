@@ -44,8 +44,11 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> implements Glob
         super(field, field.getType());
     }
 
+    /**
+     * Filter the incoming type state based on the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         if (isPrimitiveFlow) {
             if (!update.isPrimitive()) {
                 /*

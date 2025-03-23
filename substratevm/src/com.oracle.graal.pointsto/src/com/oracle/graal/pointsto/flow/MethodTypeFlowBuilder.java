@@ -1316,16 +1316,34 @@ public class MethodTypeFlowBuilder {
         private void handleCompareNode(ValueNode source, CompareNode condition, PrimitiveComparison comparison, boolean isUnsigned) {
             var xNode = typeFlowUnproxify(condition.getX());
             var yNode = typeFlowUnproxify(condition.getY());
-            var xConstant = xNode.isConstant();
-            var yConstant = yNode.isConstant();
+            /* Ensure that if one input is constant, it is always y. */
+            PrimitiveComparison maybeFlipped;
+            if (xNode.isConstant() && !yNode.isConstant()) {
+                var tmp = xNode;
+                xNode = yNode;
+                yNode = tmp;
+                maybeFlipped = comparison.flip();
+            } else {
+                maybeFlipped = comparison;
+            }
             var xFlow = state.lookup(xNode);
-            var yFlow = state.lookup(yNode);
-            if (!xConstant) {
+            if (yNode.isConstant()) {
+                TypeState rightState = TypeState.forPrimitiveConstant(bb, yNode.asJavaConstant().asLong());
+                var builder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
+                    var flow = new PrimitiveFilterTypeFlow.ConstantFilter(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), rightState, maybeFlipped, isUnsigned);
+                    flowsGraph.addNodeFlow(source, flow);
+                    return flow;
+                });
+                builder.addUseDependency(xFlow);
+                typeFlowGraphBuilder.registerSinkBuilder(builder);
+                state.update(xNode, builder);
+                state.setPredicate(builder);
+            } else {
+                var yFlow = state.lookup(yNode);
                 var leftFlowBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
-                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), yFlow.get(), comparison, isUnsigned);
-                    if (yConstant) {
-                        flowsGraph.addNodeFlow(source, flow);
-                    }
+                    var flow = new PrimitiveFilterTypeFlow.VariableFilter(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), yFlow.get(), maybeFlipped,
+                                    isUnsigned);
+                    flowsGraph.addNodeFlow(source, flow);
                     return flow;
                 });
                 leftFlowBuilder.addUseDependency(xFlow);
@@ -1333,13 +1351,11 @@ public class MethodTypeFlowBuilder {
                 typeFlowGraphBuilder.registerSinkBuilder(leftFlowBuilder);
                 state.update(xNode, leftFlowBuilder);
                 state.setPredicate(leftFlowBuilder);
-            }
-            if (!yConstant) {
                 var rightFlowBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
-                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), yFlow.get().declaredType, yFlow.get(), xFlow.get(), comparison.flip(), isUnsigned);
-                    flowsGraph.addNodeFlow(source, flow);
+                    var flow = new PrimitiveFilterTypeFlow.VariableFilter(AbstractAnalysisEngine.sourcePosition(source), yFlow.get().declaredType, yFlow.get(), xFlow.get(), maybeFlipped.flip(),
+                                    isUnsigned);
+                    flowsGraph.addMiscEntryFlow(flow);
                     return flow;
-
                 });
                 rightFlowBuilder.addUseDependency(yFlow);
                 rightFlowBuilder.addUseDependency(xFlow);
