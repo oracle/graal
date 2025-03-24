@@ -262,7 +262,7 @@ public final class HeapImpl extends Heap {
     /** A guard to place before an allocation, giving the call site and the allocation type. */
     static void exitIfAllocationDisallowed(String callSite, String typeName) {
         if (HeapImpl.getHeapImpl().isAllocationDisallowed()) {
-            NoAllocationVerifier.exit(callSite, typeName);
+            throw NoAllocationVerifier.exit(callSite, typeName);
         }
     }
 
