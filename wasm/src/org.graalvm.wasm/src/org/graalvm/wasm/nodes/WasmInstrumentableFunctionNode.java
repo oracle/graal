@@ -116,8 +116,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         return codeEntry.localCount();
     }
 
-    void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
-        functionNode.execute(frame, context, instance);
+    void execute(VirtualFrame frame, WasmInstance instance) {
+        functionNode.execute(frame, instance);
     }
 
     @Override
