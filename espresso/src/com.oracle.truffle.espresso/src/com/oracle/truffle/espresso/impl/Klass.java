@@ -1832,7 +1832,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     public StaticObject protectionDomain() {
-        return getMeta().HIDDEN_PROTECTION_DOMAIN.getObject(mirror());
+        return getMeta().HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(mirror());
     }
 
     /**
