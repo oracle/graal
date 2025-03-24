@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.33.0",
+  "mxversion": "7.42.3",
   "name" : "sulong",
   "version" : "25.0.0",
   "release" : False,
@@ -1649,6 +1649,42 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+
+    "sulong_licenses": {
+      "class": "StandaloneLicenses",
+      "community_license_file": "LICENSE",
+      "community_3rd_party_license_file": "THIRD_PARTY_LICENSE.txt",
+    },
+
+    "sulong_thin_launcher": {
+      "class": "ThinLauncherProject",
+      "mainClass": "com.oracle.truffle.llvm.launcher.LLVMLauncher",
+      "jar_distributions": ["sulong:SULONG_LAUNCHER"],
+      "relative_home_paths": {
+        "llvm": "..",
+      },
+      "relative_jre_path": "../jvm",
+      "relative_module_path": "../modules",
+      "relative_extracted_lib_paths": {
+        "truffle.attach.library": "../jvmlibs/<lib:truffleattach>",
+        "truffle.nfi.library": "../jvmlibs/<lib:trufflenfi>",
+      },
+      "liblang_relpath": "../lib/<lib:llvmvm>",
+    },
+
+    "libllvmvm": {
+      "class": "LanguageLibraryProject",
+      "dependencies": [
+        "SULONG_STANDALONE_DEPENDENCIES",
+      ],
+      "build_args": [
+        # From mx.sulong/native-image.properties
+        "-H:+AddAllCharsets",
+        # Configure launcher
+        "-Dorg.graalvm.launcher.class=com.oracle.truffle.llvm.launcher.LLVMLauncher",
+      ],
+      "dynamicBuildArgs": "libllvmvm_build_args",
+    },
   },
 
   "distributions" : {
@@ -1765,6 +1801,7 @@ suite = {
         "SULONG_CORE",
         "truffle:TRUFFLE_NFI",
         "truffle:TRUFFLE_NFI_LIBFFI",
+        "truffle:TRUFFLE_NFI_PANAMA",
       ],
       "maven" : {
         "artifactId" : "llvm-language-native",
@@ -1936,6 +1973,107 @@ suite = {
         ],
       },
       "license" : "BSD-new",
+    },
+
+    "SULONG_STANDALONE_DEPENDENCIES": {
+      "description": "Sulong standalone dependencies",
+      "class": "DynamicPOMDistribution",
+      "distDependencies": [
+        "sulong:SULONG_LAUNCHER",
+        "sulong:SULONG_CORE",
+        "sulong:SULONG_API",
+        "sulong:SULONG_NFI",
+        "sulong:SULONG_NATIVE",
+        "sdk:TOOLS_FOR_STANDALONE",
+      ],
+      "dynamicDistDependencies": "sulong_standalone_deps",
+      "maven": False,
+    },
+
+    "SULONG_STANDALONE_COMMON": {
+      "description": "Common layout for Native and JVM standalones",
+      "type": "dir",
+      "platformDependent": True,
+      "layout": {
+        "./": [
+          "dependency:sulong_licenses/*",
+        ],
+        "bin/<exe:lli>": "dependency:sulong_thin_launcher",
+        "lib/llvm-toolchain/": "extracted-dependency:sdk:LLVM_TOOLCHAIN",
+        "lib/sulong/": [
+          "extracted-dependency:SULONG_CORE_HOME",
+          "extracted-dependency:SULONG_GRAALVM_DOCS",
+          "extracted-dependency:SULONG_BITCODE_HOME",
+          "extracted-dependency:SULONG_NATIVE_HOME",
+        ],
+        "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
+      },
+    },
+
+    "SULONG_NATIVE_STANDALONE": {
+      "description": "Sulong Native standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "layout": {
+        "./": [
+          "dependency:SULONG_STANDALONE_COMMON/*",
+        ],
+      },
+    },
+
+    "SULONG_JVM_STANDALONE": {
+      "description": "Sulong JVM standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "layout": {
+        "./": [
+          "dependency:SULONG_STANDALONE_COMMON/*",
+        ],
+        "jvm/": {
+          "source_type": "dependency",
+          "dependency": "sdk:STANDALONE_JAVA_HOME",
+          "path": "*",
+          "exclude": [
+            # Native Image-related
+            "bin/native-image*",
+            "lib/static",
+            "lib/svm",
+            "lib/<lib:native-image-agent>",
+            "lib/<lib:native-image-diagnostics-agent>",
+            # Unnecessary and big
+            "lib/src.zip",
+            "jmods",
+          ],
+        },
+        "jvmlibs/": [
+          "extracted-dependency:truffle:TRUFFLE_ATTACH_GRAALVM_SUPPORT",
+          "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT",
+        ],
+        "modules/": [
+          {
+            "source_type": "classpath-dependencies",
+            "dependencies": [
+              "SULONG_STANDALONE_DEPENDENCIES",
+            ],
+          },
+        ],
+      },
+    },
+
+    "SULONG_NATIVE_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "SULONG_NATIVE_STANDALONE",
+        "community_archive_name": "llvm-community",
+        "enterprise_archive_name": "llvm",
+    },
+
+    "SULONG_JVM_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "SULONG_JVM_STANDALONE",
+        "community_archive_name": "llvm-community-jvm",
+        "enterprise_archive_name": "llvm-jvm",
     },
 
     "SULONG_NATIVE_BITCODE_RESOURCES" : {

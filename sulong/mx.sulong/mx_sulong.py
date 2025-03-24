@@ -47,6 +47,7 @@ import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
 import mx_sulong_unittest #pylint: disable=unused-import
 import mx_sulong_llvm_config
+import mx_truffle
 
 # re-export custom mx project classes so they can be used from suite.py
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
@@ -58,6 +59,7 @@ from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: di
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -101,6 +103,30 @@ def sulong_prefix_path(name):
     return p.out_dir
 
 mx_subst.results_substitutions.register_with_arg('sulong_prefix', sulong_prefix_path)
+
+# Functions called from suite.py
+
+def has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+def is_ee():
+    return has_suite('graal-enterprise')
+
+def sulong_standalone_deps():
+    deps = mx_truffle.resolve_truffle_dist_names()
+    if is_ee():
+        deps += ['sulong-managed:SULONG_ENTERPRISE_NATIVE']
+        # TODO
+    return deps
+
+def libllvmvm_build_args():
+    if is_ee() and not mx.is_windows():
+        return [
+            '-H:+AuxiliaryEngineCache',
+            '-H:ReservedAuxiliaryImageBytes=2145482548',
+        ]
+    else:
+        return []
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
     mx_sulong_gate.testLLVMImage(image, imageArgs, testFilter, libPath, test, unittestArgs)
