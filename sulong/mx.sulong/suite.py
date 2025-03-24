@@ -1672,6 +1672,18 @@ suite = {
       "liblang_relpath": "../lib/<lib:llvmvm>",
     },
 
+    "native_toolchain_wrapper": {
+      "class": "ThinLauncherProject",
+      "mainClass": "com.oracle.truffle.llvm.toolchain.launchers.NativeToolchainWrapper",
+      "jar_distributions": ["sulong:SULONG_TOOLCHAIN_LAUNCHERS"],
+      "relative_home_paths": {
+        "llvm-toolchain": "../../../llvm-toolchain",
+      },
+      "relative_jre_path": "../../../../jvm",
+      "relative_module_path": "../../../../modules",
+      "liblang_relpath": "../lib/<lib:nativetoolchainwrappers>",
+    },
+
     "libllvmvm": {
       "class": "LanguageLibraryProject",
       "dependencies": [
@@ -1684,6 +1696,20 @@ suite = {
         "-Dorg.graalvm.launcher.class=com.oracle.truffle.llvm.launcher.LLVMLauncher",
       ],
       "dynamicBuildArgs": "libllvmvm_build_args",
+    },
+
+    "libnativetoolchainwrappers": {
+      "class": "NativeImageLibraryProject",
+      "dependencies": [
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+      ],
+      "build_args": [
+        # From mx.sulong/mx_sulong.py
+        "--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers",
+        "--gc=epsilon",
+        # Configure launcher
+        "-Dorg.graalvm.launcher.class=com.oracle.truffle.llvm.toolchain.launchers.NativeToolchainWrapper",
+      ],
     },
   },
 
@@ -1975,6 +2001,70 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "SULONG_NATIVE_AND_LLVM_TOOLCHAIN": {
+      "description": "Layout for Sulong native toolchain and llvm-toolchain",
+      "type": "dir",
+      "platformDependent": True,
+      "layout": {
+        "lib/llvm-toolchain/": "extracted-dependency:sdk:LLVM_TOOLCHAIN",
+
+        "lib/sulong/": [
+          "extracted-dependency:SULONG_CORE_HOME",
+          "extracted-dependency:SULONG_GRAALVM_DOCS",
+          "extracted-dependency:SULONG_BITCODE_HOME",
+          "extracted-dependency:SULONG_NATIVE_HOME",
+        ],
+
+        "lib/sulong/native/lib/": "dependency:libnativetoolchainwrappers",
+
+        "lib/sulong/native/bin/<exe:graalvm-native-clang>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:graalvm-clang>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:clang>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:cc>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:gcc>": "dependency:native_toolchain_wrapper",
+
+        "lib/sulong/native/bin/<exe:graalvm-native-clang++>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:graalvm-clang++>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:clang++>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:c++>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:g++>": "dependency:native_toolchain_wrapper",
+
+        "lib/sulong/native/bin/<exe:graalvm-native-clang-cl>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:graalvm-clang-cl>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:clang-cl>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:cl>": "dependency:native_toolchain_wrapper",
+
+        "lib/sulong/native/bin/<exe:graalvm-native-ld>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:ld>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:ld.lld>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:lld>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:lld-link>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:ld64>": "dependency:native_toolchain_wrapper",
+
+        "lib/sulong/native/bin/<exe:graalvm-native-flang>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:graalvm-flang>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:flang-new>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:flang>": "dependency:native_toolchain_wrapper",
+
+        "lib/sulong/native/bin/<exe:ar>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-ar>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:nm>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-nm>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:objcopy>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-objcopy>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:objdump>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-objdump>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:ranlib>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-ranlib>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:readelf>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-readelf>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:readobj>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-readobj>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:strip>": "dependency:native_toolchain_wrapper",
+        "lib/sulong/native/bin/<exe:llvm-strip>": "dependency:native_toolchain_wrapper",
+      },
+    },
+
     "SULONG_STANDALONE_DEPENDENCIES": {
       "description": "Sulong standalone dependencies",
       "class": "DynamicPOMDistribution",
@@ -1984,6 +2074,7 @@ suite = {
         "sulong:SULONG_API",
         "sulong:SULONG_NFI",
         "sulong:SULONG_NATIVE",
+        "sulong:SULONG_TOOLCHAIN_LAUNCHERS",
         "sdk:TOOLS_FOR_STANDALONE",
       ],
       "dynamicDistDependencies": "sulong_standalone_deps",
@@ -1997,15 +2088,9 @@ suite = {
       "layout": {
         "./": [
           "dependency:sulong_licenses/*",
+          "dependency:SULONG_NATIVE_AND_LLVM_TOOLCHAIN/*",
         ],
         "bin/<exe:lli>": "dependency:sulong_thin_launcher",
-        "lib/llvm-toolchain/": "extracted-dependency:sdk:LLVM_TOOLCHAIN",
-        "lib/sulong/": [
-          "extracted-dependency:SULONG_CORE_HOME",
-          "extracted-dependency:SULONG_GRAALVM_DOCS",
-          "extracted-dependency:SULONG_BITCODE_HOME",
-          "extracted-dependency:SULONG_NATIVE_HOME",
-        ],
         "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
       },
     },
@@ -2017,6 +2102,9 @@ suite = {
       "layout": {
         "./": [
           "dependency:SULONG_STANDALONE_COMMON/*",
+        ],
+        "lib/": [
+          "dependency:libllvmvm",
         ],
       },
     },
@@ -2122,6 +2210,13 @@ suite = {
     },
 
     "SULONG_TOOLCHAIN_LAUNCHERS": {
+      "moduleInfo" : {
+        "name" : "org.graalvm.llvm.native_toolchain_wrappers",
+        "exports" : [
+          "com.oracle.truffle.llvm.toolchain.launchers to org.graalvm.launcher",
+        ],
+      },
+      "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.toolchain.launchers"],
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],

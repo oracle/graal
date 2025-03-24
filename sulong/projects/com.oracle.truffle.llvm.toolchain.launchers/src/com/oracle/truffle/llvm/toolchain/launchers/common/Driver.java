@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -125,6 +125,11 @@ public class Driver {
         final String property = System.getProperty("llvm.bin.dir");
         if (property != null) {
             return Paths.get(property);
+        }
+
+        final String homeProperty = System.getProperty("org.graalvm.language.llvm-toolchain.home");
+        if (homeProperty != null) {
+            return Paths.get(homeProperty).resolve("bin");
         }
 
         // TODO (GR-18389): Set only for standalones currently

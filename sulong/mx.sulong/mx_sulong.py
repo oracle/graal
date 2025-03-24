@@ -59,7 +59,7 @@ from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: di
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
-from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, NativeImageLibraryProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -434,7 +434,8 @@ def _lib_sub(program):
     return mx_subst.path_substitutions.substitute("<lib:{}>".format(program))
 
 class ToolchainConfig(object):
-    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
+    # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block)
+    # and NativeToolchainWrapper.
     _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
