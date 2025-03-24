@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.io.PrintStream;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -60,7 +59,7 @@ public class PrintNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         for (final Object arg : WasmArguments.getArguments(frame.getArguments())) {
             print(arg);
         }

@@ -66,7 +66,7 @@ public class RunCustomInitializationNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         initializeModule(instance, WasmArguments.getArgument(frame.getArguments(), 0));
         return WasmConstant.VOID;
     }
