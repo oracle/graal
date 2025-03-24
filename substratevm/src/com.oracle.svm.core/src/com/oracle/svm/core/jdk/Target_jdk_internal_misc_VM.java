@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.internal.misc.Unsafe;
@@ -68,7 +69,12 @@ public final class Target_jdk_internal_misc_VM {
     @Alias @InjectAccessors(DirectMemoryAccessors.class) //
     private static long directMemory;
     @Alias @InjectAccessors(PageAlignDirectMemoryAccessors.class) //
-    private static boolean pageAlignDirectMemory;
+    @TargetElement(onlyWith = JDKLatest.class) //
+    private static Boolean pageAlignDirectMemory;
+
+    @Alias @InjectAccessors(PageAlignDirectMemoryJDK21Accessors.class) //
+    @TargetElement(name = "pageAlignDirectMemory", onlyWith = JDK21OrEarlier.class) //
+    private static boolean pageAlignDirectMemoryJDK21;
 }
 
 final class DirectMemoryAccessors {
@@ -125,7 +131,7 @@ final class PageAlignDirectMemoryAccessors {
     private static boolean initialized;
     private static boolean pageAlignDirectMemory;
 
-    static boolean getPageAlignDirectMemory() {
+    static Boolean getPageAlignDirectMemory() {
         if (!initialized) {
             initialize();
         }
@@ -138,5 +144,11 @@ final class PageAlignDirectMemoryAccessors {
         /* Ensure values are published to other threads before marking fields as initialized. */
         Unsafe.getUnsafe().storeFence();
         initialized = true;
+    }
+}
+
+final class PageAlignDirectMemoryJDK21Accessors {
+    static boolean getPageAlignDirectMemory() {
+        return PageAlignDirectMemoryAccessors.getPageAlignDirectMemory();
     }
 }
