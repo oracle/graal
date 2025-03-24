@@ -141,7 +141,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
         }
 
         try {
-            functionNode.execute(frame, getContext(), instance);
+            functionNode.execute(frame, instance);
         } catch (StackOverflowError e) {
             enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);

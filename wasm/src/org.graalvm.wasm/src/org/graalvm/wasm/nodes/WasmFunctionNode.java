@@ -203,9 +203,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
-        WasmContext context = WasmContext.get(this);
         WasmInstance instance = ((WasmRootNode) getRootNode()).instance(osrFrame);
-        return executeBodyFromOffset(context, instance, osrFrame, target, state.stackPointer, state.line);
+        return executeBodyFromOffset(instance, osrFrame, target, state.stackPointer, state.line);
     }
 
     @Override
@@ -246,14 +245,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int count;
     }
 
-    public void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
-        executeBodyFromOffset(context, instance, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
+    public void execute(VirtualFrame frame, WasmInstance instance) {
+        executeBodyFromOffset(instance, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
     }
 
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings({"UnusedAssignment", "hiding"})
-    public Object executeBodyFromOffset(WasmContext context, WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
+    public Object executeBodyFromOffset(WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
         final int localCount = codeEntry.localCount();
         final byte[] bytecode = this.bytecode;
 
@@ -580,7 +579,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                     int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
 
-                    assert functionInstanceContext == context;
+                    // Target function instance must be from the same context.
+                    assert functionInstanceContext == WasmContext.get(this);
 
                     // Validate that the target function type matches the expected type of the
                     // indirect call by performing an equivalence-class check.
