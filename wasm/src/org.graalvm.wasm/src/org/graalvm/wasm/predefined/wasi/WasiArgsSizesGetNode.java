@@ -59,9 +59,9 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return argsSizesGet(context, memory(frame),
+        return argsSizesGet(getContext(), memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1));
     }

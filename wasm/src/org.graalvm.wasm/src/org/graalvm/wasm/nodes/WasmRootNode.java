@@ -131,12 +131,7 @@ public abstract class WasmRootNode extends RootNode {
         return executeWithInstance(frame, instance);
     }
 
-    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        WasmContext context = getContext();
-        return executeWithContext(frame, context, instance);
-    }
-
-    public abstract Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance);
+    public abstract Object executeWithInstance(VirtualFrame frame, WasmInstance instance);
 
     @Override
     public final String toString() {

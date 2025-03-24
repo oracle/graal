@@ -41,7 +41,6 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -61,7 +60,7 @@ public class WasiPathFileStatGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
         return pathFilestatGet(instance.store(), memory(frame),
                         (int) WasmArguments.getArgument(args, 0),

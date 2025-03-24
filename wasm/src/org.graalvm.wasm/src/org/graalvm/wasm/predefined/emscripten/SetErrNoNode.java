@@ -41,7 +41,6 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -56,7 +55,7 @@ public class SetErrNoNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         Object[] args = frame.getArguments();
         assert WasmArguments.getArgumentCount(args) == 1;
 
