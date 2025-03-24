@@ -13,17 +13,33 @@ The Truffle artifacts are uploaded to [Maven Central - Sonatype](https://central
 You can use them from your `pom.xml` file as: 
 
 ```xml
+<properties>
+    <graalvm.version>24.2.0</graalvm.version> <!-- or any later version -->
+</properties>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>24.2.0</version> <!-- or any later version -->
+    <version>${graalvm.version}</version> <!-- or any later version -->
 </dependency>
-<dependency>
-    <groupId>org.graalvm.truffle</groupId>
-    <artifactId>truffle-dsl-processor</artifactId>
-    <version>24.2.0</version>
-    <scope>provided</scope>
-</dependency>
+<build>
+    <plugins>
+        <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.14.0</version>
+            <configuration>
+                <source>21</source>
+                <target>21</target>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.graalvm.truffle</groupId>
+                        <artifactId>truffle-dsl-processor</artifactId>
+                        <version>${graalvm.version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
 ```
 
 ## Implement Your Language
