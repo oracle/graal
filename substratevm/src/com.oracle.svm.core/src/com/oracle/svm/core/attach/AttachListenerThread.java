@@ -54,14 +54,14 @@ public abstract class AttachListenerThread extends Thread {
     protected static final int ARG_COUNT_MAX = 3;
 
     @SuppressWarnings("this-escape")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L453-L467")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/services/attachListener.cpp#L667-L681")
     public AttachListenerThread() {
         super(PlatformThreads.singleton().systemGroup, "Attach Listener");
         this.setDaemon(true);
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L377-L436")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/services/attachListener.cpp#L585-L650")
     public void run() {
         try {
             while (true) {
@@ -83,7 +83,7 @@ public abstract class AttachListenerThread extends Thread {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L205-L217")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/services/attachListener.cpp#L205-L217")
     private static void handleJcmd(AttachOperation op) {
         try {
             /* jcmd only uses the first argument. */
@@ -94,7 +94,7 @@ public abstract class AttachListenerThread extends Thread {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L383-L420")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/services/diagnosticFramework.cpp#L382-L418")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/hotspot/share/services/diagnosticFramework.cpp#L422-L439")
     private static String parseAndExecute(String input) throws Throwable {
         String[] args = StringUtil.split(input, " ");
