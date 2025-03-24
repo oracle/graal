@@ -54,7 +54,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.libgraal.LibGraalLoader;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import jdk.internal.jimage.BasicImageReader;
 import jdk.internal.module.ModulePath;

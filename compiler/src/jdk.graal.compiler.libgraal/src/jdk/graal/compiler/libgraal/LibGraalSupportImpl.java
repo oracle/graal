@@ -48,7 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.libgraal.LibGraalLoader;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
 
