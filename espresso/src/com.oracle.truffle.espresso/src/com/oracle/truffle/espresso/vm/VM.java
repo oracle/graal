@@ -1396,7 +1396,7 @@ public final class VM extends NativeEnv {
         if (StaticObject.isNull(current)) {
             return StaticObject.NULL;
         }
-        StaticObject pd = getMeta().HIDDEN_PROTECTION_DOMAIN.getObject(current);
+        StaticObject pd = getMeta().HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(current);
         return pd == null ? StaticObject.NULL : pd;
     }
 

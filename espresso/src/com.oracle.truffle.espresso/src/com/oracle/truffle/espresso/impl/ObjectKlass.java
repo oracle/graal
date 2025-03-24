@@ -223,7 +223,7 @@ public final class ObjectKlass extends Klass {
         if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
             // Protection domain should not be host null, and will be initialized to guest null on
             // mirror creation.
-            getMeta().HIDDEN_PROTECTION_DOMAIN.setObject(initializeEspressoClass(), info.protectionDomain);
+            getMeta().HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(initializeEspressoClass(), info.protectionDomain);
         }
         if (info.classData != null) {
             getMeta().java_lang_Class_classData.setObject(initializeEspressoClass(), info.classData);

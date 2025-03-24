@@ -2881,7 +2881,7 @@ public final class JniEnv extends NativeEnv {
             throw e;
         }
 
-        meta.HIDDEN_PROTECTION_DOMAIN.setObject(guestClass, protectionDomain);
+        meta.HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(guestClass, protectionDomain);
         // FindClass should initialize the class.
         guestClass.getMirrorKlass(meta).safeInitialize();
 

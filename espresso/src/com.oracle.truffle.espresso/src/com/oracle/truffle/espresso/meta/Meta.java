@@ -35,6 +35,7 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_21;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.between;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.lower;
 import static com.oracle.truffle.espresso.impl.EspressoClassLoadingException.wrapClassNotFoundGuestException;
@@ -420,8 +421,13 @@ public final class Meta extends ContextAccessImpl
         java_nio_file_NotDirectoryException = knownKlass(Types.java_nio_file_NotDirectoryException);
         java_nio_file_NotLinkException = knownKlass(Types.java_nio_file_NotLinkException);
 
-        java_util_zip_CRC32 = knownKlass(Types.java_util_zip_CRC32);
-        HIDDEN_CRC32 = diff().field(ALL, Names.HIDDEN_CRC32, Types._int).maybeHiddenfield(java_util_zip_CRC32);
+        if (context.getLanguage().useEspressoLibs()) {
+            java_util_zip_CRC32 = knownKlass(Types.java_util_zip_CRC32);
+            HIDDEN_CRC32 = diff().field(ALL, Names.HIDDEN_CRC32, Types._int).maybeHiddenfield(java_util_zip_CRC32);
+        } else {
+            java_util_zip_CRC32 = null;
+            HIDDEN_CRC32 = null;
+        }
 
         ObjectKlass nioNativeThreadKlass = knownKlass(Types.sun_nio_ch_NativeThread);
         sun_nio_ch_NativeThread_init = nioNativeThreadKlass.lookupDeclaredMethod(Names.init, Signatures._void);
@@ -686,7 +692,8 @@ public final class Meta extends ContextAccessImpl
                         .klass(higher(14), Types.java_lang_invoke_VarHandles) //
                         .notRequiredKlass();
         java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset = diff() //
-                        .method(higher(14), Names.getStaticFieldFromBaseAndOffset, Signatures.Field_Object_long_Class) //
+                        .method(between(14, 20), Names.getStaticFieldFromBaseAndOffset, Signatures.Field_Object_long_Class) //
+                        .method(VERSION_21_OR_HIGHER, Names.getStaticFieldFromBaseAndOffset, Signatures.Field_Class_long_Class) //
                         .notRequiredMethod(java_lang_invoke_VarHandles);
 
         java_lang_invoke_CallSite = knownKlass(Types.java_lang_invoke_CallSite);
@@ -791,7 +798,6 @@ public final class Meta extends ContextAccessImpl
             java_lang_invoke_ResolvedMethodName_vmholder = diff() //
                             .field(VERSION_22_OR_HIGHER, Names.vmholder, Types.java_lang_Class) //
                             .notRequiredField(java_lang_invoke_ResolvedMethodName);
-
             HIDDEN_VM_METHOD = diff() //
                             .field(VERSION_22_OR_HIGHER, Names.HIDDEN_VM_METHOD, Types.java_lang_Object) //
                             .maybeHiddenfield(java_lang_invoke_ResolvedMethodName);
@@ -859,25 +865,25 @@ public final class Meta extends ContextAccessImpl
                         .klass(VERSION_16_OR_HIGHER, Types.java_lang_reflect_RecordComponent) //
                         .notRequiredKlass();
         java_lang_reflect_RecordComponent_clazz = diff() //
-                        .field(ALL, Names.clazz, Types.java_lang_Class) //
+                        .field(VERSION_16_OR_HIGHER, Names.clazz, Types.java_lang_Class) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
         java_lang_reflect_RecordComponent_name = diff() //
-                        .field(ALL, Names.name, Types.java_lang_String) //
+                        .field(VERSION_16_OR_HIGHER, Names.name, Types.java_lang_String) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
         java_lang_reflect_RecordComponent_type = diff() //
-                        .field(ALL, Names.type, Types.java_lang_Class) //
+                        .field(VERSION_16_OR_HIGHER, Names.type, Types.java_lang_Class) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
         java_lang_reflect_RecordComponent_accessor = diff() //
-                        .field(ALL, Names.accessor, Types.java_lang_reflect_Method) //
+                        .field(VERSION_16_OR_HIGHER, Names.accessor, Types.java_lang_reflect_Method) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
         java_lang_reflect_RecordComponent_signature = diff() //
-                        .field(ALL, Names.signature, Types.java_lang_String) //
+                        .field(VERSION_16_OR_HIGHER, Names.signature, Types.java_lang_String) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
         java_lang_reflect_RecordComponent_annotations = diff() //
-                        .field(ALL, Names.annotations, Types._byte_array) //
+                        .field(VERSION_16_OR_HIGHER, Names.annotations, Types._byte_array) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
         java_lang_reflect_RecordComponent_typeAnnotations = diff() //
-                        .field(ALL, Names.typeAnnotations, Types._byte_array) //
+                        .field(VERSION_16_OR_HIGHER, Names.typeAnnotations, Types._byte_array) //
                         .notRequiredField(java_lang_reflect_RecordComponent);
 
         sun_reflect_MagicAccessorImpl = diff() //
@@ -1277,7 +1283,7 @@ public final class Meta extends ContextAccessImpl
                         .klass(VERSION_17_OR_HIGHER, Types.jdk_internal_module_ModuleLoaderMap_Modules) //
                         .notRequiredKlass();
         jdk_internal_module_ModuleLoaderMap_Modules_clinit = diff() //
-                        .method(ALL, Names._clinit_, Signatures._void) //
+                        .method(VERSION_17_OR_HIGHER, Names._clinit_, Signatures._void) //
                         .notRequiredMethod(jdk_internal_module_ModuleLoaderMap_Modules);
 
         interopDispatch = new InteropKlassesDispatch(this);

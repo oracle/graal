@@ -1298,6 +1298,7 @@ public class EspressoSymbols {
                         Types.java_lang_invoke_MethodType,
                         Types.java_lang_Object_array);
         public static final Symbol<Signature> Field_Object_long_Class = SYMBOLS.putSignature(Types.java_lang_reflect_Field, Types.java_lang_Object, Types._long, Types.java_lang_Class);
+        public static final Symbol<Signature> Field_Class_long_Class = SYMBOLS.putSignature(Types.java_lang_reflect_Field, Types.java_lang_Class, Types._long, Types.java_lang_Class);
         public static final Symbol<Signature> Thread$State_int = SYMBOLS.putSignature(Types.java_lang_Thread$State, Types._int);
         public static final Symbol<Signature> _void_ThreadGroup_String = SYMBOLS.putSignature(Types._void, Types.java_lang_ThreadGroup, Types.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = SYMBOLS.putSignature(Types._void, Types.java_lang_ThreadGroup, Types.java_lang_Runnable);
