@@ -24,23 +24,23 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.graal.code.CGlobalDataReference;
+
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.graal.code.CGlobalDataReference;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64CGlobalDataLoadAddressOp> TYPE = LIRInstructionClass.create(AArch64CGlobalDataLoadAddressOp.class);
 
@@ -58,25 +58,15 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         int addressBitSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         assert addressBitSize == 64;
-        if (SubstrateUtil.HOSTED) {
-            // AOT compilation: record patch that is fixed up later
-            crb.compilationResult.recordDataPatch(masm.position(), new CGlobalDataReference(dataInfo));
-            Register resultRegister = asRegister(result);
-            if (dataInfo.isSymbolReference()) {
-                // Pure symbol reference: the data contains the symbol's address, load it
-                masm.adrpLdr(addressBitSize, resultRegister, resultRegister);
-            } else {
-                // Data: load its address
-                masm.adrpAdd(resultRegister);
-            }
+
+        crb.compilationResult.recordDataPatch(masm.position(), new CGlobalDataReference(dataInfo));
+        Register resultRegister = asRegister(result);
+        if (dataInfo.isSymbolReference()) {
+            // Pure symbol reference: the data contains the symbol's address, load it
+            masm.adrpLdr(addressBitSize, resultRegister, resultRegister);
         } else {
-            // Runtime compilation: compute the actual address
-            Pointer globalsBase = CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.get();
-            Pointer address = globalsBase.add(dataInfo.getOffset());
-            masm.mov(asRegister(result), address.rawValue());
-            if (dataInfo.isSymbolReference()) { // load data, which contains symbol's address
-                masm.ldr(addressBitSize, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(addressBitSize, asRegister(result)));
-            }
+            // Data: load its address
+            masm.adrpAdd(resultRegister);
         }
     }
 }

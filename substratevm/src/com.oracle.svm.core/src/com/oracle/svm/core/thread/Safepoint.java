@@ -29,7 +29,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -53,7 +52,6 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -81,6 +79,7 @@ import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Support for initiating safepoints, which are a global state in which all threads are paused so
@@ -151,14 +150,13 @@ public final class Safepoint {
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathSafepointCheck", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(Safepoint.class,
                     "enterSlowPathTransitionFromNativeToNewStatus", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathTransitionFromVMToJava",
-                    NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_RUN_PENDING_ACTIONS = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathRunPendingActions", NO_SIDE_EFFECT);
 
     /** All foreign calls defined in this class. */
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     ENTER_SLOW_PATH_SAFEPOINT_CHECK,
                     ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS,
-                    ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA,
+                    ENTER_SLOW_PATH_RUN_PENDING_ACTIONS,
     };
 
     /** Private constructor: No instances: only statics. */
@@ -250,30 +248,10 @@ public final class Safepoint {
         }
 
         if (newStatus == StatusSupport.STATUS_IN_JAVA) {
-            // Resetting the safepoint counter or executing the recurring callback must only be done
-            // if the thread is in Java state.
-            slowPathRunJavaStateActions();
+            ActionOnTransitionToJavaSupport.runPendingActions();
+            /* Do this last so that a thrown exception cannot skip any of the above. */
+            ThreadingSupportImpl.onSafepointCheckSlowpath();
         }
-    }
-
-    /**
-     * Slow path code run after a safepoint check or after transitioning from VM to Java state. It
-     * resets the safepoint counter, runs recurring callbacks if necessary, and executes pending
-     * {@link ActionOnTransitionToJavaSupport transition actions}.
-     */
-    @Uninterruptible(reason = "Must not contain safepoint checks.")
-    private static void slowPathRunJavaStateActions() {
-        if (ActionOnTransitionToJavaSupport.isActionPending()) {
-            if (ActionOnTransitionToJavaSupport.isSynchronizeCode()) {
-                CodeSynchronizationNode.synchronizeCode();
-            } else {
-                assert false : "Unexpected action pending.";
-            }
-            ActionOnTransitionToJavaSupport.clearActions();
-        }
-
-        // Do this last so an exception cannot skip the above
-        ThreadingSupportImpl.onSafepointCheckSlowpath();
     }
 
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
@@ -457,7 +435,7 @@ public final class Safepoint {
                 JavaFrameAnchors.popFrameAnchor();
             }
         } else {
-            callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, popFrameAnchor);
+            callSlowPathNativeToNewStatus(ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, popFrameAnchor);
         }
 
         /*
@@ -479,22 +457,23 @@ public final class Safepoint {
         int newStatus = StatusSupport.STATUS_IN_VM;
         boolean needSlowPath = !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, false);
+            callSlowPathNativeToNewStatus(ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, false);
         }
     }
 
     @Uninterruptible(reason = "Must not contain safepoint checks")
     public static void transitionVMToJava(boolean popFrameAnchor) {
-        // We can directly change the thread status as no other thread will touch the status field
-        // as long as we are in VM status.
+        /* Change the thread status directly (other threads won't touch the status field). */
         StatusSupport.assertStatusVM();
         StatusSupport.setStatusJavaUnguarded();
         if (popFrameAnchor) {
             JavaFrameAnchors.popFrameAnchor();
         }
-        boolean needSlowPath = ThreadingSupportImpl.needsNativeToJavaSlowpath();
+
+        /* Only execute pending actions but don't do a safepoint slowpath call. */
+        boolean needSlowPath = ActionOnTransitionToJavaSupport.isActionPending();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathSafepointCheck(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA);
+            callRunPendingActions(ENTER_SLOW_PATH_RUN_PENDING_ACTIONS);
         }
     }
 
@@ -514,15 +493,10 @@ public final class Safepoint {
         StatusSupport.setStatusNative();
     }
 
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callSlowPathSafepointCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor);
-
     /**
      * Block until I can transition from native to a new thread status. This is not inlined and need
      * not be fast. In fact, it often blocks. But it can not do much except block, since it starts
      * out running with "native" thread status.
-     *
-     * Foreign call: {@link #ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS}.
      *
      * This method cannot use the {@link StubCallingConvention} with callee saved registers: the
      * reference map of the C call and this slow-path call must be the same. This is only guaranteed
@@ -543,26 +517,26 @@ public final class Safepoint {
         }
     }
 
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus, boolean popFrameAnchor);
-
     /**
-     * Transitions from VM to Java do not need a safepoint check. We only need to make sure that any
-     * {@link ActionOnTransitionToJavaSupport pending transition action} is executed.
-     *
-     * Foreign call: {@link #ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA}.
+     * Runs any {@link ActionOnTransitionToJavaSupport pending transition actions}.
      *
      * This method cannot use the {@link StubCallingConvention} with callee saved registers: the
      * reference map of the C call and this slow-path call must be the same. This is only guaranteed
      * when both the C call and the call to this slow path do not use callee saved registers.
      */
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     @Uninterruptible(reason = "Must not contain safepoint checks.")
-    private static void enterSlowPathTransitionFromVMToJava() {
+    private static void enterSlowPathRunPendingActions() {
         VMError.guarantee(StatusSupport.isStatusJava(), "Must be already back in Java mode");
-
-        slowPathRunJavaStateActions();
+        assert ActionOnTransitionToJavaSupport.isActionPending() : "must not be called otherwise";
+        ActionOnTransitionToJavaSupport.runPendingActions();
     }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callRunPendingActions(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus, boolean popFrameAnchor);
 
     /** Methods for the thread that brings the system to a safepoint. */
     @AutomaticallyRegisteredImageSingleton

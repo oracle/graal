@@ -39,6 +39,8 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
@@ -53,9 +55,6 @@ import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.test.AddExports;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.core.util.VMError;
 
 @AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class OmitPreviousConfigTests {
@@ -72,7 +71,7 @@ public class OmitPreviousConfigTests {
                     URL resourceURL = OmitPreviousConfigTests.class.getResource(resourceName);
                     return (resourceURL != null) ? resourceURL.toURI() : null;
                 } catch (Exception e) {
-                    throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
+                    throw new AssertionError("Unexpected error while locating the configuration files.", e);
                 }
             });
 
@@ -88,7 +87,7 @@ public class OmitPreviousConfigTests {
             }
             return configurationFileCollection.loadConfigurationSet(handler, null, shouldExcludeClassesWithHash);
         } catch (Exception e) {
-            throw VMError.shouldNotReachHere("Unexpected error while loading the configuration files.", e);
+            throw new AssertionError("Unexpected error while loading the configuration files.", e);
         }
     }
 

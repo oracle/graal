@@ -23,6 +23,7 @@
 import mx
 import mx_benchmark
 import mx_espresso
+import mx_sdk_benchmark
 
 from mx_benchmark import GuestVm, JavaVm
 from mx_sdk_benchmark import _daCapoScalaConfig
@@ -64,14 +65,12 @@ class EspressoVm(GuestVm, JavaVm):
     def with_host_vm(self, host_vm):
         _host_vm = host_vm
         if hasattr(host_vm, 'run_launcher'):
-            if mx.suite('vm', fatalIfMissing=False):
-                import mx_vm_benchmark
-                # If needed, clone the host_vm and replace the `--native` argument with `-truffle`
-                if isinstance(host_vm, mx_vm_benchmark.GraalVm) and '--native' in host_vm.extra_launcher_args:
-                    extra_launcher_args = list(host_vm.extra_launcher_args)
-                    extra_launcher_args.remove('--native')
-                    extra_launcher_args.append('-truffle')
-                    _host_vm = mx_vm_benchmark.GraalVm(host_vm.name(), host_vm.config_name(), list(host_vm.extra_java_args), extra_launcher_args)
+            # If needed, clone the host_vm and replace the `--native` argument with `-truffle`
+            if isinstance(host_vm, mx_sdk_benchmark.GraalVm) and '--native' in host_vm.extra_launcher_args:
+                extra_launcher_args = list(host_vm.extra_launcher_args)
+                extra_launcher_args.remove('--native')
+                extra_launcher_args.append('-truffle')
+                _host_vm = mx_sdk_benchmark.GraalVm(host_vm.name(), host_vm.config_name(), list(host_vm.extra_java_args), extra_launcher_args)
         return self.__class__(self.config_name(), self._options, _host_vm)
 
     def run(self, cwd, args):

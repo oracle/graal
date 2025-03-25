@@ -77,7 +77,6 @@ import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
-import com.oracle.truffle.api.strings.bench.TStringTestDummyLanguage;
 
 import sun.misc.Unsafe;
 
@@ -662,7 +661,7 @@ public class TStringTestBase {
     protected static void assertCodePointsEqual(AbstractTruffleString a, TruffleString.Encoding encoding, int[] codepoints, int fromIndex, int length) {
         TruffleStringIterator it = a.createCodePointIteratorUncached(encoding);
         for (int i = 0; i < length; i++) {
-            Assert.assertEquals(codepoints[fromIndex + i], it.nextUncached());
+            Assert.assertEquals(codepoints[fromIndex + i], it.nextUncached(encoding));
         }
     }
 

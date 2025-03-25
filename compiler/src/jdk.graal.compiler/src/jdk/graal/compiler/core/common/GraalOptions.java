@@ -112,6 +112,9 @@ public final class GraalOptions {
     @Option(help = "Reassociates loop invariants and constants.", type = OptionType.Expert)
     public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
+    @Option(help = "Speculate that locks can be virtualized on HotSpot.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> SpeculateVirtualLocks = new OptionKey<>(true);
+
     @Option(help = "Performs loop unrolling optimization. ", type = OptionType.Expert)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);
 

@@ -28,7 +28,7 @@
   awfy: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
     suite:: "awfy",
     run+: [
-      self.benchmark_cmd + ["awfy:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
     timelimit: "30:00",
     forks_batches:: null,
@@ -40,7 +40,7 @@
   dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",
     run+: [
-      self.benchmark_cmd + ["dacapo:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
     logs+: [
         "%s/*/scratch/%s" % [config.compiler.compiler_suite, file]
@@ -80,7 +80,7 @@
   scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo",
     run+: [
-      self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
     timelimit: "01:30:00",
     forks_batches:: 2,
@@ -115,7 +115,7 @@
     suite:: suite_name,
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     run+: [
-      self.benchmark_cmd + ["renaissance:*"] + suite_version_args + ["--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*"] + suite_version_args + ["--"] + self.extra_vm_args
     ],
     timelimit: "2:30:00",
     forks_batches:: 4,
@@ -189,7 +189,7 @@
       "SPECJVM2008": { name: "specjvm2008", version: "1.01" }
     },
     run+: [
-      self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "30s", "-wt", "30s"]
+      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "30s", "-wt", "30s"]
     ],
     timelimit: "1:15:00",
     forks_batches:: 3,
@@ -263,5 +263,20 @@
     timelimit: "5:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
+  },
+
+  // Benchmark mixins that run metric-collecting variants of the benchmark suite they're applied to.
+  // For example, dacapo-timing is a variant of the dacapo benchmark which collects phase times and other compiler timers in its results.
+
+  timing: {
+    suite+: "-timing",
+    forks_batches:: null,
+    forks_timelimit:: null,
+  },
+
+  mem_use: {
+    suite+: "-mem-use",
+    forks_batches:: null,
+    forks_timelimit:: null,
   }
 }

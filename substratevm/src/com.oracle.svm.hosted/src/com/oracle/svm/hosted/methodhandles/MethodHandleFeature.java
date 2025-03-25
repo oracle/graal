@@ -300,7 +300,8 @@ public class MethodHandleFeature implements InternalFeature {
          */
         Class<?> lambdaFormClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm");
         Class<?> basicTypeClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$BasicType");
-        Method createFormsForMethod = ReflectionUtil.lookupMethod(lambdaFormClass, "createFormsFor", basicTypeClass);
+        Method createFormsForMethod = JavaVersionUtil.JAVA_SPEC == 21 ? ReflectionUtil.lookupMethod(lambdaFormClass, "createFormsFor", basicTypeClass)
+                        : ReflectionUtil.lookupMethod(lambdaFormClass, "createIdentityForm", basicTypeClass);
         try {
             for (Object type : (Object[]) ReflectionUtil.readStaticField(basicTypeClass, "ALL_TYPES")) {
                 createFormsForMethod.invoke(null, type);

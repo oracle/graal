@@ -7,20 +7,37 @@ permalink: /security-guide/native-image/sbom/
 
 # Software Bill of Materials (SBOM) in Native Image
 
-GraalVM Native Image can assemble a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
-Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM).
+GraalVM Native Image assembles a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities (only available in Oracle GraalVM).
+Pass the `--enable-sbom` option to the `native-image` command to configure the SBOM feature.
+The SBOM feature is enabled by default and defaults to the `embed` option which embeds an SBOM into the native executable. 
 In addition to being embedded, the SBOM can be added to the classpath or exported as a JSON file by using `--enable-sbom=classpath,export`.
 
 The CycloneDX format is supported and is the default.
-To embed a CycloneDX SBOM into a native executable, pass the `--enable-sbom` option to the `native-image` command.
 
 The implementation constructs the SBOM by recovering all version information observable in external library manifests for classes included in a native executable.
 The SBOM is compressed to limit the SBOM's impact on the native executable size.
+The compressed size is typically less than 1/10,000 of the overall image size.
 The SBOM is stored in the `gzip` format with the exported `sbom` symbol referencing its start address and the `sbom_length` symbol referencing its size.
+
+The SBOM feature can be disabled with `--enable-sbom=false`.
+
+## Extracting SBOM Contents
 
 After embedding the compressed SBOM into the executable, the [Native Image Inspect Tool](../reference-manual/native-image/InspectTool.md) is able to extract the compressed SBOM using the `--sbom` parameter accessible through `$JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary>` from both executables and shared libraries.
 It outputs the SBOM in the following format:
 
+After embedding the compressed SBOM into the image, there are two possible ways to extract the SBOM contents:
+- using the [Native Image Inspect Tool](../reference-manual/native-image/InspectTool.md)
+- using [Syft](https://github.com/anchore/syft){:target="_blank"}
+
+### Native Image Inspect Tool
+
+The [Native Image Inspect Tool](../reference-manual/native-image/InspectTool.md) is able to extract the compressed SBOM using the `--sbom` parameter, accessible from both executables and shared libraries:
+```bash
+native-image-inspect --sbom <path_to_binary>
+```
+
+It outputs the contents in the JSON format:
 ```json
 {
   "bomFormat": "CycloneDX",
@@ -69,8 +86,34 @@ It outputs the SBOM in the following format:
 }
 ```
 
-## Enabling Security Scanning
+### Syft
 
+[Syft](https://github.com/anchore/syft){:target="_blank"} is an open-source tool developed by Anchore that generates an SBOM for container images and filesystems.
+Additionally, it can extract an embedded SBOM and present it in both its native Syft format and the CycloneDX format.
+Thanks to the contribution from the GraalVM team, `syft` can extract an embedded SBOM from within a native image, built for Linux, macOS, or Windows.
+
+Run `syft scan` on the native executable to extract the entire SBOM contents:
+```bash
+syft scan <path_to_binary> -o cyclonedx-json
+```
+
+To list only the Java libraries included in it, run:
+```bash
+syft <path_to_binary>
+```
+
+It outputs the list similar to this:
+```bash
+NAME               VERSION       TYPE
+Oracle GraalVM     25+12-LTS     graalvm-native-image
+collections        25+12-LTS     java-archive
+commons-validator  1.9.0         java-archive
+json               20211205      java-archive
+...
+```
+
+## Enabling Security Scanning
+ 
 You can leverage the generated SBOM to integrate with security scanning solutions.
 There are a variety of tools to help detect and mitigate security vulnerabilities in your application dependencies.
 
@@ -83,7 +126,7 @@ Another popular command-line scanner is `grype`, part of the [Anchore software s
 With `grype`, you can check whether the libraries listed in your SBOMs have known vulnerabilities documented in Anchore's database.
 The output of the `native-image-inspect` tool can be fed directly into `grype` to scan for vulnerable libraries using the following command:
 ```bash
-$JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary> | grype
+native-image-inspect --sbom <path_to_binary> | grype
 ```
 It produces the following output:
 ```shell
@@ -132,6 +175,9 @@ This information can be useful for:
 * **Understanding image contents:** Quickly browse and search the class-level metadata to examine what is included in the native executable.
 
 > Including class-level metadata increases the SBOM size substantially. For this [Micronaut Hello World Rest](https://github.com/graalvm/graalvm-demos/tree/master/micronaut-hello-rest-maven) application, the SBOM size is 1.1 MB when embedded, and 13.7 MB when exported. The SBOM without class-level metadata is 3.5 kB when embedded, and 64 kB when exported. The size of the native image without an embedded SBOM is around 52 MB.
+
+Note that including class-level metadata is not supported by [Syft](#syft), as the nested components field containing this metadata is removed from the extracted SBOM.
+This limitation affects only metadata visibility in extracted SBOMs; it does not impact vulnerability scanning functionality.
 
 ### Data Format
 

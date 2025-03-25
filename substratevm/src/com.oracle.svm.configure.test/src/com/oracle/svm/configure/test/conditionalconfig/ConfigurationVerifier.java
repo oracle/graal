@@ -35,11 +35,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.test.AddExports;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -105,7 +104,7 @@ public class ConfigurationVerifier {
                 URL resourceURL = ConfigurationVerifier.class.getResource(resourceName);
                 return resourceURL == null ? null : resourceURL.toURI();
             } catch (Exception e) {
-                throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
+                throw new AssertionError("Unexpected error while locating the configuration files.", e);
             }
         });
         return configurationFileCollection.loadConfigurationSet(e -> e, null, null);

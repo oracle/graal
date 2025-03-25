@@ -55,7 +55,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.bench.TStringTestDummyLanguage;
 
 @RunWith(Parameterized.class)
 public class TStringFromNativePointerNotAllowedTest {

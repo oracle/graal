@@ -264,9 +264,10 @@ If not included, the attack surface of the executable is reduced as the executab
 #### <a name="glossary-sbom"></a><a name="glossary-embedded-sbom"></a>Software Bill of Material (SBOM)
 This section indicates whether a SBOM was assembled and in what ways it was stored. 
 The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact. 
-Use `--enable-sbom` to activate this feature which defaults to the `embed` option. 
+The SBOM feature is enabled by default and defaults to the `embed` option. 
 When embedded, the SBOM size is displayed. 
-The number of components is always displayed.
+The number of components is always displayed. 
+The SBOM feature can be disabled with `--enable-sbom=false`.
 
 For more information, see [Software Bill of Materials](../../security/native-image.md).
 

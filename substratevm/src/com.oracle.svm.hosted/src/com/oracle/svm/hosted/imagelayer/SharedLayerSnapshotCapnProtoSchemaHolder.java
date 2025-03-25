@@ -2402,6 +2402,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           case 3 : return Which.PRIMITIVE_VALUE;
           case 4 : return Which.METHOD_POINTER;
           case 5 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+          case 6 : return Which.C_GLOBAL_DATA_BASE_POINTER;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -2488,6 +2489,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setShortField(2, (short)ConstantReference.Which.C_ENTRY_POINT_LITERAL_CODE_POINTER.ordinal());
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference.factory,0, 0);
       }
+      public final boolean isCGlobalDataBasePointer() {
+        return which() == ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER;
+      }
+      public final org.capnproto.Void getCGlobalDataBasePointer() {
+        assert which() == ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER:
+                    "Must check which() before get()ing a union member.";
+        return org.capnproto.Void.VOID;
+      }
+      public final void setCGlobalDataBasePointer(org.capnproto.Void value) {
+        _setShortField(2, (short)ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER.ordinal());
+      }
+
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -2503,6 +2516,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           case 3 : return Which.PRIMITIVE_VALUE;
           case 4 : return Which.METHOD_POINTER;
           case 5 : return Which.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+          case 6 : return Which.C_GLOBAL_DATA_BASE_POINTER;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -2562,6 +2576,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference.factory,0,null, 0);
       }
 
+      public final boolean isCGlobalDataBasePointer() {
+        return which() == ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER;
+      }
+      public final org.capnproto.Void getCGlobalDataBasePointer() {
+        assert which() == ConstantReference.Which.C_GLOBAL_DATA_BASE_POINTER:
+                    "Must check which() before get()ing a union member.";
+        return org.capnproto.Void.VOID;
+      }
+
     }
 
     public enum Which {
@@ -2571,6 +2594,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       PRIMITIVE_VALUE,
       METHOD_POINTER,
       C_ENTRY_POINT_LITERAL_CODE_POINTER,
+      C_GLOBAL_DATA_BASE_POINTER,
       _NOT_IN_SCHEMA,
     }
     public static class ObjectConstant {

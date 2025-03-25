@@ -70,6 +70,14 @@ public final class StateSplitProxyNode extends FixedValueAnchorNode implements C
         super(TYPE, null);
     }
 
+    /**
+     * Constructor to be used with an existing state.
+     */
+    public StateSplitProxyNode(FrameState stateAfter) {
+        super(TYPE, null);
+        this.stateAfter = stateAfter;
+    }
+
     @Override
     public FrameState stateAfter() {
         return stateAfter;

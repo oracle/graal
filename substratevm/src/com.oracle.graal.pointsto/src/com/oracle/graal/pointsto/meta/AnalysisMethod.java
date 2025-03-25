@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.ImageLayerWriter;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -405,6 +406,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * call target.
          */
         return setIndirectCallTarget(this, false);
+    }
+
+    /**
+     * @see PointsToAnalysis#validateFixedPointState
+     */
+    public boolean validateFixedPointState(@SuppressWarnings("unused") BigBang bb) {
+        return true;
     }
 
     public void cleanupAfterAnalysis() {

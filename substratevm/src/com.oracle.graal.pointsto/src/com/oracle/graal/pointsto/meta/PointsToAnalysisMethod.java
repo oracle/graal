@@ -30,11 +30,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -235,6 +237,18 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         InvokeTypeFlow invoke = ConcurrentLightHashMap.get(this, VIRTUAL_INVOKE_UPDATER, callerMultiMethodKey);
         AnalysisError.guarantee(invoke != null);
         return invoke;
+    }
+
+    @Override
+    public boolean validateFixedPointState(BigBang bb) {
+        if (typeFlow != null) {
+            for (MethodFlowsGraph flowsGraph : typeFlow.getFlows()) {
+                for (TypeFlow<?> flow : flowsGraph.flows()) {
+                    assert flow.validateFixedPointState(bb);
+                }
+            }
+        }
+        return true;
     }
 
     @Override

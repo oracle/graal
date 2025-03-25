@@ -27,12 +27,15 @@ package com.oracle.svm.hosted.foreign;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.Linker.Option;
+import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -42,7 +45,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -59,11 +63,13 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
 
     private final ImageClassLoader imageClassLoader;
     private final RuntimeForeignAccessSupport accessSupport;
+    private final Map<String, MemoryLayout> canonicalLayouts;
 
-    public ForeignFunctionsConfigurationParser(ImageClassLoader imageClassLoader, RuntimeForeignAccessSupport access) {
-        super(true);
+    public ForeignFunctionsConfigurationParser(ImageClassLoader imageClassLoader, RuntimeForeignAccessSupport access, Map<String, MemoryLayout> canonicalLayouts) {
+        super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.imageClassLoader = imageClassLoader;
         this.accessSupport = access;
+        this.canonicalLayouts = canonicalLayouts;
     }
 
     @Override
@@ -121,7 +127,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
 
     private FunctionDescriptor parseDescriptor(Object signature) {
         String input = asString(signature, "a function descriptor must be a string");
-        return FunctionDescriptorParser.parse(input);
+        return FunctionDescriptorParser.parse(input, canonicalLayouts);
     }
 
     /**

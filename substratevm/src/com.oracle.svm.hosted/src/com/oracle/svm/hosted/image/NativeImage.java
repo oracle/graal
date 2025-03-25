@@ -88,6 +88,7 @@ import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -484,7 +485,6 @@ public abstract class NativeImage extends AbstractImage {
                             (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
                                             isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
                             (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
-            defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
@@ -601,22 +601,18 @@ public abstract class NativeImage extends AbstractImage {
 
             assert ConfigurationValues.getTarget().arch instanceof AArch64 || checkEmbeddedOffset(sectionImpl, offset, info);
 
-            // Figure out what kind of relocation site it is.
             if (info.getTargetObject() instanceof CFunctionPointer) {
-                // References to functions are via relocations to the symbol for the function.
                 markFunctionRelocationSite(sectionImpl, offset, info);
             } else {
-                // A data relocation.
                 if (sectionImpl.getElement() == textSection) {
-                    // A wrinkle on relocations *from* the text section: they are *always* to
-                    // constants (in the "constant partition" of the roDataSection).
                     markDataRelocationSiteFromText(buffer, sectionImpl, offset, info);
+                } else if (info.getTargetObject() instanceof CGlobalDataBasePointer) {
+                    assert info.getAddend() == 0 : "addressing from base not intended";
+                    sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), RWDATA_CGLOBALS_PARTITION_OFFSET);
                 } else {
-                    // Relocations from other sections go to the section containing the target.
-                    // Pass along the information about the target.
                     final JavaConstant targetConstant = (JavaConstant) info.getTargetObject();
                     final ObjectInfo targetObjectInfo = heap.getConstantInfo(targetConstant);
-                    markDataRelocationSite(sectionImpl, offset, info, targetObjectInfo);
+                    markHeapReferenceRelocationSite(sectionImpl, offset, info, targetObjectInfo);
                 }
             }
         }
@@ -658,7 +654,6 @@ public abstract class NativeImage extends AbstractImage {
             validateNoDirectRelocationsInTextSection(info);
         }
 
-        // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
         HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
@@ -669,7 +664,6 @@ public abstract class NativeImage extends AbstractImage {
         }
 
         assert checkMethodPointerRelocationKind(info);
-        // A reference to a method. Mark the relocation site using the symbol name.
         relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer, injectedNotCompiled);
     }
 
@@ -692,15 +686,9 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
-    // TODO: These two methods for marking data relocations might have to be merged if text sections
-    // TODO: ever have relocations to some where other than constants at the beginning of the
-    // TODO: read-only data section.
-
-    // A reference to data. Mark the relocation using the section and addend in the relocation info.
-    private void markDataRelocationSite(ProgbitsSectionImpl sectionImpl, int offset, RelocatableBuffer.Info info, ObjectInfo targetObjectInfo) {
-        // References to objects are via relocations to offsets in the heap section.
+    /** Mark a relocation site for the location of an image heap object. */
+    private void markHeapReferenceRelocationSite(ProgbitsSectionImpl sectionImpl, int offset, RelocatableBuffer.Info info, ObjectInfo targetObjectInfo) {
         assert ConfigurationValues.getTarget().arch instanceof AArch64 || info.getRelocationSize() == 4 || info.getRelocationSize() == 8 : "AMD64 Data relocation size should be 4 or 8 bytes.";
-        assert targetObjectInfo != null;
         String targetSectionName = heapSection.getName();
         long relocationAddend = targetObjectInfo.getOffset() + info.getAddend();
         sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, relocationAddend);

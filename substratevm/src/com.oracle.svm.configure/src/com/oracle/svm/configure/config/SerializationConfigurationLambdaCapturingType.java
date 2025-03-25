@@ -29,7 +29,7 @@ import java.util.Objects;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import com.oracle.svm.configure.SerializationConfigurationParser;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;

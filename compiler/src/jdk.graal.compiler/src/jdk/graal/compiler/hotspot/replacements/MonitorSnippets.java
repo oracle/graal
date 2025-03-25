@@ -93,10 +93,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
-import static org.graalvm.word.LocationIdentity.any;
 import static jdk.graal.compiler.word.Word.nullPointer;
 import static jdk.graal.compiler.word.Word.unsigned;
 import static jdk.graal.compiler.word.Word.zero;
+import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.List;
 import java.util.Objects;
@@ -114,6 +114,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
@@ -127,16 +128,19 @@ import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.debug.DynamicCounterNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.java.CheckFastPathMonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
@@ -154,8 +158,11 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Snippets used for implementing the monitorenter and monitorexit instructions.
@@ -214,6 +221,23 @@ public class MonitorSnippets implements Snippets {
         return JavaVersionUtil.JAVA_SPEC == 21;
     }
 
+    @Snippet
+    public static void checkMonitorenter(@ConstantParameter int lockCount, @ConstantParameter Register threadRegister, @ConstantParameter SpeculationLog.Speculation speculation) {
+        /*
+         * A FixedGuardNode is used instead of an IfNode/DeoptimizeNode because the libgraal snippet
+         * processing can't insert a node that terminates control flow
+         */
+        FixedGuardNode.guard(canEnterWithoutSideEffect(lockCount, threadRegister), DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation);
+    }
+
+    private static boolean canEnterWithoutSideEffect(int lockCount, Register threadRegister) {
+        // The snippet instantiantion code ensures this is only called for lightweight locking
+        final Word thread = registerAsWord(threadRegister);
+        Word lockStackTop = Word.unsigned(thread.readInt(javaThreadLockStackTopOffset(INJECTED_VMCONFIG), JAVA_THREAD_LOCK_STACK_TOP_LOCATION));
+        Word newTop = lockStackTop.add(lockCount * wordSize());
+        return !newTop.greaterOrEqual(javaThreadLockStackEndOffset(INJECTED_VMCONFIG));
+    }
+
     /**
      * The monitorenter snippet is slightly different from the HotSpot code:
      *
@@ -225,7 +249,7 @@ public class MonitorSnippets implements Snippets {
      */
     @Snippet
     public static void monitorenter(Object object, KlassPointer hub, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister,
-                    @ConstantParameter boolean trace, @ConstantParameter Counters counters) {
+                    @ConstantParameter boolean trace, @ConstantParameter boolean synthetic, @ConstantParameter Counters counters) {
         HotSpotReplacementsUtil.verifyOop(object);
 
         // Load the mark word - this includes a null-check on object
@@ -239,7 +263,7 @@ public class MonitorSnippets implements Snippets {
 
         incCounter();
 
-        if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
+        if (!synthetic && diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
             int flags = shouldUseKlassMiscFlags() ? hub.readByte(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
                             : hub.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
             if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccIsValueBasedClass(INJECTED_VMCONFIG)) != 0)) {
@@ -249,12 +273,15 @@ public class MonitorSnippets implements Snippets {
         }
 
         if (tryFastPathLocking(object, stackPointerRegister, trace, counters, mark, lock, thread)) {
-            if (isJDK21() || useStackLocking(INJECTED_VMCONFIG)) {
-                incrementHeldMonitorCount(thread);
-            }
+            maybeUpdateHeldMonitorCount(thread, 1);
         } else {
-            // slow-path runtime-call
-            monitorenterStubC(MONITORENTER, object, lock);
+            if (synthetic && (useLightweightLocking(INJECTED_VMCONFIG) || useStackLocking(INJECTED_VMCONFIG))) {
+                // The fast locking cases are never permitted to use the slow path.
+                throw UnreachableNode.unreachable();
+            } else {
+                // slow-path runtime-call
+                monitorenterStubC(MONITORENTER, object, lock);
+            }
         }
     }
 
@@ -489,9 +516,7 @@ public class MonitorSnippets implements Snippets {
         trace(trace, "             lock: 0x%016lx\n", lock);
 
         if (tryFastPathUnlocking(object, trace, counters, thread, lock)) {
-            if (isJDK21() || useStackLocking(INJECTED_VMCONFIG)) {
-                decrementHeldMonitorCount(thread);
-            }
+            maybeUpdateHeldMonitorCount(thread, -1);
         } else {
             monitorexitStubC(MONITOREXIT, object, lock);
         }
@@ -667,17 +692,11 @@ public class MonitorSnippets implements Snippets {
                 memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
                 monitor.writeWord(ownerOffset, zero());
                 memoryBarrier(MembarNode.FenceKind.STORE_LOAD);
-                // Note that we read the EntryList and then the cxq after dropping the
-                // lock, so the values need not form a stable snapshot. In particular,
-                // after reading the (empty) EntryList, another thread could acquire
-                // and release the lock, moving any entries in the cxq to the
-                // EntryList, causing the current thread to see an empty cxq and
-                // conclude there are no waiters. But this is okay as the thread that
-                // moved the cxq is responsible for waking the successor.
+                // Note that we read the entry list after dropping the lock, so the values need not
+                // form a stable snapshot.
                 Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
-                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
-                // Check if the entry lists are empty.
-                if (probability(FREQUENT_PROBABILITY, entryList.or(cxq).equal(0))) {
+                // Check if the entry list is empty.
+                if (probability(FREQUENT_PROBABILITY, entryList.isNull())) {
                     traceObject(trace, "-lock{heavyweight:simple}", object, false);
                     counters.unlockHeavySimple.inc();
                     return true;
@@ -706,17 +725,15 @@ public class MonitorSnippets implements Snippets {
         return false;
     }
 
-    private static void incrementHeldMonitorCount(Word thread) {
-        updateHeldMonitorCount(thread, 1);
+    private static boolean shouldUpdateHeldMonitorCount(GraalHotSpotVMConfig config) {
+        return isJDK21() || useStackLocking(config);
     }
 
-    private static void decrementHeldMonitorCount(Word thread) {
-        updateHeldMonitorCount(thread, -1);
-    }
-
-    private static void updateHeldMonitorCount(Word thread, int increment) {
-        Word heldMonitorCount = thread.readWord(heldMonitorCountOffset(INJECTED_VMCONFIG), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
-        thread.writeWord(heldMonitorCountOffset(INJECTED_VMCONFIG), heldMonitorCount.add(increment), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
+    private static void maybeUpdateHeldMonitorCount(Word thread, int increment) {
+        if (shouldUpdateHeldMonitorCount(INJECTED_VMCONFIG)) {
+            Word heldMonitorCount = thread.readWord(heldMonitorCountOffset(INJECTED_VMCONFIG), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
+            thread.writeWord(heldMonitorCountOffset(INJECTED_VMCONFIG), heldMonitorCount.add(increment), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
+        }
     }
 
     @Fold
@@ -825,6 +842,7 @@ public class MonitorSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
+        private final SnippetInfo checkMonitorenter;
         private final SnippetInfo monitorenter;
         private final SnippetInfo monitorexit;
         private final SnippetInfo initCounter;
@@ -874,12 +892,28 @@ public class MonitorSnippets implements Snippets {
                                 JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
             }
 
+            this.checkMonitorenter = snippet(providers, MonitorSnippets.class, "checkMonitorenter", enterLocations);
             this.monitorenter = snippet(providers, MonitorSnippets.class, "monitorenter", enterLocations);
             this.monitorexit = snippet(providers, MonitorSnippets.class, "monitorexit", exitLocations);
             this.initCounter = snippet(providers, MonitorSnippets.class, "initCounter");
             this.checkCounter = snippet(providers, MonitorSnippets.class, "checkCounter");
 
             this.counters = new Counters(factory);
+        }
+
+        public void lower(CheckFastPathMonitorEnterNode checkFastPathMonitorEnterNode, HotSpotRegistersProvider registers, GraalHotSpotVMConfig config, LoweringTool tool) {
+            GraalError.guarantee(HotSpotReplacementsUtil.useLightweightLocking(config), "should only be used with lightweight locking");
+
+            StructuredGraph graph = checkFastPathMonitorEnterNode.graph();
+            Arguments args = new Arguments(checkMonitorenter, graph.getGuardsStage(), tool.getLoweringStage());
+            // Speculation.equals is too weak so it can incorrectly cache snippet graphs so just
+            // disable caching of these graphs.
+            args.setCacheable(false);
+            args.add("lockCount", checkFastPathMonitorEnterNode.lockDepth());
+            args.add("threadRegister", registers.getThreadRegister());
+            args.add("speculation", graph.getSpeculationLog().speculate(MonitorEnterNode.MONITOR_ENTER_NO_SIDE_EFFECT.createSpeculationReason()));
+
+            template(tool, checkFastPathMonitorEnterNode, args).instantiate(tool.getMetaAccess(), checkFastPathMonitorEnterNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -895,6 +929,7 @@ public class MonitorSnippets implements Snippets {
             args.add("threadRegister", registers.getThreadRegister());
             args.add("stackPointerRegister", registers.getStackPointerRegister());
             args.add("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
+            args.add("synthetic", monitorenterNode.isSynthetic());
             args.add("counters", counters);
 
             template(tool, monitorenterNode, args).instantiate(tool.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);

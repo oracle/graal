@@ -48,19 +48,20 @@ public class TStringOpsCalcStringAttributesUTF16ConstantTest extends TStringOpsC
     @Test
     public void testValid() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, true);
-        test(getTStringOpsMethod("calcStringAttributesUTF16", Object.class, int.class, int.class, boolean.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, true);
+        test(getTStringOpsMethod("calcStringAttributesUTF16", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, true);
     }
 
     @Test
     public void testUnknown() {
         setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, false);
-        test(getTStringOpsMethod("calcStringAttributesUTF16", Object.class, int.class, int.class, boolean.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, false);
+        test(getTStringOpsMethod("calcStringAttributesUTF16", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, false);
     }
 
     @Test
     public void testUnknownC() {
         char[] charArray = toCharArray(arrayA);
-        setConstantArgs(DUMMY_LOCATION, charArray, offsetA, lengthA);
-        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, int.class, int.class), null, DUMMY_LOCATION, charArray, offsetA, lengthA);
+        long offsetCharArray = offsetA - byteArrayBaseOffset() + charArrayBaseOffset();
+        setConstantArgs(DUMMY_LOCATION, charArray, offsetCharArray, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF16C", char[].class, long.class, int.class), null, DUMMY_LOCATION, charArray, offsetCharArray, lengthA);
     }
 }

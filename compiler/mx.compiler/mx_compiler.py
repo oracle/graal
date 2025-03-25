@@ -420,7 +420,8 @@ def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=
             res.append(prefix + 'ShowDumpFiles=true')
     return res
 
-def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None):
+def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None, suite_version="9.12-MR1-git+2baec49"):
+    # by default, it uses a version of the DaCapo suite archive that is reasonably-sized for gating
     if iterations == -1:
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
@@ -437,7 +438,7 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
 
     # catch `*-report.txt` if the benchmark fails
     try:
-        return _run_benchmark('dacapo', name, args, vmargs)
+        return _run_benchmark('dacapo', name, args, vmargs, suite_version=suite_version)
     except BaseException as e:
         file = os.path.join(scratch_dir, f"{name}-report.txt")
         # not all benchmarks produce a report file
@@ -465,14 +466,16 @@ def _gate_renaissance(name, iterations, extraVMarguments=None):
     return _run_benchmark('renaissance', name, args, vmargs)
 
 
-def _run_benchmark(suite, name, args, vmargs):
+def _run_benchmark(suite, name, args, vmargs, suite_version=None):
     if not [vmarg for vmarg in vmargs if vmarg.startswith('-Xmx')]:
         vmargs += ['-Xmx8g']
     out = mx.TeeOutputCapture(mx.OutputCapture())
-    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
+    suite_version_arg = ["--bench-suite-version", str(suite_version)] if suite_version else []
+    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name)] + suite_version_arg + [ "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
     if exit_code != 0:
         mx.log(out)
-        mx.abort("Gate for {} benchmark '{}' failed!".format(suite, name))
+        suite_str = f"{suite} (version={suite_version})" if suite_version else suite
+        mx.abort("Gate for {} benchmark '{}' failed!".format(suite_str, name))
     return exit_code, suite, results
 
 def _check_forbidden_imports(projects, package_substrings, exceptions=None):
@@ -1137,7 +1140,7 @@ def collate_metrics(args):
         filename_index += 1
 
     if not results:
-        mx.log('No results to collate for ' + args.filenames[0])
+        mx.log(f"No results to collate for '{args.filenames[0]}'")
     elif args.filenames:
         collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
         with open(collated_filename, 'w') as fp:
@@ -1146,7 +1149,7 @@ def collate_metrics(args):
                 while len(series) < len(args.filenames):
                     series.append(0)
                 writer.writerow([n] + [str(v) for v in series] + [units[n]])
-        mx.log('Collated metrics into ' + collated_filename)
+        mx.log(f"Collated metrics into '{collated_filename}'")
 
 def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()

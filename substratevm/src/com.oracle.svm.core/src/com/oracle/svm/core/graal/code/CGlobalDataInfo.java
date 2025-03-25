@@ -29,19 +29,20 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.util.VMError;
 
 public final class CGlobalDataInfo {
-    public static final String CGLOBALDATA_BASE_SYMBOL_NAME = "__svm_cglobaldata_base";
-    public static final CGlobalData<Pointer> CGLOBALDATA_RUNTIME_BASE_ADDRESS = CGlobalDataFactory.forSymbol(CGLOBALDATA_BASE_SYMBOL_NAME);
+    /**
+     * Image heap object storing the base address of CGlobalData memory using a relocation. Before
+     * the image heap is set up, CGlobalData must be accessed via relocations in the code instead.
+     */
+    public static final BoxedRelocatedPointer CGLOBALDATA_RUNTIME_BASE_ADDRESS = new BoxedRelocatedPointer(CGlobalDataBasePointer.INSTANCE);
 
     private final CGlobalDataImpl<?> data;
     private final boolean isSymbolReference;

@@ -28,6 +28,8 @@ import java.util.List;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.ConditionalElement;
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.config.ConfigurationPredefinedClass;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
@@ -38,8 +40,6 @@ import com.oracle.svm.configure.config.SerializationConfigurationLambdaCapturing
 import com.oracle.svm.configure.config.SerializationConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.filters.ComplexFilter;
-import com.oracle.svm.core.configure.ConditionalElement;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 
 public class ConditionalConfigurationPredicate implements TypeConfiguration.Predicate, ProxyConfiguration.Predicate,
                 ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate {

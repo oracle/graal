@@ -24,31 +24,35 @@
  */
 package com.oracle.svm.truffle.tck;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Predicate;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.truffle.tck.PermissionsFeature.AnalysisMethodNode;
+
 import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.Platforms;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Predicate;
 
 abstract class AbstractMethodListParser extends ConfigurationParser {
 
@@ -58,7 +62,7 @@ abstract class AbstractMethodListParser extends ConfigurationParser {
     private final Set<AnalysisMethodNode> collectedMethods;
 
     AbstractMethodListParser(ImageClassLoader imageClassLoader, BigBang bb) {
-        super(true);
+        super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.imageClassLoader = Objects.requireNonNull(imageClassLoader, "ImageClassLoader must be non null");
         this.bb = Objects.requireNonNull(bb, "BigBang must be non null");
         this.collectedMethods = new HashSet<>();

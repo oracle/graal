@@ -20,9 +20,9 @@ Oracle GraalVM container images are published in two OCR repositories: **jdk** a
 
 Both repositories provide container images for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8 or 9.
 
-Oracle GraalVM is installed in _/usr/lib64/graalvm/graalvm-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `23`, and so on.
+Oracle GraalVM is installed in _/usr/lib64/graalvm/graalvm-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `24`, and so on.
 
-For example, Oracle GraalVM for JDK 23 is installed in _/usr/lib64/graalvm/graalvm-java23/_.
+For example, Oracle GraalVM for JDK 24 is installed in _/usr/lib64/graalvm/graalvm-java24/_.
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 ## Tags
@@ -36,43 +36,43 @@ $version[-muslib(for native image only)][-$platform][-$buildnumber]
 The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
 The most-specific tag is unique and always points to the same container image, while the less-specific tags point to newer container image variants over time.
 ```
-23.0.1-ol9-20240504
-23.0.1-ol9
-23.0.1
-23-ol9
-23
+24.0.1-ol9-20250318
+24.0.1-ol9
+24.0.1
+24-ol9
+24
 ```
 
 ## Pulling Images
 
-1. To pull the container image for Oracle GraalVM JDK for a specific JDK feature version, such as _23_, run:
+1. To pull the container image for Oracle GraalVM JDK for a specific JDK feature version, such as _24_, run:
     ```bash
-    docker pull container-registry.oracle.com/graalvm/jdk:23
+    docker pull container-registry.oracle.com/graalvm/jdk:24
     ```
     
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM container-registry.oracle.com/graalvm/jdk:23
+    FROM container-registry.oracle.com/graalvm/jdk:24
     ```
 
-2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific JDK feature version, such as _23_, run: 
+2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific JDK feature version, such as _24_, run: 
     ```bash
-    docker pull container-registry.oracle.com/graalvm/native-image:23
+    docker pull container-registry.oracle.com/graalvm/native-image:24
     ```
     
     Alternatively, to pull the container image for Oracle GraalVM `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, run:
     ```bash
-    docker pull container-registry.oracle.com/graalvm/native-image:23-muslib
+    docker pull container-registry.oracle.com/graalvm/native-image:24-muslib
     ```
     
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM container-registry.oracle.com/graalvm/native-image:23-muslib
+    FROM container-registry.oracle.com/graalvm/native-image:24-muslib
     ```
     
 3. To verify, start the container and enter a Bash session:
     ```bash
-    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:23
+    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:24
     ```
 
     To check the version of Oracle GraalVM and its installed location, run the `env` command from the `bash` prompt:
@@ -95,7 +95,7 @@ The most-specific tag is unique and always points to the same container image, w
     
 4. A `docker pull` command that omits a processor architecture pulls a container image for the processor architecture that matches your Docker client. To pull a container image for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
     ```bash
-    docker pull --platform linux/aarch64 container-registry.oracle.com/graalvm/native-image:23
+    docker pull --platform linux/aarch64 container-registry.oracle.com/graalvm/native-image:24
     ```
 
 ### Related Documentation
