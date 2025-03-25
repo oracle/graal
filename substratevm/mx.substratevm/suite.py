@@ -2445,7 +2445,8 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.foreign",
                 "requires" : [
-                    "org.graalvm.nativeimage.builder"
+                    "org.graalvm.nativeimage.builder",
+                    "org.graalvm.collections",
                 ],
                 "exports" : [
                     "* to org.graalvm.nativeimage.builder"
