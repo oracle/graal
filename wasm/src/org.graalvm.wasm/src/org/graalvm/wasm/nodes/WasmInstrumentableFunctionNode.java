@@ -163,14 +163,17 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         // We need to check if linking is completed. Else the call nodes might not have been
         // resolved yet.
         WasmContext context = WasmContext.get(this);
-        if (info == null && materializedTags.contains(StandardTags.StatementTag.class)) {
+        if (info == null && module.hasDebugInfo() && materializedTags.contains(StandardTags.StatementTag.class)) {
             Lock lock = getLock();
             lock.lock();
             try {
                 info = this.instrumentation;
                 if (info == null) {
                     final int functionIndex = codeEntry.functionIndex();
-                    final DebugFunction debugFunction = module.debugFunctions(this).get(functionSourceLocation);
+                    final DebugFunction debugFunction = debugFunction();
+                    if (debugFunction == null) {
+                        return this;
+                    }
                     this.instrumentation = info = insert(new WasmInstrumentationSupportNode(debugFunction, module, functionIndex));
                     final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
                     final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugFunction.lineMap().sourceLocationToLineMap());
