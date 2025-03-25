@@ -98,9 +98,19 @@ class SVMUtil:
 
     # static methods
     @staticmethod
-    def get_deopt_stub_adr() -> int:
-        return gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::eagerDeoptStub',
-                                        gdb.SYMBOL_VAR_DOMAIN).value().address
+    def get_eager_deopt_stub_adr() -> int:
+        sym = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::eagerDeoptStub', gdb.SYMBOL_VAR_DOMAIN)
+        return sym.value().address if sym is not None else -1
+
+    @staticmethod
+    def get_lazy_deopt_stub_primitive_adr() -> int:
+        sym = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::lazyDeoptStubPrimitiveReturn', gdb.SYMBOL_VAR_DOMAIN)
+        return sym.value().address if sym is not None else -1
+
+    @staticmethod
+    def get_lazy_deopt_stub_object_adr() -> int:
+        sym = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::lazyDeoptStubObjectReturn', gdb.SYMBOL_VAR_DOMAIN)
+        return sym.value().address if sym is not None else -1
 
     @staticmethod
     def get_unqualified_type_name(qualified_type_name: str) -> str:
@@ -1598,29 +1608,44 @@ class SVMFrameUnwinder(gdb.unwinder.Unwinder):
 
     def __init__(self, svm_util: SVMUtil):
         super().__init__('SubstrateVM FrameUnwinder')
-        self.deopt_stub_adr = 0
+        self.eager_deopt_stub_adr = None
+        self.lazy_deopt_stub_primitive_adr = None
+        self.lazy_deopt_stub_object_adr = None
         self.svm_util = svm_util
 
     def __call__(self, pending_frame: gdb.Frame):
-        if self.deopt_stub_adr == 0:
-            self.deopt_stub_adr = SVMUtil.get_deopt_stub_adr()
+        if self.eager_deopt_stub_adr is None:
+            self.eager_deopt_stub_adr = SVMUtil.get_eager_deopt_stub_adr()
+            self.lazy_deopt_stub_primitive_adr = SVMUtil.get_lazy_deopt_stub_primitive_adr()
+            self.lazy_deopt_stub_object_adr = SVMUtil.get_lazy_deopt_stub_object_adr()
 
         sp = 0
         try:
             sp = pending_frame.read_register('sp')
             pc = pending_frame.read_register('pc')
-            if int(pc) == self.deopt_stub_adr:
+            if int(pc) == self.eager_deopt_stub_adr:
                 deopt_frame_stack_slot = sp.cast(self.svm_util.stack_type.pointer()).dereference()
                 deopt_frame = deopt_frame_stack_slot.cast(self.svm_util.get_compressed_type(self.svm_util.object_type).pointer())
                 rtt = self.svm_util.get_rtt(deopt_frame)
                 deopt_frame = self.svm_util.cast_to(deopt_frame, rtt)
                 encoded_frame_size = self.svm_util.get_int_field(deopt_frame, 'sourceEncodedFrameSize')
                 source_frame_size = encoded_frame_size & ~self.svm_util.frame_size_status_mask
+
                 # Now find the register-values for the caller frame
                 unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(sp, pc))
                 caller_sp = sp + int(source_frame_size)
                 unwind_info.add_saved_register('sp', gdb.Value(caller_sp))
+                # try to fetch return address directly from stack
                 caller_pc = gdb.Value(caller_sp - 8).cast(self.svm_util.stack_type.pointer()).dereference()
+                unwind_info.add_saved_register('pc', gdb.Value(caller_pc))
+                return unwind_info
+            elif int(pc) == self.lazy_deopt_stub_primitive_adr or int(pc) == self.lazy_deopt_stub_object_adr:
+                # Now find the register-values for the caller frame
+                # We only have the original pc for lazy deoptimization -> unwind to original pc with same sp
+                # This is the best guess we can make without knowing the return address and frame size of the lazily deoptimized frame
+                unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(sp, pc))
+                unwind_info.add_saved_register('sp', gdb.Value(sp))
+                caller_pc = sp.cast(self.svm_util.stack_type.pointer()).dereference()
                 unwind_info.add_saved_register('pc', gdb.Value(caller_pc))
                 return unwind_info
         except Exception as ex:
@@ -1632,22 +1657,28 @@ class SVMFrameUnwinder(gdb.unwinder.Unwinder):
 
 
 class SVMFrameFilter:
-    def __init__(self, svm_util: SVMUtil, deopt_stub_available: bool):
+    def __init__(self, svm_util: SVMUtil):
         self.name = "SubstrateVM FrameFilter"
         self.priority = 100
         self.enabled = True
-        self.deopt_stub_available = deopt_stub_available
-        self.deopt_stub_adr = 0
+        self.eager_deopt_stub_adr = None
+        self.lazy_deopt_stub_primitive_adr = None
+        self.lazy_deopt_stub_object_adr = None
         self.svm_util = svm_util
 
     def filter(self, frame_iter: Iterable) -> FrameDecorator:
-        if self.deopt_stub_available and self.deopt_stub_adr == 0:
-            self.deopt_stub_adr = SVMUtil.get_deopt_stub_adr()
+        if self.eager_deopt_stub_adr is None:
+            self.eager_deopt_stub_adr = SVMUtil.get_eager_deopt_stub_adr()
+            self.lazy_deopt_stub_primitive_adr = SVMUtil.get_lazy_deopt_stub_primitive_adr()
+            self.lazy_deopt_stub_object_adr = SVMUtil.get_lazy_deopt_stub_object_adr()
 
         for frame in frame_iter:
             frame = frame.inferior_frame()
-            if self.deopt_stub_available and int(frame.pc()) == self.deopt_stub_adr:
-                yield SVMFrameDeopt(self.svm_util, frame)
+            pc = int(frame.pc())
+            if pc == self.eager_deopt_stub_adr:
+                yield SVMFrameEagerDeopt(self.svm_util, frame)
+            elif pc == self.lazy_deopt_stub_primitive_adr or pc == self.lazy_deopt_stub_object_adr:
+                yield SVMFrameLazyDeopt(self.svm_util, frame)
             else:
                 yield SVMFrame(frame)
 
@@ -1686,7 +1717,7 @@ class SymValueWrapper:
         return self.sym
 
 
-class SVMFrameDeopt(SVMFrame):
+class SVMFrameEagerDeopt(SVMFrame):
 
     def __init__(self, svm_util: SVMUtil, frame: gdb.Frame):
         super().__init__(frame)
@@ -1704,7 +1735,7 @@ class SVMFrameDeopt(SVMFrame):
     def function(self) -> str:
         if self.__frame_info is None or self.__svm_util.is_null(self.__frame_info):
             # we have no more information about the frame
-            return '[DEOPT FRAME ...]'
+            return '[EAGER DEOPT FRAME ...]'
 
         # read from deoptimized frame
         source_class = self.__svm_util.get_obj_field(self.__frame_info, 'sourceClass')
@@ -1726,7 +1757,7 @@ class SVMFrameDeopt(SVMFrame):
 
         func_name = str(self.__svm_util.get_obj_field(self.__frame_info, 'sourceMethodName'))[1:-1]
 
-        return '[DEOPT FRAME] ' + source_class_name + func_name + source_file_name
+        return '[EAGER DEOPT FRAME] ' + source_class_name + func_name + source_file_name
 
     def filename(self):
         if self.__frame_info is None or self.__svm_util.is_null(self.__frame_info):
@@ -1772,6 +1803,25 @@ class SVMFrameDeopt(SVMFrame):
         return None
 
 
+class SVMFrameLazyDeopt(SVMFrame):
+
+    def __init__(self, svm_util: SVMUtil, frame: gdb.Frame):
+        super().__init__(frame)
+
+        # fetch deoptimized frame from stack
+        sp = frame.read_register('sp')
+        real_pc = sp.cast(svm_util.stack_type.pointer()).dereference().cast(svm_util.stack_type.pointer())
+        self.__gdb_text = str(real_pc)
+        self.__svm_util = svm_util
+
+    def function(self) -> str:
+        if self.__gdb_text is None:
+            # we have no more information about the frame
+            return '[LAZY DEOPT FRAME ...]'
+
+        return '[LAZY DEOPT FRAME] at ' + self.__gdb_text
+
+
 try:
     svminitfile = os.path.expandvars('${SVMGDBINITFILE}')
     exec(open(svminitfile).read())
@@ -1784,14 +1834,13 @@ def register_objfile(objfile: gdb.Objfile):
     svm_util = SVMUtil()
     gdb.printing.register_pretty_printer(objfile, SVMPrettyPrinter(svm_util), True)
 
-    # deopt stub points to the wrong address at first -> set dummy value to fill later
-    deopt_stub_available = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer::eagerDeoptStub',
+    # deopt stub points to the wrong address at first -> fill later when needed
+    deopt_stub_available = gdb.lookup_global_symbol('com.oracle.svm.core.deopt.Deoptimizer',
                                                     gdb.SYMBOL_VAR_DOMAIN) is not None
-
     if deopt_stub_available:
         gdb.unwinder.register_unwinder(objfile, SVMFrameUnwinder(svm_util))
 
-    frame_filter = SVMFrameFilter(svm_util, deopt_stub_available)
+    frame_filter = SVMFrameFilter(svm_util)
     objfile.frame_filters[frame_filter.name] = frame_filter
 
 

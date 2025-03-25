@@ -83,10 +83,17 @@ class TestRuntimeDeopt(unittest.TestCase):
 
         # check backtrace
         backtrace = gdb_execute('backtrace 5')
-        self.assertIn('[DEOPT FRAME] com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-        self.assertIn('(deoptFrameValues=2, __0=com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...}) at OptimizedCallTarget.java', backtrace)
-        self.assertIn('com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode::doInvoke', backtrace)
-        self.assertNotIn('??', backtrace)
+        # check if eager deopt frame
+        if 'EAGER DEOPT FRAME' in backtrace:
+            self.assertIn('[EAGER DEOPT FRAME] com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
+            self.assertIn('(deoptFrameValues=2, __0=com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...}) at OptimizedCallTarget.java', backtrace)
+            self.assertIn('com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode::doInvoke', backtrace)
+            self.assertNotIn('??', backtrace)
+            self.assertNotIn('Unknown Frame at', backtrace)
+        else:
+            # must be lazy deopt frame
+            # we can't be sure it is handled properly, but at least it should show up as lazy deopt frame in the backtrace
+            self.assertIn('[LAZY DEOPT FRAME] at', backtrace)
 
     # the js deopt test uses the jsvm-library
     # so the debugging symbols do not originate from the main objfile, but from the shared library
