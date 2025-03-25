@@ -1211,6 +1211,7 @@ def _runtimedebuginfotest(native_image, output_path, args=None):
     test_python_source_dir = join(test_source_path, 'com', 'oracle', 'svm', 'test', 'debug', 'helper')
     test_runtime_compilation_py = join(test_python_source_dir, 'test_runtime_compilation.py')
     test_runtime_deopt_py = join(test_python_source_dir, 'test_runtime_deopt.py')
+    testdeopt_js = join(suite.dir, 'mx.substratevm', 'testdeopt.js')
 
     gdb_args = [
         os.environ.get('GDB_BIN', 'gdb'),
@@ -1256,27 +1257,31 @@ def _runtimedebuginfotest(native_image, output_path, args=None):
     # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
     status = mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
 
-    jslib = mx.add_lib_suffix(native_image(
-        args +
-        svm_experimental_options([
-            '-H:+SourceLevelDebug',
-            '-H:+RuntimeDebugInfo',
-        ]) +
-        ['-g', '-O0', '--macro:jsvm-library']
-    ))
-    js_launcher = get_js_launcher(jslib)
-    testdeopt_js = join(suite.dir, 'mx.substratevm', 'testdeopt.js')
-    logfile = join(output_path, 'test_runtime_deopt.log')
-    os.environ.update({'gdb_logfile': logfile})
-    gdb_command = gdb_args + [
-        '-iex', f"set logging file {logfile}",
-        '-iex', "set logging enabled on",
-        '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
-        '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
-    ]
-    log_gdb_command(gdb_command)
-    # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
-    status |= mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
+    def run_js_test(eager: bool = False):
+        jslib = mx.add_lib_suffix(native_image(
+            args +
+            svm_experimental_options([
+                '-H:+SourceLevelDebug',
+                '-H:+RuntimeDebugInfo',
+                '-H:+LazyDeoptimization' if eager else '-H:-LazyDeoptimization',
+            ]) +
+            ['-g', '-O0', '--macro:jsvm-library']
+        ))
+        js_launcher = get_js_launcher(jslib)
+        logfile = join(output_path, 'test_runtime_deopt_' + ('eager' if eager else 'lazy') + '.log')
+        os.environ.update({'gdb_logfile': logfile})
+        gdb_command = gdb_args + [
+            '-iex', f"set logging file {logfile}",
+            '-iex', "set logging enabled on",
+            '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
+            '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
+        ]
+        log_gdb_command(gdb_command)
+        # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
+        return mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
+
+    status |= run_js_test()
+    status |= run_js_test(True)
 
     if status != 0:
         mx.abort(status)
