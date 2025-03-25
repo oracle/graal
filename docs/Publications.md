@@ -38,7 +38,21 @@ Find below also the academic publications on the compiler of your interest, or s
 
 ## Academic Publications
 
+### 2025
+
+- Ivan Ristovic, Vojin Jovanovic, Peter Hofer, Milena Vujosevic Janicic
+[**GraalDoss: Direct Object Snapshotting and Sharing for Cloud-Native Applications**](#)
+In _Proceedings of Future Generation Computer Systems_
+
+- Andrej Pecimuth, David Leopoldseder, Petr Tuma
+[**A Pragmatic Approach to Replay Compilation**]()
+In _Proceedings of MoreVMs workshop co-located with <Programming> 2025 conference_
+
 ### 2024
+
+- David Kozak, Codrut Stancu, Tomas Vojnar, Christian Wimmer
+[**SkipFlow: Improving the Precision of Points-to Analysis using Primitive Values and Predicate Edges**](https://dl.acm.org/doi/10.1145/3696443.3708932)
+In _PGO '25: Proceedings of the 23rd ACM/IEEE International Symposium on Code Generation and Optimization_
 
 - Matteo Oldani, William Blair, Lukas Stadler, Zbynek Slajchrt, Matthias Neugschwandtner
 [**Binsweep: Reliably Restricting Untrusted Instruction Streams with Static Binary Analysis and Control-Flow Integrity**](https://www.graalvm.org/resources/articles/binsweep.pdf)
