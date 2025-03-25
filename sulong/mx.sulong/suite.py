@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.42.3",
+  "mxversion": "7.45.0",
   "name" : "sulong",
   "version" : "25.0.0",
   "release" : False,
@@ -2022,6 +2022,7 @@ suite = {
       "description": "Layout for Sulong native toolchain and llvm-toolchain",
       "type": "dir",
       "platformDependent": True,
+      "platforms": "local",
       "layout": {
         "lib/llvm-toolchain/": "extracted-dependency:sdk:LLVM_TOOLCHAIN",
 
@@ -2086,6 +2087,7 @@ suite = {
       "description": "Common layout for Native and JVM standalones",
       "type": "dir",
       "platformDependent": True,
+      "platforms": "local",
       "layout": {
         "./": [
           "dependency:sulong_licenses/*",
@@ -2100,6 +2102,7 @@ suite = {
       "description": "libllvmvm as a layout, so it can be reused in sulong-managed",
       "type": "dir",
       "platformDependent": True,
+      "platforms": "local",
       "layout": {
         "lib/": [
           "dependency:libllvmvm",
@@ -2111,6 +2114,7 @@ suite = {
       "description": "Sulong Native standalone",
       "type": "dir",
       "platformDependent": True,
+      "platforms": "local",
       "layout": {
         "./": [
           "dependency:SULONG_STANDALONE_COMMON/*",
@@ -2123,6 +2127,7 @@ suite = {
       "description": "Sulong JVM standalone",
       "type": "dir",
       "platformDependent": True,
+      "platforms": "local",
       "layout": {
         "./": [
           "dependency:SULONG_STANDALONE_COMMON/*",
