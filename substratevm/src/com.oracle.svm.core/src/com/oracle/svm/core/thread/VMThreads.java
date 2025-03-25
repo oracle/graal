@@ -604,8 +604,9 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
             THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         }
         try {
-            IsolateThread thread;
-            for (thread = firstThreadUnsafe(); thread.isNonNull() && threadLookup.matchesThread(thread, identifier); thread = nextThread(thread)) {
+            IsolateThread thread = firstThreadUnsafe();
+            while (thread.isNonNull() && !threadLookup.matchesThread(thread, identifier)) {
+                thread = nextThread(thread);
             }
             return thread;
         } finally {
@@ -1046,7 +1047,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
-            return OSThreadIdTL.get(thread).notEqual(identifier);
+            return OSThreadIdTL.get(thread).equal(identifier);
         }
     }
 }
