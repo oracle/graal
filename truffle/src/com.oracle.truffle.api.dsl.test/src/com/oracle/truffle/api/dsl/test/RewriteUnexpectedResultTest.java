@@ -59,6 +59,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.DoubleReplaceNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.InlineCacheBoxingOverloadNodeGen;
+import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.InlineCacheWithGenericBoxingOverloadNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.InlinedBoxingOverloadNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.PrimitiveOverloadNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.RewriteUnexpected3NodeGen;
@@ -368,6 +369,60 @@ public class RewriteUnexpectedResultTest {
         // inline cache full.
         assertThrows(UnsupportedSpecializationException.class, () -> node.executeInt(44));
         assertThrows(UnsupportedSpecializationException.class, () -> node.executeGeneric(44));
+    }
+
+    @GenerateInline(false)
+    @SuppressWarnings("unused")
+    abstract static class InlineCacheWithGenericBoxingOverloadNode extends BaseNode {
+
+        @Specialization(guards = "arg == cachedArg", limit = "3", rewriteOn = UnexpectedResultException.class)
+        static int doIntCached(Object arg, @Cached("arg") Object cachedArg) throws UnexpectedResultException {
+            if (cachedArg instanceof Integer i) {
+                return 42;
+            }
+            throw new UnexpectedResultException(cachedArg);
+        }
+
+        @Specialization(guards = "arg == cachedArg", limit = "3", replaces = {"doIntCached"})
+        static Object doObjectCached(Object arg, @Cached("arg") Object cachedArg) {
+            return cachedArg;
+        }
+
+        @Specialization(replaces = {"doIntCached", "doObjectCached"}, rewriteOn = UnexpectedResultException.class)
+        static int doIntGeneric(Object arg) throws UnexpectedResultException {
+            if (arg instanceof Integer i) {
+                return 43;
+            }
+            throw new UnexpectedResultException(arg);
+        }
+
+        @Specialization(replaces = {"doIntGeneric", "doIntCached", "doObjectCached"})
+        static Object doGeneric(Object arg) {
+            return 44;
+        }
+    }
+
+    @Test
+    public void testInlineCacheWithGenericBoxingOverloadNode() throws UnexpectedResultException {
+        InlineCacheWithGenericBoxingOverloadNode node = InlineCacheWithGenericBoxingOverloadNodeGen.create();
+
+        Object o1 = 42;
+        Object o2 = "43";
+        Object o3 = 43;
+
+        assertEquals(o1, node.executeGeneric(o1));
+        assertEquals(o2, node.executeGeneric(o2));
+        assertEquals(o1, node.executeInt(o1));
+        UnexpectedResultException e = assertThrows(UnexpectedResultException.class, () -> node.executeInt(o2));
+        assertEquals(o2, e.getResult());
+        assertEquals(o2, node.executeGeneric(o2));
+        assertEquals(o3, node.executeInt(o3));
+
+        // inline cache full -> generic executeAndSpecialize
+        assertEquals(44, node.executeGeneric(44));
+
+        assertEquals(43, node.executeInt(44));
+        assertEquals(44, node.executeGeneric(44));
     }
 
     @GenerateInline(false)
