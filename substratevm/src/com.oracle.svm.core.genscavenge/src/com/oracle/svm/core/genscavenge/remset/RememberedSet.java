@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -134,6 +136,13 @@ public interface RememberedSet extends BarrierSetProvider {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void dirtyCardIfNecessary(Object holderObject, Object object);
+
+    /**
+     * If remembered set tracking is enabled for the given object, this method ensures that all
+     * references in that object have remembered set entries.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void dirtyAllReferencesIfNecessary(Object obj);
 
     /**
      * Walk all dirty objects in {@linkplain com.oracle.svm.core.genscavenge.HeapChunk#getNext

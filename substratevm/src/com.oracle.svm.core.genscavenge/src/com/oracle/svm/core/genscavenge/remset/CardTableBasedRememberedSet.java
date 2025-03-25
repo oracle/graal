@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -39,13 +41,21 @@ import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -171,6 +181,29 @@ public class CardTableBasedRememberedSet implements RememberedSet {
                 UnalignedChunkRememberedSet.dirtyCardForObject(holderObject, false);
             }
         }
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void dirtyAllReferencesIfNecessary(Object obj) {
+        Word header = ObjectHeader.readHeaderFromObject(obj);
+        if (RememberedSet.get().hasRememberedSet(header) && mayContainReferences(obj)) {
+            ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean mayContainReferences(Object obj) {
+        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        int hubType = hub.getHubType();
+        return switch (hubType) {
+            case HubType.INSTANCE -> !DynamicHubSupport.hasEmptyReferenceMap(hub);
+            case HubType.POD_INSTANCE -> !DynamicHubSupport.hasEmptyReferenceMap(hub) || !PodReferenceMapDecoder.hasEmptyReferenceMap(obj);
+            case HubType.REFERENCE_INSTANCE, HubType.STORED_CONTINUATION_INSTANCE -> true;
+            case HubType.PRIMITIVE_ARRAY -> false;
+            case HubType.OBJECT_ARRAY -> ((Object[]) obj).length > 0;
+            default -> throw VMError.shouldNotReachHere("Unexpected hub type.");
+        };
     }
 
     @Override
