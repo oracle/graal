@@ -1677,6 +1677,7 @@ suite = {
       "mainClass": "com.oracle.truffle.llvm.toolchain.launchers.NativeToolchainWrapper",
       "jar_distributions": ["sulong:SULONG_TOOLCHAIN_LAUNCHERS"],
       "relative_home_paths": {
+        "llvm": "../..",
         "llvm-toolchain": "../../../llvm-toolchain",
       },
       "relative_jre_path": "../../../../jvm",
@@ -1701,7 +1702,7 @@ suite = {
     "libnativetoolchainwrappers": {
       "class": "NativeImageLibraryProject",
       "dependencies": [
-        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "sulong:SULONG_TOOLCHAIN_LAUNCHERS",
       ],
       "build_args": [
         # From mx.sulong/mx_sulong.py
@@ -2001,6 +2002,22 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "SULONG_STANDALONE_DEPENDENCIES": {
+      "description": "Sulong standalone dependencies",
+      "class": "DynamicPOMDistribution",
+      "distDependencies": [
+        "sulong:SULONG_LAUNCHER",
+        "sulong:SULONG_CORE",
+        "sulong:SULONG_API",
+        "sulong:SULONG_NFI",
+        "sulong:SULONG_NATIVE",
+        "sulong:SULONG_TOOLCHAIN_LAUNCHERS",
+        "sdk:TOOLS_FOR_STANDALONE",
+      ],
+      "dynamicDistDependencies": "sulong_standalone_deps",
+      "maven": False,
+    },
+
     "SULONG_NATIVE_AND_LLVM_TOOLCHAIN": {
       "description": "Layout for Sulong native toolchain and llvm-toolchain",
       "type": "dir",
@@ -2065,22 +2082,6 @@ suite = {
       },
     },
 
-    "SULONG_STANDALONE_DEPENDENCIES": {
-      "description": "Sulong standalone dependencies",
-      "class": "DynamicPOMDistribution",
-      "distDependencies": [
-        "sulong:SULONG_LAUNCHER",
-        "sulong:SULONG_CORE",
-        "sulong:SULONG_API",
-        "sulong:SULONG_NFI",
-        "sulong:SULONG_NATIVE",
-        "sulong:SULONG_TOOLCHAIN_LAUNCHERS",
-        "sdk:TOOLS_FOR_STANDALONE",
-      ],
-      "dynamicDistDependencies": "sulong_standalone_deps",
-      "maven": False,
-    },
-
     "SULONG_STANDALONE_COMMON": {
       "description": "Common layout for Native and JVM standalones",
       "type": "dir",
@@ -2095,6 +2096,17 @@ suite = {
       },
     },
 
+    "SULONG_LIBLLVMVM": {
+      "description": "libllvmvm as a layout, so it can be reused in sulong-managed",
+      "type": "dir",
+      "platformDependent": True,
+      "layout": {
+        "lib/": [
+          "dependency:libllvmvm",
+        ],
+      },
+    },
+
     "SULONG_NATIVE_STANDALONE": {
       "description": "Sulong Native standalone",
       "type": "dir",
@@ -2102,9 +2114,7 @@ suite = {
       "layout": {
         "./": [
           "dependency:SULONG_STANDALONE_COMMON/*",
-        ],
-        "lib/": [
-          "dependency:libllvmvm",
+          "dependency:SULONG_LIBLLVMVM/*",
         ],
       },
     },
@@ -2138,12 +2148,7 @@ suite = {
           "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT",
         ],
         "modules/": [
-          {
-            "source_type": "classpath-dependencies",
-            "dependencies": [
-              "SULONG_STANDALONE_DEPENDENCIES",
-            ],
-          },
+          "classpath-dependencies:SULONG_STANDALONE_DEPENDENCIES",
         ],
       },
     },
@@ -2153,7 +2158,7 @@ suite = {
         "platformDependent": True,
         "standalone_dist": "SULONG_NATIVE_STANDALONE",
         "community_archive_name": "llvm-community",
-        "enterprise_archive_name": "llvm",
+        "enterprise_archive_name": "llvm", # should not be used as it lacks the managed toolchain
     },
 
     "SULONG_JVM_STANDALONE_RELEASE_ARCHIVE": {
@@ -2161,7 +2166,7 @@ suite = {
         "platformDependent": True,
         "standalone_dist": "SULONG_JVM_STANDALONE",
         "community_archive_name": "llvm-community-jvm",
-        "enterprise_archive_name": "llvm-jvm",
+        "enterprise_archive_name": "llvm-jvm", # should not be used as it lacks the managed toolchain
     },
 
     "SULONG_NATIVE_BITCODE_RESOURCES" : {
@@ -2214,6 +2219,10 @@ suite = {
         "name" : "org.graalvm.llvm.native_toolchain_wrappers",
         "exports" : [
           "com.oracle.truffle.llvm.toolchain.launchers to org.graalvm.launcher",
+          # "com.oracle.truffle.llvm.toolchain.launchers.common to org.graalvm.llvm.managed_toolchain_wrappers",
+          # "com.oracle.truffle.llvm.toolchain.launchers to org.graalvm.llvm.managed_toolchain_wrappers",
+          "com.oracle.truffle.llvm.toolchain.launchers.common", # TODO ideally use the above but doesn't work
+          "com.oracle.truffle.llvm.toolchain.launchers", # TODO ideally use the above but doesn't work
         ],
       },
       "useModulePath" : True,

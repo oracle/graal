@@ -142,6 +142,11 @@ public class Driver {
     }
 
     public static Path getSulongHome() {
+        final String homeProperty = System.getProperty("org.graalvm.language.llvm.home");
+        if (homeProperty != null) {
+            return Paths.get(homeProperty);
+        }
+
         final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
         if (sulongHome != null) {
             return sulongHome;

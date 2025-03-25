@@ -115,8 +115,11 @@ def is_ee():
 def sulong_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()
     if is_ee():
-        deps += ['sulong-managed:SULONG_ENTERPRISE_NATIVE']
-        # TODO
+        deps += [
+            'sulong-managed:SULONG_ENTERPRISE',
+            'sulong-managed:SULONG_MANAGED',
+            'sulong-managed:SULONG_ENTERPRISE_NATIVE',
+        ]
     return deps
 
 def libllvmvm_build_args():
