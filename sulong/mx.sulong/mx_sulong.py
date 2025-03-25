@@ -114,7 +114,7 @@ def is_ee():
 
 def sulong_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()
-    if is_ee():
+    if has_suite('sulong-managed'):
         deps += [
             'sulong-managed:SULONG_ENTERPRISE',
             'sulong-managed:SULONG_MANAGED',
