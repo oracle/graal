@@ -11,6 +11,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-61492) The experimental JDWP option is now present in standard GraalVM builds.
 * (GR-55222) Enabled lazy deoptimization of runtime-compiled code, which reduces memory used for deoptimization. Can be turned off with `-H:-LazyDeoptimization`.
 * (GR-54953) Add the experimental option `-H:Preserve` that makes the program work correctly without providing reachability metadata. Correctness is achieved by preserving all classes, resources, and reflection metadata in the image. Usage: `-H:Preserve=[all|none|module=<module>|package=<package>|package=<package-wildcard>|path=<cp-entry>][,...]`.
+* (GR-58659) (GR-58660) Support for FFM API ("Panama") has been added for darwin-aarch64 and linux-aarch64.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

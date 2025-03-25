@@ -568,7 +568,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             if (shouldEmitOnlyIndirectCalls()) {
                 RegisterValue targetRegister = AArch64.lr.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
-                Value[] multipleResults = new Value[0];
+                Value[] multipleResults = Value.NO_VALUES;
                 append(new SubstrateAArch64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
                                 getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null, multipleResults));
             } else {
