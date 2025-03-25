@@ -310,7 +310,11 @@ def get_lli_path(fatalIfMissing=True):
             useJvm = False
         else:
             mx.abort(f"Unknown standalone type {standaloneMode}.")
-        path = mx_sdk_vm_impl.standalone_home("llvm", useJvm)
+        if is_ee():
+            dist = "SULONG_MANAGED_JVM_STANDALONE" if useJvm else "SULONG_MANAGED_NATIVE_STANDALONE"
+        else:
+            dist = "SULONG_JVM_STANDALONE" if useJvm else "SULONG_NATIVE_STANDALONE"
+        path = mx.distribution(dist).output
         return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<exe:lli>'))
 
 
