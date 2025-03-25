@@ -40,31 +40,55 @@ Find below also the academic publications on the compiler of your interest, or s
 
 ### 2025
 
-- Ivan Ristovic, Vojin Jovanovic, Peter Hofer, Milena Vujosevic Janicic
-[**GraalDoss: Direct Object Snapshotting and Sharing for Cloud-Native Applications**](#)
-In _Proceedings of Future Generation Computer Systems_
+- Lukas Makor, Sebastian Kloibhofer, Peter Hofer, David Leopoldseder, Hanspeter Mössenböck
+[**Automated Profile-Guided Replacement of Data Structures to Reduce Memory Allocation**](https://programming-journal.org/2025/10/3/)
+In _Proceedings of [‹Programming› 2025](https://2025.programming-conference.org/)_
 
-- Andrej Pecimuth, David Leopoldseder, Petr Tuma
-[**A Pragmatic Approach to Replay Compilation**]()
-In _Proceedings of MoreVMs workshop co-located with <Programming> 2025 conference_
+- Vojin Jovanovic, Milan Cugurovic, Lazar Milikic
+[**GraalNN: Context-Sensitive Static Profiling with Graph Neural Networks**](https://dl.acm.org/doi/10.1145/3696443.3708958)
+In _Proceedings of International Symposium on Code Generation and Optimization (CGO) 2025_
 
 ### 2024
 
 - David Kozak, Codrut Stancu, Tomas Vojnar, Christian Wimmer
 [**SkipFlow: Improving the Precision of Points-to Analysis using Primitive Values and Predicate Edges**](https://dl.acm.org/doi/10.1145/3696443.3708932)
-In _PGO '25: Proceedings of the 23rd ACM/IEEE International Symposium on Code Generation and Optimization_
+In _Proceedings of the 23rd ACM/IEEE International Symposium on Code Generation and Optimization_
+
+- Pichler Christoph, Paley Li, Roland Schatz, Hanspeter Moessenboeck
+[**On Automating Hybrid Execution of Ahead-of-Time and Just-in-Time Compiled Code**](https://dl.acm.org/doi/10.1145/3689490.3690398)
+In _Proceedings of VMIL '24: 16th ACM SIGPLAN International Workshop on Virtual Machines and Intermediate Languages_
+
+- Milica Karlicic, Ivan Ristovic, Milena Vujosevic Janicic
+[**Profiling-Based Adaptive GC Policy for Serverless**](https://simpozijum.matf.bg.ac.rs/KNJIGA_APSTRAKATA_2024.pdf#page=72)
+In _Proceedings of the fourteenth Symposium "Mathematics and Applications"_
+
+- Aleksandar Stefanovic, Ivan Ristovic, Milena Vujosevic Janicic
+[**Constant Folding of Reflective Calls via Static Analysis of Java Bytecode**](https://simpozijum.matf.bg.ac.rs/KNJIGA_APSTRAKATA_2024.pdf#page=71)
+In _Proceedings of the fourteenth Symposium "Mathematics and Applications"_
+
+- Milan Cugurovic, Milena Vujosevic Janicic
+[**GraalSP Profiles Logger: A Tool for Analyzing and Interpreting Predictions of the ML-Based Static Profilers**](https://www.mi.sanu.ac.rs/~ai_conf/previous_editions/2024/AI_Conference_Book_of_Abstracts.pdf#page=19)
+In _Proceedings [Artificial Intelligence Conference](http://www.mi.sanu.ac.rs/~ai_conf/)_
+
+- Andrej Pecimuth, David Leopoldseder, Petr Tůma
+[**An Analysis of Compiled Code Reusability in Dynamic Compilation**](https://dl.acm.org/doi/10.1145/3689490.3690406)
+In _Proceedings of VMIL'24 Workshop_
+
+- Andrej Pecimuth, David Leopoldseder, Petr Tuma
+[**Accurate Compilation Replay via Remote JIT Compilation**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:11009)
+_Poster presented at the 21st International Conference on Managed Programming Languages and Runtimes (MPLR 2024)_
 
 - Matteo Oldani, William Blair, Lukas Stadler, Zbynek Slajchrt, Matthias Neugschwandtner
 [**Binsweep: Reliably Restricting Untrusted Instruction Streams with Static Binary Analysis and Control-Flow Integrity**](https://www.graalvm.org/resources/articles/binsweep.pdf)
 In _Proceedings of the ACM Cloud Computing Security Workshop (CCSW'24)_
 
+- Lukas Makor, Sebastian Kloibhofer, Peter Hofer, David Leopoldseder, Hanspeter Moessenboeck
+[**Automated Profile-guided Replacement of Data Structures to Reduce Memory Allocation**](https://arxiv.org/abs/2502.20536)
+In _Proceedings of [‹Programming› 2025](https://2025.programming-conference.org/)_
+
 - Florian Huemer, David Leopoldseder, Aleksandar Prokopec, Raphael Mosaner, Hanspeter Moessenboeck
 [**Taking a Closer Look: An Outlier-Driven Approach to Compilation-Time Optimization**](https://2024.ecoop.org/details/ecoop-2024-papers/24/Taking-a-Closer-Look-An-Outlier-Driven-Approach-to-Compilation-Time-Optimization)
 In _Proceedings of the ECOOP 2024 Doctoral Symposium_
-
-- Andrej Pecimuth, David Leopoldseder, Petr Tuma
-[**Accurate Compilation Replay via Remote JIT Compilation**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:11009)
-_Poster presented at the 21st International Conference on Managed Programming Languages and Runtimes (MPLR 2024)_
 
 - Christoph Blumschein, Fabio Niephaus, Codrut Stancu, Christian Wimmer, Jens Lincke, Robert Hirschfeld 
 [**Finding Cuts in Static Analysis Graphs to Debloat Software**](https://labs.oracle.com/pls/apex/f?p=94065:10:129133207909118:10909)
