@@ -41,6 +41,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
@@ -55,6 +56,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -65,10 +67,12 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.aarch64.AArch64;
 
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.
@@ -969,6 +973,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
     /**
      * A thread-local enum conveying any actions needed before thread begins executing Java code.
+     * Only used on aarch64 at the moment.
      */
     public static class ActionOnTransitionToJavaSupport {
 
@@ -982,26 +987,36 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isActionPending() {
-            return actionTL.getVolatile() != NO_ACTION;
+            if (!isAarch64()) {
+                return false;
+            }
+            return actionTL.get() != NO_ACTION;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isSynchronizeCode() {
-            return actionTL.getVolatile() == SYNCHRONIZE_CODE;
-        }
+        public static void runPendingActions() {
+            if (!isAarch64() || !ActionOnTransitionToJavaSupport.isActionPending()) {
+                return;
+            }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void clearActions() {
-            actionTL.setVolatile(NO_ACTION);
+            assert actionTL.get() == SYNCHRONIZE_CODE;
+            CodeSynchronizationNode.synchronizeCode();
+            actionTL.set(NO_ACTION);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setSynchronizeCode(IsolateThread vmThread) {
+            if (!isAarch64()) {
+                return;
+            }
+
             assert StatusSupport.isStatusCreated(vmThread) || VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
-            actionTL.setVolatile(vmThread, SYNCHRONIZE_CODE);
+            actionTL.set(vmThread, SYNCHRONIZE_CODE);
         }
 
         public static void requestAllThreadsSynchronizeCode() {
+            assert isAarch64();
+
             final IsolateThread myself = CurrentIsolate.getCurrentThread();
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (myself == vmThread) {
@@ -1009,6 +1024,11 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
                 }
                 setSynchronizeCode(vmThread);
             }
+        }
+
+        @Fold
+        static boolean isAarch64() {
+            return ConfigurationValues.getTarget().arch instanceof AArch64;
         }
     }
 
