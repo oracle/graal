@@ -61,11 +61,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='TRegex',
     short_name='rgx',
     dir_name='regex',
-    license_files=[],
+    license_files=['regex:TREGEX_GRAALVM_LICENSES/LICENSE_REGEX.md'],
     third_party_license_files=[],
     dependencies=['Truffle', 'ICU4J'],
     truffle_jars=['regex:TREGEX'],
-    support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
+    support_distributions=[
+        'regex:TREGEX_GRAALVM_SUPPORT',
+        'regex:TREGEX_GRAALVM_LICENSES'
+    ],
     installable=True,
     standalone=False,
     stability="supported",
