@@ -41,13 +41,13 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.WasmType;
-
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * A data structure for generating the GraalWasm runtime bytecode.
@@ -529,15 +529,11 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add1(nodeIndex);
             add1(typeIndex);
             add1(tableIndex);
-            // profile
-            addProfile();
         } else {
             add1(Bytecode.CALL_INDIRECT_I32);
             add4(nodeIndex);
             add4(typeIndex);
             add4(tableIndex);
-            // profile
-            addProfile();
         }
     }
 

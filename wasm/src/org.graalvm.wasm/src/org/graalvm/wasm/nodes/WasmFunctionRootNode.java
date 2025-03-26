@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,12 +53,10 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -69,6 +67,7 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -115,7 +114,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         // WebAssembly structure dictates that a function's arguments are provided to the function
         // as local variables, followed by any additional local variables that the function
         // declares. A VirtualFrame contains a special array for the arguments, so we need to move
@@ -142,7 +141,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
         }
 
         try {
-            functionNode.execute(frame, context, instance);
+            functionNode.execute(frame, instance);
         } catch (StackOverflowError e) {
             enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);

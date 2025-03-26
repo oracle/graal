@@ -44,7 +44,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -65,7 +64,7 @@ public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
         assert WasmArguments.getArgumentCount(args) == 3;
 

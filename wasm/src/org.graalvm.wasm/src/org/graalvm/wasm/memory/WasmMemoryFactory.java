@@ -40,12 +40,14 @@
  */
 package org.graalvm.wasm.memory;
 
-import org.graalvm.wasm.exception.Failure;
-
 import static org.graalvm.wasm.Assert.assertTrue;
 
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.exception.Failure;
+
 public class WasmMemoryFactory {
-    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess) {
+    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess,
+                    WasmContext context) {
         if (directByteBufferMemoryAccess) {
             assertTrue(unsafeMemory, "DirectByteBufferMemoryAccess is only supported when UseUnsafeMemory flag is set.", Failure.SHARED_MEMORY_WITHOUT_UNSAFE);
         }
@@ -57,7 +59,7 @@ public class WasmMemoryFactory {
             if (directByteBufferMemoryAccess || shared) {
                 return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
             } else if (declaredMaxSize > ByteArrayWasmMemory.MAX_ALLOWED_SIZE) {
-                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, indexType64);
+                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, context.memoryContext());
             }
         }
         return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, indexType64);

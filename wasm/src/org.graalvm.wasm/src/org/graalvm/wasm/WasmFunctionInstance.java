@@ -64,7 +64,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     private final WasmInstance moduleInstance;
     private final WasmFunction function;
     private final CallTarget target;
-    private final TruffleContext truffleContext;
     /**
      * Stores the imported function object for {@link org.graalvm.wasm.api.ExecuteHostFunctionNode}.
      * Initialized during linking.
@@ -79,11 +78,10 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     }
 
     public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
-        this.context = context;
+        this.context = Objects.requireNonNull(context, "context must be non-null");
         this.moduleInstance = Objects.requireNonNull(moduleInstance, "module instance must be non-null");
         this.function = Objects.requireNonNull(function, "function must be non-null");
         this.target = Objects.requireNonNull(target, "Call target must be non-null");
-        this.truffleContext = context.environment().getContext();
         assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
     }
 
@@ -92,8 +90,16 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return name();
     }
 
+    public WasmStore store() {
+        return moduleInstance.store();
+    }
+
     public WasmContext context() {
         return context;
+    }
+
+    public TruffleContext getTruffleContext() {
+        return context.environment().getContext();
     }
 
     public WasmInstance moduleInstance() {
@@ -116,10 +122,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return target;
     }
 
-    public TruffleContext getTruffleContext() {
-        return truffleContext;
-    }
-
     public void setImportedFunction(Object importedFunction) {
         this.importedFunction = importedFunction;
     }
@@ -136,15 +138,9 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     @ExportMessage
     static class Execute {
-        private static Object execute(WasmFunctionInstance functionInstance, Object[] arguments, CallTarget callAdapter, Node node, Node callNode) {
-            TruffleContext c = functionInstance.getTruffleContext();
-            Object prev = c.enter(node);
-            try {
-                return callAdapter.call(callNode, WasmArguments.create(functionInstance, arguments));
-                // throws ArityException, UnsupportedTypeException
-            } finally {
-                c.leave(node, prev);
-            }
+        private static Object execute(WasmFunctionInstance functionInstance, Object[] arguments, CallTarget callAdapter, Node callNode) {
+            return callAdapter.call(callNode, WasmArguments.create(functionInstance, arguments));
+            // throws ArityException, UnsupportedTypeException
         }
 
         @SuppressWarnings("unused")
@@ -154,7 +150,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                         @Cached("actualFunction") WasmFunction cachedFunction,
                         @Cached("getOrCreateInteropCallAdapter(functionInstance)") CallTarget cachedCallAdapter,
                         @Bind Node node) {
-            return execute(functionInstance, arguments, cachedCallAdapter, node, node);
+            return execute(functionInstance, arguments, cachedCallAdapter, node);
         }
 
         @SuppressWarnings("unused")
@@ -163,7 +159,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                         @Bind("getOrCreateInteropCallAdapter(functionInstance)") CallTarget actualCallAdapter,
                         @Cached("actualCallAdapter") CallTarget cachedCallAdapter,
                         @Bind Node node) {
-            return execute(functionInstance, arguments, cachedCallAdapter, node, node);
+            return execute(functionInstance, arguments, cachedCallAdapter, node);
         }
 
         @Specialization(replaces = "directAdapter")
@@ -171,7 +167,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                         @Bind Node node) {
             CallTarget callAdapter = getOrCreateInteropCallAdapter(functionInstance);
             Node callNode = node.isAdoptable() ? node : EncapsulatingNodeReference.getCurrent().get();
-            return execute(functionInstance, arguments, callAdapter, node, callNode);
+            return execute(functionInstance, arguments, callAdapter, callNode);
         }
 
         static CallTarget getOrCreateInteropCallAdapter(WasmFunctionInstance functionInstance) {

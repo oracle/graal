@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,10 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -59,17 +59,17 @@ public final class WasiFdFdstatSetRightsNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return fdFdstatSetRights(context,
+        return fdFdstatSetRights(instance.store(),
                         (int) WasmArguments.getArgument(args, 0),
                         (long) WasmArguments.getArgument(args, 1),
                         (long) WasmArguments.getArgument(args, 2));
     }
 
     @TruffleBoundary
-    private static int fdFdstatSetRights(WasmContext context, int fd, long fsRightsBase, long fsRightsInheriting) {
-        final Fd handle = context.fdManager().get(fd);
+    private static int fdFdstatSetRights(WasmStore store, int fd, long fsRightsBase, long fsRightsInheriting) {
+        final Fd handle = store.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }

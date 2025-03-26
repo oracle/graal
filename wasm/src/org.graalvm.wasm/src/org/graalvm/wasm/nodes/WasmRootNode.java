@@ -80,13 +80,13 @@ public abstract class WasmRootNode extends RootNode {
     }
 
     @SuppressWarnings("static-method")
-    public final void tryInitialize(WasmContext context, WasmInstance instance) {
+    public final void tryInitialize(WasmInstance instance) {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
         if (!instance.isLinkCompleted()) {
             nonLinkedProfile.enter();
-            context.linker().tryLink(instance);
+            instance.store().linker().tryLink(instance);
         }
     }
 
@@ -113,7 +113,7 @@ public abstract class WasmRootNode extends RootNode {
             CompilerAsserts.partialEvaluationConstant(instance);
             assert instance == WasmArguments.getModuleInstance(frame.getArguments());
         }
-        assert instance == WasmContext.get(this).lookupModuleInstance(module());
+        assert instance == instance.store().lookupModuleInstance(module());
         return instance;
     }
 
@@ -126,13 +126,12 @@ public abstract class WasmRootNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         assert WasmArguments.isValid(frame.getArguments());
-        final WasmContext context = getContext();
         final WasmInstance instance = instance(frame);
-        tryInitialize(context, instance);
-        return executeWithContext(frame, context, instance);
+        tryInitialize(instance);
+        return executeWithInstance(frame, instance);
     }
 
-    public abstract Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance);
+    public abstract Object executeWithInstance(VirtualFrame frame, WasmInstance instance);
 
     @Override
     public final String toString() {
