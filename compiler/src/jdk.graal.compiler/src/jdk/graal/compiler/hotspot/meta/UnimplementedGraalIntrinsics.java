@@ -111,6 +111,10 @@ public final class UnimplementedGraalIntrinsics {
 
         if (jdk >= 25) {
             add(toBeInvestigated,
+                            // JDK-8307513: C2: intrinsify Math.max(long,long) and
+                            // Math.min(long,long)
+                            "java/lang/Math.max(JJ)J",
+                            "java/lang/Math.min(JJ)J",
                             // JDK-8342103: C2 compiler support for Float16 type and associated
                             // scalar operations
                             "jdk/internal/vm/vector/Float16Math.fma(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/Float16Math$TernaryOperator;)Ljava/lang/Object;",
