@@ -28,6 +28,12 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_MONT_MUL_BY_CONSTANT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_NTT_MULT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
@@ -1212,6 +1218,109 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public SnippetTemplate.SnippetInfo getSnippet(DigestBaseSnippets.Templates templates) {
                 return templates.implCompressMultiBlock0;
+            }
+        });
+
+        r = new Registration(plugins, "sun.security.provider.SHA3Parallel", replacements);
+        r.registerConditional(config.stubDoubleKeccak != 0L, new InvocationPlugin("doubleKeccak", long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode lanes0, ValueNode lanes1) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullLanes0 = b.nullCheckedValue(lanes0);
+                    ValueNode nonNullLanes1 = b.nullCheckedValue(lanes1);
+
+                    ValueNode lanes0Start = helper.arrayStart(nonNullLanes0, JavaKind.Long);
+                    ValueNode lanes1Start = helper.arrayStart(nonNullLanes1, JavaKind.Long);
+
+                    ForeignCallNode call = new ForeignCallNode(DOUBLE_KECCAK, lanes0Start, lanes1Start);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+
+        r = new Registration(plugins, "sun.security.provider.ML_DSA", replacements);
+        r.registerConditional(config.stubDilithiumAlmostNtt != 0L, new InvocationPlugin("implDilithiumAlmostNtt", int[].class, int[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullCoeffs = b.nullCheckedValue(coeffs);
+                    ValueNode nonNullZetas = b.nullCheckedValue(zetas);
+
+                    ValueNode coeffsStart = helper.arrayStart(nonNullCoeffs, JavaKind.Int);
+                    ValueNode zetasStart = helper.arrayStart(nonNullZetas, JavaKind.Int);
+
+                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_ALMOST_NTT, coeffsStart, zetasStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubDilithiumAlmostInverseNtt != 0L, new InvocationPlugin("implDilithiumAlmostInverseNtt", int[].class, int[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullCoeffs = b.nullCheckedValue(coeffs);
+                    ValueNode nonNullZetas = b.nullCheckedValue(zetas);
+
+                    ValueNode coeffsStart = helper.arrayStart(nonNullCoeffs, JavaKind.Int);
+                    ValueNode zetasStart = helper.arrayStart(nonNullZetas, JavaKind.Int);
+
+                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_ALMOST_INVERSE_NTT, coeffsStart, zetasStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubDilithiumNttMult != 0L, new InvocationPlugin("implDilithiumNttMult", int[].class, int[].class, int[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode product, ValueNode coeffs1, ValueNode coeffs2) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullProduct = b.nullCheckedValue(product);
+                    ValueNode nonNullCoeffs1 = b.nullCheckedValue(coeffs1);
+                    ValueNode nonNullCoeffs2 = b.nullCheckedValue(coeffs2);
+
+                    ValueNode productStart = helper.arrayStart(nonNullProduct, JavaKind.Int);
+                    ValueNode coeffs1Start = helper.arrayStart(nonNullCoeffs1, JavaKind.Int);
+                    ValueNode coeffs2Start = helper.arrayStart(nonNullCoeffs2, JavaKind.Int);
+
+                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_NTT_MULT, productStart, coeffs1Start, coeffs2Start);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubDilithiumMontMulByConstant != 0L, new InvocationPlugin("implDilithiumMontMulByConstant", int[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode constant) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullCoeffs = b.nullCheckedValue(coeffs);
+
+                    ValueNode coeffsStart = helper.arrayStart(nonNullCoeffs, JavaKind.Int);
+
+                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_MONT_MUL_BY_CONSTANT, coeffsStart, constant);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubDilithiumDecomposePoly != 0L, new InvocationPlugin("implDilithiumDecomposePoly", int[].class, int[].class, int[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode lowPart, ValueNode highPart, ValueNode twoGamma2,
+                            ValueNode multiplier) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode nonNullInput = b.nullCheckedValue(input);
+                    ValueNode nonNullLowPart = b.nullCheckedValue(lowPart);
+                    ValueNode nonNullHighPart = b.nullCheckedValue(highPart);
+
+                    ValueNode inputStart = helper.arrayStart(nonNullInput, JavaKind.Int);
+                    ValueNode lowPartStart = helper.arrayStart(nonNullLowPart, JavaKind.Int);
+                    ValueNode highPartStart = helper.arrayStart(nonNullHighPart, JavaKind.Int);
+
+                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_DECOMPOSE_POLY, inputStart, lowPartStart, highPartStart, twoGamma2, multiplier);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
             }
         });
     }
