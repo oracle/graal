@@ -72,6 +72,8 @@ import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldName;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldNameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
@@ -400,6 +402,7 @@ public class HeapDumpWriter {
     private static final int HEAP_DUMP_SEGMENT_TARGET_SIZE = 1 * 1024 * 1024;
 
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("HeapDumpWriter", false);
+    private final ReplaceDotWithSlash dotWithSlashReplacer = new ReplaceDotWithSlash();
     private final DumpStackFrameVisitor dumpStackFrameVisitor = new DumpStackFrameVisitor();
     private final DumpObjectsVisitor dumpObjectsVisitor = new DumpObjectsVisitor();
     private final CodeMetadataVisitor codeMetadataVisitor = new CodeMetadataVisitor();
@@ -547,15 +550,19 @@ public class HeapDumpWriter {
         for (int i = 0; i < metadata.getClassInfoCount(); i++) {
             ClassInfo classInfo = metadata.getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
-                writeSymbol(classInfo.getHub().getName());
+                writeSymbol(classInfo.getHub().getName(), dotWithSlashReplacer);
             }
         }
     }
 
     private void writeSymbol(String value) {
+        writeSymbol(value, null);
+    }
+
+    private void writeSymbol(String value, CharReplacer replacer) {
         startTopLevelRecord(HProfTopLevelRecord.UTF8);
         writeObjectId(value);
-        writeUTF8(value);
+        writeUTF8(value, replacer);
         endTopLevelRecord();
     }
 
@@ -1109,7 +1116,11 @@ public class HeapDumpWriter {
     }
 
     private void writeUTF8(String value) {
-        boolean success = file().writeUTF8(f, value);
+        writeUTF8(value, null);
+    }
+
+    private void writeUTF8(String value, CharReplacer replacer) {
+        boolean success = file().writeUTF8(f, value, replacer);
         handleError(success);
     }
 
