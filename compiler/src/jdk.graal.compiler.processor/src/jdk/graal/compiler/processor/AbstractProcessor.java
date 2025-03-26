@@ -267,7 +267,7 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
         }
 
         if (valueMethod == null) {
-            return null;
+            throw new NoSuchElementException(annotation.getAnnotationType() + " has no element named " + name);
         }
 
         AnnotationValue value = annotation.getElementValues().get(valueMethod);
@@ -292,11 +292,8 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
     public static <T> List<T> getAnnotationValueList(AnnotationMirror annotation, String name, Class<T> componentType) {
         List<? extends AnnotationValue> values = getAnnotationValue(annotation, name, List.class);
         List<T> result = new ArrayList<>();
-
-        if (values != null) {
-            for (AnnotationValue value : values) {
-                result.add(componentType.cast(value.getValue()));
-            }
+        for (AnnotationValue value : values) {
+            result.add(componentType.cast(value.getValue()));
         }
         return result;
     }

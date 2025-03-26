@@ -65,13 +65,13 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
@@ -146,7 +146,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
-            ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+            Iterable<OptionDescriptors> loader = OptionsContainer.load(OptionDescriptors.class.getClassLoader());
             OptionsParser.parseOptions(optionSettings, values, loader);
         }
         if (!values.containsKey(HighTier.Options.Inline)) {
