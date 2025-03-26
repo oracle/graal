@@ -456,17 +456,17 @@ public final class DebugContext implements AutoCloseable {
      *         ends
      */
     public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
-        CompilationAlarm.current().enterPhase(phaseName.toString());
+        CompilationAlarm.current().enterPhase(phaseName);
         if (compilationListener != null) {
             return new DecoratingCompilerPhaseScope(() -> {
-                CompilationAlarm.current().exitPhase(phaseName.toString());
+                CompilationAlarm.current().exitPhase(phaseName);
             }, enterCompilerPhase(() -> phaseName));
         }
         return new CompilerPhaseScope() {
 
             @Override
             public void close() {
-                CompilationAlarm.current().exitPhase(phaseName.toString());
+                CompilationAlarm.current().exitPhase(phaseName);
             }
         };
     }
