@@ -33,10 +33,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.common.option.CommonOptionParser;
@@ -63,7 +63,8 @@ public final class PointsToOptionParser {
 
     private PointsToOptionParser() {
         ClassLoader appClassLoader = PointsToOptionParser.class.getClassLoader();
-        CommonOptionParser.collectOptions(ServiceLoader.load(OptionDescriptors.class, appClassLoader), descriptor -> {
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.load(appClassLoader);
+        CommonOptionParser.collectOptions(optionDescriptors, descriptor -> {
             String name = descriptor.getName();
             if (descriptor.getOptionKey() != null) {
                 OptionDescriptor existing = allAnalysisOptions.put(name, descriptor);

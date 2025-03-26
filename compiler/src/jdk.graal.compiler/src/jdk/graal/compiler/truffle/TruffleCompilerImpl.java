@@ -43,6 +43,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -115,7 +116,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     public static final int LAST_TIER_INDEX = 2;
 
     static final int NUMBER_OF_CACHED_OPTIONS = 128;
-    static final TruffleCompilerOptionsOptionDescriptors OPTION_DESCRIPTORS = new TruffleCompilerOptionsOptionDescriptors();
+    static final UnmodifiableEconomicMap<String, OptionDescriptor> OPTION_DESCRIPTORS = initOptions();
+
+    private static UnmodifiableEconomicMap<String, OptionDescriptor> initOptions() {
+        EconomicMap<String, OptionDescriptor> map = EconomicMap.create();
+        for (OptionDescriptor d : new TruffleCompilerOptions_OptionDescriptors()) {
+            map.put(d.getName(), d);
+        }
+        return map;
+    }
 
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
@@ -127,7 +136,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
 
-    @SuppressWarnings("serial") private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTIONS));
+    private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTIONS));
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -172,7 +181,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime").doc("Total time spent in the Truffle tier.");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
-    public static final TimerKey EncodedGraphCacheEvictionTime = DebugContext.timer("EncodedGraphCacheEvictionTime");
 
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
@@ -345,7 +353,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             graphTooBig = true;
         }
         BailoutException bailout = error instanceof BailoutException ? (BailoutException) error : null;
-        boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
+        boolean permanentBailout = bailout != null && bailout.isPermanent();
         Throwable finalError = error;
         compilable.onCompilationFailed(() -> TruffleCompilable.serializeException(finalError), silent, bailout != null, permanentBailout, graphTooBig);
     }
@@ -535,7 +543,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             // graph is null
             if (wrapper.listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
-                boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
+                boolean permanentBailout = bailout != null && bailout.isPermanent();
                 wrapper.listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier(), bailout != null ? null : () -> TruffleCompilable.serializeException(t));
             }
             throw t;
@@ -564,7 +572,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             wrapper.graph = context.graph;
 
             try (Scope s = context.debug.scope("CreateGraph", context.graph);
-                            Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
+                            Indent indent = context.debug.logAndIndent("evaluate %s", context.graph)) {
                 truffleTier.apply(context.graph, context);
                 graph = context.graph;
             } catch (Throwable e) {
@@ -831,8 +839,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                 TruffleCompilerRuntime runtime = config.runtime();
                 ArrayList<Assumption> newAssumptions = new ArrayList<>();
                 for (Assumption assumption : result.getAssumptions()) {
-                    if (assumption != null && assumption instanceof TruffleAssumption) {
-                        TruffleAssumption truffleAssumption = (TruffleAssumption) assumption;
+                    if (assumption instanceof TruffleAssumption truffleAssumption) {
                         Consumer<OptimizedAssumptionDependency> dep = runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption());
                         if (dep == null) {
                             // Before bailing out, notify other assumptions waiting
@@ -917,7 +924,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return config.snippetReflection();
     }
 
-    private final class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+    protected final class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
 
         @Override
         public Backend.CodeInstallationTask create() {

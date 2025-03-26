@@ -28,6 +28,14 @@ package jdk.graal.compiler.options;
  * An interface to a set of {@link OptionDescriptor}s.
  */
 public interface OptionDescriptors extends Iterable<OptionDescriptor> {
+
+    /**
+     * Gets metadata about the class in which the options are declared.
+     */
+    default OptionsContainer getContainer() {
+        return null;
+    }
+
     /**
      * Gets the {@link OptionDescriptor} matching a given option name or {@code null} if this option
      * descriptor set doesn't contain a matching option name.
