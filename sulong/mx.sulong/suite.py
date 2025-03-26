@@ -2018,8 +2018,8 @@ suite = {
       "maven": False,
     },
 
-    "SULONG_NATIVE_AND_LLVM_TOOLCHAIN": {
-      "description": "Layout for Sulong native toolchain and llvm-toolchain",
+    "SULONG_NATIVE_AND_LLVM_TOOLCHAIN_JVM_WRAPPERS": {
+      "description": "Layout for Sulong native toolchain and llvm-toolchain, with JVM wrappers",
       "type": "dir",
       "platformDependent": True,
       "platforms": "local",
@@ -2032,8 +2032,6 @@ suite = {
           "extracted-dependency:SULONG_BITCODE_HOME",
           "extracted-dependency:SULONG_NATIVE_HOME",
         ],
-
-        "lib/sulong/native/lib/": "dependency:libnativetoolchainwrappers",
 
         "lib/sulong/native/bin/<exe:graalvm-native-clang>": "dependency:native_toolchain_wrapper",
         "lib/sulong/native/bin/<exe:graalvm-clang>": "dependency:native_toolchain_wrapper",
@@ -2080,6 +2078,17 @@ suite = {
         "lib/sulong/native/bin/<exe:llvm-readobj>": "dependency:native_toolchain_wrapper",
         "lib/sulong/native/bin/<exe:strip>": "dependency:native_toolchain_wrapper",
         "lib/sulong/native/bin/<exe:llvm-strip>": "dependency:native_toolchain_wrapper",
+      },
+    },
+
+    "SULONG_NATIVE_AND_LLVM_TOOLCHAIN": {
+      "description": "Layout for Sulong native toolchain and llvm-toolchain",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": "dependency:SULONG_NATIVE_AND_LLVM_TOOLCHAIN_JVM_WRAPPERS/*",
+        "lib/sulong/native/lib/": "dependency:libnativetoolchainwrappers",
       },
     },
 
