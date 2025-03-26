@@ -41,14 +41,14 @@
 
 package org.graalvm.wasm.test.suites.bytecode;
 
+import java.util.function.Consumer;
+
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.function.Consumer;
 
 /**
  * Tests the correctness of the bytecode produced by the {@link RuntimeBytecodeGen}.
@@ -286,37 +286,37 @@ public class BytecodeSuite {
 
     @Test
     public void testCallIndirectU8Min() {
-        test(b -> b.addIndirectCall(0, 0, 0), new byte[]{Bytecode.CALL_INDIRECT_U8, 0x00, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addIndirectCall(0, 0, 0), new byte[]{Bytecode.CALL_INDIRECT_U8, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testCallIndirectU8MaxNodeIndex() {
-        test(b -> b.addIndirectCall(255, 0, 0), new byte[]{Bytecode.CALL_INDIRECT_U8, (byte) 0xFF, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addIndirectCall(255, 0, 0), new byte[]{Bytecode.CALL_INDIRECT_U8, (byte) 0xFF, 0x00, 0x00});
     }
 
     @Test
     public void testCallIndirectU8MaxTypeIndex() {
-        test(b -> b.addIndirectCall(0, 255, 0), new byte[]{Bytecode.CALL_INDIRECT_U8, 0x00, (byte) 0xFF, 0x00, 0x00, 0x00});
+        test(b -> b.addIndirectCall(0, 255, 0), new byte[]{Bytecode.CALL_INDIRECT_U8, 0x00, (byte) 0xFF, 0x00});
     }
 
     @Test
     public void testCallIndirectU8MaxTableIndex() {
-        test(b -> b.addIndirectCall(0, 0, 255), new byte[]{Bytecode.CALL_INDIRECT_U8, 0x00, 0x00, (byte) 0xFF, 0x00, 0x00});
+        test(b -> b.addIndirectCall(0, 0, 255), new byte[]{Bytecode.CALL_INDIRECT_U8, 0x00, 0x00, (byte) 0xFF});
     }
 
     @Test
     public void testCallIndirectI32MinNodeIndex() {
-        test(b -> b.addIndirectCall(256, 0, 0), new byte[]{Bytecode.CALL_INDIRECT_I32, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addIndirectCall(256, 0, 0), new byte[]{Bytecode.CALL_INDIRECT_I32, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testCallIndirectI32MinTypeIndex() {
-        test(b -> b.addIndirectCall(0, 256, 0), new byte[]{Bytecode.CALL_INDIRECT_I32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addIndirectCall(0, 256, 0), new byte[]{Bytecode.CALL_INDIRECT_I32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testCallIndirectI32MinTableIndex() {
-        test(b -> b.addIndirectCall(0, 0, 256), new byte[]{Bytecode.CALL_INDIRECT_I32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addIndirectCall(0, 0, 256), new byte[]{Bytecode.CALL_INDIRECT_I32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00});
     }
 
     @Test

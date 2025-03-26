@@ -1364,19 +1364,29 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     @SuppressWarnings("unused")
     @TruffleBoundary
     public final String toStringDebug() {
-        return String.format("TString(%s, %s, off: %d, len: %d, str: %d, cpLen: %d, \"%s\")",
-                        TruffleString.Encoding.get(encoding()), TSCodeRange.toString(codeRange()), offset(), length(), stride(), codePointLength(), toJavaStringUncached());
+        Object curData = data;
+        String dataString;
+        if (curData instanceof byte[] || curData instanceof NativePointer || curData instanceof String) {
+            dataString = String.format("\"%s\"", toJavaStringUncached());
+        } else if (curData instanceof LazyLong lazyLong) {
+            dataString = String.format("LazyLong(%d)", lazyLong.value);
+        } else {
+            LazyConcat lazyConcat = (LazyConcat) curData;
+            dataString = String.format("Concat(%s, %s)", lazyConcat.left.toStringDebug(), lazyConcat.right.toStringDebug());
+        }
+        return String.format("TString(%s, %s, off: %d, len: %d, str: %d, cpLen: %d, data: %s)",
+                        TruffleString.Encoding.get(encoding()), TSCodeRange.toString(codeRange()), offset(), length(), stride(), codePointLength(), dataString);
     }
 
     @TruffleBoundary
     byte[] materializeLazy(Node node, Object thisData) {
-        if (thisData instanceof AbstractTruffleString.LazyConcat) {
+        if (thisData instanceof LazyConcat) {
             // note: the write to data is racy, and we deliberately read it from the TString
             // object again after the race to de-duplicate simultaneously generated arrays
-            setData(AbstractTruffleString.LazyConcat.flatten(node, (TruffleString) this));
+            setData(LazyConcat.flatten(node, (TruffleString) this));
             return (byte[]) data;
         } else {
-            AbstractTruffleString.LazyLong lazyLong = (AbstractTruffleString.LazyLong) thisData;
+            LazyLong lazyLong = (LazyLong) thisData;
             // same pattern as in #doLazyConcat: racy write to data.bytes and read the result
             // again to de-duplicate
             if (lazyLong.bytes == null) {

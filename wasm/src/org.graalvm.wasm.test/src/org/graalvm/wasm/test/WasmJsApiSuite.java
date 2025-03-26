@@ -107,9 +107,13 @@ public class WasmJsApiSuite {
     private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, byte[] paramTypes, byte[] resultTypes, RootNode functionRootNode) {
         WasmModule module = WasmModule.createBuiltin("dummyModule");
         module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
-        WasmFunction func = module.declareExportedFunction(0, "dummyFunction");
+        WasmFunction func = module.declareFunction(0);
         func.setTarget(functionRootNode.getCallTarget());
-        WasmInstance moduleInstance = new WasmInstance(context, module, context.environment().getContext());
+        WasmInstance moduleInstance = context.contextStore().readInstance(module);
+        // Perform normal linking steps, incl. assignTypeEquivalenceClasses().
+        // Functions need to have type equivalence classes assigned for indirect calls.
+        moduleInstance.store().linker().tryLink(moduleInstance);
+        assert func.typeEquivalenceClass() >= 0 : "type equivalence class must be assigned";
         return new WasmFunctionInstance(moduleInstance, func, functionRootNode.getCallTarget());
     }
 
@@ -902,9 +906,8 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
-            WasmContext wasmContext = WasmContext.get(null);
-            final WasmFunctionInstance functionInstance = createWasmFunctionInstance(wasmContext, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
-                            new RootNode(wasmContext.language()) {
+            final WasmFunctionInstance functionInstance = createWasmFunctionInstance(context, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
+                            new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;
@@ -2511,11 +2514,11 @@ public class WasmJsApiSuite {
         runTest(options -> options.option("wasm.UseUnsafeMemory", "true"), testCase);
     }
 
-    private static void runTest(Consumer<WasmContext> testCase) throws IOException {
+    public static void runTest(Consumer<WasmContext> testCase) throws IOException {
         runTest(null, testCase);
     }
 
-    private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
+    public static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         if (options != null) {
@@ -2911,7 +2914,7 @@ public class WasmJsApiSuite {
                     (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
     };
 
-    private static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
+    public static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
         final WasmModule module = wasm.moduleDecode(source);
         return wasm.moduleInstantiate(module, importObject);
     }

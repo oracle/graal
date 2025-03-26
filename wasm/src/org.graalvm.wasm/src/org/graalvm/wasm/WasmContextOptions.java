@@ -41,13 +41,14 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-public class WasmContextOptions {
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
+public final class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
     @CompilationFinal private boolean signExtensionOps;
     @CompilationFinal private boolean multiValue;
@@ -184,7 +185,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.multiValue ? 1 : 0);
         hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
         hash = 53 * hash + (this.memory64 ? 1 : 0);
-        hash = 54 * hash + (this.extendedConstExpressions ? 1 : 0);
+        hash = 53 * hash + (this.extendedConstExpressions ? 1 : 0);
         hash = 53 * hash + (this.multiMemory ? 1 : 0);
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.simd ? 1 : 0);
@@ -201,13 +202,9 @@ public class WasmContextOptions {
         if (this == obj) {
             return true;
         }
-        if (obj == null) {
+        if (!(obj instanceof WasmContextOptions other)) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final WasmContextOptions other = (WasmContextOptions) obj;
         if (this.saturatingFloatToInt != other.saturatingFloatToInt) {
             return false;
         }

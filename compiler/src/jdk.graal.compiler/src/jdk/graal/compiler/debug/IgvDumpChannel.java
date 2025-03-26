@@ -50,12 +50,12 @@ final class IgvDumpChannel implements WritableByteChannel {
     private static final String ENABLE_NETWORK_DUMPING_PROP = "debug.jdk.graal.enableNetworkDumping";
 
     /**
-     * Support for IGV dumping to a network port is excluded by default from libgraal to reduce the
-     * libgraal image size. It also reduces security concerns related to opening random network
-     * connections.
+     * Support for IGV dumping to a network port is excluded by default from native images
+     * (including libgraal) to reduce the image size. It also reduces security concerns related to
+     * opening random network connections.
      *
-     * To enable IGV dumping to the network during libgraal based development, set the
-     * {@value #ENABLE_NETWORK_DUMPING_PROP} system property to true when building libgraal.
+     * To enable IGV dumping to the network during development, set the
+     * {@value #ENABLE_NETWORK_DUMPING_PROP} system property to true when building native images.
      */
     private static final boolean ENABLE_NETWORK_DUMPING = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_NETWORK_DUMPING_PROP));
 
@@ -107,7 +107,7 @@ final class IgvDumpChannel implements WritableByteChannel {
                     if (!networkDumpingUnsupportedWarned) {
                         // Ignore races or multiple isolates - an extra warning is ok
                         networkDumpingUnsupportedWarned = true;
-                        TTY.printf("WARNING: Graph dumping to network not supported as the %s system property was false when building libgraal - dumping to file instead.%n",
+                        TTY.printf("WARNING: Graph dumping to network not supported as the %s system property was false when building - dumping to file instead.%n",
                                         ENABLE_NETWORK_DUMPING_PROP);
                     }
                     sharedChannel = createFileChannel(pathProvider, null);
