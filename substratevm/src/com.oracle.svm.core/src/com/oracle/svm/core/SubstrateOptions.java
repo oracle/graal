@@ -138,8 +138,13 @@ public class SubstrateOptions {
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
+        if (!key.getValue()) {
+            return;
+        }
+
         if (!Platform.includedIn(Platform.LINUX.class)) {
-            throw UserError.invalidOptionValue(key, key.getValue(), "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
+            throw UserError.invalidOptionValue(key, key.getValue(),
+                            "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
         }
         if (!LibCBase.targetLibCIs(MuslLibC.class)) {
             throw UserError.invalidOptionValue(key, key.getValue(),
@@ -1383,7 +1388,7 @@ public class SubstrateOptions {
 
     @Option(help = "Enable fallback to mremap for initializing the image heap.")//
     public static final HostedOptionKey<Boolean> MremapImageHeap = new HostedOptionKey<>(true, key -> {
-        if (!Platform.includedIn(Platform.LINUX.class)) {
+        if (key.hasBeenSet() && !Platform.includedIn(Platform.LINUX.class)) {
             throw UserError.invalidOptionValue(key, key.getValue(), "Mapping the image heap with mremap() is only supported on Linux.");
         }
     });
