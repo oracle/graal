@@ -38,7 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.libgraal;
+package org.graalvm.nativeimage.libgraal.hosted;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.util.Map;
 
@@ -48,6 +51,7 @@ import java.util.Map;
  *
  * @since 25
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public interface LibGraalLoader {
 
     /**
