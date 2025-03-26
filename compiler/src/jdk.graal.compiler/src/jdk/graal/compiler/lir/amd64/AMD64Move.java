@@ -65,6 +65,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
@@ -164,6 +165,14 @@ public class AMD64Move {
         @Override
         public AllocatableValue getResult() {
             return result;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            if (input.getJavaKind() == JavaKind.Object) {
+                return input.isNull();
+            }
+            return true;
         }
     }
 
