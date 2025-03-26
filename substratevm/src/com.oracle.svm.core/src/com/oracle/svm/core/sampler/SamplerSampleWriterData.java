@@ -156,4 +156,13 @@ public interface SamplerSampleWriterData extends PointerBase {
      */
     @RawField
     void setAllowBufferAllocation(boolean allowBufferAllocation);
+
+    /**
+     * Buffers for the leak profiler should not use the buffer pools.
+     */
+    @RawField
+    boolean getLeakProfiler();
+
+    @RawField
+    void setLeakProfiler(boolean leakProfiler);
 }
