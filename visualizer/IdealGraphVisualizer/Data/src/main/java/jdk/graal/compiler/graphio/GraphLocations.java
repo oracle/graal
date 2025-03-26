@@ -36,7 +36,7 @@ import java.net.URISyntaxException;
  *
  * @param <M> type representing methods
  * @param <P> type representing source code location
- * @param <L> represeting {@link StackTraceElement stack element} location
+ * @param <L> representing {@link StackTraceElement stack element} location
  *
  * @since 0.33 part of GraalVM 0.33
  */
@@ -96,7 +96,7 @@ public interface GraphLocations<M, P, L> {
     int locationLineNumber(L location);
 
     /**
-     * Offset of the location. In certain situations it is preferrable to specify offset rather than
+     * Offset of the location. In certain situations it is preferable to specify offset rather than
      * {@link #locationLineNumber(java.lang.Object) line number} of a location in source. In such
      * case return the start offset from this method and end offset via
      * {@link #locationOffsetEnd(java.lang.Object)} method. Offsets are counted from {@code 0}.
@@ -107,7 +107,7 @@ public interface GraphLocations<M, P, L> {
     int locationOffsetStart(L location);
 
     /**
-     * Offset of the location. In certain situations it is preferrable to specify offset rather than
+     * Offset of the location. In certain situations it is preferable to specify offset rather than
      * {@link #locationLineNumber(java.lang.Object) line number} of a location in source. In such
      * case return the start offset via {@link #locationOffsetStart(java.lang.Object)} method and
      * end from this method. Offsets are counted from {@code 0}.

@@ -50,7 +50,7 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
 
     static final SourceSection DUMMY_SECTION = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").name("").build().createSection(0, 0);
 
-    ProxyLanguage langauge;
+    ProxyLanguage language;
 
     static int counter;
 
@@ -190,12 +190,12 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
         });
         setupContext();
         getContext().initialize(ProxyLanguage.ID);
-        langauge = ProxyLanguage.get(null);
+        language = ProxyLanguage.get(null);
         counter = 0;
     }
 
     private RootNode createRoot(BaseNode node) {
-        return new RootNode(langauge) {
+        return new RootNode(language) {
             @Child BaseNode child = node;
 
             @Override

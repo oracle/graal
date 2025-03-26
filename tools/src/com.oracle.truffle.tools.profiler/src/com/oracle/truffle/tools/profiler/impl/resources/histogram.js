@@ -153,7 +153,7 @@ function h_create_element_for_id(id, bar, width) {
 
     r.style.fill = h_color_for_sample(color_type, bar);
     r.rx.baseVal.value = 2;
-    r.ry.baseVal.vlaue = 2;
+    r.ry.baseVal.value = 2;
 
     let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
     t.style.textAnchor = "left";

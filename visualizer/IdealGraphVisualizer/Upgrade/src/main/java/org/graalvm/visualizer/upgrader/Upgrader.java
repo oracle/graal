@@ -58,7 +58,7 @@ public abstract class Upgrader {
      */
     private static final List<String> FORMER_VERSIONS = Arrays.asList("0.26", "dev"); // NOI18N
     /**
-     * Newer Upgraders needs to be "registered" here. Upgrader may be ommited if
+     * Newer Upgraders needs to be "registered" here. Upgrader may be omitted if
      * no changes are needed for particular version.
      */
     private static final List<Upgrader> KNOWN_UPGRADERS = Arrays.asList(new UpgradeFrom_0_26(), new UpgradeFromOldDev());
