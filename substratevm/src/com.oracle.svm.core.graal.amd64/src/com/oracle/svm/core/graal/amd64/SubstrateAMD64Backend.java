@@ -46,7 +46,6 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -88,6 +87,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -1586,6 +1586,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                     boolean preserveFlagsRegister = true;
                     emitUncompressWithBaseRegister(masm, resultReg, baseReg, getShift(), preserveFlagsRegister);
                 }
+            }
+
+            @Override
+            public boolean canRematerializeToStack() {
+                /* This operation MUST have a register as its destination. */
+                return false;
             }
         }
     }
