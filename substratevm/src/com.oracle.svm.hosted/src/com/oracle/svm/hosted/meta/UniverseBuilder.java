@@ -989,7 +989,7 @@ public class UniverseBuilder {
              * If the instance type has a monitor field, add it to the reference map.
              */
             final int monitorOffset = instanceClass.getMonitorFieldOffset();
-            if (monitorOffset != 0) {
+            if (monitorOffset >= 0) {
                 referenceMap.markReferenceAtOffset(monitorOffset, true);
             }
         }

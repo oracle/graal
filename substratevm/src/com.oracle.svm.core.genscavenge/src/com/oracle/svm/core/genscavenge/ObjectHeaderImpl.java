@@ -355,8 +355,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isUnalignedObject(Object obj) {
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        UnsignedWord header = oh.readHeaderFromObject(obj);
+        UnsignedWord header = getObjectHeaderImpl().readHeaderFromObject(obj);
         return isUnalignedHeader(header);
     }
 
@@ -367,8 +366,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setRememberedSetBit(Object o) {
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        UnsignedWord oldHeader = oh.readHeaderFromObject(o);
+        UnsignedWord oldHeader = getObjectHeaderImpl().readHeaderFromObject(o);
         assert oldHeader.and(FORWARDED_OR_MARKED2_BIT).equal(0);
         UnsignedWord newHeader = oldHeader.or(REMSET_OR_MARKED1_BIT);
         writeHeaderToObject(o, newHeader);
@@ -384,8 +382,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         if (!SerialGCOptions.useCompactingOldGen()) { // not guarantee(): always folds, prevent call
             throw VMError.shouldNotReachHere("Only for compacting GC.");
         }
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        UnsignedWord header = oh.readHeaderFromObject(o);
+        UnsignedWord header = getObjectHeaderImpl().readHeaderFromObject(o);
         assert header.and(FORWARDED_OR_MARKED2_BIT).equal(0) : "forwarded or already marked";
         /*
          * The remembered bit is already set if the object was in the old generation before, or
@@ -396,16 +393,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void unsetMarkedAndKeepRememberedSetBit(Object o) {
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        UnsignedWord header = oh.readHeaderFromObject(o);
+        UnsignedWord header = getObjectHeaderImpl().readHeaderFromObject(o);
         assert isMarkedHeader(header);
         writeHeaderToObject(o, header.and(FORWARDED_OR_MARKED2_BIT.not()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isMarked(Object o) {
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        return isMarkedHeader(oh.readHeaderFromObject(o));
+        return isMarkedHeader(getObjectHeaderImpl().readHeaderFromObject(o));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -418,8 +413,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isPointerToForwardedObject(Pointer p) {
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        Word header = oh.readHeaderFromPointer(p);
+        Word header = getObjectHeaderImpl().readHeaderFromPointer(p);
         return isForwardedHeader(header);
     }
 

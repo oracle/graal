@@ -55,6 +55,7 @@ import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
@@ -286,13 +287,7 @@ public final class NativeImageHeapWriter {
         if (NativeImageHeap.useHeapBase()) {
             long targetOffset = hubInfo.getOffset();
             long encoding = objectHeader.encodeHubPointerForImageHeap(obj, targetOffset);
-
-            if (hubSize == Long.BYTES) {
-                buffer.getByteBuffer().putLong(index, encoding);
-            } else {
-                assert hubSize == Integer.BYTES;
-                buffer.getByteBuffer().putInt(index, NumUtil.safeToUInt(encoding));
-            }
+            writeValue(buffer, index, encoding, hubSize);
         } else {
             assert hubSize == referenceSize();
             // The address of the DynamicHub target will be added by the link editor.
@@ -361,12 +356,16 @@ public final class NativeImageHeapWriter {
     }
 
     private void writeReferenceValue(RelocatableBuffer buffer, int index, long value) {
-        if (referenceSize() == Long.BYTES) {
+        writeValue(buffer, index, value, referenceSize());
+    }
+
+    private static void writeValue(RelocatableBuffer buffer, int index, long value, int size) {
+        if (size == Long.BYTES) {
             buffer.getByteBuffer().putLong(index, value);
-        } else if (referenceSize() == Integer.BYTES) {
+        } else if (size == Integer.BYTES) {
             buffer.getByteBuffer().putInt(index, NumUtil.safeToUInt(value));
         } else {
-            throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
+            throw shouldNotReachHere("Unsupported value size: " + size);
         }
     }
 
@@ -468,7 +467,8 @@ public final class NativeImageHeapWriter {
 
             /* Write the identity hashcode */
             assert idHashOffset >= 0;
-            IdentityHashCodeSupport.writeIdentityHashCodeToImageHeap(bufferBytes, getIndexInBuffer(info, idHashOffset), info.getIdentityHashCode());
+            HostedByteBufferPointer identityHashPtr = new HostedByteBufferPointer(bufferBytes, getIndexInBuffer(info, idHashOffset));
+            IdentityHashCodeSupport.writeIdentityHashCodeToImageHeap(identityHashPtr, info.getIdentityHashCode());
         } else if (clazz.isArray()) {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
@@ -476,7 +476,8 @@ public final class NativeImageHeapWriter {
 
             int length = heap.hConstantReflection.readArrayLength(constant);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayLengthOffset()), length);
-            IdentityHashCodeSupport.writeIdentityHashCodeToImageHeap(bufferBytes, getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
+            HostedByteBufferPointer identityHashPtr = getHashCodePtr(info, bufferBytes, objectLayout, kind, length);
+            IdentityHashCodeSupport.writeIdentityHashCodeToImageHeap(identityHashPtr, info.getIdentityHashCode());
 
             if (clazz.getComponentType().isPrimitive()) {
                 ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
@@ -490,6 +491,10 @@ public final class NativeImageHeapWriter {
         } else {
             throw shouldNotReachHereUnexpectedInput(clazz); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    private HostedByteBufferPointer getHashCodePtr(ObjectInfo info, ByteBuffer bufferBytes, ObjectLayout objectLayout, JavaKind kind, int length) {
+        return new HostedByteBufferPointer(bufferBytes, getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)));
     }
 
     private int getIndexInBuffer(ObjectInfo objInfo, long offset) {

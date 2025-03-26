@@ -260,7 +260,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         int hubOffset = ol.getHubOffset();
         int bytesToRead = ol.getHubSize();
         long reservedHubBitsMask = oh.getReservedHubBitsMask();
-        if (hubOffset > 0 && hubOffset + ol.getHubSize() <= Long.BYTES && target.arch.getByteOrder() == ByteOrder.LITTLE_ENDIAN) {
+        if (hubOffset == Integer.BYTES && hubOffset + ol.getHubSize() == Long.BYTES && target.arch.getByteOrder() == ByteOrder.LITTLE_ENDIAN) {
             /* Prepare to emit a 64-bit read at offset 0 (reduces the code size). */
             hubOffset = 0;
             bytesToRead = Long.BYTES;

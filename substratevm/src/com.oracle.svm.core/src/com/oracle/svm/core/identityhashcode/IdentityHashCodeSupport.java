@@ -26,11 +26,8 @@ package com.oracle.svm.core.identityhashcode;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.nio.ByteBuffer;
 import java.util.SplittableRandom;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
@@ -44,6 +41,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
@@ -175,6 +173,9 @@ public final class IdentityHashCodeSupport {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
+        /* The guarantee makes the code a bit smaller as obj is non-null afterward. */
+        VMError.guarantee(obj != null);
+
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         assert !ol.isIdentityHashFieldOptional();
 
@@ -193,7 +194,7 @@ public final class IdentityHashCodeSupport {
             int existingValue;
             int newValue;
             do {
-                existingValue = Unsafe.getUnsafe().getIntVolatile(obj, offset);
+                existingValue = Unsafe.getUnsafe().getIntOpaque(obj, offset);
                 int existingHash = extractIdentityHashCode(existingValue, numBits, shift);
                 if (existingHash != 0) {
                     return existingHash;
@@ -205,7 +206,7 @@ public final class IdentityHashCodeSupport {
             long existingValue;
             long newValue;
             do {
-                existingValue = Unsafe.getUnsafe().getLongVolatile(obj, offset);
+                existingValue = Unsafe.getUnsafe().getLongOpaque(obj, offset);
                 int existingHash = extractIdentityHashCode(existingValue, numBits, shift);
                 if (existingHash != 0) {
                     return existingHash;
@@ -219,7 +220,7 @@ public final class IdentityHashCodeSupport {
     }
 
     /** This method may only be called after the hub pointer was already written. */
-    public static void writeIdentityHashCodeToAuxImage(Pointer hashCodePtr, int value) {
+    public static void writeIdentityHashCodeToImageHeap(Pointer hashCodePtr, int value) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         int numBits = ol.getIdentityHashCodeNumBits();
         int shift = ol.getIdentityHashCodeShift();
@@ -235,27 +236,6 @@ public final class IdentityHashCodeSupport {
             long oldValue = hashCodePtr.readLong(0);
             assertIdentityHashCodeZero(oldValue, mask);
             hashCodePtr.writeLong(0, encodeIdentityHashCode(oldValue, value, shift));
-        }
-    }
-
-    /** This method may only be called after the object header was already written. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void writeIdentityHashCodeToImageHeap(ByteBuffer buffer, int hashCodePos, int value) {
-        ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        int numBits = ol.getIdentityHashCodeNumBits();
-        int shift = ol.getIdentityHashCodeShift();
-        long mask = ol.getIdentityHashCodeMask();
-
-        int totalBits = numBits + shift;
-        if (totalBits <= Integer.SIZE) {
-            int oldValue = buffer.getInt(hashCodePos);
-            assertIdentityHashCodeZero(oldValue, mask);
-            buffer.putInt(hashCodePos, encodeIdentityHashCode(oldValue, value, shift));
-        } else {
-            assert totalBits <= Long.SIZE;
-            long oldValue = buffer.getLong(hashCodePos);
-            assertIdentityHashCodeZero(oldValue, mask);
-            buffer.putLong(hashCodePos, encodeIdentityHashCode(oldValue, value, shift));
         }
     }
 
@@ -300,8 +280,8 @@ public final class IdentityHashCodeSupport {
 
     /**
      * Note that the result of this method is prone to race conditions. All races that can happen
-     * don't matter for the current caller though (we only want to identify objects that definitely
-     * don't have an identity hash code field).
+     * don't matter for the current callers though (we only want to know if the given object
+     * definitely has an identity hash code field - once it has one, it won't be taken away).
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean hasIdentityHashField(Object obj) {

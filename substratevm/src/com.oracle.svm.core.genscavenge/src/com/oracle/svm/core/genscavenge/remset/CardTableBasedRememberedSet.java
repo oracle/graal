@@ -188,7 +188,8 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void dirtyAllReferencesIfNecessary(Object obj) {
-        Word header = ObjectHeader.readHeaderFromObject(obj);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromObject(obj);
         if (RememberedSet.get().hasRememberedSet(header) && mayContainReferences(obj)) {
             ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
         }

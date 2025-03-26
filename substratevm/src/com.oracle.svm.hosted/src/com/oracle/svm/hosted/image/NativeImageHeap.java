@@ -502,7 +502,7 @@ public final class NativeImageHeap implements ImageHeap {
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             // If the type has a monitor field, it has a reference field that is written.
-            if (clazz.getMonitorFieldOffset() != 0) {
+            if (clazz.getMonitorFieldOffset() >= 0) {
                 written = true;
                 references = true;
                 // also not immutable: users of registerAsImmutable() must take precautions

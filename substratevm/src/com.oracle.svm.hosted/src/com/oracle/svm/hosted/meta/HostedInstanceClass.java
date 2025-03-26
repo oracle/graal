@@ -39,7 +39,7 @@ public class HostedInstanceClass extends HostedClass {
     protected int afterFieldsOffset;
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
-    protected int monitorFieldOffset = 0;
+    protected int monitorFieldOffset = -1;
     protected int identityHashOffset = -1;
 
     public HostedInstanceClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
@@ -127,8 +127,8 @@ public class HostedInstanceClass extends HostedClass {
     }
 
     public void setMonitorFieldOffset(int offset) {
-        assert this.monitorFieldOffset == 0 : "setting monitor field offset twice";
-        assert offset > 0;
+        assert this.monitorFieldOffset == -1 : "setting monitor field offset twice";
+        assert offset >= 0;
         this.monitorFieldOffset = offset;
     }
 
