@@ -1140,7 +1140,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * these objects. This means PEA must treat MonitorEnterNodes as having a side effect even
          * after being virtualized to ensure that the lock is released after being acquired..
          * Additionally we must ensure that the MonitorEnterNodes can't deoptimize as it will use
-         * the FrqmeState where the locks are still virtual and the lock acquired by the
+         * the FrameState where the locks are still virtual and the lock acquired by the
          * MonitorEnterNode won't be released.
          */
         ArrayList<MonitorEnterNode> enters = null;

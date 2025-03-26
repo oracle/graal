@@ -192,4 +192,46 @@ public final class MonitorPEATest extends HotSpotGraalCompilerTest {
             }
         }
     }
+
+    static class B {
+        Float f = 1.0f;
+    }
+
+    public static void snippet5() {
+        synchronized (new B()) {
+            synchronized (new StringBuilder()) {
+                synchronized (B.class) {
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet5() {
+        test("snippet5");
+    }
+
+    static class C {
+        B b;
+
+        C(B b) {
+            this.b = b;
+        }
+    }
+
+    public static void snippet6() {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (B.class) {
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet6() {
+        test("snippet6");
+    }
 }
