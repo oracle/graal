@@ -28,7 +28,10 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
+import jdk.graal.compiler.core.GraalCompilerOptions;
 import org.graalvm.collections.EconomicMap;
 import org.junit.Test;
 
@@ -53,7 +56,7 @@ public class DumpPathTest extends GraalCompilerTest {
     public void testDump() throws Exception {
         assumeManagementLibraryIsLoadable();
         try (TemporaryDirectory temp = new TemporaryDirectory("DumpPathTest")) {
-            String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
+            String[] extensions = {".cfg", ".bgv", ".graph-strings"};
             EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
             overrides.put(DebugOptions.DumpPath, temp.toString());
             overrides.put(DebugOptions.ShowDumpFiles, false);
@@ -61,6 +64,7 @@ public class DumpPathTest extends GraalCompilerTest {
             overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
             overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
             overrides.put(DebugOptions.Dump, "*");
+            overrides.put(GraalCompilerOptions.DumpHeapAfter, "<compilation>:Schedule");
             overrides.put(DebugOptions.MethodFilter, null);
 
             try (AutoCloseable c = new TTY.Filter()) {
@@ -68,7 +72,20 @@ public class DumpPathTest extends GraalCompilerTest {
                 test(new OptionValues(getInitialOptions(), overrides), "snippet");
             }
             // Check that IGV files got created, in the right place.
-            checkForFiles(temp.path, extensions);
+            List<Path> paths = checkForFiles(temp.path, extensions);
+            List<Path> compilationHeapDumps = new ArrayList<>();
+            List<Path> phaseHeapDumps = new ArrayList<>();
+            for (Path path : paths) {
+                String name = path.toString();
+                if (name.endsWith(".compilation.hprof")) {
+                    compilationHeapDumps.add(path);
+                } else if (name.endsWith(".hprof")) {
+                    phaseHeapDumps.add(path);
+                }
+            }
+
+            assertTrue(!compilationHeapDumps.isEmpty());
+            assertTrue(!phaseHeapDumps.isEmpty());
         }
     }
 
@@ -76,10 +93,12 @@ public class DumpPathTest extends GraalCompilerTest {
      * Check that the given directory contains file or directory names with all the given
      * extensions.
      */
-    private static void checkForFiles(Path directoryPath, String[] extensions) throws IOException {
+    private static List<Path> checkForFiles(Path directoryPath, String[] extensions) throws IOException {
         String[] paths = new String[extensions.length];
+        List<Path> result = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(directoryPath)) {
             for (Path filePath : stream) {
+                result.add(filePath);
                 String fileName = filePath.getFileName().toString();
                 for (int i = 0; i < extensions.length; i++) {
                     String extension = extensions[i];
@@ -97,5 +116,6 @@ public class DumpPathTest extends GraalCompilerTest {
         for (int i = 1; i < paths.length; i++) {
             assertTrue(paths[0].equals(paths[i]), paths[0] + " != " + paths[i]);
         }
+        return result;
     }
 }
