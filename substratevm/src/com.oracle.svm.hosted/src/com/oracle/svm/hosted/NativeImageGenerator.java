@@ -1096,8 +1096,11 @@ public class NativeImageGenerator {
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
 
                 var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+
+                var classesToIgnore = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.IgnorePreserveForClasses, SubstrateOptions.IgnorePreserveForClassesPaths);
                 loader.classLoaderSupport.getClassesToPreserve().parallel()
                                 .filter(ClassInclusionPolicy::isClassIncludedBase)
+                                .filter(c -> classesToIgnore.isIncluded(c) == null)
                                 .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
                 for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
                     RuntimeReflection.registerClassLookup(className);
