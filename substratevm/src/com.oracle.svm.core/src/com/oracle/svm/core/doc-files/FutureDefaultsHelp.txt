@@ -1,0 +1,6 @@
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'run-time-initialized-jdk', 'none'.
+
+The preferred way to use this option is '--future-defaults=all'. The meaning of each possible option is as follows:
+  1. 'all' is the preferred option, and it enables all other behaviors.
+  2. 'run-time-initialized-jdk' shifts away from build-time initialization of the JDK, instead initializing most of it at run time. This transition is gradual, with individual components of the JDK becoming run-time initialized in each release. This process should complete with JDK 29 when this option should not be needed anymore. Unless you store classes from the JDK in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+  3. 'none' forcefully disables all enabled options. This can be used only on the command line to override choices taken by inaccessible parts of the build process.
