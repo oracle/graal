@@ -52,6 +52,18 @@ public final class Bytes {
     }
 
     /**
+     * Writes a signed 2-byte big-endian value.
+     *
+     * @param data the array containing the data
+     * @param bci the start index of where to write the value
+     * @param value the value to write
+     */
+    public static void beS2(byte[] data, int bci, int value) {
+        data[bci] = (byte) ((value >> 8));
+        data[bci + 1] = (byte) (value & 0xff);
+    }
+
+    /**
      * Gets an unsigned 1-byte value.
      *
      * @param data the array containing the data
@@ -82,6 +94,18 @@ public final class Bytes {
      */
     public static int beU2(byte[] data, int bci) {
         return ((data[bci] & 0xff) << 8) | (data[bci + 1] & 0xff);
+    }
+
+    /**
+     * Writes an unsigned 2-byte big-endian value.
+     *
+     * @param data the array containing the data
+     * @param bci the start index of where to write the value
+     * @param value the value to write (only the 2 least significant bytes are stored)
+     */
+    public static void beU2(byte[] data, int bci, int value) {
+        data[bci] = (byte) ((value >> 8) & 0xff);
+        data[bci + 1] = (byte) (value & 0xff);
     }
 
     /**
