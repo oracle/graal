@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -263,7 +263,8 @@ class GraalVmComponent(object):
                  extra_installable_qualifiers=None,
                  has_relative_home=True,
                  jvm_configs=None,
-                 extra_native_targets=None):
+                 extra_native_targets=None,
+                 final_stage_only=False):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -281,6 +282,7 @@ class GraalVmComponent(object):
                 'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
             }
         :param extra_native_targets: list of str, enables extra targets in multi-target projects.
+        :param final_stage_only: bool, this component should be only included in the final GraalVM, not in stage1
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -305,6 +307,7 @@ class GraalVmComponent(object):
         :type extra_installable_qualifiers: list[str] | None
         :type has_relative_home: bool
         :type jvm_configs: list[dict] or None
+        :type final_stage_only: bool
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -343,6 +346,7 @@ class GraalVmComponent(object):
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
         self.extra_native_targets = extra_native_targets
+        self.final_stage_only = final_stage_only
 
         if supported is not None or early_adopter:
             if stability is not None:
