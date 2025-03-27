@@ -38,6 +38,7 @@ import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -242,17 +243,6 @@ public class JfrSymbolRepository implements JfrRepository {
             unflushedEntries = 0;
             JfrBufferAccess.free(buffer);
             buffer = Word.nullPointer();
-        }
-    }
-
-    private static final class ReplaceDotWithSlash implements CharReplacer {
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public char replace(char ch) {
-            if (ch == '.') {
-                return '/';
-            }
-            return ch;
         }
     }
 }
