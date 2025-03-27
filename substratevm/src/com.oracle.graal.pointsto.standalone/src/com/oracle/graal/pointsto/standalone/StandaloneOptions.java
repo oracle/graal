@@ -39,7 +39,16 @@ public class StandaloneOptions {
     @Option(help = "File system splitor separated classpath for the analysis target application.")//
     public static final OptionKey<String> AnalysisTargetAppCP = new OptionKey<>(null);
 
-    @Option(help = "file:doc-files/AnalysisEntryPointsFileHelp.txt")//
+    @Option(help = """
+                    Use a file to specify the analysis entry point methods.
+                    These methods will be added as root methods for analysis besides
+                    the main entry method (if set). At least one of this option and the main entry method must be set.
+                    Each line of the file represents an entry point method. See MethodFilter option for method format details.
+                    To specify a class initialization method, using <clinit> as the method name. E.g. C.<clinit> matches Class C's initialization
+                    method.
+                    Notice:
+                    Although this option allows to specify any method, only direct methods can work as expected. Virtual call need allocation
+                    information to bound to the actual implementations. But the allocation may be missed when the virtual call is the entry point.""")//
     public static final OptionKey<String> AnalysisEntryPointsFile = new OptionKey<>(null);
 
     @Option(help = "Directory of analysis reports to be generated", type = OptionType.User)//

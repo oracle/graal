@@ -39,15 +39,30 @@ public class GraalCompilerOptions {
     // @formatter:off
     @Option(help = "Print an informational line to the console for each completed compilation.", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> PrintCompilation = new OptionKey<>(false);
-    @Option(help = "Pattern for method(s) that will trigger an exception when compiled. " +
-                   "This option exists to test handling compilation crashes gracefully. " +
-                   "See the MethodFilter option for the pattern syntax. A ':Bailout' " +
-                   "suffix will raise a bailout exception and a ':PermanentBailout' " +
-                   "suffix will raise a permanent bailout exception.", type = OptionType.Debug)
+    @Option(help = """
+                   Pattern for method(s) that will trigger an exception when compiled.
+                   This option exists to test handling compilation crashes gracefully.
+                   See the MethodFilter option for the pattern syntax. A ':Bailout'
+                   suffix will raise a bailout exception and a ':PermanentBailout'
+                   suffix will raise a permanent bailout exception.""", type = OptionType.Debug)
     public static final OptionKey<String> CrashAt = new OptionKey<>(null);
     @Option(help = "Treats compilation bailouts as compilation failures.", type = OptionType.User, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> CompilationBailoutAsFailure = new OptionKey<>(false);
-    @Option(help = "file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.User, stability = OptionStability.STABLE)
+    @Option(help = """
+                   Specifies the action to take when compilation fails.
+
+                   The accepted values are:
+                       Silent  - Prints nothing to the console.
+                        Print  - Prints the stack trace to the console.
+                     Diagnose* - Retries the compilation with extra diagnostics.
+                       ExitVM  - Same as Diagnose except that the VM process exits after retrying.
+
+                   * If the value is "Diagnose", compilation is retried with extra diagnostics enabled including dumping.
+                     Options specific to retry compilations can be modified using the DiagnoseOptions meta-option.
+                     For example, to enable full debug dumping and logging during all retry compilations, use "-Djdk.graal.DiagnoseOptions=Dump=:5 Log=:5".
+                     If the option value starts with a non-word character, that character is used as the separator between options instead of a space.
+                     For example: "-Djdk.graal.DiagnoseOptions=@Log=Inlining@LogFile=/path/with space".""",
+            type = OptionType.User, stability = OptionStability.STABLE)
     public static final EnumOptionKey<ExceptionAction> CompilationFailureAction = new EnumOptionKey<>(ExceptionAction.Silent);
     @Option(help = "Specifies the maximum number of compilation failures to handle with the action specified by " +
                    "CompilationFailureAction before changing to a less verbose action. " +
