@@ -198,19 +198,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
     @Override
     public void setIdentityHashFromAddress(Pointer ptr, Word currentHeader) {
-        if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
-        } else {
-            assert isIdentityHashFieldOptional() : "use only when hashcode fields are optional";
-            assert !hasIdentityHashFromAddress(currentHeader) : "must not already have a hashcode";
-        }
+        assert isIdentityHashFieldOptional() : "use only when hashcode fields are optional";
+        assert !hasIdentityHashFromAddress(currentHeader) : "must not already have a hashcode";
 
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = currentHeader.and(IDHASH_STATE_BITS.not()).or(fromAddressState);
         writeHeaderToObject(ptr.toObjectNonNull(), newHeader);
-        if (!GraalDirectives.inIntrinsic()) {
-            assert hasIdentityHashFromAddress(readHeaderFromObject(ptr));
-        }
+
+        assert hasIdentityHashFromAddress(readHeaderFromPointer(ptr));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
