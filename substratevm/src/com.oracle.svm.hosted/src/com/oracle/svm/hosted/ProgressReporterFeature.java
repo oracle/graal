@@ -31,6 +31,7 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -106,10 +107,15 @@ public class ProgressReporterFeature implements InternalFeature {
 
     protected List<UserRecommendation> getRecommendations() {
         return List.of(// in order of appearance:
+                        new UserRecommendation("FUTR", "Use '--future-defaults=all' to prepare for future releases.", ProgressReporterFeature::recommendFutureDefaults),
                         new UserRecommendation("AWT", "Use the tracing agent to collect metadata for AWT.", ProgressReporterFeature::recommendTraceAgentForAWT),
                         new UserRecommendation("HOME", "To avoid errors, provide java.home to the app with '-Djava.home=<path>'.", AnalyzeJavaHomeAccessFeature.instance()::getJavaHomeUsed),
                         new UserRecommendation("HEAP", "Set max heap for improved and more predictable memory usage.", () -> SubstrateGCOptions.MaxHeapSize.getValue() == 0),
                         new UserRecommendation("CPU", "Enable more CPU features with '-march=native' for improved performance.", ProgressReporterFeature::recommendMArchNative));
+    }
+
+    private static boolean recommendFutureDefaults() {
+        return !FutureDefaultsOptions.allFutureDefaults();
     }
 
     private static boolean recommendMArchNative() {
