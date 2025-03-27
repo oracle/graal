@@ -306,6 +306,15 @@ public final class BytecodeStream {
     }
 
     /**
+     * Reads an unsigned, 2-byte short for the current instruction.
+     *
+     * @return the short value
+     */
+    public int readUShort(int curBCI) {
+        return Bytes.beU2(code, curBCI + 1);
+    }
+
+    /**
      * Reads an unsigned byte for the current instruction (e.g. SIPUSH). The {@link Bytecodes#WIDE}
      * modifier is <b>NOT</b> handled internally.
      *
