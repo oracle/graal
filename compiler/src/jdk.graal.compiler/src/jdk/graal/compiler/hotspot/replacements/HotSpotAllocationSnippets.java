@@ -509,7 +509,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         return ProfileAllocations.getValue(options);
     }
 
-    enum ProfileContext {
+    public enum ProfileContext {
         AllocatingMethod,
         InstanceOrArray,
         AllocatedType,
