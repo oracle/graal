@@ -932,6 +932,13 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInvocationPlugin("codeBase") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadCodeBaseNode(b.getGraph()));
+                return true;
+            }
+        });
         r.register(new RequiredInvocationPlugin("readHub", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {

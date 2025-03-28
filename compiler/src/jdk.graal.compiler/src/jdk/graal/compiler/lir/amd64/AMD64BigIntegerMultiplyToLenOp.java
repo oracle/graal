@@ -42,6 +42,8 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import java.util.function.Predicate;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -75,6 +77,8 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
     @Temp({OperandFlag.REG}) private Value tmp1Value;
     @Temp({OperandFlag.REG}) private Value[] tmpValues;
 
+    private final boolean spillR13;
+
     public AMD64BigIntegerMultiplyToLenOp(
                     Value xValue,
                     Value xlenValue,
@@ -82,7 +86,7 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
                     Value ylenValue,
                     Value zValue,
                     Value zlenValue,
-                    Register heapBaseRegister) {
+                    Predicate<Register> isReservedRegister) {
         super(TYPE);
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
@@ -101,7 +105,14 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         this.zValue = zValue;
         this.zlenValue = zlenValue;
 
-        this.tmp1Value = r12.equals(heapBaseRegister) ? r14.asValue() : r12.asValue();
+        if (isReservedRegister.test(r12)) {
+            GraalError.guarantee(!isReservedRegister.test(r14), "One of r12 or r14 must be available");
+            this.tmp1Value = r14.asValue();
+        } else {
+            this.tmp1Value = r12.asValue();
+        }
+        this.spillR13 = isReservedRegister.test(r13);
+
         this.tmpValues = new Value[]{
                         rax.asValue(),
                         rcx.asValue(),
@@ -139,7 +150,13 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
         Register tmp4 = r10;
         Register tmp5 = rbx;
 
+        if (spillR13) {
+            masm.push(r13);
+        }
         multiplyToLen(masm, x, xlen, y, ylen, z, zlen, tmp1, tmp2, tmp3, tmp4, tmp5);
+        if (spillR13) {
+            masm.pop(r13);
+        }
     }
 
     private static void add2WithCarry(AMD64MacroAssembler masm,

@@ -28,19 +28,13 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.thread.VMThreads;
 
 /**
- * Only sets the heap base and the thread register but does not do any thread transitions. Only use
- * this prologue if {@link com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue} can't be
- * used.
+ * Required by legacy code. Use {@link InitializeReservedRegistersPrologue} instead.
  */
 public class SetThreadAndHeapBasePrologue implements CEntryPointOptions.Prologue {
     @Uninterruptible(reason = "prologue")
     public static void enter(IsolateThread thread) {
-        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
-        CEntryPointSnippets.setHeapBase(VMThreads.IsolateTL.get());
+        InitializeReservedRegistersPrologue.enter(thread);
     }
 }

@@ -41,6 +41,8 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import java.util.function.Predicate;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -50,7 +52,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -79,13 +80,15 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
     @Temp({OperandFlag.REG}) private Value tmp1Value;
     @Temp({OperandFlag.REG}) private Value[] tmpValues;
 
+    private final boolean spillR13;
+
     public AMD64BigIntegerMulAddOp(
                     Value outValue,
                     Value inValue,
                     Value offsetValue,
                     Value lenValue,
                     Value kValue,
-                    Register heapBaseRegister) {
+                    Predicate<Register> isReservedRegister) {
         super(TYPE);
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
@@ -103,7 +106,13 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         this.kValue = kValue;
         this.result = AMD64.rax.asValue(lenValue.getValueKind());
 
-        this.tmp1Value = r12.equals(heapBaseRegister) ? r14.asValue() : r12.asValue();
+        if (isReservedRegister.test(r12)) {
+            GraalError.guarantee(!isReservedRegister.test(r14), "One of r12 or r14 must be available");
+            this.tmp1Value = r14.asValue();
+        } else {
+            this.tmp1Value = r12.asValue();
+        }
+        this.spillR13 = isReservedRegister.test(r13);
 
         this.tmpValues = new Value[]{
                         rax.asValue(),
@@ -140,7 +149,13 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         Register tmp4 = r10;
         Register tmp5 = rbx;
 
+        if (spillR13) {
+            masm.push(r13);
+        }
         mulAdd(masm, out, in, offset, len, k, tmp1, tmp2, tmp3, tmp4, tmp5, rdx, rax);
+        if (spillR13) {
+            masm.pop(r13);
+        }
     }
 
     static boolean useBMI2Instructions(AMD64MacroAssembler masm) {

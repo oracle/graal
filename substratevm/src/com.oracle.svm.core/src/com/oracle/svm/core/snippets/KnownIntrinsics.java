@@ -42,6 +42,11 @@ public class KnownIntrinsics {
     public static native Pointer heapBase();
 
     /**
+     * Returns the value of the code base.
+     */
+    public static native Pointer codeBase();
+
+    /**
      * Returns the hub of the given object.
      */
     public static native DynamicHub readHub(Object obj);

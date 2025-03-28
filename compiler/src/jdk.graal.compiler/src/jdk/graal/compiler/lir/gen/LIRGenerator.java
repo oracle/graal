@@ -857,7 +857,8 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
     }
 
     /**
-     * Returns the register holding the heap base address for compressed pointer.
+     * Determines whether the given register is a reserved register, such as the register holding
+     * the heap base address for compressed pointers.
      */
-    public abstract Register getHeapBaseRegister();
+    public abstract boolean isReservedRegister(Register r);
 }
