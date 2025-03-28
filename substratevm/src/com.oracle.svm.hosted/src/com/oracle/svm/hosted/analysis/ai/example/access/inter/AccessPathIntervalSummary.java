@@ -39,7 +39,7 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
     }
 
     @Override
-    public boolean subsumes(Summary<EnvironmentDomain<IntInterval>> other) {
+    public boolean subsumesSummary(Summary<EnvironmentDomain<IntInterval>> other) {
         if (!(other instanceof AccessPathIntervalSummary otherAccessPathIntervalSummary)) {
             return false;
         }
@@ -102,7 +102,7 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
     }
 
     @Override
-    public EnvironmentDomain<IntInterval> applySummary(EnvironmentDomain<IntInterval> callerPreCondition) {
+    public EnvironmentDomain<IntInterval> applySummary(EnvironmentDomain<IntInterval> domain) {
         /* We rename all the prefixes from access paths in the post-condition, since we will be returning them to the caller */
         EnvironmentDomain<IntInterval> renamedEnv = new EnvironmentDomain<>(new IntInterval());
         for (AccessPath accessPath : this.postCondition.getValue().getMap().keySet()) {
@@ -121,30 +121,30 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
 
         EnvironmentDomain<IntInterval> mergedEnv = new EnvironmentDomain<>(new IntInterval());
 
-        for (AccessPath path : callerPreCondition.getValue().getMap().keySet()) {
+        for (AccessPath path : domain.getValue().getMap().keySet()) {
             if (renamedEnv.getValue().getMap().containsKey(path)) {
                 // Path exists in both - use the more precise value from the callee
                 IntInterval renamedValue = renamedEnv.get(path);
                 mergedEnv.put(path, renamedValue);
             } else {
                 // Path only in caller - keep it
-                mergedEnv.put(path, callerPreCondition.get(path));
+                mergedEnv.put(path, domain.get(path));
             }
         }
 
         // Add paths that are only in renamedEnv
         for (AccessPath path : renamedEnv.getValue().getMap().keySet()) {
-            if (!callerPreCondition.getValue().getMap().containsKey(path)) {
+            if (!domain.getValue().getMap().containsKey(path)) {
                 mergedEnv.put(path, renamedEnv.get(path));
             }
         }
 
         // If expression values exist in either, merge them
-        if (callerPreCondition.hasExprValue() || renamedEnv.hasExprValue()) {
-            if (callerPreCondition.hasExprValue() && renamedEnv.hasExprValue()) {
-                mergedEnv.setExprValue(callerPreCondition.getExprValue().meet(renamedEnv.getExprValue()));
-            } else if (callerPreCondition.hasExprValue()) {
-                mergedEnv.setExprValue(callerPreCondition.getExprValue());
+        if (domain.hasExprValue() || renamedEnv.hasExprValue()) {
+            if (domain.hasExprValue() && renamedEnv.hasExprValue()) {
+                mergedEnv.setExprValue(domain.getExprValue().meet(renamedEnv.getExprValue()));
+            } else if (domain.hasExprValue()) {
+                mergedEnv.setExprValue(domain.getExprValue());
             } else {
                 mergedEnv.setExprValue(renamedEnv.getExprValue());
             }

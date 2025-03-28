@@ -37,9 +37,9 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
         Summary<Domain> mostGeneralSummary = null;
 
         for (Summary<Domain> existingSummary : cache.get(method)) {
-            if (existingSummary.subsumes(summaryPrecondition)) {
+            if (existingSummary.subsumesSummary(summaryPrecondition)) {
                 if (mostGeneralSummary == null ||
-                        existingSummary.subsumes(mostGeneralSummary)) {
+                        existingSummary.subsumesSummary(mostGeneralSummary)) {
                     mostGeneralSummary = existingSummary;
                 }
             }
@@ -72,7 +72,7 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
         List<Summary<Domain>> summaries = cache.get(method);
         if (summaries != null) {
             for (Summary<Domain> summary : summaries) {
-                if (summary.subsumes(summaryPrecondition)) {
+                if (summary.subsumesSummary(summaryPrecondition)) {
                     cacheHits++;
                     return true;
                 }

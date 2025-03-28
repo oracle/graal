@@ -13,6 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -178,7 +179,7 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Enviro
                 /* We can use analyzeDependencyCallback to analyze calls to other methods */
                 AnalysisOutcome<EnvironmentDomain<IntInterval>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
                 if (outcome.isError()) {
-                    logger.logToFile("Error in handling call: " + outcome.result().toString());
+                    logger.log("Error in handling call: " + outcome.result().toString(), LoggerVerbosity.INFO);
                     computedPostCondition.setToTop();
                 } else {
                     Summary<EnvironmentDomain<IntInterval>> summary = outcome.summary();

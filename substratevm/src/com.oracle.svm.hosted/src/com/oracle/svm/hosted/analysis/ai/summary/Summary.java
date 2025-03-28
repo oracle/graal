@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import jdk.graal.compiler.nodes.Invoke;
 
 /**
@@ -56,7 +55,7 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      * @param other the other {@link Summary} to compare with
      * @return true if this summary subsumes other summary
      */
-    boolean subsumes(Summary<Domain> other);
+    boolean subsumesSummary(Summary<Domain> other);
 
     /**
      * This method is called by the framework after the fixpoint computation of the analysisMethod body.
@@ -67,14 +66,10 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     void finalizeSummary(Domain calleePostCondition);
 
     /**
-     * This method is called by the framework when applying the summary to the caller's abstract context.
-     * It should return the abstract context after applying the summary.
-     * NOTE:
-     *      This method should not modify the caller's abstract context, but rather return a new one.
-     *      This is done so that {@link NodeInterpreter} has more control over how to apply the summary,
-     *      and this way we don't have to write interpretation logic in the summary.
-     * @param callerPreCondition the abstract context we want to apply the summary to
-     * @return the domain which is the result of applying the summary to the caller's abstract context
+     * This method simulates applying the summary to the {@code domain}.
+     *
+     * @param domain the abstract domain we want to apply the summary to
+     * @return the new abstract context after applying the summary
      */
-    Domain applySummary(Domain callerPreCondition);
+    Domain applySummary(Domain domain);
 }

@@ -34,7 +34,7 @@ public class LeakPairSummary implements Summary<PairDomain<CountDomain, BooleanO
     }
 
     @Override
-    public boolean subsumes(Summary<PairDomain<CountDomain, BooleanOrDomain>> other) {
+    public boolean subsumesSummary(Summary<PairDomain<CountDomain, BooleanOrDomain>> other) {
         if (!(other instanceof LeakPairSummary)) {
             return false;
         }
@@ -48,9 +48,9 @@ public class LeakPairSummary implements Summary<PairDomain<CountDomain, BooleanO
     }
 
     @Override
-    public PairDomain<CountDomain, BooleanOrDomain> applySummary(PairDomain<CountDomain, BooleanOrDomain> callerPreCondition) {
-        int newCount = postCondition.getFirst().getValue() + callerPreCondition.getFirst().getValue();
-        int maxValue = callerPreCondition.getFirst().getMaxValue();
+    public PairDomain<CountDomain, BooleanOrDomain> applySummary(PairDomain<CountDomain, BooleanOrDomain> domain) {
+        int newCount = postCondition.getFirst().getValue() + domain.getFirst().getValue();
+        int maxValue = domain.getFirst().getMaxValue();
         return new PairDomain<>(new CountDomain(newCount, maxValue), postCondition.getSecond());
     }
 }

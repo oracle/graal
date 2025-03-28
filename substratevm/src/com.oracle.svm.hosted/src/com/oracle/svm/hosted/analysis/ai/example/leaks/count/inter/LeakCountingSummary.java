@@ -36,7 +36,7 @@ public class LeakCountingSummary implements Summary<CountDomain> {
     }
 
     @Override
-    public boolean subsumes(Summary<CountDomain> other) {
+    public boolean subsumesSummary(Summary<CountDomain> other) {
         /* This is a simple example, so if we encounter the same analysisMethod call as in cache we return true */
         if (!(other instanceof LeakCountingSummary)) {
             return false;
@@ -51,8 +51,8 @@ public class LeakCountingSummary implements Summary<CountDomain> {
     }
 
     @Override
-    public CountDomain applySummary(CountDomain callerPreCondition) {
-        int newValue = callerPreCondition.getValue() + postCondition.getValue();
+    public CountDomain applySummary(CountDomain domain) {
+        int newValue = domain.getValue() + postCondition.getValue();
         return new CountDomain(newValue);
     }
 }

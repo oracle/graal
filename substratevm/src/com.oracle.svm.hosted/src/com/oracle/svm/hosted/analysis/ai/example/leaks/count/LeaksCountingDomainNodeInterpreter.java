@@ -4,11 +4,11 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import com.oracle.svm.hosted.analysis.ai.util.InvokeUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 

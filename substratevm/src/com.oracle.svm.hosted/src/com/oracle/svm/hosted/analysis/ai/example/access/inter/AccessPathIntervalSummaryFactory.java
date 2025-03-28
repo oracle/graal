@@ -31,7 +31,7 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
          * We will only keep:
          *                   1. Primitive type arguments (We will pass them as placeholder access paths for them like param0: [1, 10])
          *                   2. Object type arguments (We will pass all access paths that have this object as their base)
-         *                   3. Static fields from the caller (We will pass them as-is since they're globally accessible)
+         *                   3. Fields inherited from the caller (We will pass them as-is since they're accessible)
          */
         EnvironmentDomain<IntInterval> preCondition = new EnvironmentDomain<>(new IntInterval());
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
