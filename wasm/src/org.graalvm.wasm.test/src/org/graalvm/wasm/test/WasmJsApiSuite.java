@@ -57,11 +57,13 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
@@ -101,6 +103,19 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
     private static final String REF_TYPES_OPTION = "wasm.BulkMemoryAndRefTypes";
+
+    private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, byte[] paramTypes, byte[] resultTypes, RootNode functionRootNode) {
+        WasmModule module = WasmModule.createBuiltin("dummyModule");
+        module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
+        WasmFunction func = module.declareFunction(0);
+        func.setTarget(functionRootNode.getCallTarget());
+        WasmInstance moduleInstance = context.contextStore().readInstance(module);
+        // Perform normal linking steps, incl. assignTypeEquivalenceClasses().
+        // Functions need to have type equivalence classes assigned for indirect calls.
+        moduleInstance.store().linker().tryLink(moduleInstance);
+        assert func.typeEquivalenceClass() >= 0 : "type equivalence class must be assigned";
+        return new WasmFunctionInstance(moduleInstance, func, functionRootNode.getCallTarget());
+    }
 
     @Test
     public void testCompile() throws IOException {
@@ -212,13 +227,13 @@ public class WasmJsApiSuite {
                                             "defaultTable", table
                             }),
             });
-            wasm.tableWrite(table, 0, new WasmFunctionInstance(context,
+            wasm.tableWrite(table, 0, createWasmFunctionInstance(context, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
                             new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 210;
                                 }
-                            }.getCallTarget()));
+                            }));
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableImport, importObject);
             try {
                 final Object callFirst = WebAssembly.instanceExport(instance, "callFirst");
@@ -419,12 +434,13 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
             try {
-                wasm.globalWrite(global, new WasmFunctionInstance(context, new RootNode(context.language()) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return 0;
-                    }
-                }.getCallTarget()));
+                wasm.globalWrite(global, createWasmFunctionInstance(context, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
+                                new RootNode(context.language()) {
+                                    @Override
+                                    public Object execute(VirtualFrame frame) {
+                                        return 0;
+                                    }
+                                }));
                 Assert.fail("Should have failed - invalid global type");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
@@ -606,13 +622,13 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
-                final Object f = new WasmFunctionInstance(context,
+                final Object f = createWasmFunctionInstance(context, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
                                 new RootNode(context.language()) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         return 42;
                                     }
-                                }.getCallTarget());
+                                });
                 final Object writeTable = wasm.readMember("table_write");
                 final Object readTable = wasm.readMember("table_read");
                 final Object a = WebAssembly.instanceExport(instance, "a");
@@ -890,15 +906,13 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
-            WasmContext wasmContext = WasmContext.get(null);
-            final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
-                            wasmContext,
-                            new RootNode(wasmContext.language()) {
+            final WasmFunctionInstance functionInstance = createWasmFunctionInstance(context, WasmType.VOID_TYPE_ARRAY, WasmType.I32_TYPE_ARRAY,
+                            new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;
                                 }
-                            }.getCallTarget());
+                            });
 
             // We should be able to set element 1.
             try {
@@ -2500,11 +2514,11 @@ public class WasmJsApiSuite {
         runTest(options -> options.option("wasm.UseUnsafeMemory", "true"), testCase);
     }
 
-    private static void runTest(Consumer<WasmContext> testCase) throws IOException {
+    public static void runTest(Consumer<WasmContext> testCase) throws IOException {
         runTest(null, testCase);
     }
 
-    private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
+    public static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         if (options != null) {
@@ -2900,7 +2914,7 @@ public class WasmJsApiSuite {
                     (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
     };
 
-    private static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
+    public static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
         final WasmModule module = wasm.moduleDecode(source);
         return wasm.moduleInstantiate(module, importObject);
     }

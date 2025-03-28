@@ -44,5 +44,5 @@ package org.graalvm.wasm;
 @FunctionalInterface
 public interface LinkAction {
 
-    void accept(WasmContext context, WasmInstance instance, ImportValueSupplier imports);
+    void accept(WasmContext context, WasmStore store, WasmInstance instance, ImportValueSupplier imports);
 }

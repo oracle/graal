@@ -82,6 +82,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.test.options.WasmTestOptions;
@@ -164,8 +165,8 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return inCI() || inWindows();
     }
 
-    private static Value findMain(WasmContext wasmContext) {
-        for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+    private static Value findMain(WasmStore wasmStore) {
+        for (final WasmInstance instance : wasmStore.moduleInstances().values()) {
             final WasmFunctionInstance function = instance.inferEntryPoint();
             if (function != null) {
                 return Value.asValue(function);
@@ -192,7 +193,8 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
 
             final WasmContext wasmContext = WasmContext.get(null);
-            final Value mainFunction = findMain(wasmContext);
+            final var contextStore = wasmContext.contextStore();
+            final Value mainFunction = findMain(contextStore);
 
             resetStatus(System.out, phaseIcon, phaseLabel);
 
@@ -222,37 +224,40 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     e.setStackTrace(new StackTraceElement[0]);
                     throw e;
                 } finally {
-                    // Save context state, and check that it's consistent with the previous one.
-                    if (iterationNeedsStateCheck(i)) {
-                        final ContextState contextState = saveContext(wasmContext);
-                        if (firstIterationContextState == null) {
-                            firstIterationContextState = contextState;
-                        } else {
-                            assertContextEqual(firstIterationContextState, contextState);
+                    // Context may have already been closed, e.g. by __wasi_proc_exit.
+                    if (!wasmContext.environment().getContext().isClosed()) {
+                        // Save context state, and check that it's consistent with the previous one.
+                        if (iterationNeedsStateCheck(i)) {
+                            final ContextState contextState = saveContext(contextStore);
+                            if (firstIterationContextState == null) {
+                                firstIterationContextState = contextState;
+                            } else {
+                                assertContextEqual(firstIterationContextState, contextState);
+                            }
                         }
-                    }
 
-                    // Reset context state.
-                    final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
-                    if (reinitMemory) {
-                        for (int j = 0; j < wasmContext.memories().count(); ++j) {
-                            WasmMemoryLibrary.getUncached().reset(wasmContext.memories().memory(j));
+                        // Reset context state.
+                        final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
+                        if (reinitMemory) {
+                            for (int j = 0; j < contextStore.memories().count(); ++j) {
+                                WasmMemoryLibrary.getUncached().reset(contextStore.memories().memory(j));
+                            }
+                            for (int j = 0; j < contextStore.tables().tableCount(); ++j) {
+                                contextStore.tables().table(j).reset();
+                            }
                         }
-                        for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
-                            wasmContext.tables().table(j).reset();
+                        List<WasmInstance> instanceList = new ArrayList<>(contextStore.moduleInstances().values());
+                        instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
+                        for (WasmInstance instance : instanceList) {
+                            if (!instance.isBuiltin()) {
+                                contextStore.reinitInstance(instance, reinitMemory);
+                            }
                         }
-                    }
-                    List<WasmInstance> instanceList = new ArrayList<>(wasmContext.moduleInstances().values());
-                    instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
-                    for (WasmInstance instance : instanceList) {
-                        if (!instance.isBuiltin()) {
-                            wasmContext.reinitInstance(instance, reinitMemory);
-                        }
-                    }
 
-                    // Reset stdin
-                    if (wasmContext.environment().in() instanceof ByteArrayInputStream) {
-                        wasmContext.environment().in().reset();
+                        // Reset stdin
+                        if (wasmContext.environment().in() instanceof ByteArrayInputStream) {
+                            wasmContext.environment().in().reset();
+                        }
                     }
                 }
             }
@@ -586,10 +591,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return getClass().getSimpleName();
     }
 
-    private static ContextState saveContext(WasmContext context) {
-        final MemoryRegistry memories = context.memories().duplicate();
-        final GlobalRegistry globals = context.globals().duplicate();
-        return new ContextState(memories, globals, context.fdManager().size());
+    private static ContextState saveContext(WasmStore store) {
+        final MemoryRegistry memories = store.memories().duplicate();
+        final GlobalRegistry globals = store.globals().duplicate();
+        return new ContextState(memories, globals, store.fdManager().size());
     }
 
     private static void assertContextEqual(ContextState expectedState, ContextState actualState) {

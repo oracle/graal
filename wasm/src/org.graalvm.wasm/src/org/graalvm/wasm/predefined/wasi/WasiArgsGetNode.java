@@ -59,14 +59,16 @@ public final class WasiArgsGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return argsGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return argsGet(getContext(), memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsGet(WasmMemory memory, int argvAddress, int argvBuffAddress) {
-        final String[] arguments = getContext().environment().getApplicationArguments();
+    private int argsGet(WasmContext context, WasmMemory memory, int argvAddress, int argvBuffAddress) {
+        final String[] arguments = context.environment().getApplicationArguments();
         int argvPointer = argvAddress;
         int argvBuffPointer = argvBuffAddress;
         for (final String argument : arguments) {

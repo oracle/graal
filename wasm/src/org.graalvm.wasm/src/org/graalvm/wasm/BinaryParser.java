@@ -221,7 +221,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readDataSection(bytecode);
                     break;
             }
-            assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
+            assertIntEqual(offset - startOffset, size, Failure.SECTION_SIZE_MISMATCH, "Declared section (0x%02X) size is incorrect", sectionID);
         }
         if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.numImportedFunctions(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
@@ -391,7 +391,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readImportSection() {
         assertIntEqual(module.symbolTable().numGlobals(), 0,
-                        "The global index should be -1 when the import section is first read.", Failure.UNSPECIFIED_INVALID);
+                        Failure.UNSPECIFIED_INVALID, "The global index should be -1 when the import section is first read.");
         int importCount = readLength();
 
         module.limits().checkImportCount(importCount);
@@ -432,7 +432,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 default: {
-                    fail(Failure.MALFORMED_IMPORT_KIND, String.format("Invalid import type identifier: 0x%02X", importType));
+                    fail(Failure.MALFORMED_IMPORT_KIND, "Invalid import type identifier: 0x%02X", importType);
                 }
             }
         }
@@ -495,7 +495,7 @@ public class BinaryParser extends BinaryStreamParser {
             functionDebugData.add(offset - codeSectionOffset);
             codeEntries[entryIndex] = readCodeEntry(importedFunctionCount + entryIndex, locals, startOffset + codeEntrySize, entryIndex < codeEntryCount - 1, bytecode, entryIndex);
             functionDebugData.add(offset - codeSectionOffset);
-            assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
+            assertIntEqual(offset - startOffset, codeEntrySize, Failure.UNSPECIFIED_MALFORMED, "Code entry %d size is incorrect", entryIndex);
         }
         module.setCodeEntries(codeEntries);
     }
@@ -1008,7 +1008,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         assertIntEqual(state.valueStackSize(), resultTypes.length,
-                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
+                        Failure.TYPE_MISMATCH, "Stack size must match the return type length at the function end");
         if (hasNextFunction) {
             assertIntEqual(state.controlStackSize(), 0, Failure.END_OPCODE_EXPECTED);
         } else {
@@ -2497,7 +2497,7 @@ public class BinaryParser extends BinaryStreamParser {
                         // The current WebAssembly spec says constant expressions can only refer to
                         // imported globals. We can easily remove this restriction in the future.
                         assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNKNOWN_GLOBAL,
-                                        "Constant expression in module '" + module.name() + "' refers to non-imported global " + index + ".");
+                                        "Constant expression in module '%s' refers to non-imported global %d.", module.name(), index);
                     }
                     assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     state.push(module.symbolTable().globalValueType(index));
@@ -2571,7 +2571,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
             }
         }
-        assertIntEqual(state.valueStackSize(), 1, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
+        assertIntEqual(state.valueStackSize(), 1, Failure.TYPE_MISMATCH, "Multiple results on stack at constant expression end");
         state.exit(multiValue);
         if (calculable) {
             return Pair.create(stack.removeLast(), null);
@@ -2726,13 +2726,13 @@ public class BinaryParser extends BinaryStreamParser {
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
                 module.checkElemType(currentElemSegmentId, module.tableElementType(tableIndex));
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolveElemSegment(store, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
                                     currentOffsetBytecode, bytecodeOffset, elementCount);
                 });
             } else if (mode == SegmentMode.PASSIVE) {
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount);
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolvePassiveElemSegment(store, instance, currentElemSegmentId, bytecodeOffset, elementCount);
                 });
             }
             for (long element : elements) {
@@ -2795,7 +2795,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 default: {
-                    fail(Failure.UNSPECIFIED_MALFORMED, String.format("Invalid export type identifier: 0x%02X", exportType));
+                    fail(Failure.UNSPECIFIED_MALFORMED, "Invalid export type identifier: 0x%02X", exportType);
                 }
             }
         }
@@ -2819,12 +2819,12 @@ public class BinaryParser extends BinaryStreamParser {
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
             final int currentGlobalIndex = globalIndex;
-            module.addLinkAction((context, instance, imports) -> {
+            module.addLinkAction((context, store, instance, imports) -> {
                 if (isInitialized) {
-                    context.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
-                    context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
+                    store.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
+                    store.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
-                    context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, initBytecode);
+                    store.linker().resolveGlobalInitialization(store, instance, currentGlobalIndex, initBytecode);
                 }
             });
         }
@@ -2909,8 +2909,8 @@ public class BinaryParser extends BinaryStreamParser {
                 final long currentOffsetAddress = offsetAddress;
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolveDataSegment(store, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
                                     bytecodeOffset, droppedDataInstanceOffset);
                 });
             } else {
@@ -2918,8 +2918,8 @@ public class BinaryParser extends BinaryStreamParser {
                 final int bytecodeOffset = bytecode.location();
                 bytecode.addDataRuntimeHeader(byteLength);
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset);
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolvePassiveDataSegment(store, instance, currentDataSegmentId, bytecodeOffset);
                 });
             }
             // Add the data section to the bytecode.
@@ -3084,9 +3084,9 @@ public class BinaryParser extends BinaryStreamParser {
             }
             default:
                 if (limitsPrefix < 0) {
-                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix));
+                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix);
                 } else {
-                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix));
+                    fail(Failure.INTEGER_TOO_LARGE, "Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix);
                 }
         }
     }
@@ -3125,15 +3125,15 @@ public class BinaryParser extends BinaryStreamParser {
             default: {
                 if (!threads) {
                     if (limitsPrefix < 0) {
-                        fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix));
+                        fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix);
                     } else {
-                        fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix));
+                        fail(Failure.INTEGER_TOO_LARGE, "Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix);
                     }
                 } else {
                     switch (limitsPrefix) {
                         case 0x02:
                         case 0x06: {
-                            fail(Failure.SHARED_MEMORY_MUST_HAVE_MAXIMUM, String.format("Limits prefix implies shared memory without meximum (got 0x%02X)", limitsPrefix));
+                            fail(Failure.SHARED_MEMORY_MUST_HAVE_MAXIMUM, "Limits prefix implies shared memory without meximum (got 0x%02X)", limitsPrefix);
                             break;
                         }
                         case 0x03: {
@@ -3152,9 +3152,9 @@ public class BinaryParser extends BinaryStreamParser {
                         }
                         default:
                             if (limitsPrefix < 0) {
-                                fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix));
+                                fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix);
                             } else {
-                                fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix));
+                                fail(Failure.INTEGER_TOO_LARGE, "Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix);
                             }
                     }
                 }

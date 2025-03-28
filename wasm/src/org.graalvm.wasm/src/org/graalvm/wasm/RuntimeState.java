@@ -46,6 +46,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Represents the state of a WebAssembly module.
@@ -56,7 +57,7 @@ public abstract class RuntimeState {
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
 
-    private final WasmContext context;
+    private final WasmStore store;
     private final WasmModule module;
 
     /**
@@ -135,8 +136,8 @@ public abstract class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
-        this.context = context;
+    public RuntimeState(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
+        this.store = store;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
@@ -178,8 +179,12 @@ public abstract class RuntimeState {
         this.linkState = Linker.LinkState.failed;
     }
 
+    public WasmStore store() {
+        return store;
+    }
+
     public WasmContext context() {
-        return context;
+        return store().context();
     }
 
     public boolean isNonLinked() {
@@ -256,9 +261,15 @@ public abstract class RuntimeState {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
-            functionInstances[functionIndex] = functionInstance;
+            functionInstance = allocateFunctionInstance(function, functionIndex);
         }
+        return functionInstance;
+    }
+
+    @TruffleBoundary
+    private WasmFunctionInstance allocateFunctionInstance(WasmFunction function, int functionIndex) {
+        WasmFunctionInstance functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
+        functionInstances[functionIndex] = functionInstance;
         return functionInstance;
     }
 

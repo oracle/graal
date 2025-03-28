@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -55,7 +54,7 @@ public class EmscriptenGetHeapSizeNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         WasmMemory memory = memory(frame);
         final long byteSize = memoryLib.byteSize(memory);
         return (int) byteSize;

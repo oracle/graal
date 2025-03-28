@@ -54,9 +54,9 @@ import java.util.Objects;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -75,8 +75,8 @@ public abstract class BytecodeParser {
     /**
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
-    public static void resetGlobalState(WasmContext context, WasmModule module, WasmInstance instance) {
-        final GlobalRegistry globals = context.globals();
+    public static void resetGlobalState(WasmStore store, WasmModule module, WasmInstance instance) {
+        final GlobalRegistry globals = store.globals();
         for (int i = 0; i < module.numGlobals(); i++) {
             if (module.globalImported(i)) {
                 continue;
@@ -84,7 +84,7 @@ public abstract class BytecodeParser {
             if (module.globalInitialized(i)) {
                 globals.store(module.globalValueType(i), instance.globalAddress(i), module.globalInitialValue(i));
             } else {
-                Linker.initializeGlobal(context, instance, i, module.globalInitializerBytecode(i));
+                Linker.initializeGlobal(store, instance, i, module.globalInitializerBytecode(i));
             }
         }
     }
@@ -92,7 +92,7 @@ public abstract class BytecodeParser {
     /**
      * Reset the state of the memory in a module that had already been parsed and linked.
      */
-    public static void resetMemoryState(WasmContext context, WasmModule module, WasmInstance instance) {
+    public static void resetMemoryState(WasmStore store, WasmModule module, WasmInstance instance) {
         final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.dataInstanceCount(); i++) {
             final int dataOffset = module.dataInstanceOffset(i);
@@ -154,7 +154,7 @@ public abstract class BytecodeParser {
                     offsetAddress = value;
                 }
                 if (offsetBytecode != null) {
-                    offsetAddress = ((Number) Linker.evalConstantExpression(context, instance, offsetBytecode)).longValue();
+                    offsetAddress = ((Number) Linker.evalConstantExpression(store, instance, offsetBytecode)).longValue();
                 }
 
                 final int memoryIndex;
@@ -199,7 +199,7 @@ public abstract class BytecodeParser {
     /**
      * Reset the state of the tables in a module that had already been parsed and linked.
      */
-    public static void resetTableState(WasmContext context, WasmModule module, WasmInstance instance) {
+    public static void resetTableState(WasmStore store, WasmModule module, WasmInstance instance) {
         final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.elemInstanceCount(); i++) {
             final int elemOffset = module.elemInstanceOffset(i);
@@ -226,7 +226,7 @@ public abstract class BytecodeParser {
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
-            final Linker linker = Objects.requireNonNull(context.linker());
+            final Linker linker = Objects.requireNonNull(store.linker());
             if (elemMode == SegmentMode.ACTIVE) {
                 final int tableIndex;
                 switch (flags & BytecodeBitEncoding.ELEM_SEG_TABLE_INDEX_MASK) {
@@ -297,9 +297,9 @@ public abstract class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                linker.immediatelyResolveElemSegment(context, instance, tableIndex, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
+                linker.immediatelyResolveElemSegment(store, instance, tableIndex, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
             } else if (elemMode == SegmentMode.PASSIVE) {
-                linker.immediatelyResolvePassiveElementSegment(context, instance, i, effectiveOffset, elemCount);
+                linker.immediatelyResolvePassiveElementSegment(store, instance, i, effectiveOffset, elemCount);
             }
         }
     }
@@ -433,12 +433,12 @@ public abstract class BytecodeParser {
                 }
                 case Bytecode.CALL_INDIRECT_U8: {
                     callNodes.add(new CallNode(originalOffset));
-                    offset += 5;
+                    offset += 3;
                     break;
                 }
                 case Bytecode.CALL_INDIRECT_I32: {
                     callNodes.add(new CallNode(originalOffset));
-                    offset += 14;
+                    offset += 12;
                     break;
                 }
                 case Bytecode.UNREACHABLE:
