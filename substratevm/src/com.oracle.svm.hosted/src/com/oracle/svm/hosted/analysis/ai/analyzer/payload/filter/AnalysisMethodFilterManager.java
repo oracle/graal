@@ -16,18 +16,13 @@ public final class AnalysisMethodFilterManager {
         this.filters = new ArrayList<>();
     }
 
-    public AnalysisMethodFilterManager(List<AnalysisMethodFilter> filters) {
-        this.filters = filters;
-    }
-
     /**
      * Adds a new filter to the manager.
      *
      * @param filter the filter to add
      */
-    public AnalysisMethodFilterManager addFilter(AnalysisMethodFilter filter) {
+    public void addMethodFilter(AnalysisMethodFilter filter) {
         filters.add(filter);
-        return this;
     }
 
     /**
