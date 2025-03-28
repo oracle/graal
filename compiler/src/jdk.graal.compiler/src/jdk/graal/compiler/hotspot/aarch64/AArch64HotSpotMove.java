@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot.aarch64;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -51,7 +50,7 @@ public class AArch64HotSpotMove {
         public static final LIRInstructionClass<LoadHotSpotObjectConstantInline> TYPE = LIRInstructionClass.create(LoadHotSpotObjectConstantInline.class);
 
         private HotSpotConstant constant;
-        @Def({REG, STACK}) AllocatableValue result;
+        @Def({REG}) AllocatableValue result;
 
         public LoadHotSpotObjectConstantInline(HotSpotConstant constant, AllocatableValue result) {
             super(TYPE);
@@ -78,6 +77,11 @@ public class AArch64HotSpotMove {
         @Override
         public Constant getConstant() {
             return constant;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return false;
         }
     }
 

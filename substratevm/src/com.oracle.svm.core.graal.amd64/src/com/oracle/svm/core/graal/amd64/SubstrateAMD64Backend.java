@@ -1577,6 +1577,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                     emitUncompressWithBaseRegister(masm, resultReg, baseReg, getShift(), preserveFlagsRegister);
                 }
             }
+
+            @Override
+            public boolean canRematerializeToStack() {
+                /* This operation MUST have a register as its destination. */
+                return false;
+            }
         }
     }
 
