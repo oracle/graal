@@ -49,6 +49,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.api.WebAssembly;
@@ -189,21 +190,21 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     @TruffleBoundary
     protected static final WasmException trapOutOfBounds(Node node, long address, long length, long byteSize) {
-        final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+        final String message = String.format(Locale.ROOT, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         length, address, address, byteSize);
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
     }
 
     @TruffleBoundary
     protected static final WasmException trapUnalignedAtomic(Node node, long address, int length) {
-        final String message = String.format("%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
+        final String message = String.format(Locale.ROOT, "%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
                         length, address, address);
         return WasmException.create(Failure.UNALIGNED_ATOMIC, node, message);
     }
 
     @TruffleBoundary
     protected static final WasmException trapNegativeLength(Node node, long length) {
-        final String message = String.format("memory access of negative length %d.", length);
+        final String message = String.format(Locale.ROOT, "memory access of negative length %d.", length);
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
     }
 
@@ -215,7 +216,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     @TruffleBoundary
     protected static final WasmException trapOutOfBoundsBuffer(Node node, long offset, long length, long bufferSize) {
-        final String message = String.format("%d-byte buffer access at offset %d is out-of-bounds (buffer size %d bytes).",
+        final String message = String.format(Locale.ROOT, "%d-byte buffer access at offset %d is out-of-bounds (buffer size %d bytes).",
                         length, offset, bufferSize);
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
     }

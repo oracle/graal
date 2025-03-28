@@ -72,6 +72,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     @CompilationFinal(dimensions = 1) private byte[] codeSection;
     @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
     @CompilationFinal private boolean isParsed;
+    private volatile boolean hasBeenInstantiated;
 
     @CompilationFinal private int debugInfoOffset;
     @CompilationFinal private EconomicMap<Integer, DebugFunction> debugFunctions;
@@ -127,6 +128,14 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     public void addLinkAction(LinkAction action) {
         assert !isParsed();
         linkActions.add(action);
+    }
+
+    public boolean hasBeenInstantiated() {
+        return hasBeenInstantiated;
+    }
+
+    public void setHasBeenInstantiated() {
+        this.hasBeenInstantiated = true;
     }
 
     public ModuleLimits limits() {
