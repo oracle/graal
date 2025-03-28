@@ -269,6 +269,10 @@ When embedded, the SBOM size is displayed.
 The number of components is always displayed. 
 The SBOM feature can be disabled with `--enable-sbom=false`.
 
+Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
+If these types contain vulnerabilities, SBOM scanning will not detect them.
+To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
+
 For more information, see [Software Bill of Materials](../../security/native-image.md).
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
@@ -282,6 +286,12 @@ This feature is currently only available for code compiled by Graal for Linux AM
 ## Recommendations
 
 The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
+
+#### <a name="recommendation-futr"></a>`FUTR`: Use the Correct Semantics and Prepare for Future Releases
+
+Use `--future-defaults=all` to enable all features that are planned to be default in a future GraalVM release.
+This option is unlikely to affect your program's behavior but guarantees that it adheres to the correct execution semantics.
+Additionally, it safeguards against unexpected changes in future GraalVM updates.
 
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 

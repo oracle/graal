@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -138,6 +140,12 @@ public final class NoRememberedSet implements RememberedSet {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void dirtyCardIfNecessary(Object holderObject, Object object) {
+        // Nothing to do.
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void dirtyAllReferencesIfNecessary(Object obj) {
         // Nothing to do.
     }
 

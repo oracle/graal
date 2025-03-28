@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64MacroAssembler.ExtendMode.ZERO_EXTEND;
 import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
@@ -33,7 +34,6 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.asm.amd64.AMD64MacroAssembler.ExtendMode.ZERO_EXTEND;
 
 import java.util.EnumSet;
 
@@ -56,7 +56,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -431,8 +430,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         asm.addq(index, bulkSize);
 
         boolean bulkLoopShortJmp = !((variant == LIRGeneratorTool.ArrayIndexOfVariant.MatchRange && nValues == 4 || variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) && stride.value > 1);
-        // check if there are enough array slots remaining for the bulk loop
-        asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, skipBulkVectorLoop, bulkLoopShortJmp);
+        /*
+         * Check if there are enough array slots remaining for the bulk loop. Note: The alignment
+         * following the cmpAndJcc can lead to a jump distance > 127. This prevents safely using a
+         * short jump.
+         */
+        asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, skipBulkVectorLoop, false);
 
         asm.align(preferredLoopAlignment(crb));
         asm.bind(bulkVectorLoop);

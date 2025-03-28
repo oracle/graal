@@ -2726,13 +2726,13 @@ public class BinaryParser extends BinaryStreamParser {
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
                 module.checkElemType(currentElemSegmentId, module.tableElementType(tableIndex));
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolveElemSegment(store, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
                                     currentOffsetBytecode, bytecodeOffset, elementCount);
                 });
             } else if (mode == SegmentMode.PASSIVE) {
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount);
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolvePassiveElemSegment(store, instance, currentElemSegmentId, bytecodeOffset, elementCount);
                 });
             }
             for (long element : elements) {
@@ -2819,12 +2819,12 @@ public class BinaryParser extends BinaryStreamParser {
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
             final int currentGlobalIndex = globalIndex;
-            module.addLinkAction((context, instance, imports) -> {
+            module.addLinkAction((context, store, instance, imports) -> {
                 if (isInitialized) {
-                    context.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
-                    context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
+                    store.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
+                    store.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
-                    context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, initBytecode);
+                    store.linker().resolveGlobalInitialization(store, instance, currentGlobalIndex, initBytecode);
                 }
             });
         }
@@ -2909,8 +2909,8 @@ public class BinaryParser extends BinaryStreamParser {
                 final long currentOffsetAddress = offsetAddress;
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolveDataSegment(store, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
                                     bytecodeOffset, droppedDataInstanceOffset);
                 });
             } else {
@@ -2918,8 +2918,8 @@ public class BinaryParser extends BinaryStreamParser {
                 final int bytecodeOffset = bytecode.location();
                 bytecode.addDataRuntimeHeader(byteLength);
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset);
+                module.addLinkAction((context, store, instance, imports) -> {
+                    store.linker().resolvePassiveDataSegment(store, instance, currentDataSegmentId, bytecodeOffset);
                 });
             }
             // Add the data section to the bytecode.

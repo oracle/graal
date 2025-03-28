@@ -34,7 +34,6 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -174,7 +173,7 @@ public class CommonOptionParser {
         }
     }
 
-    public static void collectOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
+    public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
         for (OptionDescriptors optionDescriptor : optionDescriptors) {
             for (OptionDescriptor descriptor : optionDescriptor) {
                 optionDescriptorConsumer.accept(descriptor);

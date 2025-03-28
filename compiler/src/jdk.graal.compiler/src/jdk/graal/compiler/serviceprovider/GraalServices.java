@@ -94,8 +94,28 @@ public final class GraalServices {
                 // Skip provider for another architecture
                 continue;
             }
+            if (provider.getClass().getAnnotation(LibGraalSupport.HostedOnly.class) != null) {
+                // Skip hosted-only providers
+                continue;
+            }
             providers.add(provider);
         }
+    }
+
+    /**
+     * Determines if {@code c} is annotated by {@link LibGraalService}.
+     */
+    static boolean isLibGraalService(Class<?> c) {
+        if (c != null && c.getAnnotation(LibGraalService.class) != null) {
+            if (c.getAnnotation(LibGraalSupport.HostedOnly.class) != null) {
+                throw new GraalError("Class %s cannot be annotated by both %s and %s as they are mutually exclusive)",
+                                c.getName(),
+                                LibGraalService.class.getName(),
+                                LibGraalSupport.HostedOnly.class.getName());
+            }
+            return true;
+        }
+        return false;
     }
 
     static {
@@ -105,7 +125,7 @@ public final class GraalServices {
             String arch = getJVMCIArch();
             libgraal.getClassModuleMap().keySet().stream()//
                             .map(GraalServices::loadClassOrNull)//
-                            .filter(c -> c != null && c.getAnnotation(LibGraalService.class) != null)//
+                            .filter(GraalServices::isLibGraalService)//
                             .forEach(service -> addProviders(arch, service));
         } else {
             libgraalServices = null;

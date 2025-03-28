@@ -554,6 +554,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
     public final long unsafeSetMemory = getFieldValue("StubRoutines::_unsafe_setmemory", Long.class, "address", 0L, JDK >= 23);
 
+    public final long stubDoubleKeccak = getFieldValue("StubRoutines::_double_keccak", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumAlmostNtt = getFieldValue("StubRoutines::_dilithiumAlmostNtt", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumAlmostInverseNtt = getFieldValue("StubRoutines::_dilithiumAlmostInverseNtt", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumNttMult = getFieldValue("StubRoutines::_dilithiumNttMult", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumMontMulByConstant = getFieldValue("StubRoutines::_dilithiumMontMulByConstant", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumDecomposePoly = getFieldValue("StubRoutines::_dilithiumDecomposePoly", Long.class, "address", 0L, JDK >= 25);
+
     // Allocation stubs that return null when allocation fails
     public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
     public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null");

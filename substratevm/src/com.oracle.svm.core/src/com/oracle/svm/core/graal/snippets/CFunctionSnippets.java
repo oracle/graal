@@ -47,7 +47,7 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.CPrologueData;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -128,9 +128,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     @Snippet
     private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
         if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-            Safepoint.transitionNativeToJava(true);
+            ThreadStatusTransition.fromNativeToJava(true);
         } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-            Safepoint.transitionVMToJava(true);
+            ThreadStatusTransition.fromVMToJava(true);
         } else {
             ReplacementsUtil.staticAssert(false, "Unexpected thread status");
         }

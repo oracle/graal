@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -918,6 +918,15 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             StandardOp.LoadConstantOp move = StandardOp.LoadConstantOp.asLoadConstantOp(op);
 
             if (!allocator.neverSpillConstants()) {
+                if (!move.canRematerializeToStack()) {
+                    /*
+                     * This allocator cannot ensure that a rematerialized value is always assigned a
+                     * register; sometimes it rematerializes directly to a stack slot. Therefore, we
+                     * must not try to rematerialize constant loads that do not support
+                     * rematerialization to the stack.
+                     */
+                    return null;
+                }
                 /*
                  * Check if the interval has any uses which would accept an stack location (priority
                  * == ShouldHaveRegister). Rematerialization of such intervals can result in a

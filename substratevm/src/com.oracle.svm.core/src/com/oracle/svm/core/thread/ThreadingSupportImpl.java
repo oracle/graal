@@ -39,9 +39,9 @@ import org.graalvm.nativeimage.impl.ThreadingSupport;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -118,7 +118,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             try {
                 executeCallback();
             } finally {
-                updateSafepointRequested();
+                updateCounter();
             }
         }
 
@@ -143,7 +143,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
         @Uninterruptible(reason = "Must be uninterruptible to avoid races with the safepoint code.")
         private static int getSkippedChecks(IsolateThread thread) {
-            int rawValue = Safepoint.getSafepointRequested(thread);
+            int rawValue = SafepointCheckCounter.getVolatile(thread);
             return rawValue >= 0 ? rawValue : -rawValue;
         }
 
@@ -164,7 +164,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
                      * Before executing the callback, reset the safepoint requested counter as we
                      * don't want to trigger another callback execution in the near future.
                      */
-                    setSafepointRequested(Safepoint.THREAD_REQUEST_RESET);
+                    setCounter(SafepointCheckCounter.MAX_VALUE);
                     try {
                         invokeCallback();
                         /*
@@ -183,7 +183,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        private void updateSafepointRequested() {
+        private void updateCounter() {
             long nextDeadline = lastCallbackExecution + targetIntervalNanos;
             long remainingNanos = nextDeadline - System.nanoTime();
             if (remainingNanos < 0 && isCallbackDisabled()) {
@@ -193,18 +193,18 @@ public class ThreadingSupportImpl implements ThreadingSupport {
                  * recurring callback execution for a long time (reenabling the callbacks triggers
                  * the execution explicitly).
                  */
-                setSafepointRequested(Safepoint.THREAD_REQUEST_RESET);
+                setCounter(SafepointCheckCounter.MAX_VALUE);
             } else {
-                remainingNanos = (remainingNanos < MINIMUM_INTERVAL_NANOS) ? MINIMUM_INTERVAL_NANOS : remainingNanos;
+                remainingNanos = UninterruptibleUtils.Math.max(remainingNanos, MINIMUM_INTERVAL_NANOS);
                 double checks = ewmaChecksPerNano * remainingNanos;
-                setSafepointRequested(checks > Safepoint.THREAD_REQUEST_RESET ? Safepoint.THREAD_REQUEST_RESET : ((checks < 1) ? 1 : (int) checks));
+                setCounter(checks > SafepointCheckCounter.MAX_VALUE ? SafepointCheckCounter.MAX_VALUE : ((checks < 1) ? 1 : (int) checks));
             }
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        void setSafepointRequested(int value) {
+        void setCounter(int value) {
             requestedChecks = value;
-            Safepoint.setSafepointRequested(value);
+            SafepointCheckCounter.setVolatile(value);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -300,7 +300,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
         activeTimer.set(thread, timer);
-        Safepoint.setSafepointRequested(thread, timer.requestedChecks);
+        SafepointCheckCounter.setVolatile(thread, timer.requestedChecks);
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.", callerMustBe = true)
@@ -337,7 +337,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         if (timer != null) {
             timer.evaluate();
         } else {
-            Safepoint.setSafepointRequested(Safepoint.THREAD_REQUEST_RESET);
+            SafepointCheckCounter.setVolatile(SafepointCheckCounter.MAX_VALUE);
         }
     }
 
@@ -348,9 +348,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean needsNativeToJavaSlowpath() {
-        return ActionOnTransitionToJavaSupport.isActionPending() ||
-                        (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() &&
-                                        activeTimer.get() != null && !isRecurringCallbackPaused());
+        return isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null && !isRecurringCallbackPaused();
     }
 
     /**
@@ -382,7 +380,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             RecurringCallbackTimer timer = activeTimer.get();
             assert timer != null;
             timer.updateStatistics();
-            timer.setSafepointRequested(1);
+            timer.setCounter(1);
         }
     }
 

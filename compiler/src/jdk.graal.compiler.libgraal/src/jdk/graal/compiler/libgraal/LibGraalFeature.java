@@ -59,7 +59,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.libgraal.LibGraalLoader;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.LibGraalSupport.HostedOnly;
@@ -232,12 +232,19 @@ public final class LibGraalFeature implements Feature {
             Map<String, String> modules = libgraalLoader.getClassModuleMap();
             for (OptionKey<?> option : options) {
                 OptionDescriptor descriptor = option.getDescriptor();
-                if (descriptor.isServiceLoaded()) {
+                if (descriptor != null) {
                     GraalError.guarantee(access.isReachable(option.getClass()), "%s", option.getClass());
                     GraalError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
 
                     String name = option.getName();
-                    OptionsParser.libgraalOptions.descriptors().put(name, descriptor);
+                    OptionDescriptor conflict = OptionsParser.libgraalOptions.descriptors().put(name, descriptor);
+                    if (conflict != null) {
+                        throw new GraalError("Duplicate option names for %s.% and %s.%s",
+                                        descriptor.getDeclaringClass().getName(),
+                                        descriptor.getFieldName(),
+                                        conflict.getDeclaringClass().getName(),
+                                        conflict.getFieldName());
+                    }
 
                     String module = modules.get(descriptor.getDeclaringClass().getName());
                     if (module.contains("enterprise")) {

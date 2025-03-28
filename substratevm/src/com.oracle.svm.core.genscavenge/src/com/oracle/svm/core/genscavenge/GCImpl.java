@@ -106,6 +106,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -232,7 +233,7 @@ public final class GCImpl implements GC {
         assert getCollectionEpoch().equal(data.getRequestingEpoch()) ||
                         data.getForceFullGC() && GCImpl.getAccounting().getCompleteCollectionCount() == data.getCompleteCollectionCount() : "unnecessary GC?";
 
-        timers.mutator.closeAt(data.getRequestingNanoTime());
+        timers.mutator.stopAt(data.getRequestingNanoTime());
         timers.resetAllExceptMutator();
         /* The type of collection will be determined later on. */
         completeCollection = false;
@@ -241,7 +242,7 @@ public final class GCImpl implements GC {
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause);
 
-        Timer collectionTimer = timers.collection.open();
+        Timer collectionTimer = timers.collection.start();
         try {
             ThreadLocalAllocation.disableAndFlushForAllThreads();
             GenScavengeMemoryPoolMXBeans.singleton().notifyBeforeCollection();
@@ -254,10 +255,10 @@ public final class GCImpl implements GC {
 
             verifyHeap(After);
         } finally {
-            collectionTimer.close();
+            collectionTimer.stop();
         }
 
-        accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.getMeasuredNanos());
+        accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.totalNanos());
         HeapImpl.getAccounting().notifyAfterCollection();
         GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
         ChunkBasedCommittedMemoryProvider.get().afterGarbageCollection();
@@ -266,7 +267,7 @@ public final class GCImpl implements GC {
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);
 
         collectionEpoch = collectionEpoch.add(1);
-        timers.mutator.open();
+        timers.mutator.start();
     }
 
     private boolean collectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC) {
@@ -442,7 +443,7 @@ public final class GCImpl implements GC {
             String collectionType = completeCollection ? "Full GC" : "Incremental GC";
             printGCPrefixAndTime().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ")
                             .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ")
-                            .rational(timers.collection.getMeasuredNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+                            .rational(timers.collection.totalNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
         }
     }
 
@@ -494,7 +495,7 @@ public final class GCImpl implements GC {
         GreyToBlackObjRefVisitor.Counters counters = greyToBlackObjRefVisitor.openCounters();
         long startTicks;
         try {
-            Timer rootScanTimer = timers.rootScan.open();
+            Timer rootScanTimer = timers.rootScan.start();
             try {
                 startTicks = JfrGCEvents.startGCPhasePause();
                 try {
@@ -504,7 +505,7 @@ public final class GCImpl implements GC {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan" : "Scan", startTicks);
                 }
             } finally {
-                rootScanTimer.close();
+                rootScanTimer.stop();
             }
 
             if (!incremental) {
@@ -512,7 +513,7 @@ public final class GCImpl implements GC {
                 HeapImpl.getHeapImpl().getOldGeneration().sweepAndCompact(timers, chunkReleaser);
             }
 
-            Timer referenceObjectsTimer = timers.referenceObjects.open();
+            Timer referenceObjectsTimer = timers.referenceObjects.start();
             try {
                 startTicks = JfrGCEvents.startGCPhasePause();
                 try {
@@ -522,11 +523,11 @@ public final class GCImpl implements GC {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
                 }
             } finally {
-                referenceObjectsTimer.close();
+                referenceObjectsTimer.stop();
             }
 
             if (RuntimeCompilation.isEnabled()) {
-                Timer cleanCodeCacheTimer = timers.cleanCodeCache.open();
+                Timer cleanCodeCacheTimer = timers.cleanCodeCache.start();
                 try {
                     /*
                      * Cleaning the code cache may invalidate code, which is a rather complex
@@ -540,11 +541,11 @@ public final class GCImpl implements GC {
                         JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Clean Runtime CodeCache", startTicks);
                     }
                 } finally {
-                    cleanCodeCacheTimer.close();
+                    cleanCodeCacheTimer.stop();
                 }
             }
 
-            Timer releaseSpacesTimer = timers.releaseSpaces.open();
+            Timer releaseSpacesTimer = timers.releaseSpaces.start();
             try {
                 assert SerialGCOptions.useCompactingOldGen() || chunkReleaser.isEmpty();
                 startTicks = JfrGCEvents.startGCPhasePause();
@@ -563,7 +564,7 @@ public final class GCImpl implements GC {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
                 }
             } finally {
-                releaseSpacesTimer.close();
+                releaseSpacesTimer.stop();
             }
 
             startTicks = JfrGCEvents.startGCPhasePause();
@@ -584,20 +585,20 @@ public final class GCImpl implements GC {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkRuntimeCodeCache() {
-        Timer walkRuntimeCodeCacheTimer = timers.walkRuntimeCodeCache.open();
+        Timer walkRuntimeCodeCacheTimer = timers.walkRuntimeCodeCache.start();
         try {
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheWalker);
         } finally {
-            walkRuntimeCodeCacheTimer.close();
+            walkRuntimeCodeCacheTimer.stop();
         }
     }
 
     private void cleanRuntimeCodeCache() {
-        Timer cleanRuntimeCodeCacheTimer = timers.cleanRuntimeCodeCache.open();
+        Timer cleanRuntimeCodeCacheTimer = timers.cleanRuntimeCodeCache.start();
         try {
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheCleaner);
         } finally {
-            cleanRuntimeCodeCacheTimer.close();
+            cleanRuntimeCodeCacheTimer.stop();
         }
     }
 
@@ -612,7 +613,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void scanFromRoots() {
-        Timer scanFromRootsTimer = timers.scanFromRoots.open();
+        Timer scanFromRootsTimer = timers.scanFromRoots.start();
         try {
             long startTicks = JfrGCEvents.startGCPhasePause();
             try {
@@ -675,13 +676,13 @@ public final class GCImpl implements GC {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
             }
         } finally {
-            scanFromRootsTimer.close();
+            scanFromRootsTimer.stop();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void scanFromDirtyRoots() {
-        Timer scanFromDirtyRootsTimer = timers.scanFromDirtyRoots.open();
+        Timer scanFromDirtyRootsTimer = timers.scanFromDirtyRoots.start();
         try {
             long startTicks = JfrGCEvents.startGCPhasePause();
 
@@ -750,13 +751,13 @@ public final class GCImpl implements GC {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
             }
         } finally {
-            scanFromDirtyRootsTimer.close();
+            scanFromDirtyRootsTimer.stop();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void promoteChunksWithPinnedObjects() {
-        Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.open();
+        Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.start();
         try {
             // Remove closed pinned objects from the global list. This code needs to use write
             // barriers as the PinnedObjectImpls are a linked list, and we don't know in which
@@ -771,7 +772,7 @@ public final class GCImpl implements GC {
                 cur = cur.getNext();
             }
         } finally {
-            promotePinnedObjectsTimer.close();
+            promotePinnedObjectsTimer.stop();
         }
     }
 
@@ -780,12 +781,12 @@ public final class GCImpl implements GC {
                     "But we don't store stack frame information for the first frame we would need to process.")
     @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.")
     private void blackenStackRoots() {
-        Timer blackenStackRootsTimer = timers.blackenStackRoots.open();
+        Timer blackenStackRootsTimer = timers.blackenStackRoots.start();
         try {
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
             walkStackRoots(greyToBlackObjRefVisitor, sp, true);
         } finally {
-            blackenStackRootsTimer.close();
+            blackenStackRootsTimer.stop();
         }
     }
 
@@ -866,13 +867,13 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkThreadLocals() {
-        Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
+        Timer walkThreadLocalsTimer = timers.walkThreadLocals.start();
         try {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 VMThreadLocalSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
             }
         } finally {
-            walkThreadLocalsTimer.close();
+            walkThreadLocalsTimer.stop();
         }
     }
 
@@ -883,7 +884,7 @@ public final class GCImpl implements GC {
             return;
         }
 
-        Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
+        Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.start();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 blackenDirtyImageHeapChunkRoots(info);
@@ -896,7 +897,7 @@ public final class GCImpl implements GC {
                 }
             }
         } finally {
-            blackenImageHeapRootsTimer.close();
+            blackenImageHeapRootsTimer.stop();
         }
     }
 
@@ -925,7 +926,7 @@ public final class GCImpl implements GC {
             return;
         }
 
-        Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
+        Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.start();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 blackenImageHeapRoots(info);
@@ -938,7 +939,7 @@ public final class GCImpl implements GC {
                 }
             }
         } finally {
-            blackenImageHeapRootsTimer.close();
+            blackenImageHeapRootsTimer.stop();
         }
     }
 
@@ -956,7 +957,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenDirtyCardRoots() {
-        Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.open();
+        Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.start();
         try {
             /*
              * Walk old generation looking for dirty cards, and within those for old-to-young
@@ -964,7 +965,7 @@ public final class GCImpl implements GC {
              */
             HeapImpl.getHeapImpl().getOldGeneration().blackenDirtyCardRoots(greyToBlackObjectVisitor);
         } finally {
-            blackenDirtyCardRootsTimer.close();
+            blackenDirtyCardRootsTimer.stop();
         }
     }
 
@@ -979,7 +980,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void scanGreyObjects(boolean isIncremental) {
-        Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
+        Timer scanGreyObjectsTimer = timers.scanGreyObjects.start();
         try {
             if (isIncremental) {
                 incrementalScanGreyObjectsLoop();
@@ -987,7 +988,7 @@ public final class GCImpl implements GC {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects(false);
             }
         } finally {
-            scanGreyObjectsTimer.close();
+            scanGreyObjectsTimer.stop();
         }
     }
 
@@ -1341,7 +1342,7 @@ public final class GCImpl implements GC {
 
             long gcNanos = incrementalNanos + completeNanos;
 
-            long mutatorNanos = GCImpl.getGCImpl().timers.mutator.getMeasuredNanos();
+            long mutatorNanos = GCImpl.getGCImpl().timers.mutator.totalNanos();
             long totalNanos = gcNanos + mutatorNanos;
             long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
             log.string("GC time: ").rational(gcNanos, TimeUtils.nanosPerSecond, 3).string("s").newline();

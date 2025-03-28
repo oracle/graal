@@ -408,6 +408,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-H:Preserve=all']
         if vm.preserve_classpath:
             base_image_build_args += ['-H:Preserve=module=ALL-UNNAMED']
+        if vm.future_defaults_all:
+            base_image_build_args += ['--future-defaults=all']
         if vm.analysis_context_sensitivity:
             base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity,
                                       '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
@@ -719,6 +721,7 @@ class NativeImageVM(GraalVm):
         self.native_architecture = False
         self.preserve_all = False
         self.preserve_classpath = False
+        self.future_defaults_all = False
         self.use_upx = False
         self.use_open_type_world = False
         self.use_compacting_gc = False
@@ -752,19 +755,22 @@ class NativeImageVM(GraalVm):
     def config_name(self):
         # Generates the unique vm config name based on how the VM is actually configured.
         # It concatenates the config options in the correct order to match the expected format.
+        # Note: the order of entries here must match the order of entries in _configure_from_name
         config = []
         if self.native_architecture is True:
             config += ["native-architecture"]
-        if self.preserve_all is True:
-            config += ["preserve-all"]
-        if self.preserve_classpath is True:
-            config += ["preserve-classpath"]
         if self.use_string_inlining is True:
             config += ["string-inlining"]
         if self.use_open_type_world is True:
             config += ["otw"]
         if self.use_compacting_gc is True:
             config += ["compacting-gc"]
+        if self.preserve_all is True:
+            config += ["preserve-all"]
+        if self.preserve_classpath is True:
+            config += ["preserve-classpath"]
+        if self.future_defaults_all is True:
+            config += ["future-defaults-all"]
         if self.is_gate is True:
             config += ["gate"]
         if self.use_upx is True:
@@ -828,8 +834,9 @@ class NativeImageVM(GraalVm):
             mx.abort(f"config_name must be set. Use 'default' for the default {self.__class__.__name__} configuration.")
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
+        # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
-               r'(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
+               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
@@ -851,6 +858,10 @@ class NativeImageVM(GraalVm):
         if matching.group("preserve_classpath") is not None:
             mx.logv(f"'preserve-classpath' is enabled for {config_name}")
             self.preserve_classpath = True
+
+        if matching.group("future_defaults_all") is not None:
+            mx.logv(f"'future-defaults-all' is enabled for {config_name}")
+            self.future_defaults_all = True
 
         if matching.group("string_inlining") is not None:
             mx.logv(f"'string-inlining' is enabled for {config_name}")

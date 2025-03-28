@@ -52,8 +52,6 @@ import org.graalvm.wasm.api.InteropCallAdapterNode;
 import org.graalvm.wasm.api.JsConstants;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
@@ -173,10 +171,10 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         @Override
         public Object execute(VirtualFrame frame) {
             if (frame.getArguments().length == 0) {
-                final WasmContext context = WasmContext.get(this);
-                WasmInstance instance = context.lookupModuleInstance(module);
+                final WasmStore contextStore = WasmContext.get(this).contextStore();
+                WasmInstance instance = contextStore.lookupModuleInstance(module);
                 if (instance == null) {
-                    instance = context.readInstance(module);
+                    instance = contextStore.readInstance(module);
                 }
                 return instance;
             } else {
@@ -223,12 +221,9 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected void finalizeContext(WasmContext context) {
         super.finalizeContext(context);
-        for (int i = 0; i < context.memories().count(); ++i) {
-            final WasmMemory memory = context.memories().memory(i);
-            WasmMemoryLibrary.getUncached().close(memory);
-        }
+        context.memoryContext().close();
         try {
-            context.fdManager().close();
+            context.contextStore().fdManager().close();
         } catch (IOException e) {
             throw new RuntimeException("Error while closing WasmFilesManager.");
         }

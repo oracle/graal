@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -921,7 +922,7 @@ public class NativeImageGenerator {
 
                 ImageSingletons.add(SubstrateOptions.ReportingSupport.class, new SubstrateOptions.ReportingSupport(
                                 DiagnosticsMode.getValue() ? DiagnosticsDir.getValue().lastValue().get() : Path.of("reports")));
-
+                FutureDefaultsOptions.parseAndVerifyOptions();
                 if (javaMainSupport != null) {
                     ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
                 }
@@ -1096,8 +1097,11 @@ public class NativeImageGenerator {
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
 
                 var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+
+                var classesToIgnore = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.IgnorePreserveForClasses, SubstrateOptions.IgnorePreserveForClassesPaths);
                 loader.classLoaderSupport.getClassesToPreserve().parallel()
                                 .filter(ClassInclusionPolicy::isClassIncludedBase)
+                                .filter(c -> classesToIgnore.isIncluded(c) == null)
                                 .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
                 for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
                     RuntimeReflection.registerClassLookup(className);

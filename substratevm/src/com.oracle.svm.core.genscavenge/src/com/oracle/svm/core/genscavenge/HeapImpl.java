@@ -51,8 +51,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
-import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -95,7 +95,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.AllocationSnippets;
 import jdk.graal.compiler.word.Word;
 
@@ -701,9 +700,11 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public void dirtyAllReferencesOf(Object obj) {
-        if (SerialGCOptions.useRememberedSet() && obj != null) {
-            ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
+        if (obj == null) {
+            return;
         }
+
+        RememberedSet.get().dirtyAllReferencesIfNecessary(obj);
     }
 
     @Override

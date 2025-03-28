@@ -40,6 +40,13 @@
  */
 package org.graalvm.wasm.nodes;
 
+import java.util.Arrays;
+
+import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
@@ -48,13 +55,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.memory.WasmMemoryLibrary;
-
-import java.util.Arrays;
 
 /**
  * Dispatches to specialized instances of {@link WasmInstrumentableFunctionNode}, ensuring that each
@@ -89,17 +89,17 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     }
 
     @Specialization(guards = {"memoryCount() == 1"}, limit = "3")
-    protected void doFixedMemoryImpl(VirtualFrame frame, WasmContext context, WasmInstance instance,
+    protected void doFixedMemoryImpl(VirtualFrame frame, WasmInstance instance,
                     @CachedLibrary(value = "instance.memory(0)") @SuppressWarnings("unused") WasmMemoryLibrary cachedMemoryLib0,
                     @Cached("createMemoryLibs1(cachedMemoryLib0)") @SuppressWarnings("unused") WasmMemoryLibrary[] cachedMemoryLibs,
                     @Cached(value = "createSpecializedFunctionNode(cachedMemoryLibs)", adopt = false) WasmInstrumentableFunctionNode specializedFunctionNode) {
-        specializedFunctionNode.execute(frame, context, instance);
+        specializedFunctionNode.execute(frame, instance);
     }
 
     @Specialization(replaces = "doFixedMemoryImpl")
-    protected void doDispatched(VirtualFrame frame, WasmContext context, WasmInstance instance,
+    protected void doDispatched(VirtualFrame frame, WasmInstance instance,
                     @Cached(value = "createDispatchedFunctionNode()", adopt = false) WasmInstrumentableFunctionNode dispatchedFunctionNode) {
-        dispatchedFunctionNode.execute(frame, context, instance);
+        dispatchedFunctionNode.execute(frame, instance);
     }
 
     @NeverDefault
@@ -135,5 +135,5 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
         return instrumentableFunctionNode;
     }
 
-    public abstract void execute(VirtualFrame frame, WasmContext context, WasmInstance instance);
+    public abstract void execute(VirtualFrame frame, WasmInstance instance);
 }

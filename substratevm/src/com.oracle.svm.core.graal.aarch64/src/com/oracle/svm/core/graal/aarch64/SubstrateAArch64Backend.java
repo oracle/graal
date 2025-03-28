@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -568,7 +568,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             if (shouldEmitOnlyIndirectCalls()) {
                 RegisterValue targetRegister = AArch64.lr.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
-                Value[] multipleResults = new Value[0];
+                Value[] multipleResults = Value.NO_VALUES;
                 append(new SubstrateAArch64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
                                 getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null, multipleResults));
             } else {
@@ -1277,6 +1277,12 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
                 masm.add(64, resultReg, baseReg, resultReg, ShiftType.LSL, getShift());
             }
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            /* This operation MUST have a register as its destination. */
+            return false;
         }
     }
 

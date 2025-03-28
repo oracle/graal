@@ -3023,6 +3023,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     boolean allReplaced = true;
                     for (SpecializationData replacedBy : overload.getReplacedBy()) {
                         if (!replacedBy.getBoxingOverloads().contains(overload)) {
+                            // not a boxing overload
+
+                            if (replacedBy.getReplaces().containsAll(cur.getBoxingOverloads()) && replacedBy.getReplaces().contains(cur)) {
+                                /*
+                                 * It is fine to use as boxing overload as the replacer replaces the
+                                 * specialization and all boxing overloads.
+                                 */
+                                continue;
+                            }
+
                             allReplaced = false;
                         }
                     }

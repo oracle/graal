@@ -148,7 +148,7 @@ public final class PosixAttachListenerThread extends AttachListenerThread {
         return CTypeConversion.toJavaString((CCharPointer) buf.add(start), Word.unsigned(length), StandardCharsets.UTF_8);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/posix/attachListener_posix.cpp#L321-L328")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/os/posix/attachListener_posix.cpp#L323-L325")
     private static void complete(int socket, int code, String response) {
         /* Send the return code. */
         byte[] returnCodeData = Integer.toString(code).getBytes(StandardCharsets.UTF_8);

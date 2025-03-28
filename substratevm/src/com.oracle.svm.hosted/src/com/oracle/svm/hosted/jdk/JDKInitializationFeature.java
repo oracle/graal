@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -143,9 +144,16 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
 
         /* XML-related */
-        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            // GR-50683 should remove this part
+            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        } else {
+            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        }
 
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);

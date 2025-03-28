@@ -45,7 +45,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.core.common.ContextClassLoaderScope;
-import org.graalvm.nativeimage.libgraal.LibGraalLoader;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
