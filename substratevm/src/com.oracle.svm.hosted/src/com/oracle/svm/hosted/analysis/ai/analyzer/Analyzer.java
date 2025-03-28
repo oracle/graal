@@ -1,7 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
+import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
@@ -59,13 +61,13 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
             return self();
         }
 
-        public T checkerManager(CheckerManager checkerManager) {
-            this.checkerManager = checkerManager;
+        public T registerChecker(Checker checker) {
+            checkerManager.registerChecker(checker);
             return self();
         }
 
-        public T methodFilterManager(AnalysisMethodFilterManager methodFilterManager) {
-            this.methodFilterManager = methodFilterManager;
+        public T addMethodFilter(AnalysisMethodFilter filter) {
+            methodFilterManager.addMethodFilter(filter);
             return self();
         }
 

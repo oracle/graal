@@ -14,11 +14,11 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import com.oracle.svm.hosted.analysis.ai.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
@@ -54,18 +54,6 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         this.summaryManager = new SummaryManager<>(summaryFactory);
     }
 
-    public CallStack getCallStack() {
-        return callStack;
-    }
-
-    public SummaryFactory<Domain> getSummaryFactory() {
-        return summaryManager.summaryFactory();
-    }
-
-    public SummaryCache<Domain> getSummaryCache() {
-        return summaryManager.summaryCache();
-    }
-
     @Override
     public AnalysisOutcome<Domain> handleCall(Invoke invoke,
                                               Node invokeNode,
@@ -80,13 +68,13 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         } catch (Exception e) {
             /* For some reason we are not able to get the AnalysisMethod of the Invoke */
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
-            logger.logDebugError(outcome.toString());
+            logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
 
         if (methodFilterManager.shouldSkipMethod(analysisMethod)) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.IN_SKIP_LIST);
-            logger.logDebugError(outcome.toString());
+            logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
 
@@ -95,9 +83,9 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         /* If the summaryCache contains the summary for the target analysisMethod, we return it */
 
         if (summaryManager.containsSummary(calleeMethod, summary)) {
-            logger.logToFile("Summary cache contains targetMethod: " + calleeMethod.getName());
+            logger.log("Summary cache contains targetMethod: " + calleeMethod.getName(), LoggerVerbosity.INFO);
             Summary<Domain> completeSummary = summaryManager.getSummary(calleeMethod, summary);
-            logger.logToFile("The summary is: " + completeSummary);
+            logger.log("The summary is: " + completeSummary, LoggerVerbosity.INFO);
             return AnalysisOutcome.ok(completeSummary);
         }
 
@@ -105,7 +93,7 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
          * However, we need to check if we have reached our recursion limit */
         if (callStack.countRecursiveCalls(analysisMethod) > callStack.getMaxRecursionDepth()) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
-            logger.logDebugError(outcome.toString());
+            logger.log(outcome.toString(), LoggerVerbosity.INFO);
             callStack.pop();
             return outcome;
         }
@@ -113,29 +101,29 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         /* Or if we have a mutual recursion cycle */
         if (callStack.containsMethod(analysisMethod)) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
-            logger.logDebugError(outcome.toString());
-            logger.logDebugError(callStack.formatCycleWithMethod(analysisMethod));
+            logger.log(outcome.toString(), LoggerVerbosity.INFO);
+            logger.log(callStack.formatCycleWithMethod(analysisMethod), LoggerVerbosity.INFO);
             return outcome;
         }
 
         /* Run the fixpoint iteration on the invoked method */
         callStack.push(analysisMethod);
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(analysisMethod, debug, summary.getPreCondition(), transferFunction, iteratorPayload);
-        logger.logHighlightedDebugInfo("Running fixpoint iteration on: " + analysisMethod.getQualifiedName());
-        logger.logHighlightedDebugInfo("The current call stack: " + callStack);
+        logger.log("Running fixpoint iteration on: " + analysisMethod.getQualifiedName(), LoggerVerbosity.DEBUG);
+        logger.log("The current call stack: " + callStack, LoggerVerbosity.DEBUG);
         AbstractStateMap<Domain> invokeAbstractStateMap = fixpointIterator.iterateUntilFixpoint();
         AbstractState<Domain> returnAbstractState = invokeAbstractStateMap.getReturnState();
         summary.finalizeSummary(returnAbstractState.getPostCondition());
         summaryManager.putSummary(calleeMethod, summary);
         callStack.pop();
-        /* Here we are finished with the fixpoint iteration and updated the summary cache */
 
-        logger.logHighlightedDebugInfo("Fixpoint iteration on: " + analysisMethod.getQualifiedName() + " finished with abstract context: ");
-        logger.logDebugInfo(returnAbstractState.getPostCondition().toString());
-        logger.logHighlightedDebugInfo("The summary pre-condition");
-        logger.logDebugInfo(summary.getPreCondition().toString());
-        logger.logHighlightedDebugInfo("The summary post-condition");
-        logger.logDebugInfo(summary.getPostCondition().toString());
+        /* Here we are finished with the fixpoint iteration and updated the summary cache */
+        logger.log("Fixpoint iteration on: " + analysisMethod.getQualifiedName() + " finished with abstract context: ", LoggerVerbosity.DEBUG);
+        logger.log(returnAbstractState.getPostCondition().toString(), LoggerVerbosity.DEBUG);
+        logger.log("The summary pre-condition", LoggerVerbosity.DEBUG);
+        logger.log(summary.getPreCondition().toString(), LoggerVerbosity.DEBUG);
+        logger.log("The summary post-condition", LoggerVerbosity.DEBUG);
+        logger.log(summary.getPostCondition().toString(), LoggerVerbosity.DEBUG);
         GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, invokeAbstractStateMap);
         checkerManager.runCheckers(calleeMethod, callerStateMap);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);

@@ -38,38 +38,38 @@ public final class GraphUtil {
         }
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logToFile("Graph of AnalysisMethod: " + root);
+        logger.log("Graph of AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
         for (HIRBlock block : graph.getBlocks()) {
-            logger.logToFile(block.toString());
+            logger.log(block.toString(), LoggerVerbosity.DEBUG);
 
             for (Node node : block.getNodes()) {
-                logger.logToFile(node.toString());
-                logger.logToFile("\tSuccessors: ");
+                logger.log(node.toString(), LoggerVerbosity.DEBUG);
+                logger.log("\tSuccessors: ", LoggerVerbosity.DEBUG);
                 for (Node successor : node.successors()) {
-                    logger.logToFile("\t\t" + successor.toString());
+                    logger.log("\t\t" + successor.toString(), LoggerVerbosity.DEBUG);
                 }
-                logger.logToFile("\tInputs: ");
+                logger.log("\tInputs: ", LoggerVerbosity.DEBUG);
                 for (Node input : node.inputs()) {
-                    logger.logToFile("\t\t" + input.toString());
+                    logger.log("\t\t" + input.toString(), LoggerVerbosity.DEBUG);
                 }
             }
         }
 
-        logger.logToFile("The Invokes of the AnalysisMethod: " + root);
+        logger.log("The Invokes of the AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
         for (InvokeInfo invoke : root.getInvokes()) {
-            logger.logToFile("\tInvoke: " + invoke);
+            logger.log("\tInvoke: " + invoke, LoggerVerbosity.DEBUG);
             for (AnalysisMethod callee : invoke.getOriginalCallees()) {
-                logger.logToFile("\t\tCallee: " + callee);
+                logger.log("\t\tCallee: " + callee, LoggerVerbosity.DEBUG);
             }
         }
     }
 
     public static void printInferredGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractStateMap<?> abstractStateMap) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logToFile("Computed post conditions of method: " + analysisMethod);
+        logger.log("Computed post conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
         for (Node node : graph.getNodes()) {
             AbstractState<?> abstractState = abstractStateMap.getState(node);
-            logger.logToFile(node + " -> " + abstractState.getPostCondition() + System.lineSeparator());
+            logger.log(node + " -> " + abstractState.getPostCondition(), LoggerVerbosity.INFO);
         }
     }
 }
