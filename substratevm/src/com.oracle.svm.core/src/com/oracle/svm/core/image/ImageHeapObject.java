@@ -29,6 +29,8 @@ import jdk.vm.ci.meta.JavaConstant;
 public interface ImageHeapObject {
     long getSize();
 
+    Object getObjectOrHostedConstant();
+
     Object getObject();
 
     Class<?> getObjectClass();
