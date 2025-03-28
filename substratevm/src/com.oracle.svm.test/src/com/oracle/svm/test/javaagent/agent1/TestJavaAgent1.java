@@ -26,9 +26,12 @@
 package com.oracle.svm.test.javaagent.agent1;
 
 import com.oracle.svm.test.javaagent.AgentPremainHelper;
+import com.oracle.svm.test.javaagent.AssertInAgent;
 import org.graalvm.nativeimage.ImageInfo;
-import org.junit.Assert;
 
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.MethodModel;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
@@ -36,35 +39,36 @@ import java.util.Collections;
 import java.util.Set;
 
 public class TestJavaAgent1 {
+
     public static void premain(
                     String agentArgs, Instrumentation inst) {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
+        AgentPremainHelper.load(TestJavaAgent1.class);
         if (!ImageInfo.inImageRuntimeCode()) {
-            DemoTransformer dt = new DemoTransformer("com.oracle.svm.test.javaagent.TestJavaAgent1");
+            DemoTransformer dt = new DemoTransformer();
             inst.addTransformer(dt, true);
         } else {
-            AgentPremainHelper.load(TestJavaAgent1.class);
             /**
              * Test {@code inst} is {@link NativeImageNoOpRuntimeInstrumentation} and behaves as
              * defined.
              */
-            Assert.assertNotNull(inst);
-            Assert.assertEquals(false, inst.isRetransformClassesSupported());
-            Assert.assertEquals(false, inst.removeTransformer(null));
-            Assert.assertEquals(false, inst.isRedefineClassesSupported());
+            AssertInAgent.assertNotNull(inst);
+            AssertInAgent.assertEquals(false, inst.isRetransformClassesSupported());
+            AssertInAgent.assertEquals(false, inst.removeTransformer(null));
+            AssertInAgent.assertEquals(false, inst.isRedefineClassesSupported());
 
-            Assert.assertEquals(false, inst.isModifiableClass(null));
+            AssertInAgent.assertEquals(false, inst.isModifiableClass(null));
 
             Class<?>[] allClasses = inst.getAllLoadedClasses();
-            Assert.assertTrue(allClasses.length > 0);
+            AssertInAgent.assertTrue(allClasses.length > 0);
             Class<?> currentAgentClassFromAllLoaded = null;
             for (Class<?> c : allClasses) {
                 if (c.equals(TestJavaAgent1.class)) {
                     currentAgentClassFromAllLoaded = c;
                 }
             }
-            Assert.assertNotNull(currentAgentClassFromAllLoaded);
+            AssertInAgent.assertNotNull(currentAgentClassFromAllLoaded);
 
             // redefineClasses should throw UnsupportedOperationException
             Exception exception = null;
@@ -73,8 +77,8 @@ public class TestJavaAgent1 {
             } catch (Exception e) {
                 exception = e;
             }
-            Assert.assertNotNull(exception);
-            Assert.assertEquals(UnsupportedOperationException.class, exception.getClass());
+            AssertInAgent.assertNotNull(exception);
+            AssertInAgent.assertEquals(UnsupportedOperationException.class, exception.getClass());
 
             // getInitiatedClasses should throw UnsupportedOperationException
             exception = null;
@@ -83,8 +87,8 @@ public class TestJavaAgent1 {
             } catch (Exception e) {
                 exception = e;
             }
-            Assert.assertNotNull(exception);
-            Assert.assertEquals(UnsupportedOperationException.class, exception.getClass());
+            AssertInAgent.assertNotNull(exception);
+            AssertInAgent.assertEquals(UnsupportedOperationException.class, exception.getClass());
 
             // retransformClasses should throw UnsupportedOperationException
             exception = null;
@@ -93,8 +97,8 @@ public class TestJavaAgent1 {
             } catch (Exception e) {
                 exception = e;
             }
-            Assert.assertNotNull(exception);
-            Assert.assertEquals(UnsupportedOperationException.class, exception.getClass());
+            AssertInAgent.assertNotNull(exception);
+            AssertInAgent.assertEquals(UnsupportedOperationException.class, exception.getClass());
 
             // appendToBootstrapClassLoaderSearch should throw UnsupportedOperationException
             exception = null;
@@ -103,8 +107,8 @@ public class TestJavaAgent1 {
             } catch (Exception e) {
                 exception = e;
             }
-            Assert.assertNotNull(exception);
-            Assert.assertEquals(UnsupportedOperationException.class, exception.getClass());
+            AssertInAgent.assertNotNull(exception);
+            AssertInAgent.assertEquals(UnsupportedOperationException.class, exception.getClass());
 
             // appendToSystemClassLoaderSearch should throw UnsupportedOperationException
             exception = null;
@@ -113,26 +117,29 @@ public class TestJavaAgent1 {
             } catch (Exception e) {
                 exception = e;
             }
-            Assert.assertNotNull(exception);
-            Assert.assertEquals(UnsupportedOperationException.class, exception.getClass());
+            AssertInAgent.assertNotNull(exception);
+            AssertInAgent.assertEquals(UnsupportedOperationException.class, exception.getClass());
 
-            Assert.assertEquals(-1, inst.getObjectSize(null));
-            Assert.assertEquals(false, inst.isNativeMethodPrefixSupported());
+            AssertInAgent.assertEquals(-1, inst.getObjectSize(null));
+            AssertInAgent.assertEquals(false, inst.isNativeMethodPrefixSupported());
 
             Module currentModule = TestJavaAgent1.class.getModule();
-            Assert.assertEquals(true, inst.isModifiableModule(currentModule));
+            AssertInAgent.assertEquals(true, inst.isModifiableModule(currentModule));
 
             // redefineModule only does checks, no actual actions.
             inst.redefineModule(currentModule, Set.of(Class.class.getModule()), Collections.emptyMap(), null, null, null);
         }
     }
 
+    /**
+     * Change the return value of {@code AgentTest#getCounter()} from 10 to 11 in the agent.
+     */
     static class DemoTransformer implements ClassFileTransformer {
 
         private String internalClassName;
 
-        DemoTransformer(String name) {
-            internalClassName = name.replaceAll("\\.", "/");
+        DemoTransformer() {
+            internalClassName = "com/oracle/svm/test/javaagent/AgentTest";
         }
 
         @Override
@@ -142,13 +149,24 @@ public class TestJavaAgent1 {
                         Class<?> classBeingRedefined,
                         ProtectionDomain protectionDomain,
                         byte[] classfileBuffer) {
-            byte[] byteCode = classfileBuffer;
-
             if (internalClassName.equals(className)) {
-                System.out.println("Let's do transformation for " + className);
-                // Do class transformation here
+                ClassFile classFile = ClassFile.of();
+                ClassModel classModel = classFile.parse(classfileBuffer);
+
+                return classFile.transformClass(classModel, (classbuilder, ce) -> {
+                    if (ce instanceof MethodModel mm && mm.methodName().equalsString("getCounter") && mm.methodType().equalsString("()I")) {
+                        classbuilder.transformMethod(mm, (mb, me) -> {
+                            mb.withCode(cb -> {
+                                cb.loadConstant(11);
+                                cb.ireturn();
+                            });
+                        });
+                    } else {
+                        classbuilder.with(ce);
+                    }
+                });
             }
-            return byteCode;
+            return null;
         }
     }
 }
