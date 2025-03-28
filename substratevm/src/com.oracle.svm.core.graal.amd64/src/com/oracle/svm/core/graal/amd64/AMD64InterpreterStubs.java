@@ -195,7 +195,7 @@ public class AMD64InterpreterStubs {
 
             /* Copy prepared outgoing args to the stack where the ABI expects it */
             Register calleeSpArgs = AMD64.r12;
-            Register interpDataSp = AMD64.r13;
+            Register interpDataSp = AMD64.r9;
             masm.movq(interpDataSp, new AMD64Address(rax, offsetAbiSpReg()));
             masm.movq(calleeSpArgs, rsp);
 

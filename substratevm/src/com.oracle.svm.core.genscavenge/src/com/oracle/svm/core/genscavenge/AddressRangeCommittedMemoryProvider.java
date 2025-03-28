@@ -167,7 +167,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
             return errorCode;
         }
 
-        CEntryPointSnippets.setHeapBase(heapBasePointer.read());
+        CEntryPointSnippets.initBaseRegisters(heapBasePointer.read());
         WordPointer runtimeHeapBeginOut = StackValue.get(WordPointer.class);
         errorCode = getCollectedHeapBegin(arguments, begin, reserved, imageHeapEndOut.read(), runtimeHeapBeginOut);
         if (errorCode != CEntryPointErrors.NO_ERROR) {

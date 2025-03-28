@@ -203,7 +203,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         }
 
         /* Write isolate pointer (heap base) into register. */
-        CEntryPointSnippets.setHeapBase(Isolates.getHeapBase(isolate));
+        CEntryPointSnippets.initBaseRegisters(Isolates.getHeapBase(isolate));
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
         ThreadLocalKey key = singleton().keyForNativeThreadLocal;

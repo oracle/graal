@@ -47,6 +47,10 @@ public class ReadReservedRegister {
         return createReadNode(graph, ReservedRegisters.singleton().getHeapBaseRegister());
     }
 
+    public static ValueNode createReadCodeBaseNode(StructuredGraph graph) {
+        return createReadNode(graph, ReservedRegisters.singleton().getCodeBaseRegister());
+    }
+
     private static ValueNode createReadNode(StructuredGraph graph, Register register) {
         /*
          * A floating node to access the register is more efficient: it allows value numbering of

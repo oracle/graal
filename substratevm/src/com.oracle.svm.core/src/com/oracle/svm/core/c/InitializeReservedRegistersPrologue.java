@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.riscv64;
+package com.oracle.svm.core.c;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.thread.VMThreads;
 
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.riscv64.RISCV64;
-
-public final class RISCV64ReservedRegisters extends ReservedRegisters {
-
-    public static final Register THREAD_REGISTER = RISCV64.x23;
-    public static final Register HEAP_BASE_REGISTER_CANDIDATE = RISCV64.x27;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    RISCV64ReservedRegisters() {
-        super(RISCV64.x2, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE, null);
+/**
+ * Only sets the {@linkplain ReservedRegisters reserved registers}, but does not do any thread
+ * transitions. Only use this prologue if
+ * {@link com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue} can't be used.
+ */
+public class InitializeReservedRegistersPrologue implements CEntryPointOptions.Prologue {
+    @Uninterruptible(reason = "prologue")
+    public static void enter(IsolateThread thread) {
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        CEntryPointSnippets.initBaseRegisters(VMThreads.IsolateTL.get());
     }
 }

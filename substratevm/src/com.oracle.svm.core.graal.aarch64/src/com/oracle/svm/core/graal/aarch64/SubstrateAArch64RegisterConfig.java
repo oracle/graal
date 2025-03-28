@@ -154,6 +154,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
+        regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
         /*
          * Darwin and Windows specify that r18 is a platform-reserved register:
          *
