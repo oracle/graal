@@ -44,6 +44,7 @@ import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.util.Set;
 
 import org.graalvm.polyglot.Context;
@@ -53,6 +54,8 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.NativeWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.junit.Assert;
@@ -103,10 +106,50 @@ public class WasmPolyglotTestSuite {
         final Value mainModule = context.getBindings(WasmLanguage.ID).getMember("main");
         mainModule.getMember("main").execute();
         final TruffleLanguage.Env env = WasmContext.get(null).environment();
-        final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(mainModule.getMember("memory"));
+        final Value memoryValue = mainModule.getMember("memory");
+        final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(memoryValue);
         Assert.assertFalse("Memory should have been allocated.", WasmMemoryLibrary.getUncached().freed(memory));
+        context.leave();
         context.close();
+        // Cannot access memory after context was closed.
+        Assert.assertThrows(IllegalStateException.class, () -> memoryValue.readBufferInt(ByteOrder.nativeOrder(), 0));
+
+        // ByteBuffer and byte[]-backed memories are not automatically closed.
+        memory.close();
         Assert.assertTrue("Memory should have been freed.", WasmMemoryLibrary.getUncached().freed(memory));
+        // Cannot access memory after free.
+        Assert.assertThrows(WasmException.class, () -> WasmMemoryLibrary.getUncached().load_i32(memory, null, 0));
+    }
+
+    @Test
+    public void nativeMemoryFreed() throws IOException {
+        Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID,
+                        ByteSequence.create(binaryReturnConst),
+                        "main");
+        Source source = sourceBuilder.build();
+        contextBuilder.allowExperimentalOptions(true);
+        contextBuilder.option("wasm.UseUnsafeMemory", "true");
+        contextBuilder.option("wasm.DirectByteBufferMemoryAccess", "false");
+        Context context = contextBuilder.build();
+        context.enter();
+        context.eval(source);
+        final Value mainModule = context.getBindings(WasmLanguage.ID).getMember("main");
+        mainModule.getMember("main").execute();
+        final TruffleLanguage.Env env = WasmContext.get(null).environment();
+        final Value memoryValue = mainModule.getMember("memory");
+        final NativeWasmMemory memory = (NativeWasmMemory) env.asGuestValue(memoryValue);
+        Assert.assertFalse("Memory should have been allocated.", WasmMemoryLibrary.getUncached().freed(memory));
+        context.leave();
+        context.close();
+        // Cannot access memory after context was closed.
+        Assert.assertThrows(IllegalStateException.class, () -> memoryValue.readBufferInt(ByteOrder.nativeOrder(), 0));
+
+        // Native-backed memories are automatically closed.
+        Assert.assertTrue("Memory should have been freed.", WasmMemoryLibrary.getUncached().freed(memory));
+
+        // Cannot access memory after free. Must not crash either.
+        Assert.assertThrows(WasmException.class, () -> WasmMemoryLibrary.getUncached().load_i32(memory, null, 0));
     }
 
     @Test

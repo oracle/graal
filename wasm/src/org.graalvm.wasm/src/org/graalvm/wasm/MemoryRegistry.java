@@ -40,9 +40,10 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public class MemoryRegistry {
     private static final int INITIAL_MEMORIES_SIZE = 4;
