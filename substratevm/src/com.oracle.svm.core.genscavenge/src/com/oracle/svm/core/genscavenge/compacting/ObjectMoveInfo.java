@@ -26,8 +26,6 @@ package com.oracle.svm.core.genscavenge.compacting;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.util.VMError;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -37,10 +35,14 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
+import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * {@link PlanningVisitor} decides where objects will be moved and uses the methods of this class to
@@ -165,20 +167,45 @@ public final class ObjectMoveInfo {
      * @see AlignedHeapChunk#walkObjects
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void walkObjects(AlignedHeapChunk.AlignedHeader chunkHeader, ObjectFixupVisitor visitor) {
-        Pointer p = AlignedHeapChunk.getObjectsStart(chunkHeader);
+    public static void walkObjectsForFixup(AlignedHeapChunk.AlignedHeader chunk, ObjectFixupVisitor visitor) {
+        FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
+
+        Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
         do {
-            Pointer nextObjSeq = getNextObjectSeqAddress(p);
-            Pointer objSeqEnd = p.add(getObjectSeqSize(p));
-            assert objSeqEnd.belowOrEqual(HeapChunk.getTopPointer(chunkHeader));
+            Pointer objSeq = p;
+            Pointer nextObjSeq = getNextObjectSeqAddress(objSeq);
+            Pointer objSeqNewAddress = getNewAddress(objSeq);
+            AlignedHeapChunk.AlignedHeader objSeqNewChunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objSeqNewAddress);
+            Pointer objSeqEnd = objSeq.add(getObjectSeqSize(objSeq));
+            assert objSeqEnd.belowOrEqual(HeapChunk.getTopPointer(chunk));
             while (p.notEqual(objSeqEnd)) {
                 assert p.belowThan(objSeqEnd);
                 Object obj = p.toObject();
                 UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
+
+                /*
+                 * Add the object's new location to the first object table of the target chunk. Note
+                 * that we have already encountered that chunk and initialized its table earlier.
+                 *
+                 * Rebuilding the table is also required for swept chunks, where dead objects can
+                 * mean that another object is now the first object in a range.
+                 */
+                Pointer newAddress = objSeqNewAddress.add(p.subtract(objSeq));
+                UnsignedWord offset = newAddress.subtract(AlignedHeapChunk.getObjectsStart(objSeqNewChunk));
+                FirstObjectTable.setTableForObject(AlignedChunkRememberedSet.getFirstObjectTableStart(objSeqNewChunk), offset, offset.add(objSize));
+
                 if (!visitor.visitObjectInline(obj)) {
                     throw VMError.shouldNotReachHereAtRuntime();
                 }
+
                 p = p.add(objSize);
+            }
+            if (nextObjSeq.isNonNull() && chunk.getShouldSweepInsteadOfCompact()) {
+                // We will write a filler object here, add the location to the first object table.
+                assert p.belowThan(nextObjSeq);
+                UnsignedWord offset = p.subtract(AlignedHeapChunk.getObjectsStart(chunk));
+                UnsignedWord size = nextObjSeq.subtract(p);
+                FirstObjectTable.setTableForObject(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), offset, offset.add(size));
             }
             p = nextObjSeq;
         } while (p.isNonNull());

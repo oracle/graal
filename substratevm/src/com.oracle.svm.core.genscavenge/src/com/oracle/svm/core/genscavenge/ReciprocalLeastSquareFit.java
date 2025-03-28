@@ -25,7 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 /**
- * Least squares fitting on a data set to generate an equation y = b + a / x. Uses exponential decay
+ * Least squares fitting on a data set to generate an equation y = a + b / x. Uses exponential decay
  * to assign a higher weight to newly added data points and effectively drop old data points without
  * keeping a history.
  *

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -36,6 +35,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A "first object table" to tell me the start of the first object that crosses onto a card
@@ -109,7 +110,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * <p>
  * Implementation note: Table entries are bytes but converted to and from ints with bounds checks.
  */
-final class FirstObjectTable {
+public final class FirstObjectTable {
     /**
      * The number of bytes of memory covered by an entry. Since the indexes into the CardTable are
      * used to index into the FirstObjectTable, these need to have the same value.
@@ -237,7 +238,7 @@ final class FirstObjectTable {
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
+    static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         Pointer result;
         Pointer firstObject = getFirstObject(tableStart, objectsStart, index);
         Pointer indexedMemoryStart = objectsStart.add(indexToMemoryOffset(index));
@@ -295,7 +296,7 @@ final class FirstObjectTable {
         return indexOffset.subtract(entryOffset);
     }
 
-    public static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
+    static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
         UnsignedWord indexLimit = getTableSizeForMemoryRange(objectsStart, objectsLimit);
         for (UnsignedWord index = Word.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             Pointer objStart = getFirstObject(tableStart, objectsStart, index);
