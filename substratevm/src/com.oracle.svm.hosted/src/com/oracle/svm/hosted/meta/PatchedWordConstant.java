@@ -25,27 +25,35 @@
 package com.oracle.svm.hosted.meta;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-/** Wraps pointers that are subject to relocation, so their value is not known during analysis. */
-public class RelocatableConstant implements JavaConstant, TypedConstant {
+/**
+ * Wraps words for which the value is not known during analysis.
+ *
+ * Such words can be offsets such as {@link MethodOffset} that are patched later when the image is
+ * written, or {@linkplain RelocatedPointer relocated pointers} for which linker relocations are
+ * created.
+ */
+public class PatchedWordConstant implements JavaConstant, TypedConstant {
 
-    private final RelocatedPointer pointer;
+    private final WordBase word;
     private final AnalysisType type;
 
-    public RelocatableConstant(RelocatedPointer pointer, AnalysisType type) {
-        this.pointer = pointer;
+    public PatchedWordConstant(WordBase word, AnalysisType type) {
+        this.word = word;
         this.type = type;
     }
 
-    public RelocatedPointer getPointer() {
-        return pointer;
+    public WordBase getWord() {
+        return word;
     }
 
     @Override
@@ -100,21 +108,23 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
 
     @Override
     public int hashCode() {
-        return pointer.hashCode();
+        return word.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof RelocatableConstant rc) {
-            return pointer == rc.pointer;
+        if (obj instanceof PatchedWordConstant rc) {
+            return word == rc.word;
         }
         return false;
     }
 
     @Override
     public String toValueString() {
-        if (pointer instanceof MethodPointer mp) {
+        if (word instanceof MethodPointer mp) {
             return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", permitsRewriteToPLT: " + mp.permitsRewriteToPLT();
+        } else if (word instanceof MethodOffset mo) {
+            return "relocatable method offset: " + mo.getMethod().format("%H.%n(%p)");
         }
         return "relocatable constant";
     }

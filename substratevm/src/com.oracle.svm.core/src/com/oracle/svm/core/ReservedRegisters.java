@@ -52,7 +52,7 @@ public abstract class ReservedRegisters {
         this.frameRegister = frameRegister;
         this.threadRegister = threadRegister;
         this.heapBaseRegister = heapBaseRegister;
-        this.codeBaseRegister = codeBaseRegisterCandidate;
+        this.codeBaseRegister = SubstrateOptions.useRelativeCodePointers() ? codeBaseRegisterCandidate : null;
     }
 
     /**

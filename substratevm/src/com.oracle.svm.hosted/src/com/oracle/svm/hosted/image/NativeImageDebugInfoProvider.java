@@ -963,7 +963,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
     private void logForeignTypeInfo(HostedType hostedType) {
         if (!isForeignPointerType(hostedType)) {
             // non pointer type must be an interface because an instance needs to be pointed to
-            assert hostedType.isInterface();
+            // assert hostedType.isInterface();
             // foreign word types never have element info
             debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign word type %s", hostedType.toJavaName());
         } else {

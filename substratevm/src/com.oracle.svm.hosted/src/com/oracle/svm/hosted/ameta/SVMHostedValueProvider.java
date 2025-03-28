@@ -37,10 +37,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -99,13 +100,13 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     /**
-     * {@link #forObject} replaces relocatable pointers with {@link RelocatableConstant} and regular
-     * {@link WordBase} values with {@link PrimitiveConstant}. No other {@link WordBase} values can
-     * be reachable at this point.
+     * {@link #forObject} replaces patched words such as relocatable pointers with
+     * {@link PatchedWordConstant}, and regular {@link WordBase} values with
+     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
     @Override
     public JavaConstant validateReplacedConstant(JavaConstant value) {
-        VMError.guarantee(value instanceof RelocatableConstant || !universe.getBigbang().getMetaAccess().isInstanceOf(value, WordBase.class));
+        VMError.guarantee(value instanceof PatchedWordConstant || !universe.getBigbang().getMetaAccess().isInstanceOf(value, WordBase.class));
         return value;
     }
 
@@ -118,8 +119,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if (constant instanceof RelocatableConstant relocatable) {
-            return type.cast(relocatable.getPointer());
+        if (constant instanceof PatchedWordConstant pwc) {
+            return type.cast(pwc.getWord());
         }
         return super.asObject(type, constant);
     }
@@ -156,17 +157,18 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     /**
      * Intercept {@link WordBase} constants and:
      * <ul>
-     * <li>replace {@link RelocatedPointer} constants with {@link RelocatableConstant} to easily and
-     * reliably distinguish them from other {@link WordBase} values during image build.</li>
+     * <li>replace {@link RelocatedPointer} and {@link MethodOffset} constants with
+     * {@link PatchedWordConstant} to easily and reliably distinguish them from other
+     * {@link WordBase} values during image build.</li>
      * <li>replace regular {@link WordBase} values with corresponding integer kind
      * {@link PrimitiveConstant}.</li>
      * </ul>
      */
     private Optional<JavaConstant> interceptWordType(Object object) {
-        if (object instanceof RelocatedPointer pointer) {
-            return Optional.of(new RelocatableConstant(pointer, metaAccess.lookupJavaType(object.getClass())));
-        }
         if (object instanceof WordBase word) {
+            if (object instanceof RelocatedPointer || object instanceof MethodOffset) {
+                return Optional.of(new PatchedWordConstant(word, metaAccess.lookupJavaType(object.getClass())));
+            }
             return Optional.of(JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue()));
         }
         return Optional.empty();

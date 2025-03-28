@@ -89,7 +89,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -583,7 +583,7 @@ public final class NativeImageHeap implements ImageHeap {
                             JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant, true);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                                 if (spawnIsolates()) {
-                                    fieldRelocatable = fieldValueConstant instanceof RelocatableConstant;
+                                    fieldRelocatable = isRelocatableConstant(fieldValueConstant);
                                 }
                                 if (fieldValueConstant instanceof ImageHeapRelocatableConstant) {
                                     VMError.guarantee(layeredBuild);
@@ -644,6 +644,14 @@ public final class NativeImageHeap implements ImageHeap {
             VMError.shouldNotReachHere("Object with relocatable pointers must be explicitly immutable: " + hUniverse.getSnippetReflection().asObject(Object.class, constant));
         }
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable, patched);
+    }
+
+    private static boolean isRelocatableConstant(JavaConstant constant) {
+        return constant instanceof PatchedWordConstant pwc && isRelocatableValue(pwc.getWord());
+    }
+
+    private static boolean isRelocatableValue(Object value) {
+        return value instanceof RelocatedPointer;
     }
 
     /**
@@ -765,7 +773,7 @@ public final class NativeImageHeap implements ImageHeap {
         for (Object element : array) {
             Object value = aUniverse.replaceObject(element);
             if (spawnIsolates()) {
-                relocatable = relocatable || value instanceof RelocatedPointer;
+                relocatable = relocatable || isRelocatableValue(value);
             }
             recursiveAddObject(value, false, reason);
         }
@@ -783,7 +791,7 @@ public final class NativeImageHeap implements ImageHeap {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
             /* Object replacement is done as part as constant refection. */
             if (spawnIsolates()) {
-                relocatable = relocatable || value instanceof RelocatableConstant;
+                relocatable = relocatable || isRelocatableConstant(value);
             }
             if (value instanceof ImageHeapRelocatableConstant) {
                 patched = true;

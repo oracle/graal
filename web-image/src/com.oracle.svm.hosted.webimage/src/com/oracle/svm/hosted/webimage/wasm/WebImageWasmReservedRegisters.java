@@ -51,6 +51,6 @@ public class WebImageWasmReservedRegisters extends ReservedRegisters {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected WebImageWasmReservedRegisters() {
-        super(FRAME_REGISTER, null, null);
+        super(FRAME_REGISTER, null, null, null);
     }
 }

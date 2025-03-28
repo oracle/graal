@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.pltgot;
+package com.oracle.svm.core.meta;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.RegisterValue;
+import java.util.Objects;
 
-public abstract class PLTGOTConfiguration {
-    protected MethodAddressResolver methodAddressResolver;
+import org.graalvm.word.WordBase;
 
-    @Fold
-    public static boolean isEnabled() {
-        return ImageSingletons.contains(PLTGOTConfiguration.class);
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+/** The offset of the compiled code of a method from the code base. */
+public final class MethodOffset implements WordBase {
+    private final ResolvedJavaMethod method;
+
+    public MethodOffset(ResolvedJavaMethod method) {
+        Objects.requireNonNull(method);
+        this.method = method;
     }
 
-    @Fold
-    public static PLTGOTConfiguration singleton() {
-        return ImageSingletons.lookup(PLTGOTConfiguration.class);
+    public ResolvedJavaMethod getMethod() {
+        return method;
     }
 
-    @Fold
-    public MethodAddressResolver getMethodAddressResolver() {
-        return methodAddressResolver;
+    @Override
+    public long rawValue() {
+        throw shouldNotReachHere("must not be called in hosted mode");
     }
 
-    public abstract Register getExitMethodAddressResolutionRegister(RegisterConfig registerConfig);
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    @Override
+    public boolean equals(Object obj) {
+        throw VMError.shouldNotReachHere("equals() not supported on words");
+    }
 
-    public abstract LIRInstruction createExitMethodAddressResolutionOp(RegisterValue exitThroughRegisterValue);
-
+    @Override
+    public int hashCode() {
+        throw VMError.shouldNotReachHere("hashCode() not supported on words");
+    }
 }

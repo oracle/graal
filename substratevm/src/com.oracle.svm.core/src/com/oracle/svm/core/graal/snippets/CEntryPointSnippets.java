@@ -217,6 +217,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         writeCurrentVMCodeBase(codeBase);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void earlyInitHeapBase(PointerBase heapBase) {
+        setHeapBase(heapBase);
+    }
+
     /**
      * Sets the heap base register to the provided value. If the code base register is in use,
      * initializes it to contain the code base address.
@@ -224,14 +229,18 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initBaseRegisters(PointerBase heapBase) {
         setHeapBase(heapBase);
-        initCodeBase();
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            initCodeBase();
+        }
     }
 
     /** Sets the heap base register, and if in use, the code base register, to the given values. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initBaseRegisters(PointerBase heapBase, PointerBase codeBase) {
         setHeapBase(heapBase);
-        writeCurrentVMCodeBase(codeBase);
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            writeCurrentVMCodeBase(codeBase);
+        }
     }
 
     @Snippet(allowMissingProbabilities = true)
