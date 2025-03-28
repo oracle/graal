@@ -69,6 +69,11 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
 @RunWith(Parameterized.class)
 public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
+
+    public ExceptionHandlerTableTest(TestRun run) {
+        super(run);
+    }
+
     private record ExceptionRangeTree(int index, String name, HandlerKind kind, ExceptionRangeTree[] nested) {
     }
 
