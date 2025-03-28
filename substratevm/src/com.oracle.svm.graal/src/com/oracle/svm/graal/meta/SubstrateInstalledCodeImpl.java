@@ -121,7 +121,7 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
 
     @Override
     public long getStart() {
-        throw shouldNotReachHere("No implementation in Substrate VM");
+        return getAddress();
     }
 
     @Override

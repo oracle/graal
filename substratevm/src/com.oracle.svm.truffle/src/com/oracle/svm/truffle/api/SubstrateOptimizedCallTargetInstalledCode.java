@@ -252,7 +252,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Override
     public long getStart() {
-        throw VMError.shouldNotReachHere(NOT_CALLED_IN_SUBSTRATE_VM);
+        return getAddress();
     }
 
     @Override

@@ -30,6 +30,7 @@ import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle
@@ -68,7 +69,12 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
 
     @Override
     public long getStart() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
+        ClientHandle<? extends SubstrateInstalledCode> handle = installedCodeHandle;
+        if (handle.notEqual(IsolatedHandles.nullHandle())) {
+            return getStart0(IsolatedCompileContext.get().getClient(), handle);
+        } else {
+            return 0L;
+        }
     }
 
     @Override
@@ -101,4 +107,8 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static long getStart0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle) {
+        return IsolatedCompileClient.get().unhand(installedCodeHandle).getAddress();
+    }
 }
