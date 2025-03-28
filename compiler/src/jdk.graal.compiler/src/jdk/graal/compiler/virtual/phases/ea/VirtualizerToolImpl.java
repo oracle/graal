@@ -365,6 +365,15 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     }
 
     @Override
+    public boolean canVirtualizeLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
+        if (getPlatformConfigurationProvider().requiresStrictLockOrder()) {
+            int id = virtualObject.getObjectId();
+            return !state.isNonImmediateRecursiveLock(id, monitorId);
+        }
+        return true;
+    }
+
+    @Override
     public void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
         int id = virtualObject.getObjectId();
         state.addLock(id, monitorId);

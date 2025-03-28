@@ -104,7 +104,7 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;
-            if (virtual.hasIdentity()) {
+            if (virtual.hasIdentity() && tool.canVirtualizeLock(virtual, getMonitorId())) {
                 tool.addLock(virtual, getMonitorId());
                 if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
                     // Ensure that the locks appear to have been acquired in the nearest FrameState.

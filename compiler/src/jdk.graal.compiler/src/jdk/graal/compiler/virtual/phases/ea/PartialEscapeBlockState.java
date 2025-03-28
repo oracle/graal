@@ -172,6 +172,14 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         getObjectStateForModification(object).escape(materialized);
     }
 
+    public boolean isNonImmediateRecursiveLock(int object, MonitorIdNode monitorId) {
+        ObjectState state = getObjectStateForModification(object);
+        if (state.hasLocks()) {
+            return state.getLocks().monitorId.getLockDepth() < monitorId.getLockDepth() - 1;
+        }
+        return false;
+    }
+
     public void addLock(int object, MonitorIdNode monitorId) {
         getObjectStateForModification(object).addLock(monitorId);
     }
