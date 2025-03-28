@@ -66,10 +66,10 @@ public final class GraphUtil {
 
     public static void printInferredGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractStateMap<?> abstractStateMap) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Computed post conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
+        logger.log("Computed post conditions of method: " + analysisMethod, LoggerVerbosity.DEBUG);
         for (Node node : graph.getNodes()) {
             AbstractState<?> abstractState = abstractStateMap.getState(node);
-            logger.log(node + " -> " + abstractState.getPostCondition(), LoggerVerbosity.INFO);
+            logger.log(node + " -> " + abstractState.getPostCondition(), LoggerVerbosity.DEBUG);
         }
     }
 }
