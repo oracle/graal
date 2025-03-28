@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.core.image;
 
-import jdk.vm.ci.meta.JavaConstant;
-
 public interface ImageHeapObject {
     long getSize();
+
+    Object getWrapped();
 
     Object getObject();
 
     Class<?> getObjectClass();
-
-    JavaConstant getConstant();
 
     void setHeapPartition(ImageHeapPartition value);
 
