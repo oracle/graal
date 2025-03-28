@@ -211,6 +211,11 @@ public class Hello {
         return sb.toString();
     };
 
+    @NeverInline("For testing purposes")
+    private static <T> void checkClassType(Class<T> clazz) {
+        System.out.println("clazz = " + clazz);
+    }
+
     /* Add new methods above main */
     public static void main(String[] args) {
         Greeter greeter = Greeter.greeter(args);
@@ -236,6 +241,7 @@ public class Hello {
                         0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
         noInlinePassConstants();
         System.out.println(lambda.get());
+        checkClassType(String.class);
         // create and manipulate some foreign types
         CStructTests.composite();
         CStructTests.weird();

@@ -307,11 +307,13 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
     private class NativeImageHeaderTypeInfo implements DebugHeaderTypeInfo {
         String typeName;
         int size;
+        DebugFieldInfo hubField;
         List<DebugFieldInfo> fieldInfos;
 
-        NativeImageHeaderTypeInfo(String typeName, int size) {
+        NativeImageHeaderTypeInfo(String typeName, int size, DebugFieldInfo hubField) {
             this.typeName = typeName;
             this.size = size;
+            this.hubField = hubField;
             this.fieldInfos = new LinkedList<>();
         }
 
@@ -374,6 +376,11 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         @Override
         public Stream<DebugFieldInfo> fieldInfoProvider() {
             return fieldInfos.stream();
+        }
+
+        @Override
+        public DebugFieldInfo hubField() {
+            return hubField;
         }
     }
 
@@ -442,8 +449,8 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = ol.getHubOffset();
 
-        NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset());
-        objHeader.addField("hub", hubType, hubOffset, referenceSize);
+        NativeImageDebugHeaderFieldInfo hubField = new NativeImageDebugHeaderFieldInfo("hub", hubType, hubOffset, referenceSize);
+        NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset(), hubField);
         if (ol.isIdentityHashFieldInObjectHeader()) {
             int idHashSize = ol.sizeInBytes(JavaKind.Int);
             objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), ol.getObjectHeaderIdentityHashOffset(), idHashSize);

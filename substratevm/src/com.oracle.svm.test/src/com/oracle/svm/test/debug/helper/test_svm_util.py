@@ -96,10 +96,9 @@ class TestObjUtils(unittest.TestCase):
         z_hub = gdb.parse_and_eval('strList.hub')
         self.assertNotEqual(int(z_hub), 0)
         self.assertTrue(SVMUtil.is_compressed(z_hub.type))
-        # get the uncompressed value for the hub
+        # the hub field type does not have an 'uncompressed' type
+        # we can just check if an absolute address is converted correctly to a compressed oop
         hub = z_hub.dereference()
-        hub = hub.cast(SVMUtil.get_uncompressed_type(hub.type))
-        self.assertFalse(SVMUtil.is_compressed(hub.type))
         self.assertEqual(SVMUtil.get_compressed_oop(hub), int(z_hub))
 
         hub_str = str(hub)

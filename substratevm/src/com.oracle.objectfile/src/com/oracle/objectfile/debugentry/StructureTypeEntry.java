@@ -75,10 +75,11 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     protected void processField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         /* Delegate this so superclasses can override this and inspect the computed FieldEntry. */
-        addField(debugFieldInfo, debugInfoBase, debugContext);
+        FieldEntry fieldEntry = createField(debugFieldInfo, debugInfoBase, debugContext);
+        fields.add(fieldEntry);
     }
 
-    protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    protected FieldEntry createField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
         ResolvedJavaType valueType = debugFieldInfo.valueType();
         String valueTypeName = valueType.toJavaName();
@@ -96,9 +97,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
          * substitution
          */
         FileEntry fileEntry = debugInfoBase.ensureFileEntry(debugFieldInfo);
-        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldIsEmbedded, fieldModifiers);
-        fields.add(fieldEntry);
-        return fieldEntry;
+        return new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldIsEmbedded, fieldModifiers);
     }
 
     String memberModifiers(int modifiers) {

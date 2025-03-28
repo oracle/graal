@@ -61,7 +61,7 @@ configure_gdb()
 
 def test():
     # define some useful constants
-    main_start = 216
+    main_start = 221
     main_noinline = main_start + 17
     main_inlinefrom = main_start + 18
     match = match_gdb_version()
@@ -237,7 +237,7 @@ def test():
     # print the hub of the array and check it has a name field
     exec_string = execute("print /x *args->hub")
     rexp = [fr"{wildcard_pattern} = {{",
-            fr"{spaces_pattern}<java.lang.Class> = {{" if isolates else None,
+            fr"{spaces_pattern}<java.lang.Class> = {{",
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
@@ -245,7 +245,7 @@ def test():
             fr"{spaces_pattern}}}, <No data fields>}},",
             fr"{spaces_pattern}members of java\.lang\.Class:",
             fr"{spaces_pattern}name = {address_pattern},",
-            fr"{spaces_pattern}}}, <No data fields>}}" if isolates else "}"]
+            fr"{spaces_pattern}}}, <No data fields>}}"]
 
     checker = Checker("print String[] hub", rexp)
 
@@ -381,7 +381,7 @@ def test():
 
     exec_string = execute("ptype _objhdr")
     rexp = [r"type = struct _objhdr {",
-            fr"{spaces_pattern}{compressed_pattern if isolates else ''}java\.lang\.Class \*hub;",
+            fr"{spaces_pattern}Encoded\$Dynamic\$Hub \*hub;",
             fr"{spaces_pattern}int idHash;" if fixed_idhash_field else None,
             r"}"]
 
@@ -872,10 +872,53 @@ def test():
     exec_string = execute("backtrace 3")
     rexp = [
         fr"#0{spaces_pattern}hello\.Hello::lambda\$(static\$)?0{no_param_types_pattern} {no_arg_values_pattern} at hello/Hello\.java:210",
-        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello\$\$Lambda((\${digits_pattern}/0x)|(\$)|(\.0x|/0x))?{hex_digits_pattern}::get{wildcard_pattern} at hello/Hello\.java:238",
-        fr"#2{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:238"]
+        fr"#1{spaces_pattern}{address_pattern} in hello\.Hello\$\$Lambda((\${digits_pattern}/0x)|(\$)|(\.0x|/0x))?{hex_digits_pattern}::get{wildcard_pattern} at hello/Hello\.java:243",
+        fr"#2{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:243"]
     checker = Checker('backtrace in lambda', rexp)
     checker.check(exec_string, skip_fails=False)
+
+    execute("delete breakpoints")
+
+    # check if java.lang.Class and the hub field is resolved correctly
+    exec_string = execute(f"break hello.Hello::checkClassType")
+    rexp = fr"Breakpoint {digits_pattern} at {address_pattern}: file hello/Hello\.java, line 216\."
+    checker = Checker(fr"break hello.Hello::checkClassType", rexp)
+    checker.check(exec_string)
+
+    execute("continue")
+    exec_string = execute("print *clazz.name.value")
+    rexp = [fr"{wildcard_pattern} = {{",
+            fr"{spaces_pattern}<java\.lang\.Object> = {{",
+            fr"{spaces_pattern}<_objhdr> = {{",
+            fr"{spaces_pattern}hub = {address_pattern}",
+            fr"{spaces_pattern}}}, <No data fields>}},",
+            fr"{spaces_pattern}members of byte \[\]",
+            fr"{spaces_pattern}len = 16,",
+            fr"{spaces_pattern}data = {address_pattern}"]
+    checker = Checker('print *clazz.name.value', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("ptype clazz")
+    rexp = [r"type = class java\.lang\.Class : public java\.lang\.Object {"]
+    checker = Checker('ptype clazz', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("print *clazz.hub.name.value")
+    rexp = [fr"{wildcard_pattern} = {{",
+            fr"{spaces_pattern}<java\.lang\.Object> = {{",
+            fr"{spaces_pattern}<_objhdr> = {{",
+            fr"{spaces_pattern}hub = {address_pattern}",
+            fr"{spaces_pattern}}}, <No data fields>}},",
+            fr"{spaces_pattern}members of byte \[\]",
+            fr"{spaces_pattern}len = 15,",
+            fr"{spaces_pattern}data = {address_pattern}"]
+    checker = Checker('print *clazz.hub.name.value', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("ptype clazz.hub")
+    rexp = [r"type = class Encoded\$Dynamic\$Hub : public java\.lang\.Class {"]
+    checker = Checker('ptype clazz.hub', rexp)
+    checker.check(exec_string)
 
     execute("delete breakpoints")
 
