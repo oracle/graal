@@ -433,6 +433,11 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long clamp(long value, long min, long max) {
+            return min(max(value, min), max);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int abs(int a) {
             return (a < 0) ? -a : a;
         }

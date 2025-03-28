@@ -340,9 +340,9 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
         OSThreadIdTL.set(thread, getCurrentOSThreadId());
         OSThreadHandleTL.set(thread, getCurrentOSThreadHandle());
 
-        /* Set initial values for safepointRequested before making the thread visible. */
+        /* Set initial safepoint counter value before making the thread visible. */
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
-        Safepoint.setSafepointRequested(thread, Safepoint.THREAD_REQUEST_RESET);
+        SafepointCheckCounter.setVolatile(thread, SafepointCheckCounter.MAX_VALUE);
 
         THREAD_MUTEX.lockNoTransition();
         try {
@@ -604,8 +604,9 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
             THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         }
         try {
-            IsolateThread thread;
-            for (thread = firstThreadUnsafe(); thread.isNonNull() && threadLookup.matchesThread(thread, identifier); thread = nextThread(thread)) {
+            IsolateThread thread = firstThreadUnsafe();
+            while (thread.isNonNull() && !threadLookup.matchesThread(thread, identifier)) {
+                thread = nextThread(thread);
             }
             return thread;
         } finally {
@@ -700,7 +701,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt("StatusSupport.statusTL").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt("StatusSupport.status").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
         /** An illegal thread state for places where we need to pass a value. */
         public static final int STATUS_ILLEGAL = -1;
@@ -1046,7 +1047,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
-            return OSThreadIdTL.get(thread).notEqual(identifier);
+            return OSThreadIdTL.get(thread).equal(identifier);
         }
     }
 }

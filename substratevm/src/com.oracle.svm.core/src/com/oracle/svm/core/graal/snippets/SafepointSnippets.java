@@ -39,7 +39,8 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.SafepointCheckCounter;
+import com.oracle.svm.core.thread.SafepointSlowpath;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -59,16 +60,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 
-final class SafepointSnippets extends SubstrateTemplates implements Snippets {
-
-    @Snippet
-    private static void safepointSnippet() {
-        final boolean needSlowPath = SafepointCheckNode.test();
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathSafepointCheck(Safepoint.ENTER_SLOW_PATH_SAFEPOINT_CHECK);
-        }
-    }
-
+public final class SafepointSnippets extends SubstrateTemplates implements Snippets {
     private final SnippetInfo safepoint;
 
     SafepointSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -78,10 +70,18 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         lowerings.put(SafepointNode.class, new SafepointLowering());
     }
 
+    @Snippet
+    private static void safepointSnippet() {
+        final boolean needSlowPath = SafepointCheckNode.test();
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
+            callSlowPathSafepointCheck(SafepointSlowpath.ENTER_SLOW_PATH_SAFEPOINT_CHECK);
+        }
+    }
+
     private static LocationIdentity[] getKilledLocations() {
         int newLength = GC_LOCATIONS.length + 1;
         LocationIdentity[] locations = Arrays.copyOf(GC_LOCATIONS, newLength);
-        locations[newLength - 1] = Safepoint.getThreadLocalSafepointRequestedLocationIdentity();
+        locations[newLength - 1] = SafepointCheckCounter.getLocationIdentity();
         return locations;
     }
 
@@ -109,7 +109,7 @@ class SafepointFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(Safepoint.FOREIGN_CALLS);
+        foreignCalls.register(SafepointSlowpath.FOREIGN_CALLS);
     }
 
     @Override
