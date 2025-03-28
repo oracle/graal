@@ -32,6 +32,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.word.Word;
@@ -393,21 +394,21 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private double secondsSinceMajorGc() { // time_since_major_gc
-        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.getOpenedTime());
+        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.startedNanos());
     }
 
     @Override
     public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) { // {major,minor}_collection_begin
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.closeAt(requestingNanoTime);
+        timer.stopAt(requestingNanoTime);
         if (completeCollection) {
-            latestMajorMutatorIntervalNanos = timer.getMeasuredNanos();
+            latestMajorMutatorIntervalNanos = timer.totalNanos();
         } else {
-            latestMinorMutatorIntervalNanos = timer.getMeasuredNanos();
+            latestMinorMutatorIntervalNanos = timer.totalNanos();
         }
 
         timer.reset();
-        timer.open(); // measure collection pause
+        timer.start(); // measure collection pause
 
         super.onCollectionBegin(completeCollection, requestingNanoTime);
     }
@@ -415,17 +416,17 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) { // {major,minor}_collection_end
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.close();
+        timer.stop();
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-                            cause, latestMajorMutatorIntervalNanos, timer.getMeasuredNanos(), promoSize);
+                            cause, latestMajorMutatorIntervalNanos, timer.totalNanos(), promoSize);
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-                            cause, latestMinorMutatorIntervalNanos, timer.getMeasuredNanos(), edenSize);
+                            cause, latestMinorMutatorIntervalNanos, timer.totalNanos(), edenSize);
             minorCount++;
             minorCountSinceMajorCollection++;
 
@@ -435,7 +436,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
 
         timer.reset();
-        timer.open();
+        timer.start();
 
         GCAccounting accounting = GCImpl.getAccounting();
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
