@@ -196,12 +196,14 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
         @Option(help = "Minimal size in NodeSize to check the graph size increases of phases.", type = OptionType.Debug)
         public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
-        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a " +
-                        "method filter. Multiple exclusions can be specified separated by ':'. " +
-                        "Phase names are matched as substrings, e.g.: " +
-                        "CompilationExcludePhases=PartialEscape:Loop=A.*,B.foo excludes PartialEscapePhase " +
-                        "from all compilations and any phase containing 'Loop' in its name from " +
-                        "compilations of all methods in class A and of method B.foo.", type = OptionType.Debug)
+        @Option(help = """
+                       Exclude certain phases from compilation, either unconditionally or with a method filter.
+                       Multiple exclusions can be specified separated by ':'.
+                       Phase names are matched as substrings, e.g.:
+                       CompilationExcludePhases=PartialEscape:Loop=A.*,B.foo excludes
+                       PartialEscapePhase from all compilations and any phase containing
+                       'Loop' in its name from compilations of all methods in class A and of
+                       method B.foo.""", type = OptionType.Debug)
         public static final OptionKey<String> CompilationExcludePhases = new OptionKey<>(null);
         // @formatter:on
     }

@@ -1,3 +1,0 @@
-Abort VM with SIGILL if benchmark counters controlled by the (Generic|Timed|Benchmark)DynamicCounters
-option overflow.  WARNING: No descriptive error message will be printed! In
-case of an overflow, manual inspection of the emitted code is required.
