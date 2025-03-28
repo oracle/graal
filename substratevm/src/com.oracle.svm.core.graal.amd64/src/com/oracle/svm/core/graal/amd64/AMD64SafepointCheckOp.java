@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.amd64;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -51,13 +51,12 @@ public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        int safepointRequestedOffset = Safepoint.getThreadLocalSafepointRequestedOffset();
-        AMD64Address safepointRequested = new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), safepointRequestedOffset);
+        int counterOffset = SafepointCheckCounter.getThreadLocalOffset();
+        AMD64Address counter = new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), counterOffset);
         if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
-            masm.subl(safepointRequested, 1);
+            masm.subl(counter, 1);
         } else {
-            // Ensuring safepointRequested offset fits a byte would make for a smaller instruction
-            masm.cmpl(safepointRequested, 0);
+            masm.cmpl(counter, 0);
         }
     }
 

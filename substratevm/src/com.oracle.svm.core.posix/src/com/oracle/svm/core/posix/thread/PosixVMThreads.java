@@ -141,7 +141,7 @@ public final class PosixVMThreads extends VMThreads {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
-            return VMThreads.OSThreadHandleTL.get(thread).notEqual(identifier);
+            return VMThreads.OSThreadHandleTL.get(thread).equal(identifier);
         }
     }
 }

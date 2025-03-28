@@ -563,11 +563,11 @@ public final class VMOperationControl {
                 boolean startedSafepoint = false;
                 boolean lockedForSafepoint = false;
 
-                Safepoint.Master master = Safepoint.Master.singleton();
-                if (!master.isFrozen()) {
+                Safepoint safepoint = Safepoint.singleton();
+                if (!safepoint.isInProgress()) {
                     startedSafepoint = true;
                     safepointReason = getSafepointReason(nativeSafepointOperations, javaSafepointOperations);
-                    lockedForSafepoint = master.freeze(safepointReason);
+                    lockedForSafepoint = safepoint.startSafepoint(safepointReason);
                 }
 
                 try {
@@ -575,7 +575,7 @@ public final class VMOperationControl {
                     drain(javaSafepointOperations);
                 } finally {
                     if (startedSafepoint) {
-                        master.thaw(lockedForSafepoint);
+                        safepoint.endSafepoint(lockedForSafepoint);
                     }
                 }
             }
@@ -900,7 +900,7 @@ public final class VMOperationControl {
             entry.queueingThread = queueingThread;
             entry.executingThread = executingThread;
             entry.nestingLevel = nestingLevel;
-            entry.safepointId = Safepoint.Master.singleton().getSafepointId();
+            entry.safepointId = Safepoint.singleton().getSafepointId();
         }
 
         public void print(Log log, boolean allowJavaHeapAccess) {

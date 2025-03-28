@@ -95,8 +95,8 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -212,7 +212,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         return runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
     }
@@ -516,7 +516,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return error;
         }
 
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         if (ensureJavaThread) {
             return runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
@@ -725,7 +725,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         result = runtimeCall(ENTER_BY_ISOLATE, isolate);
         if (result == CEntryPointErrors.NO_ERROR) {
             if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
-                Safepoint.transitionNativeToJava(false);
+                ThreadStatusTransition.fromNativeToJava(false);
             }
         }
         return result;
@@ -765,7 +765,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
              */
             runtimeCall(VERIFY_ISOLATE_THREAD, thread);
         }
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         return CEntryPointErrors.NO_ERROR;
 
@@ -826,7 +826,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int returnFromJavaToCSnippet() {
-        VMThreads.StatusSupport.setStatusNative();
+        ThreadStatusTransition.fromJavaToNative();
         return CEntryPointErrors.NO_ERROR;
     }
 

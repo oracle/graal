@@ -142,7 +142,7 @@ public class RuntimeCodeInfoHistory {
             assert VMOperation.isInProgressAtSafepoint();
             assert Heap.getHeap().isInImageHeap(kind);
 
-            this.safepointId = Safepoint.Master.singleton().getSafepointId();
+            this.safepointId = Safepoint.singleton().getSafepointId();
             this.uptimeMillis = Isolates.getUptimeMillis();
             this.kind = kind;
             this.codeInfo = codeInfo;
