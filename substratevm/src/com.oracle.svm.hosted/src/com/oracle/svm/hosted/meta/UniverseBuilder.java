@@ -49,7 +49,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -89,6 +89,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -120,8 +121,9 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class UniverseBuilder {
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final WordBase[] EMPTY_VTABLE = new WordBase[0];
 
-    @Platforms(Platform.HOSTED_ONLY.class) private static final CFunctionPointer[] EMPTY_ARRAY = new CFunctionPointer[0];
     private final AnalysisUniverse aUniverse;
     private final AnalysisMetaAccess aMetaAccess;
     private final HostedUniverse hUniverse;
@@ -957,14 +959,7 @@ public class UniverseBuilder {
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
             if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                CFunctionPointer[] vtable = type.closedTypeWorldVTable.length == 0 ? EMPTY_ARRAY : new CFunctionPointer[type.closedTypeWorldVTable.length];
-                for (int idx = 0; idx < type.closedTypeWorldVTable.length; idx++) {
-                    /*
-                     * We install a CodePointer in the vtable; when generating relocation info, we
-                     * will know these point into .text
-                     */
-                    vtable[idx] = new MethodPointer(type.closedTypeWorldVTable[idx]);
-                }
+                WordBase[] vtable = createVTable(type.closedTypeWorldVTable);
                 hub.setClosedTypeWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
                                 type.getTypeCheckSlot(), type.getClosedTypeWorldTypeCheckSlots());
             } else {
@@ -996,19 +991,30 @@ public class UniverseBuilder {
                     typeSlotIdx += 2;
                 }
 
-                CFunctionPointer[] vtable = type.openTypeWorldDispatchTables.length == 0 ? EMPTY_ARRAY : new CFunctionPointer[type.openTypeWorldDispatchTables.length];
-                for (int idx = 0; idx < type.openTypeWorldDispatchTables.length; idx++) {
-                    /*
-                     * We install a CodePointer in the open world vtable; when generating relocation
-                     * info, we will know these point into .text
-                     */
-                    vtable[idx] = new MethodPointer(type.openTypeWorldDispatchTables[idx]);
-                }
-
-                hub.setOpenTypeWorldData(vtable, type.getTypeID(),
-                                type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), openTypeWorldTypeCheckSlots);
+                WordBase[] vtable = createVTable(type.openTypeWorldDispatchTables);
+                hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), openTypeWorldTypeCheckSlots);
             }
         }
+    }
+
+    private static WordBase[] createVTable(HostedMethod[] methods) {
+        if (methods.length == 0) {
+            return EMPTY_VTABLE;
+        }
+        WordBase[] vtable = new WordBase[methods.length];
+        for (int i = 0; i < methods.length; i++) {
+            HostedMethod method = methods[i];
+            if (SubstrateOptions.useRelativeCodePointers()) {
+                vtable[i] = new MethodOffset(method);
+            } else {
+                /*
+                 * We install a CodePointer in the vtable; when generating relocation info, we will
+                 * know these point into .text
+                 */
+                vtable[i] = new MethodPointer(method);
+            }
+        }
+        return vtable;
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {

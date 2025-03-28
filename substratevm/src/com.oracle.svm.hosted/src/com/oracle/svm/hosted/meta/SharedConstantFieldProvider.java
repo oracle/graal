@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -122,10 +123,11 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     protected boolean isFinalFieldValueConstant(ResolvedJavaField field, JavaConstant value, ConstantFieldTool<?> tool) {
-        if (value.getJavaKind() == JavaKind.Object && (metaAccess.isInstanceOf(value, MethodPointer.class) || metaAccess.isInstanceOf(value, CGlobalDataBasePointer.class))) {
+        if (value.getJavaKind() == JavaKind.Object && (metaAccess.isInstanceOf(value, MethodPointer.class) ||
+                        metaAccess.isInstanceOf(value, MethodOffset.class) || metaAccess.isInstanceOf(value, CGlobalDataBasePointer.class))) {
             /*
-             * Prevent the constant folding of RelocatablePointer placeholder objects. These are
-             * "hosted" types and so cannot be present in compiler graphs.
+             * Prevent constant folding of placeholder objects for patched words (such as relocated
+             * pointers). These are "hosted" types and so cannot be present in compiler graphs.
              */
             return false;
         }
