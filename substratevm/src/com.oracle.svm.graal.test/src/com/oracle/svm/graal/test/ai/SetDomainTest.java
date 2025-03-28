@@ -34,6 +34,29 @@ public class SetDomainTest {
     }
 
     @Test
+    public void testClear() {
+        SetDomain<String> setDomain = new SetDomain<>();
+        setDomain.add("a");
+        setDomain.add("b");
+        setDomain.clear();
+        Assert.assertTrue(setDomain.empty());
+        Assert.assertFalse(setDomain.getSet().contains("element"));
+        Assert.assertEquals(AbstractValueKind.BOT, setDomain.getKind());
+    }
+
+    @Test
+    public void testClearThenAdd() {
+        SetDomain<String> setDomain = new SetDomain<>();
+        setDomain.add("a");
+        setDomain.add("b");
+        setDomain.clear();
+        setDomain.add("c");
+        Assert.assertFalse(setDomain.empty());
+        Assert.assertTrue(setDomain.getSet().contains("c"));
+        Assert.assertEquals(AbstractValueKind.VAL, setDomain.getKind());
+    }
+
+    @Test
     public void testUnionWith() {
         SetDomain<String> setDomain1 = new SetDomain<>();
         setDomain1.add("element1");

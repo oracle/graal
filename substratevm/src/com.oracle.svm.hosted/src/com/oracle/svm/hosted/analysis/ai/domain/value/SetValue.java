@@ -71,16 +71,13 @@ public final class SetValue<Element> implements AbstractValue<SetValue<Element>>
 
     @Override
     public String toString() {
-        return "SetValue{" +
-                "set=" + set +
-                '}';
+        return set.toString();
     }
 
     @Override
     public void clear() {
         set.clear();
     }
-
 
     @Override
     public SetValue<Element> copyOf() {

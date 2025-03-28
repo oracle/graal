@@ -43,6 +43,11 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
         updateKind();
     }
 
+    public void clear() {
+        getValue().clear();
+        updateKind();
+    }
+
     public boolean empty() {
         return getValue().empty();
     }
@@ -77,9 +82,7 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
 
     @Override
     public String toString() {
-        return "SetDomain{" +
-                "setValue=" + getValue() +
-                '}';
+        return getValue().toString();
     }
 
     @Override
