@@ -7,6 +7,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoNode;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -56,12 +58,16 @@ public final class ConcurrentWpoFixpointIterator<
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
+        logger.log("Starting concurrent WPO fixpoint iteration", LoggerVerbosity.DEBUG);
         buildWorkNodes();
         runAnalysis();
+        logger.log("Finished concurrent WPO fixpoint iteration", LoggerVerbosity.DEBUG);
+        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
 
     private void buildWorkNodes() {
+        logger.log("Building work nodes for WPO", LoggerVerbosity.DEBUG);
         for (int idx = 0; idx < weakPartialOrdering.size(); idx++) {
             WpoNode.Kind kind = weakPartialOrdering.getKind(idx);
             HIRBlock node = weakPartialOrdering.getNode(idx);
@@ -86,6 +92,9 @@ public final class ConcurrentWpoFixpointIterator<
                 }
             }
         }
+        logger.log("Finished building work nodes for WPO", LoggerVerbosity.DEBUG);
+        logger.log("The WPO of " + analysisMethod.getQualifiedName() + ": ", LoggerVerbosity.DEBUG);
+        logger.log(weakPartialOrdering.toString(), LoggerVerbosity.DEBUG);
     }
 
     private void runAnalysis() {

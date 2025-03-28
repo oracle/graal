@@ -2,9 +2,12 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.example.leaks.set.IdentifierSetDomainInterAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
+import com.oracle.svm.hosted.analysis.ai.example.access.inter.AccessPathIntervalInterAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
+
+import java.io.IOException;
 
 public class AbstractInterpretationDriver {
 
@@ -24,17 +27,20 @@ public class AbstractInterpretationDriver {
              */
             try (var scope = debug.scope("AbstractInterpretation")) {
                 doRun();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
 
-    /**
-     * Run the abstract interpretation analysis
-     * Create a custom analyzer (or create your own, and run the analysis)
-     */
-    private void doRun() {
-        GraphUtils.printGraph(root, debug);
-        IdentifierSetDomainInterAnalyzer analyzer = new IdentifierSetDomainInterAnalyzer(root, debug);
-        analyzer.run();
+    // TODO: rebase master
+    // TODO: StrengthenGraph integerStamps, makeUnreachable
+    private void doRun() throws IOException {
+        /* Firstly, create a logger instance, the default logger is initialized to Verbosity INFO  */
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(root, debug, LoggerVerbosity.SUMMARY);
+
+        /* We can instantiate an existing analyzer or build our own from the builders in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer} */
+        var analyzer = new AccessPathIntervalInterAnalyzer();
+        analyzer.run(root, debug);
     }
 }

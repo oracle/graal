@@ -9,6 +9,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -36,21 +38,28 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
         if (iteratorPayload.containsMethodWto(method)) {
             this.weakTopologicalOrdering = iteratorPayload.getMethodWtoMap().get(method);
         } else {
+            logger.log("Computing Weak Topological Ordering for " + method.getQualifiedName(), LoggerVerbosity.DEBUG);
             this.weakTopologicalOrdering = new WeakTopologicalOrdering(cfgGraph);
             iteratorPayload.addToMethodWtoMap(method, weakTopologicalOrdering);
         }
+        logger.log("Weak Topological Ordering for " + method.getQualifiedName() + ": ", LoggerVerbosity.DEBUG);
+        logger.log(weakTopologicalOrdering.toString(), LoggerVerbosity.DEBUG);
     }
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
+        logger.log("Starting sequential WTO fixpoint iteration", LoggerVerbosity.DEBUG);
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
             analyzeComponent(component);
         }
 
+        logger.log("Sequential WTO fixpoint iteration finished", LoggerVerbosity.DEBUG);
+        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
 
     private void analyzeComponent(WtoComponent component) {
+        logger.log("Analyzing component: " + component.toString(), LoggerVerbosity.DEBUG);
         if (component instanceof WtoVertex vertex) {
             analyzeVertex(vertex);
         } else if (component instanceof WtoCycle cycle) {
@@ -59,6 +68,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     }
 
     private void analyzeVertex(WtoVertex vertex) {
+        logger.log("Analyzing vertex: " + vertex.toString(), LoggerVerbosity.DEBUG);
         Node node = vertex.block().getBeginNode();
         if (node == cfgGraph.graph.start()) {
             abstractStateMap.setPreCondition(node, initialDomain);
@@ -67,6 +77,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     }
 
     private void analyzeCycle(WtoCycle cycle) {
+        logger.log("Analyzing cycle: " + cycle.toString(), LoggerVerbosity.DEBUG);
         Node head = cycle.block().getBeginNode();
         boolean iterate = true;
 

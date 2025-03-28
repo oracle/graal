@@ -61,7 +61,7 @@ public final class CheckerManager {
         if (!errors.isEmpty()) {
             logger.log("Number of errors: " + errors.size(), LoggerVerbosity.CHECKER);
             for (CheckerResult error : errors) {
-                logger.log("Error: " + error, LoggerVerbosity.CHECKER);
+                logger.log("Error: " + error, LoggerVerbosity.CHECKER_ERR);
             }
         } else {
             logger.log("No errors reported", LoggerVerbosity.CHECKER);
@@ -70,7 +70,7 @@ public final class CheckerManager {
         if (!warnings.isEmpty()) {
             logger.log("Number of warnings: " + warnings.size(), LoggerVerbosity.CHECKER);
             for (CheckerResult warning : warnings) {
-                logger.log("Warning: " + warning, LoggerVerbosity.CHECKER);
+                logger.log("Warning: " + warning, LoggerVerbosity.CHECKER_WARN);
             }
         } else {
             logger.log("No warnings reported", LoggerVerbosity.CHECKER);

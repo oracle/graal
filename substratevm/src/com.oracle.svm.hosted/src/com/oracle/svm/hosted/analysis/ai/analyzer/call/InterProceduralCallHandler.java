@@ -72,6 +72,7 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
             return outcome;
         }
 
+        logger.log("Handling call to: " + calleeMethod.getName(), LoggerVerbosity.DEBUG);
         if (methodFilterManager.shouldSkipMethod(analysisMethod)) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.IN_SKIP_LIST);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
@@ -83,9 +84,8 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         /* If the summaryCache contains the summary for the target analysisMethod, we return it */
 
         if (summaryManager.containsSummary(calleeMethod, summary)) {
-            logger.log("Summary cache contains targetMethod: " + calleeMethod.getName(), LoggerVerbosity.INFO);
+            logger.log("Summary cache contains targetMethod: " + calleeMethod.getName(), LoggerVerbosity.SUMMARY);
             Summary<Domain> completeSummary = summaryManager.getSummary(calleeMethod, summary);
-            logger.log("The summary is: " + completeSummary, LoggerVerbosity.INFO);
             return AnalysisOutcome.ok(completeSummary);
         }
 
@@ -109,8 +109,8 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         /* Run the fixpoint iteration on the invoked method */
         callStack.push(analysisMethod);
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(analysisMethod, debug, summary.getPreCondition(), transferFunction, iteratorPayload);
-        logger.log("Running fixpoint iteration on: " + analysisMethod.getQualifiedName(), LoggerVerbosity.DEBUG);
-        logger.log("The current call stack: " + callStack, LoggerVerbosity.DEBUG);
+        logger.log("Running fixpoint iteration on: " + analysisMethod.getQualifiedName(), LoggerVerbosity.INFO);
+        logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
         AbstractStateMap<Domain> invokeAbstractStateMap = fixpointIterator.iterateUntilFixpoint();
         AbstractState<Domain> returnAbstractState = invokeAbstractStateMap.getReturnState();
         summary.finalizeSummary(returnAbstractState.getPostCondition());
@@ -118,13 +118,10 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         callStack.pop();
 
         /* Here we are finished with the fixpoint iteration and updated the summary cache */
-        logger.log("Fixpoint iteration on: " + analysisMethod.getQualifiedName() + " finished with abstract context: ", LoggerVerbosity.DEBUG);
-        logger.log(returnAbstractState.getPostCondition().toString(), LoggerVerbosity.DEBUG);
-        logger.log("The summary pre-condition", LoggerVerbosity.DEBUG);
-        logger.log(summary.getPreCondition().toString(), LoggerVerbosity.DEBUG);
-        logger.log("The summary post-condition", LoggerVerbosity.DEBUG);
-        logger.log(summary.getPostCondition().toString(), LoggerVerbosity.DEBUG);
-        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, invokeAbstractStateMap);
+        logger.log("The summary pre-condition", LoggerVerbosity.SUMMARY);
+        logger.log(summary.getPreCondition().toString(), LoggerVerbosity.SUMMARY);
+        logger.log("The summary post-condition", LoggerVerbosity.SUMMARY);
+        logger.log(summary.getPostCondition().toString(), LoggerVerbosity.SUMMARY);
         checkerManager.runCheckers(calleeMethod, callerStateMap);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }

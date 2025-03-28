@@ -3,6 +3,8 @@ package com.oracle.svm.hosted.analysis.ai.interpreter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -22,10 +24,11 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
      *
      * @param node             to analyze
      * @param abstractStateMap current state of the analysis
-     *
      * @return the {@link AbstractDomain} after analyzing the node
      */
     public Domain analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Analyzing node: " + node, LoggerVerbosity.DEBUG);
         Domain result = nodeInterpreter.execNode(node, abstractStateMap, analyzeDependencyCallback);
         abstractStateMap.incrementVisitCount(node);
         return result;
@@ -42,6 +45,8 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeEdge(Node sourceNode, Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Analyzing edge: " + sourceNode + " -> " + destinationNode, LoggerVerbosity.DEBUG);
         nodeInterpreter.execEdge(sourceNode, destinationNode, abstractStateMap);
     }
 
@@ -53,6 +58,8 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
      * @param abstractStateMap current state of the analysis
      */
     public void collectInvariantsFromPredecessors(Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Collecting invariants from predecessors of: " + destinationNode, LoggerVerbosity.DEBUG);
         for (Node predecessor : destinationNode.cfgPredecessors()) {
             analyzeEdge(predecessor, destinationNode, abstractStateMap);
         }
@@ -61,7 +68,7 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
     /**
      * Perform semantic transformation of an edge between two {@link HIRBlock}s.
      *
-     * @param sourceBlock the block from which the edge originates
+     * @param sourceBlock      the block from which the edge originates
      * @param destinationBlock the block to which the edge goes
      * @param abstractStateMap current state of the analysis
      */
@@ -76,10 +83,12 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
     /**
      * Perform semantic transformation of the given {@link HIRBlock}.
      *
-     * @param block the block to analyze
+     * @param block            the block to analyze
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Analyzing block: " + block, LoggerVerbosity.DEBUG);
         for (Node node : block.getNodes()) {
             collectInvariantsFromPredecessors(node, abstractStateMap);
             analyzeNode(node, abstractStateMap);

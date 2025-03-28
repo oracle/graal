@@ -5,6 +5,8 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
+import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -36,6 +38,8 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
+        logger.log("Starting WorkList fixpoint iteration", LoggerVerbosity.DEBUG);
+
         /* We will be using nodes instead of blocks in this fixpoint iterator
          * because this fixpoint is used for demonstration, and this is closer to the pseudocode. */
         Queue<Node> worklist = new LinkedList<>();
@@ -70,7 +74,9 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
                 }
             }
         }
-        
+
+        logger.log("Finished WorkList fixpoint iteration", LoggerVerbosity.DEBUG);
+        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
 }
