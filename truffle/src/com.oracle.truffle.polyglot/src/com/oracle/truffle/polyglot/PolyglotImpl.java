@@ -324,7 +324,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
             if (impl != null) {
                 assert hostLanguage.getClass() == impl.getHostLanguageSPI().getClass() || PreInitContextHostLanguage.isInstance(impl.hostLanguage);
-                impl.patch(sandboxPolicy, dispatchOut,
+                boolean patchSuccess = impl.patch(sandboxPolicy, dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
                                 engineOptions,
@@ -336,7 +336,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 useHandler,
                                 (TruffleLanguage<?>) hostLanguage,
                                 usePolyglotHostService);
-
+                if (!patchSuccess) {
+                    // Engine patching failed create a new engine
+                    impl = null;
+                }
             }
             if (impl == null) {
                 impl = new PolyglotEngineImpl(this, sandboxPolicy,
