@@ -22,36 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.option;
-
-import org.graalvm.collections.UnmodifiableMapCursor;
+package com.oracle.svm.hosted.option;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.SubstrateOptionKey;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionDescriptor;
 
 @AutomaticallyRegisteredFeature
-public class ValidateImageBuildOptionsFeature implements InternalFeature {
+public class BuildTimeOptionValidationFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        UnmodifiableMapCursor<OptionKey<?>, Object> cursor = RuntimeOptionValues.singleton().getMap().getEntries();
+        BeforeAnalysisAccessImpl a = (BeforeAnalysisAccessImpl) access;
+        HostedOptionParser optionParser = a.getImageClassLoader().classLoaderSupport.getHostedOptionParser();
+
+        var cursor = optionParser.getAllHostedOptions().getEntries();
         while (cursor.advance()) {
-            validate(cursor.getKey());
+            validate(cursor.getValue());
         }
 
-        cursor = HostedOptionValues.singleton().getMap().getEntries();
+        cursor = optionParser.getAllRuntimeOptions().getEntries();
         while (cursor.advance()) {
-            validate(cursor.getKey());
+            validate(cursor.getValue());
         }
     }
 
-    private static void validate(OptionKey<?> option) {
-        if (option instanceof SubstrateOptionKey) {
-            SubstrateOptionKey<?> o = (SubstrateOptionKey<?>) option;
-            if (o.hasBeenSet()) {
-                o.validate();
-            }
+    private static void validate(OptionDescriptor desc) {
+        if (desc.getOptionKey() instanceof SubstrateOptionKey<?> option) {
+            option.validate();
         }
     }
 }

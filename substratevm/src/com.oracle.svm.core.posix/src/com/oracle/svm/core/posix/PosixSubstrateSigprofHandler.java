@@ -109,7 +109,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {
-        if (isSamplerEnabled.getValue()) {
+        if (isSamplerEnabled.hasBeenSet() && isSamplerEnabled.getValue()) {
             UserError.guarantee(isPlatformSupported(),
                             "The %s cannot be used to profile on this platform.",
                             SubstrateOptionsParser.commandArgument(isSamplerEnabled, "+"));
