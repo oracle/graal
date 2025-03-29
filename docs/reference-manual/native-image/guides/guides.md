@@ -38,7 +38,6 @@ Here you will learn how to:
 - [Specify Class Initialization Explicitly](specify-class-initialization.md)
 - [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)
 - [Use Maven to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/maven-plugin-quickstart.html)
-- [Use System Properties in a Native Executable](use-system-properties.md)
 
 ## Microservices Frameworks
 
