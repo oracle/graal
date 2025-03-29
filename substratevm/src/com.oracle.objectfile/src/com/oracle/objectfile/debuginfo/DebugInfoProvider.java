@@ -52,7 +52,7 @@ public interface DebugInfoProvider {
     /**
      * Mask selecting low order bits used for tagging oops.
      */
-    int reservedBitsMask();
+    int reservedHubBitsMask();
 
     /**
      * Number of bytes used to store an oop reference.

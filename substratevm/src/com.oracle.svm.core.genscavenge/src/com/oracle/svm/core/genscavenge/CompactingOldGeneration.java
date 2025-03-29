@@ -48,6 +48,7 @@ import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
@@ -180,7 +181,8 @@ final class CompactingOldGeneration extends OldGeneration {
             return space.copyAlignedObject(original, originalSpace);
         }
         assert originalSpace == space;
-        Word header = ObjectHeader.readHeaderFromObject(original);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromObject(original);
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
             return original;
         }
@@ -194,7 +196,7 @@ final class CompactingOldGeneration extends OldGeneration {
              * object's size. The easiest way to handle this is to copy the object.
              */
             result = space.copyAlignedObject(original, originalSpace);
-            assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(ObjectHeader.readHeaderFromObject(result));
+            assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
         ObjectHeaderImpl.setMarked(result);
         markStack.push(result);

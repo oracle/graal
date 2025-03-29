@@ -38,6 +38,7 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -98,7 +99,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void postWriteBarrierStub(Object object) {
-        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(object);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        UnsignedWord objectHeader = oh.readHeaderFromObject(object);
         if (ObjectHeaderImpl.isUnalignedHeader(objectHeader)) {
             RememberedSet.get().dirtyCardForUnalignedObject(object, false);
         } else {
@@ -112,7 +114,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean shouldOutline, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean verifyOnly) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        UnsignedWord objectHeader = oh.readHeaderFromObject(fixedObject);
 
         if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
             /*

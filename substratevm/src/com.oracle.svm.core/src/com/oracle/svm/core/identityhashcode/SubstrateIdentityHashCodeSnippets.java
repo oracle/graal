@@ -65,7 +65,7 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
         if (ol.isIdentityHashFieldOptional()) {
             int identityHashCode;
             ObjectHeader oh = Heap.getHeap().getObjectHeader();
-            Word header = ObjectHeader.readHeaderFromObject(obj);
+            Word header = oh.readHeaderFromObject(obj);
             if (probability(LIKELY_PROBABILITY, oh.hasOptionalIdentityHashField(header))) {
                 int offset = LayoutEncoding.getIdentityHashOffset(obj);
                 identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
@@ -75,8 +75,7 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
             return identityHashCode;
         }
 
-        int offset = LayoutEncoding.getIdentityHashOffset(obj);
-        int identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+        int identityHashCode = IdentityHashCodeSupport.readIdentityHashCodeFromField(obj);
         if (probability(SLOW_PATH_PROBABILITY, identityHashCode == 0)) {
             identityHashCode = foreignCall(GENERATE_IDENTITY_HASH_CODE, obj);
         }

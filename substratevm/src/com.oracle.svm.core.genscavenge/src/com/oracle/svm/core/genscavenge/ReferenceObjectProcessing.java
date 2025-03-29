@@ -31,7 +31,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -46,6 +45,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 final class ReferenceObjectProcessing {
@@ -230,7 +231,7 @@ final class ReferenceObjectProcessing {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        UnsignedWord header = ObjectHeader.readHeaderFromPointer(referentAddr);
+        UnsignedWord header = ohi.readHeaderFromPointer(referentAddr);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             Object forwardedObj = ohi.getForwardedObject(referentAddr);
             ReferenceInternals.setReferent(dr, forwardedObj);
@@ -261,7 +262,8 @@ final class ReferenceObjectProcessing {
 
             Pointer refPointer = ReferenceInternals.getReferentPointer(current);
             if (!maybeUpdateForwardedReference(current, refPointer)) {
-                UnsignedWord header = ObjectHeader.readHeaderFromPointer(refPointer);
+                ObjectHeader oh = Heap.getHeap().getObjectHeader();
+                UnsignedWord header = oh.readHeaderFromPointer(refPointer);
                 if (!ObjectHeaderImpl.isMarkedHeader(header)) {
                     ReferenceInternals.setReferent(current, null);
                 }

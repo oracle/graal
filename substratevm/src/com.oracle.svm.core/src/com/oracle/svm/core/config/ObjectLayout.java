@@ -68,7 +68,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * object needs the field, the object is resized during garbage collection to accommodate the
  * field.</li>
  * </ol>
- * 
+ *
  * See this classes instantiation sites (such as {@code HostedConfiguration#createObjectLayout}) for
  * more details on the exact object layout for a given configuration.
  */
@@ -78,32 +78,41 @@ public final class ObjectLayout {
     private final int referenceSize;
     private final int objectAlignment;
     private final int alignmentMask;
+    private final int hubSize;
     private final int hubOffset;
     private final int firstFieldOffset;
     private final int arrayLengthOffset;
     private final int arrayBaseOffset;
     private final int objectHeaderIdentityHashOffset;
     private final int identityHashMode;
+    private final int identityHashNumBits;
+    private final int identityHashShift;
 
-    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
-                    int headerIdentityHashOffset, IdentityHashMode identityHashMode) {
+    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubSize, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
+                    int headerIdentityHashOffset, IdentityHashMode identityHashMode, int identityHashNumBits, int identityHashShift) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
         assert arrayLengthOffset % Integer.BYTES == 0;
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
-        assert (identityHashMode != IdentityHashMode.OPTIONAL && headerIdentityHashOffset > 0 && headerIdentityHashOffset < arrayLengthOffset && headerIdentityHashOffset % Integer.BYTES == 0) ||
+        assert hubSize == Integer.BYTES || hubSize == Long.BYTES;
+        assert (identityHashMode != IdentityHashMode.OPTIONAL && headerIdentityHashOffset >= 0 && headerIdentityHashOffset < arrayLengthOffset && headerIdentityHashOffset % Integer.BYTES == 0) ||
                         (identityHashMode == IdentityHashMode.OPTIONAL && headerIdentityHashOffset == -1);
+        assert identityHashNumBits > 0 && identityHashNumBits <= Integer.SIZE;
+        assert identityHashShift >= 0 && identityHashShift < Long.SIZE;
 
         this.target = target;
         this.referenceSize = referenceSize;
         this.objectAlignment = objectAlignment;
         this.alignmentMask = objectAlignment - 1;
+        this.hubSize = hubSize;
         this.hubOffset = hubOffset;
         this.firstFieldOffset = firstFieldOffset;
         this.arrayLengthOffset = arrayLengthOffset;
         this.arrayBaseOffset = arrayBaseOffset;
         this.objectHeaderIdentityHashOffset = headerIdentityHashOffset;
         this.identityHashMode = identityHashMode.value;
+        this.identityHashNumBits = identityHashNumBits;
+        this.identityHashShift = identityHashShift;
 
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             int[] currentValues = {
@@ -111,12 +120,15 @@ public final class ObjectLayout {
                             this.referenceSize,
                             this.objectAlignment,
                             this.alignmentMask,
+                            this.hubSize,
                             this.hubOffset,
                             this.firstFieldOffset,
                             this.arrayLengthOffset,
                             this.arrayBaseOffset,
                             this.objectHeaderIdentityHashOffset,
                             this.identityHashMode,
+                            this.identityHashNumBits,
+                            this.identityHashShift,
             };
             var numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();
             VMError.guarantee(numFields - 1 == currentValues.length, "Missing fields");
@@ -182,15 +194,14 @@ public final class ObjectLayout {
         return hubOffset;
     }
 
+    public int getHubSize() {
+        return hubSize;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getFirstFieldOffset() {
         return firstFieldOffset;
     }
-
-    /*
-     * A sequence of fooOffset() and fooNextOffset() methods that give the layout of array fields:
-     * length, [hashcode], element ....
-     */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getArrayLengthOffset() {
@@ -219,11 +230,27 @@ public final class ObjectLayout {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getObjectHeaderIdentityHashOffset() {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(objectHeaderIdentityHashOffset > 0, "must check before calling");
+            ReplacementsUtil.dynamicAssert(objectHeaderIdentityHashOffset >= 0, "must check before calling");
         } else {
-            assert objectHeaderIdentityHashOffset > 0 : "must check before calling";
+            assert objectHeaderIdentityHashOffset >= 0 : "must check before calling";
         }
         return objectHeaderIdentityHashOffset;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getIdentityHashCodeNumBits() {
+        return identityHashNumBits;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getIdentityHashCodeShift() {
+        return identityHashShift;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getIdentityHashCodeMask() {
+        long mask = (1L << identityHashNumBits) - 1L;
+        return mask << identityHashShift;
     }
 
     public int getArrayBaseOffset(JavaKind kind) {

@@ -117,6 +117,7 @@ public final class NativeImageHeap implements ImageHeap {
     private final ImageHeapLayouter heapLayouter;
     private final int minInstanceSize;
     private final int minArraySize;
+    private final int fillerArrayBaseOffset;
     private final boolean layeredBuild = ImageLayerBuildingSupport.buildingImageLayer();
 
     /**
@@ -162,6 +163,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
         this.minArraySize = objectLayout.getMinImageHeapArraySize();
+        this.fillerArrayBaseOffset = objectLayout.getArrayBaseOffset(JavaKind.Int);
         assert assertFillerObjectSizes();
 
         dynamicHubLayout = DynamicHubLayout.singleton();
@@ -440,7 +442,8 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo addFillerObject(int size) {
         if (size >= minArraySize) {
             int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
-            int arrayLength = (size - minArraySize) / elementSize;
+            assert fillerArrayBaseOffset % elementSize == 0;
+            int arrayLength = (size - fillerArrayBaseOffset) / elementSize;
             assert objectLayout.getArraySize(JavaKind.Int, arrayLength, true) == size;
             return addLateToImageHeap(new int[arrayLength], HeapInclusionReason.FillerObject);
         } else if (size >= minInstanceSize) {
@@ -499,7 +502,7 @@ public final class NativeImageHeap implements ImageHeap {
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             // If the type has a monitor field, it has a reference field that is written.
-            if (clazz.getMonitorFieldOffset() != 0) {
+            if (clazz.getMonitorFieldOffset() >= 0) {
                 written = true;
                 references = true;
                 // also not immutable: users of registerAsImmutable() must take precautions

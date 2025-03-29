@@ -38,7 +38,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordOperationPlugin;
 
@@ -61,9 +60,13 @@ public abstract class ObjectHeader {
     /**
      * Returns a mask where all reserved bits are set.
      */
-    public abstract int getReservedBitsMask();
+    public abstract int getReservedHubBitsMask();
 
-    public abstract long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase);
+    /**
+     * Returns an encoded hub pointer that can be used when writing the object header of an image
+     * heap object. Note that the returned value is not necessarily the full object header.
+     */
+    public abstract long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase);
 
     public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
 
@@ -82,22 +85,10 @@ public abstract class ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Word readHeaderFromPointer(Pointer objectPointer) {
-        if (getReferenceSize() == Integer.BYTES) {
-            return Word.unsigned(objectPointer.readInt(getHubOffset()));
-        } else {
-            return objectPointer.readWord(getHubOffset());
-        }
-    }
+    public abstract Word readHeaderFromPointer(Pointer objectPointer);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Word readHeaderFromObject(Object o) {
-        if (getReferenceSize() == Integer.BYTES) {
-            return Word.unsigned(ObjectAccess.readInt(o, getHubOffset()));
-        } else {
-            return ObjectAccess.readWord(o, getHubOffset());
-        }
-    }
+    public abstract Word readHeaderFromObject(Object o);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public DynamicHub readDynamicHubFromPointer(Pointer ptr) {
@@ -122,15 +113,6 @@ public abstract class ObjectHeader {
     @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
     public final void initializeHeaderOfNewObjectInit(Pointer ptr, Word header, boolean isArrayLike) {
         initializeObjectHeader(ptr, header, isArrayLike, InitLocationMemWriter.INSTANCE);
-    }
-
-    /**
-     * Initializes the header of a newly allocated object located anywhere in memory (i.e. writing
-     * to {@link LocationIdentity#ANY_LOCATION})
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void initializeHeaderOfNewObjectAny(Pointer ptr, Word header, boolean isArrayLike) {
-        initializeObjectHeader(ptr, header, isArrayLike, AnyLocationMemWriter.INSTANCE);
     }
 
     /**
@@ -205,28 +187,6 @@ public abstract class ObjectHeader {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void writeLong(Pointer ptr, int offset, long val);
-    }
-
-    private static final class AnyLocationMemWriter implements MemWriter {
-        private static final AnyLocationMemWriter INSTANCE = new AnyLocationMemWriter();
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void writeWord(Pointer ptr, int offset, Word word) {
-            ptr.writeWord(offset, word, LocationIdentity.ANY_LOCATION);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void writeInt(Pointer ptr, int offset, int val) {
-            ptr.writeInt(offset, val, LocationIdentity.ANY_LOCATION);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void writeLong(Pointer ptr, int offset, long val) {
-            ptr.writeLong(offset, val, LocationIdentity.ANY_LOCATION);
-        }
     }
 
     private static final class OffHeapLocationMemWriter implements MemWriter {

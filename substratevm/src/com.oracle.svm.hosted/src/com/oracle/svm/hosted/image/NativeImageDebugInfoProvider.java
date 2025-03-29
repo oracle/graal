@@ -443,11 +443,12 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         int hubOffset = ol.getHubOffset();
 
         NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset());
-        objHeader.addField("hub", hubType, hubOffset, referenceSize);
-        if (ol.isIdentityHashFieldInObjectHeader()) {
-            int idHashSize = ol.sizeInBytes(JavaKind.Int);
-            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), ol.getObjectHeaderIdentityHashOffset(), idHashSize);
+        if (hubOffset > 0) {
+            assert hubOffset == Integer.BYTES || hubOffset == Long.BYTES;
+            JavaKind kind = hubOffset == Integer.BYTES ? JavaKind.Int : JavaKind.Long;
+            objHeader.addField("reserved", javaKindToHostedType.get(kind), 0, hubOffset);
         }
+        objHeader.addField("hub", hubType, hubOffset, referenceSize);
         infos.add(objHeader);
 
         return infos.stream();
