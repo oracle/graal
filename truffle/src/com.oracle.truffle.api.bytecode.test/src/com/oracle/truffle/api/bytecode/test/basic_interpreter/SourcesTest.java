@@ -47,11 +47,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
@@ -64,31 +66,37 @@ import com.oracle.truffle.api.source.SourceSection;
 @RunWith(Parameterized.class)
 public class SourcesTest extends AbstractBasicInterpreterTest {
 
-    private static void assertInstructionSourceSection(Instruction i, Source source, int startIndex, int length) {
-        assertSourceSection(i.getLocation().getSourceLocation(), source, startIndex, length);
+    private final SourceTestRun sourceRun;
+
+    public SourcesTest(SourceTestRun run) {
+        super(run.run);
+        this.sourceRun = run;
     }
 
-    private static void assertSourceSection(SourceSection section, Source source, int startIndex, int length) {
-        assertSame(source, section.getSource());
-        assertEquals(startIndex, section.getCharIndex());
-        assertEquals(length, section.getCharLength());
+    @Parameters(name = "{0}")
+    public static List<SourceTestRun> getRuns() {
+        List<SourceTestRun> runs = new ArrayList<>();
+        for (TestRun run : getParameters()) {
+            runs.add(new SourceTestRun(Mode.PREFIX, run));
+            runs.add(new SourceTestRun(Mode.SUFFIX, run));
+        }
+        return runs;
     }
 
-    private static void assertSourceSections(SourceSection[] sections, Source source, int... pairs) {
-        assert pairs.length % 2 == 0;
-        assertEquals(pairs.length / 2, sections.length);
-
-        for (int i = 0; i < sections.length; i++) {
-            assertSourceSection(sections[i], source, pairs[2 * i], pairs[2 * i + 1]);
+    private void beginSourceSection(BasicInterpreterBuilder b, int start, int length) {
+        if (sourceRun.mode() == Mode.PREFIX) {
+            b.beginSourceSection(start, length);
+        } else {
+            b.beginSourceSection();
         }
     }
 
-    private static ExpectedSourceTree est(String contents, ExpectedSourceTree... children) {
-        return expectedSourceTree(contents, children);
-    }
-
-    private static void assertSourceInformationTree(BytecodeNode bytecode, ExpectedSourceTree expected) {
-        expected.assertTreeEquals(bytecode.getSourceInformationTree());
+    private void endSourceSection(BasicInterpreterBuilder b, int start, int length) {
+        if (sourceRun.mode() == Mode.PREFIX) {
+            b.endSourceSection();
+        } else {
+            b.endSourceSection(start, length);
+        }
     }
 
     @Test
@@ -97,17 +105,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 8);
+            beginSourceSection(b, 0, 8);
 
             b.beginReturn();
 
-            b.beginSourceSection(7, 1);
+            beginSourceSection(b, 7, 1);
             b.emitLoadConstant(1L);
-            b.endSourceSection();
+            endSourceSection(b, 7, 1);
 
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 8);
             b.endSource();
             b.endRoot();
         });
@@ -135,7 +143,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
             for (int i = 0; i < numSourceSections; i++) {
-                b.beginSourceSection(0, numSourceSections - i);
+                beginSourceSection(b, 0, numSourceSections - i);
             }
             b.beginRoot();
             b.beginReturn();
@@ -143,22 +151,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endReturn();
             b.endRoot();
             for (int i = 0; i < numSourceSections; i++) {
-                b.endSourceSection();
+                endSourceSection(b, 0, i + 1);
             }
             b.endSource();
         });
 
         SourceSection[] result = (SourceSection[]) node.getCallTarget().call();
-        assertEquals(numSourceSections, result.length);
-        for (int i = 0; i < numSourceSections; i++) {
-            // sections are emitted in order of closing
-            assertSourceSection(result[i], source, 0, i + 1);
-        }
+        assertEquals(1, result.length);
+        // sections are emitted in order of closing
+        assertSourceSection(result[0], source, 0, 1);
 
         ExpectedSourceTree expectedSourceTree = est(sourceString.substring(0, 1));
-        for (int i = 1; i < numSourceSections; i++) {
-            expectedSourceTree = est(sourceString.substring(0, i + 1), expectedSourceTree);
-        }
         assertSourceInformationTree(node.getBytecodeNode(), expectedSourceTree);
     }
 
@@ -169,23 +172,23 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source = Source.newBuilder("test", "try finally", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("sourceSplitByUnwind", b -> {
             b.beginSource(source);
-            b.beginSourceSection(0, 11);
+            beginSourceSection(b, 0, 11); // root
             b.beginRoot();
 
             b.beginTryFinally(() -> {
-                b.beginSourceSection(4, 7); // finally
+                beginSourceSection(b, 4, 7);
                 b.emitVoidOperation();
-                b.endSourceSection();
+                endSourceSection(b, 4, 7);
             });
 
-            b.beginSourceSection(0, 3); // try
+            beginSourceSection(b, 0, 3); // try
             b.beginIfThen();
             b.emitLoadArgument(0);
             b.beginReturn(); // early return causes finally handler to be emitted.
             b.emitLoadConstant(42L);
             b.endReturn();
             b.endIfThen();
-            b.endSourceSection();
+            endSourceSection(b, 0, 3);
             b.endTryFinally();
 
             b.beginReturn();
@@ -193,7 +196,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endReturn();
 
             b.endRoot();
-            b.endSourceSection();
+            endSourceSection(b, 0, 11); // root
             b.endSource();
         });
 
@@ -213,31 +216,31 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source = Source.newBuilder("test", "0123456789", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
-            b.beginSourceSection(0, 10);
-            b.beginSourceSection(1, 9);
-            b.beginSourceSection(2, 8);
+            beginSourceSection(b, 0, 10);
+            beginSourceSection(b, 1, 9);
+            beginSourceSection(b, 2, 8);
 
             b.beginRoot();
             b.emitLoadArgument(0);
-            b.beginSourceSection(3, 7);
+            beginSourceSection(b, 3, 7);
             b.beginReturn();
-            b.beginSourceSection(4, 6);
+            beginSourceSection(b, 4, 6);
             b.emitLoadConstant(1L);
-            b.endSourceSection();
+            endSourceSection(b, 4, 6);
             b.endReturn();
-            b.endSourceSection();
+            endSourceSection(b, 3, 7);
             b.endRoot();
 
-            b.endSourceSection();
-            b.endSourceSection();
-            b.endSourceSection();
+            endSourceSection(b, 2, 8);
+            endSourceSection(b, 1, 9);
+            endSourceSection(b, 0, 10);
             b.endSource();
         });
         // The most specific source section should be chosen.
         assertSourceSection(node.getSourceSection(), source, 2, 8);
 
         assertSourceInformationTree(node.getBytecodeNode(),
-                        est("0123456789", est("123456789", est("23456789", est("3456789", est("456789"))))));
+                        est("23456789", est("3456789", est("456789"))));
     }
 
     @Test
@@ -281,17 +284,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
-            b.beginSourceSectionUnavailable();
+            beginSourceSection(b, -1, -1);
             b.beginRoot();
 
             b.beginReturn();
-            b.beginSourceSection(7, 1);
+            beginSourceSection(b, 7, 1);
             b.emitLoadConstant(1L);
-            b.endSourceSection();
+            endSourceSection(b, 7, 1);
             b.endReturn();
 
             b.endRoot();
-            b.endSourceSectionUnavailable();
+            endSourceSection(b, -1, -1);
             b.endSource();
         });
 
@@ -310,17 +313,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertThrowsWithMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.", IllegalStateException.class, () -> {
             parseNodeWithSource("sourceNoSourceSet", b -> {
                 b.beginRoot();
-                b.beginSourceSection(0, 8);
+                beginSourceSection(b, 0, 8);
 
                 b.beginReturn();
 
-                b.beginSourceSection(7, 1);
+                beginSourceSection(b, 7, 1);
                 b.emitLoadConstant(1L);
-                b.endSourceSection();
+                endSourceSection(b, 7, 1);
 
                 b.endReturn();
 
-                b.endSourceSection();
+                endSourceSection(b, 0, 8);
                 b.endRoot();
             });
         });
@@ -332,7 +335,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source2 = Source.newBuilder("test", "01234567", "test2.test").build();
         BasicInterpreter root = parseNodeWithSource("sourceMultipleSources", b -> {
             b.beginSource(source1);
-            b.beginSourceSection(0, source1.getLength());
+            beginSourceSection(b, 0, source1.getLength());
 
             b.beginRoot();
 
@@ -340,7 +343,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             b.emitVoidOperation(); // source1, 0, length
 
-            b.beginSourceSection(1, 2);
+            beginSourceSection(b, 1, 2);
 
             b.beginBlock();
             b.emitVoidOperation(); // source1, 1, 2
@@ -348,19 +351,19 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             b.emitVoidOperation(); // source1, 1, 2
 
-            b.beginSourceSection(3, 4);
+            beginSourceSection(b, 3, 4);
             b.beginBlock();
             b.emitVoidOperation(); // source2, 3, 4
 
-            b.beginSourceSection(5, 1);
+            beginSourceSection(b, 5, 1);
             b.beginBlock();
             b.emitVoidOperation(); // source2, 5, 1
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 5, 1);
 
             b.emitVoidOperation(); // source2, 3, 4
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 3, 4);
 
             b.emitVoidOperation(); // source1, 1, 2
             b.endBlock();
@@ -369,7 +372,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.emitVoidOperation(); // source1, 1, 2
 
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 1, 2);
 
             b.emitVoidOperation(); // source1, 0, length
 
@@ -379,7 +382,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
             b.endRoot();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, source1.getLength());
             b.endSource();
         });
 
@@ -408,7 +411,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 8);
+            beginSourceSection(b, 0, 8);
 
             b.beginReturn();
 
@@ -418,7 +421,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 8);
             b.endSource();
             b.endRoot();
         });
@@ -434,17 +437,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 8);
+            beginSourceSection(b, 0, 8);
 
             b.beginReturn();
 
-            b.beginSourceSection(7, 1);
+            beginSourceSection(b, 7, 1);
             b.emitGetSourcePositions();
-            b.endSourceSection();
+            endSourceSection(b, 7, 1);
 
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 8);
             b.endSource();
             b.endRoot();
         });
@@ -460,19 +463,19 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter foo = parseNodeWithSource("foo", b -> {
             b.beginRoot();
             b.beginSource(fooSource);
-            b.beginSourceSection(0, 13);
+            beginSourceSection(b, 0, 13);
 
             b.beginReturn();
-            b.beginSourceSection(7, 6);
+            beginSourceSection(b, 7, 6);
             b.beginInvoke();
-            b.beginSourceSection(7, 4);
+            beginSourceSection(b, 7, 4);
             b.emitLoadArgument(0);
-            b.endSourceSection();
+            endSourceSection(b, 7, 4);
             b.endInvoke();
-            b.endSourceSection();
+            endSourceSection(b, 7, 6);
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 13);
             b.endSource();
             b.endRoot();
         });
@@ -481,17 +484,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter bar = parseNodeWithSource("bar", b -> {
             b.beginRoot();
             b.beginSource(barSource);
-            b.beginSourceSection(0, 17);
+            beginSourceSection(b, 0, 17);
 
             b.beginReturn();
 
-            b.beginSourceSection(7, 10);
+            beginSourceSection(b, 7, 10);
             b.emitCollectSourceLocations();
-            b.endSourceSection();
+            endSourceSection(b, 7, 10);
 
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 17);
             b.endSource();
             b.endRoot();
         });
@@ -509,19 +512,19 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter foo = parseNodeWithSource("foo", b -> {
             b.beginRoot();
             b.beginSource(fooSource);
-            b.beginSourceSection(0, 13);
+            beginSourceSection(b, 0, 13);
 
             b.beginReturn();
-            b.beginSourceSection(7, 6);
+            beginSourceSection(b, 7, 6);
             b.beginInvoke();
-            b.beginSourceSection(7, 4);
+            beginSourceSection(b, 7, 4);
             b.emitLoadArgument(0);
-            b.endSourceSection();
+            endSourceSection(b, 7, 4);
             b.endInvoke();
-            b.endSourceSection();
+            endSourceSection(b, 7, 6);
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 13);
             b.endSource();
             b.endRoot();
         });
@@ -530,17 +533,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter bar = parseNodeWithSource("bar", b -> {
             b.beginRoot();
             b.beginSource(barSource);
-            b.beginSourceSection(0, 17);
+            beginSourceSection(b, 0, 17);
 
             b.beginReturn();
 
-            b.beginSourceSection(7, 10);
+            beginSourceSection(b, 7, 10);
             b.emitCollectAllSourceLocations();
-            b.endSourceSection();
+            endSourceSection(b, 7, 10);
 
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 17);
             b.endSource();
             b.endRoot();
         });
@@ -570,18 +573,18 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 11);
+            beginSourceSection(b, 0, 11);
 
             b.beginTryFinally(() -> {
                 // finally
-                b.beginSourceSection(4, 7);
+                beginSourceSection(b, 4, 7);
                 b.beginReturn();
                 b.emitGetSourcePositions();
                 b.endReturn();
-                b.endSourceSection();
+                endSourceSection(b, 4, 7);
             });
             // try
-            b.beginSourceSection(0, 4);
+            beginSourceSection(b, 0, 4);
             b.beginBlock();
             // if arg0 < 0, throw
             b.beginIfThen();
@@ -611,11 +614,11 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
             b.endIfThen();
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 0, 4);
 
             b.endTryFinally();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 11);
             b.endSource();
             b.endRoot();
         });
@@ -643,27 +646,27 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithTryFinally").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
-            b.beginSourceSection(0, 11);
+            beginSourceSection(b, 0, 11);
             b.beginRoot();
 
             b.beginTryFinally(() -> {
                 // finally
-                b.beginSourceSection(4, 7);
+                beginSourceSection(b, 4, 7);
                 b.emitVoidOperation();
-                b.endSourceSection();
+                endSourceSection(b, 4, 7);
             });
             // try
-            b.beginSourceSection(0, 3);
+            beginSourceSection(b, 0, 3);
             b.beginBlock();
             emitReturnIf(b, 0, 42L);
             b.emitVoidOperation();
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 0, 3);
 
             b.endTryFinally();
 
             b.endRoot();
-            b.endSourceSection();
+            endSourceSection(b, 0, 11);
             b.endSource();
         });
         assertEquals(42L, node.getCallTarget().call(true));
@@ -708,25 +711,25 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 11);
+            beginSourceSection(b, 0, 11);
 
             b.beginTryFinally(() -> {
                 // finally
-                b.beginSourceSection(4, 7);
+                beginSourceSection(b, 4, 7);
                 b.emitVoidOperation();
-                b.endSourceSection();
+                endSourceSection(b, 4, 7);
             });
             // try
-            b.beginSourceSection(0, 3);
+            beginSourceSection(b, 0, 3);
             b.beginBlock();
             emitReturnIf(b, 0, 42L);
             b.emitVoidOperation();
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 0, 3);
 
             b.endTryFinally();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 11);
             b.endSource();
             b.endRoot();
         });
@@ -777,32 +780,32 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 39);
+            beginSourceSection(b, 0, 39);
 
             b.beginTryFinally(() -> {
                 // finally
-                b.beginSourceSection(14, 23);
+                beginSourceSection(b, 14, 23);
 
-                b.beginSourceSection(14, 13);
+                beginSourceSection(b, 14, 13);
                 b.beginRoot();
-                b.beginSourceSection(22, 4);
+                beginSourceSection(b, 22, 4);
                 b.emitGetSourcePositions();
-                b.endSourceSection();
+                endSourceSection(b, 22, 4);
                 BasicInterpreter f = b.endRoot();
-                b.endSourceSection();
+                endSourceSection(b, 14, 13);
 
-                b.beginSourceSection(29, 8);
+                beginSourceSection(b, 29, 8);
                 b.beginReturn();
                 b.beginInvoke();
                 b.emitLoadConstant(f);
                 b.endInvoke();
                 b.endReturn();
-                b.endSourceSection();
+                endSourceSection(b, 29, 8);
 
-                b.endSourceSection();
+                endSourceSection(b, 14, 23);
             });
             // try
-            b.beginSourceSection(0, 3);
+            beginSourceSection(b, 0, 3);
             b.beginBlock();
             // if arg0 < 0, throw
             b.beginIfThen();
@@ -832,11 +835,11 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
             b.endIfThen();
             b.endBlock();
-            b.endSourceSection();
+            endSourceSection(b, 0, 3);
 
             b.endTryFinally();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 39);
             b.endSource();
             b.endRoot();
         });
@@ -844,7 +847,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         long[] inputs = new long[]{0, -1, 1};
         for (int i = 0; i < inputs.length; i++) {
             SourceSection[] result = (SourceSection[]) node.getCallTarget().call(inputs[i]);
-            assertSourceSections(result, source, 22, 4, 14, 13, 14, 23, 0, 39);
+            assertSourceSections(result, source, 22, 4, 14, 13);
         }
     }
 
@@ -855,17 +858,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
             b.beginSource(source);
-            b.beginSourceSection(0, 8);
+            beginSourceSection(b, 0, 8);
 
             b.beginReturn();
 
-            b.beginSourceSection(7, 1);
+            beginSourceSection(b, 7, 1);
             b.emitLoadConstant(1L);
-            b.endSourceSection();
+            endSourceSection(b, 7, 1);
 
             b.endReturn();
 
-            b.endSourceSection();
+            endSourceSection(b, 0, 8);
             b.endSource();
             b.endRoot();
         });
@@ -891,25 +894,25 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSource(source);
             b.beginRoot();
 
-            b.beginSourceSection(0, 27);
+            beginSourceSection(b, 0, 27);
             b.beginReturn();
             b.beginConditional();
 
-            b.beginSourceSection(7, 4);
+            beginSourceSection(b, 7, 4);
             b.emitLoadArgument(0);
-            b.endSourceSection();
+            endSourceSection(b, 7, 4);
 
-            b.beginSourceSection(14, 2);
+            beginSourceSection(b, 14, 2);
             b.emitLoadConstant(42L);
-            b.endSourceSection();
+            endSourceSection(b, 14, 2);
 
-            b.beginSourceSection(19, 8);
+            beginSourceSection(b, 19, 8);
             b.emitGetSourcePositions();
-            b.endSourceSection();
+            endSourceSection(b, 19, 8);
 
             b.endConditional();
             b.endReturn();
-            b.endSourceSection();
+            endSourceSection(b, 0, 27);
 
             b.endRoot();
             b.endSource();
@@ -932,4 +935,45 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertNotNull(aLocation.getSourceInformation());
 
     }
+
+    private static void assertInstructionSourceSection(Instruction i, Source source, int startIndex, int length) {
+        assertSourceSection(i.getLocation().getSourceLocation(), source, startIndex, length);
+    }
+
+    private static void assertSourceSection(SourceSection section, Source source, int startIndex, int length) {
+        assertSame(source, section.getSource());
+        assertEquals(startIndex, section.getCharIndex());
+        assertEquals(length, section.getCharLength());
+    }
+
+    private static void assertSourceSections(SourceSection[] sections, Source source, int... pairs) {
+        assert pairs.length % 2 == 0;
+        assertEquals(pairs.length / 2, sections.length);
+
+        for (int i = 0; i < sections.length; i++) {
+            assertSourceSection(sections[i], source, pairs[2 * i], pairs[2 * i + 1]);
+        }
+    }
+
+    private static ExpectedSourceTree est(String contents, ExpectedSourceTree... children) {
+        return expectedSourceTree(contents, children);
+    }
+
+    private static void assertSourceInformationTree(BytecodeNode bytecode, ExpectedSourceTree expected) {
+        expected.assertTreeEquals(bytecode.getSourceInformationTree());
+    }
+
+    enum Mode {
+        PREFIX,
+        SUFFIX
+    }
+
+    record SourceTestRun(Mode mode, TestRun run) {
+
+        @Override
+        public String toString() {
+            return mode.toString() + ":" + run.toString();
+        }
+    }
+
 }

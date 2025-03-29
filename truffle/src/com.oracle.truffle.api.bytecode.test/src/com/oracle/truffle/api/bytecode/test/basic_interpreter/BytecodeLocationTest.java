@@ -60,6 +60,11 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
 public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
+
+    public BytecodeLocationTest(TestRun run) {
+        super(run);
+    }
+
     @Test
     public void testGetBytecodeLocation() {
         Source source = Source.newBuilder("test", "getBytecodeLocation", "baz").build();
