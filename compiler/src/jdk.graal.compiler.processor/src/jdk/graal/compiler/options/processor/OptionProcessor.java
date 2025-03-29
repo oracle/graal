@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.options.processor;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -185,55 +185,60 @@ public class OptionProcessor extends AbstractProcessor {
             processingEnv.getMessager().printMessage(Kind.ERROR, "Option field cannot be declared in the unnamed package", element);
             return;
         }
-        List<String> helpValue = getAnnotationValueList(annotation, "help", String.class);
-        String help = "";
-        List<String> extraHelp = new ArrayList<>();
 
-        if (helpValue.size() == 1) {
-            help = helpValue.getFirst();
-            if (help.startsWith("file:")) {
-                String path = help.substring("file:".length());
-                Filer filer = processingEnv.getFiler();
+        String help = getAnnotationValue(annotation, "help", String.class);
+        List<String> helpLines;
+        if (help.startsWith("file:")) {
+            String path = help.substring("file:".length());
+            Filer filer = processingEnv.getFiler();
+            try {
+                FileObject file;
                 try {
-                    FileObject file;
-                    try {
-                        file = filer.getResource(StandardLocation.SOURCE_PATH, enclosingPackage.getQualifiedName(), path);
-                    } catch (IllegalArgumentException | IOException e) {
-                        // Handle the case when a compiler doesn't support the SOURCE_PATH location
-                        file = filer.getResource(StandardLocation.CLASS_OUTPUT, enclosingPackage.getQualifiedName(), path);
-                    }
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(file.openInputStream()))) {
-                        help = br.readLine();
-                        if (help == null) {
-                            help = "";
-                        }
-                        String line = br.readLine();
-                        while (line != null) {
-                            extraHelp.add(line);
-                            line = br.readLine();
-                        }
-                    }
-                } catch (IOException e) {
-                    String msg = String.format("Error reading %s containing the help text for option field: %s", path, e);
-                    processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);
+                    file = filer.getResource(StandardLocation.SOURCE_PATH, enclosingPackage.getQualifiedName(), path);
+                } catch (IllegalArgumentException | IOException e) {
+                    // Handle the case when a compiler doesn't support the SOURCE_PATH location
+                    file = filer.getResource(StandardLocation.CLASS_OUTPUT, enclosingPackage.getQualifiedName(), path);
+                }
+                try (InputStream in = file.openInputStream()) {
+                    help = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                    helpLines = List.of(help.split(System.lineSeparator()));
+                }
+            } catch (IOException e) {
+                String msg = String.format("Error reading %s containing the help text for option field: %s", path, e);
+                processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);
+                return;
+            }
+        } else {
+            helpLines = List.of(help.split("\\n"));
+        }
+
+        String briefHelp = helpLines.getFirst();
+        List<String> extraHelp;
+        if (briefHelp.isEmpty()) {
+            if (helpLines.size() > 1) {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "First line of multi-line help text cannot be empty", element);
+                return;
+            }
+            extraHelp = List.of();
+        } else {
+            if (helpLines.size() > 1) {
+                if (briefHelp.charAt(briefHelp.length() - 1) != '.' && !helpLines.get(1).isBlank()) {
+                    processingEnv.getMessager().printMessage(Kind.ERROR,
+                                    "First line of multi-line help text must end with a period or be followed by a blank line", element);
                     return;
                 }
             }
-        } else if (helpValue.size() > 1) {
-            help = helpValue.getFirst();
-            extraHelp = helpValue.subList(1, helpValue.size());
-        }
-        if (!help.isEmpty()) {
-            char firstChar = help.charAt(0);
+            char firstChar = briefHelp.charAt(0);
             if (!Character.isUpperCase(firstChar)) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Option help text must start with an upper case letter", element);
                 return;
             }
+            extraHelp = helpLines.subList(1, helpLines.size());
         }
 
         String stability = getAnnotationValue(annotation, "stability", VariableElement.class).getSimpleName().toString();
         if (stability.equals("STABLE")) {
-            if (help.isEmpty()) {
+            if (briefHelp.isEmpty()) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "A stable option must have non-empty help text", element);
                 return;
             }
@@ -241,14 +246,18 @@ public class OptionProcessor extends AbstractProcessor {
 
         String optionTypeName = getAnnotationValue(annotation, "type", VariableElement.class).getSimpleName().toString();
         if (!optionTypeName.equals("Debug")) {
-            if (help.isEmpty()) {
+            if (briefHelp.isEmpty()) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Non debug options must always have a option help text " + optionName);
             }
         }
         boolean deprecated = getAnnotationValue(annotation, "deprecated", Boolean.class);
         String deprecationMessage = getAnnotationValue(annotation, "deprecationMessage", String.class);
-        OptionInfo info = new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, fieldName, stability, deprecated, deprecationMessage);
+        OptionInfo info = new OptionInfo(optionName, optionTypeName, briefHelp, extraHelp, optionType, declaringClass, fieldName, stability, deprecated, deprecationMessage);
         optionsDeclarer.options.add(info);
+    }
+
+    private static String literal(String help) {
+        return "\"" + help.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
     static void createOptionsDescriptorsFile(ProcessingEnvironment processingEnv, OptionsDeclarer optionsDeclarer) {
@@ -310,11 +319,11 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("                /*name*/ \"%s\",\n", name);
                 out.printf("                /*optionType*/ %s.%s,\n", getSimpleName(OPTION_TYPE_CLASS_NAME), optionType);
                 out.printf("                /*optionValueType*/ %s.class,\n", type);
-                out.printf("                /*help*/ \"%s\",\n", help.replace("\\", "\\\\").replace("\"", "\\\""));
+                out.printf("                /*help*/ %s,\n", literal(help));
                 if (!extraHelp.isEmpty()) {
                     out.printf("                /*extraHelp*/ new String[] {\n");
                     for (String line : extraHelp) {
-                        out.printf("                         \"%s\",\n", line.replace("\\", "\\\\").replace("\"", "\\\""));
+                        out.printf("                         %s,\n", literal(line));
                     }
                     out.printf("                              },\n");
                 }
