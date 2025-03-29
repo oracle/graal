@@ -3,7 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Use System Properties
 permalink: /reference-manual/native-image/guides/use-system-properties/
-redirect_from: /reference-manual/native-image/Properties/
+redirect_to: /reference-manual/native-image/overview/Options/
 ---
 
 # Use System Properties in a Native Executable
@@ -17,19 +17,15 @@ public class App {
 }
 ```
 
-If you build a native executable using `native-image -Dfoo=bar App`, the system property `foo` will be available at *executable build time*. 
+If you build a native executable using `native-image -Dfoo=bar App`, the system property `foo` will **only** be available at build time.
 This means it is available to the [code in your application that is run at build time](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/ImageInfo.html#inImageBuildtimeCode--) (usually static field initializations and static initializers).
-Thus, if you run the resulting executable, it will not contain `foo` in the printed list of properties.
+But if you run the resulting executable, it will not contain `foo` in the printed list of properties.
 
-If, on the other hand, you run the executable with `app -Dfoo=bar`, it will display `foo` in the list of properties because you specified property at *executable run time*.
-
-In other words:
-* Pass `-D<key>=<value>` as an option to `native-image` to control the properties seen at build time.
-* Pass `-D<key>=<value>` as an option to a native executable to control the properties seen at run time.
+If, on the other hand, you run the executable with `app -Dfoo=bar`, it will display `foo` in the list of properties because you specified this property.
 
 ## Read System Properties at Build Time
 
-You can read system properties at build time and incorporate them into the resulting executable file, as shown in the following example.
+You can read system properties at build time and incorporate them into the native executable, as shown in the following example.
 
 ### Prerequisite 
 Make sure you have installed a GraalVM JDK.
@@ -116,5 +112,5 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 ### Related Documentation
 
-* [Class Initialization in Native Image](../ClassInitialization.md)
+* [Command-line Options: System Properties](../BuildOptions.md#system-properties)
 * [Specify Class Initialization Explicitly](specify-class-initialization.md)
