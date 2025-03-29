@@ -31,7 +31,6 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -91,7 +90,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         // This is the most expensive check as it accesses the heap fairly randomly, which results
         // in a lot of cache misses.
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        Word header = ObjectHeader.readHeaderFromPointer(p);
+        Word header = ohi.readHeaderFromPointer(p);
         if (GCImpl.getGCImpl().isCompleteCollection() || !RememberedSet.get().hasRememberedSet(header)) {
 
             if (ObjectHeaderImpl.isForwardedHeader(header)) {

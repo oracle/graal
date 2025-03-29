@@ -171,11 +171,11 @@ public abstract class DebugInfoBase {
     /**
      * Bit mask used for tagging oops.
      */
-    private int reservedBitsMask;
+    private int reservedHubBitsMask;
     /**
      * Number of low order bits used for tagging oops.
      */
-    private int numReservedBits;
+    private int numReservedHubBits;
     /**
      * Number of bytes used to store an oop reference.
      */
@@ -211,8 +211,8 @@ public abstract class DebugInfoBase {
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
-        this.reservedBitsMask = 0;
-        this.numReservedBits = 0;
+        this.reservedHubBitsMask = 0;
+        this.numReservedHubBits = 0;
         this.compressionShift = 0;
         this.referenceSize = 0;
         this.pointerSize = 0;
@@ -250,12 +250,12 @@ public abstract class DebugInfoBase {
         /*
          * Save count of low order tag bits that may appear in references.
          */
-        reservedBitsMask = debugInfoProvider.reservedBitsMask();
+        reservedHubBitsMask = debugInfoProvider.reservedHubBitsMask();
 
         /* Mask must be contiguous from bit 0. */
-        assert ((reservedBitsMask + 1) & reservedBitsMask) == 0;
+        assert ((reservedHubBitsMask + 1) & reservedHubBitsMask) == 0;
 
-        numReservedBits = Integer.bitCount(reservedBitsMask);
+        numReservedHubBits = Integer.bitCount(reservedHubBitsMask);
 
         /* Save amount we need to shift references by when loading from an object field. */
         compressionShift = debugInfoProvider.compressionShift();
@@ -705,12 +705,12 @@ public abstract class DebugInfoBase {
         return useHeapBase;
     }
 
-    public int reservedBitsMask() {
-        return reservedBitsMask;
+    public int reservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
-    public int numReservedBits() {
-        return numReservedBits;
+    public int numReservedHubBits() {
+        return numReservedHubBits;
     }
 
     public int compressionShift() {
