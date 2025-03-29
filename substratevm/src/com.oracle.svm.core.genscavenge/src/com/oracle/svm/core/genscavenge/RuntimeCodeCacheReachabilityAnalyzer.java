@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
@@ -71,7 +70,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         }
 
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        Word header = ObjectHeader.readHeaderFromPointer(ptrToObj);
+        Word header = ohi.readHeaderFromPointer(ptrToObj);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             return true;
         }

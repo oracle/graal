@@ -148,8 +148,10 @@ public class HostedConfiguration {
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
         int objectAlignment = 8;
 
+        int hubSize = referenceSize;
+
         int hubOffset = 0;
-        int headerSize = hubOffset + referenceSize;
+        int headerSize = hubOffset + hubSize;
 
         int extraArrayHeaderSize = 0;
         int headerIdentityHashOffset = headerSize;
@@ -168,7 +170,12 @@ public class HostedConfiguration {
         int arrayLengthOffset = headerSize + extraArrayHeaderSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, headerIdentityHashOffset, identityHashMode);
+        /* There is a dedicated 32-bit field that stores the 31-bit identity hashcode. */
+        int identityHashNumBits = Integer.SIZE;
+        int identityHashShift = 0;
+
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
+                        headerIdentityHashOffset, identityHashMode, identityHashNumBits, identityHashShift);
     }
 
     public static void initializeDynamicHubLayout(HostedMetaAccess hMeta) {

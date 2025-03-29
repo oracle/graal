@@ -2132,8 +2132,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
 
         boolean useHeapBase = dwarfSections.useHeapBase();
-        int reservedBitsMask = dwarfSections.reservedBitsMask();
-        int numReservedBits = dwarfSections.numReservedBits();
+        int reservedHubBitsMask = dwarfSections.reservedHubBitsMask();
+        int numReservedHubBits = dwarfSections.numReservedHubBits();
         int compressionShift = dwarfSections.compressionShift();
         int numAlignmentBits = dwarfSections.numAlignmentBits();
 
@@ -2143,12 +2143,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * The required expression will be one of these paths:
          *
          * push object address ................................ (1 byte) ..... [offset] ............
-         * IF reservedBitsMask != 0 ................................................................
-         * . push reservedBitsMask ............................ (1 byte) ..... [offset, mask] ......
+         * IF reservedHubBitsMask != 0 .............................................................
+         * . push reservedHubBitsMask.......................... (1 byte) ..... [offset, mask] ......
          * . NOT .............................................. (1 byte) ..... [offset, ~mask] .....
          * . AND .............................................. (1 byte) ..... [offset] ............
-         * . IF numReservedBits == numAlignmentBits && compressionShift == 0 .......................
-         * ... push numReservedBits ........................... (1 byte) ..... [offset, right shift]
+         * . IF numReservedHubBits == numAlignmentBits && compressionShift == 0 ....................
+         * ... push numReservedHubBits ........................ (1 byte) ..... [offset, right shift]
          * ... LSHR ........................................... (1 byte) ..... [offset] ............
          * ... IF compressionShift != numAlignmentBits .............................................
          * ..... push numAlignmentBits - compressionShift ..... (1 byte) ..... [offset, left shift]
@@ -2176,13 +2176,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeULEB(0, buffer, pos);
         int exprStart = pos;
         pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_push_object_address, buffer, pos);
-        if (isHub && reservedBitsMask != 0) {
-            if (numReservedBits == numAlignmentBits && compressionShift == 0) {
-                pos = writeExprOpcodeLiteral(reservedBitsMask, buffer, pos);
+        if (isHub && reservedHubBitsMask != 0) {
+            if (numReservedHubBits == numAlignmentBits && compressionShift == 0) {
+                pos = writeExprOpcodeLiteral(reservedHubBitsMask, buffer, pos);
                 pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_not, buffer, pos);
                 pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_and, buffer, pos);
             } else {
-                pos = writeExprOpcodeLiteral(numReservedBits, buffer, pos);
+                pos = writeExprOpcodeLiteral(numReservedHubBits, buffer, pos);
                 pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_shr, buffer, pos);
                 if (compressionShift != numAlignmentBits) {
                     pos = writeExprOpcodeLiteral(numAlignmentBits - compressionShift, buffer, pos);
