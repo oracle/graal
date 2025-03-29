@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -107,8 +108,34 @@ final class InternalResourceRoots {
         return instance;
     }
 
-    void patch() {
+    boolean patch(PolyglotEngineImpl engine) {
         ensureInitialized();
+        /*
+         * Unpack all resources that are included in the native-image binary and were queried during
+         * context pre-initialization.
+         */
+        boolean[] result = {true};
+        InternalResourceCache.walkAllResources((componentId, resources) -> {
+            for (InternalResourceCache resource : resources) {
+                if (resource.requiresEagerUnpack()) {
+                    if (InternalResourceCache.usesInternalResources()) {
+                        try {
+                            resource.getPath(engine);
+                        } catch (IOException ioe) {
+                            throw new IllegalStateException(ioe);
+                        }
+                    } else {
+                        /*
+                         * Internal resources were utilized during the image build but are disabled
+                         * at runtime. Return false to indicate that the pre-initialized engine
+                         * should not be used.
+                         */
+                        result[0] = false;
+                    }
+                }
+            }
+        });
+        return result[0];
     }
 
     private synchronized void ensureInitialized() {
@@ -195,22 +222,9 @@ final class InternalResourceRoots {
      */
     private static Set<Root> computeRoots(Pair<Path, Root.Kind> defaultRoot) {
         Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector = new HashMap<>();
-        for (LanguageCache language : LanguageCache.languages().values()) {
-            Collection<InternalResourceCache> resources = language.getResources();
-            if (!resources.isEmpty()) {
-                collectRoots(language.getId(), defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
-            }
-        }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
-            Collection<InternalResourceCache> resources = instrument.getResources();
-            if (!resources.isEmpty()) {
-                collectRoots(instrument.getId(), defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
-            }
-        }
-        Collection<InternalResourceCache> engineResources = InternalResourceCache.getEngineResources();
-        if (!engineResources.isEmpty()) {
-            collectRoots(PolyglotEngineImpl.ENGINE_ID, defaultRoot.getLeft(), defaultRoot.getRight(), engineResources, collector);
-        }
+        InternalResourceCache.walkAllResources((componentId, resources) -> {
+            collectRoots(componentId, defaultRoot.getLeft(), defaultRoot.getRight(), resources, collector);
+        });
         // Build a set of immutable Roots.
         Set<Root> result = new HashSet<>();
         for (var entry : collector.entrySet()) {
@@ -246,7 +260,7 @@ final class InternalResourceRoots {
     }
 
     private static void collectRoots(String componentId, Path componentRoot, Root.Kind componentKind, Collection<InternalResourceCache> resources,
-                    Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector) {
+                    Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> resourcesCollector) {
         Path useRoot = componentRoot;
         Root.Kind useKind = componentKind;
         String overriddenRoot = System.getProperty(overriddenComponentRootProperty(componentId));
@@ -262,7 +276,7 @@ final class InternalResourceRoots {
                 resourceRoot = Path.of(overriddenRoot).toAbsolutePath();
                 resourceKind = Root.Kind.RESOURCE;
             }
-            collector.computeIfAbsent(Pair.create(resourceRoot, resourceKind), (k) -> new ArrayList<>()).add(resource);
+            resourcesCollector.computeIfAbsent(Pair.create(resourceRoot, resourceKind), (k) -> new ArrayList<>()).add(resource);
         }
     }
 
