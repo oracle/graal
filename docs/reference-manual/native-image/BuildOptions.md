@@ -6,6 +6,7 @@ permalink: /reference-manual/native-image/overview/Options/
 redirect_from:
   - /reference-manual/native-image/overview/BuildOptions/
   - /reference-manual/native-image/Options/
+  - /reference-manual/native-image/guides/use-system-properties/
 ---
 
 # Command-line Options
@@ -132,6 +133,39 @@ The Graal compiler options that work as expected include `Dump`, `DumpOnError`, 
 For example:
 * `-H:Dump= -H:MethodFilter=ClassName.MethodName`: dump the compiler graphs of the `native-image` builder.
 * `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`: dump the compile graphs at runtime.
+
+## System Properties
+
+You can define system properties at image build time using the `-D<system.property>=<value>` option syntax.
+It sets a system property for the `native-image` tool, but the property will not be included in the generated executable.
+However, JDK system properties are included in generated executables and are visible at runtime.
+
+For example:
+* `-D<system.property>=<value>` will only be visible at build time. If this system property is accessed in the native executable, it will return `null`.
+* `-Djava.version=24` will be visible at both build time and in the native executable because the value is copied into the binary by default.
+
+The following system properties are automatically copied into the generated executable:
+
+| Name                          | Description                                                       |
+|-------------------------------|-------------------------------------------------------------------|
+| file.separator                | File separator                                                    |
+| file.encoding                 | Character encoding for the default locale                         |
+| java.version                  | Java Runtime Environment version                                  |
+| java.version.date             | General-availability (GA) date of the release                     |
+| java.class.version            | Java class format version number                                  |
+| java.runtime.version          | Java Runtime Environment version                                  |
+| java.specification.name       | Java Runtime Environment specification name                       |
+| java.specification.vendor     | Java Runtime Environment specification vendor                     |
+| java.specification.version    | Java Virtual Machine specification version                        |
+| java.vm.specification.name    | Java Virtual Machine specification name                           |
+| java.vm.specification.vendor  | Java Virtual Machine implementation vendor                        |
+| java.vm.specification.version | Java Virtual Machine specification version                        |
+| line.separator                | Line separator                                                    |
+| native.encoding               | Specifies the host environment's character encoding               |
+| org.graalvm.nativeimage.kind  | Specifies if the image is built as a shared library or executable |
+| path.separator                | Path separator                                                    |
+| stdout.encoding               | Specifies the encoding for `System.out` and `System.err`          |
+| sun.jnu.encoding              | Specifies encoding when parsing values passed via the commandline |
 
 ## Related Documentation
 

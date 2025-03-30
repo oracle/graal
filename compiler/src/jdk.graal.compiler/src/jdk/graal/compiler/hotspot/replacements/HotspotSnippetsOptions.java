@@ -31,9 +31,6 @@ import jdk.graal.compiler.options.OptionKey;
 
 /**
  * Options related to HotSpot snippets in this package.
- *
- * Note: This must be a top level class to work around for
- * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=477597">Eclipse bug 477597</a>.
  */
 public class HotspotSnippetsOptions {
 
@@ -52,7 +49,14 @@ public class HotspotSnippetsOptions {
     @Option(help = "Enable profiling of allocation sites.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ProfileAllocations = new OptionKey<>(false);
 
-    @Option(help = "file:doc-files/ProfileAllocationsContextHelp.txt", type = OptionType.Debug)
+    @Option(help = """
+                   Control the naming and granularity of the counters when using ProfileAllocations.
+                   The accepted values are:
+                           AllocatingMethod - a counter per method
+                            InstanceOrArray - one counter for all instance allocations and
+                                              one counter for all array allocations
+                              AllocatedType - one counter per allocated type
+                     AllocatedTypesInMethod - one counter per allocated type, per method""", type = OptionType.Debug)
     public static final EnumOptionKey<HotSpotAllocationSnippets.ProfileContext> ProfileAllocationsContext = new EnumOptionKey<>(HotSpotAllocationSnippets.ProfileContext.AllocatingMethod);
 
     @Option(help = "Enable profiling of monitor operations.", type = OptionType.Debug)

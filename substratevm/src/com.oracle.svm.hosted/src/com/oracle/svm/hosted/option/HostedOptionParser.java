@@ -133,6 +133,14 @@ public class HostedOptionParser implements HostedOptionProvider {
         return arguments;
     }
 
+    public EconomicMap<String, OptionDescriptor> getAllHostedOptions() {
+        return allHostedOptions;
+    }
+
+    public EconomicMap<String, OptionDescriptor> getAllRuntimeOptions() {
+        return allRuntimeOptions;
+    }
+
     @Override
     public EconomicMap<OptionKey<?>, Object> getHostedValues() {
         return hostedValues;

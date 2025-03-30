@@ -297,7 +297,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         /*
          * Keep chunks ready for allocations in eden and for the survivor to-spaces during young
          * collections (although we might keep too many aligned chunks when large objects in
-         * unallocated chunks are also allocated). We could alternatively return
+         * unaligned chunks are also allocated). We could alternatively return
          * getCurrentHeapCapacity() to have chunks ready during full GCs as well.
          */
         UnsignedWord total = edenSize.add(survivorSize);

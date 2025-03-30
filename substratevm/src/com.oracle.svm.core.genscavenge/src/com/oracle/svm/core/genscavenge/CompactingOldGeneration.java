@@ -48,6 +48,7 @@ import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
@@ -180,7 +181,8 @@ final class CompactingOldGeneration extends OldGeneration {
             return space.copyAlignedObject(original, originalSpace);
         }
         assert originalSpace == space;
-        Word header = ObjectHeader.readHeaderFromObject(original);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromObject(original);
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
             return original;
         }
@@ -194,7 +196,7 @@ final class CompactingOldGeneration extends OldGeneration {
              * object's size. The easiest way to handle this is to copy the object.
              */
             result = space.copyAlignedObject(original, originalSpace);
-            assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(ObjectHeader.readHeaderFromObject(result));
+            assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
         ObjectHeaderImpl.setMarked(result);
         markStack.push(result);
@@ -285,7 +287,7 @@ final class CompactingOldGeneration extends OldGeneration {
         try {
             AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
             while (aChunk.isNonNull()) {
-                ObjectMoveInfo.walkObjects(aChunk, fixupVisitor);
+                ObjectMoveInfo.walkObjectsForFixup(aChunk, fixupVisitor);
                 aChunk = HeapChunk.getNext(aChunk);
             }
         } finally {
@@ -397,18 +399,12 @@ final class CompactingOldGeneration extends OldGeneration {
 
         Timer oldCompactionRememberedSetsTimer = timers.oldCompactionRememberedSets.start();
         try {
+            // Clear the card tables (which currently contain brick tables).
+            // The first-object tables have already been populated.
             chunk = space.getFirstAlignedHeapChunk();
             while (chunk.isNonNull()) {
-                /*
-                 * Clears the card table (which currently contains the brick table) and updates the
-                 * first object table.
-                 *
-                 * GR-54022: we should be able to avoid this pass and build the first object tables
-                 * during planning and reset card tables once we detect that we are finished with a
-                 * chunk during compaction. The remembered set bits are already set after planning.
-                 */
                 if (!AlignedHeapChunk.isEmpty(chunk)) {
-                    RememberedSet.get().enableRememberedSetForChunk(chunk);
+                    RememberedSet.get().clearRememberedSet(chunk);
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 
                 chunk = HeapChunk.getNext(chunk);

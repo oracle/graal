@@ -35,6 +35,8 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 
 import jdk.graal.compiler.word.Word;
@@ -69,7 +71,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         UnsignedWord brickIndex = Word.zero();
 
         /* Initialize the move info structure at the chunk's object start location. */
-        ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
+        ObjectMoveInfo.setNewAddress(objSeq, objSeq);
         ObjectMoveInfo.setObjectSeqSize(objSeq, Word.zero());
         ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
@@ -77,7 +79,8 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
         Pointer p = objSeq;
         while (p.belowThan(initialTop)) {
-            Word header = ObjectHeaderImpl.readHeaderFromPointer(p);
+            ObjectHeader oh = Heap.getHeap().getObjectHeader();
+            Word header = oh.readHeaderFromPointer(p);
 
             UnsignedWord objSize;
             if (ObjectHeaderImpl.isForwardedHeader(header)) {

@@ -138,8 +138,13 @@ public class SubstrateOptions {
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
+        if (!key.getValue()) {
+            return;
+        }
+
         if (!Platform.includedIn(Platform.LINUX.class)) {
-            throw UserError.invalidOptionValue(key, key.getValue(), "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
+            throw UserError.invalidOptionValue(key, key.getValue(),
+                            "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
         }
         if (!LibCBase.targetLibCIs(MuslLibC.class)) {
             throw UserError.invalidOptionValue(key, key.getValue(),
@@ -1302,11 +1307,12 @@ public class SubstrateOptions {
         Exit
     }
 
-    @Option(help = {"Select the mode in which the missing reflection registrations will be reported.",
-                    "Possible values are:",
-                    "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
-                    "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
-                    "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
+    @Option(help = """
+                    Select the mode in which the missing reflection registrations will be reported.
+                    Possible values are:",
+                     "Throw" (default): Throw a MissingReflectionRegistrationError;
+                     "Exit": Call System.exit() to avoid accidentally catching the error;
+                     "Warn": Print a message to stdout, including a stack trace to see what caused the issue.""")//
     public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
@@ -1389,11 +1395,21 @@ public class SubstrateOptions {
 
     @Option(help = "Enable fallback to mremap for initializing the image heap.")//
     public static final HostedOptionKey<Boolean> MremapImageHeap = new HostedOptionKey<>(true, key -> {
-        if (!Platform.includedIn(Platform.LINUX.class)) {
+        if (key.hasBeenSet() && !Platform.includedIn(Platform.LINUX.class)) {
             throw UserError.invalidOptionValue(key, key.getValue(), "Mapping the image heap with mremap() is only supported on Linux.");
         }
     });
 
-    @Option(help = "file:doc-files/LibGraalClassLoader.txt")//
+    @Option(help = """
+                    Specify the fully qualified name of a class that implements org.graalvm.nativeimage.libgraal.LibGraalLoader.
+
+                    This option is only supported for building the libgraal shared library.
+
+                    The named class is instantiated via the default constructor.
+                    It affects image building as follows:
+
+                     1. The custom loader is used to lookup Feature implementations passed via the --features option.
+                     2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
+                     3. All @TargetClass substitutions in classes loaded by the custom loader are processed.""")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
 }

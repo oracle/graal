@@ -132,11 +132,12 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert)//
         public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(100);
 
-        @Option(help = {"Specifies how unused methods in the language allow list should be handled.",
-                        "Available options are:",
-                        "  \"Ignore\": Do not report unused methods in the allow list.",
-                        "  \"Warn\": Log a warning message to stderr.",
-                        "  \"Throw\" (default): Throw an exception and abort the native-image build process."}, type = OptionType.Expert)//
+        @Option(help = """
+                        Specifies how unused methods in the language allow list should be handled.
+                        Available options are:
+                          "Ignore": Do not report unused methods in the allow list.
+                          "Warn": Log a warning message to stderr.
+                          "Throw" (default): Throw an exception and abort the native-image build process.""", type = OptionType.Expert)//
         public static final HostedOptionKey<ActionKind> TruffleTCKUnusedAllowListEntriesAction = new HostedOptionKey<>(ActionKind.Throw);
     }
 
