@@ -71,7 +71,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         UnsignedWord brickIndex = Word.zero();
 
         /* Initialize the move info structure at the chunk's object start location. */
-        ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
+        ObjectMoveInfo.setNewAddress(objSeq, objSeq);
         ObjectMoveInfo.setObjectSeqSize(objSeq, Word.zero());
         ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
