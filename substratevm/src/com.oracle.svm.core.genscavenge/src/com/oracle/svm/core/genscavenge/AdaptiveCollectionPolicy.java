@@ -190,7 +190,8 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             return false;
         }
 
-        if (minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
+        if (!SerialGCOptions.useCompactingOldGen() &&
+                        minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
             /*
              * When we do many incremental collections in a row because they reclaim sufficient
              * space, still trigger a complete collection when reaching a cumulative pause time

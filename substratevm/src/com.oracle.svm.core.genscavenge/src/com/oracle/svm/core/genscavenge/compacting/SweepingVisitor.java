@@ -30,6 +30,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.heap.FillerArray;
@@ -62,12 +64,15 @@ public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
 
     @Override
     public boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq) {
+        assert objSeq.equal(newAddress);
         if (nextObjSeq.isNonNull()) {
             Pointer gapStart = objSeq.add(size);
-            assert gapStart.belowOrEqual(nextObjSeq);
-            if (gapStart.notEqual(nextObjSeq)) {
-                writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
-            }
+            assert gapStart.belowThan(nextObjSeq);
+            writeFillerObjectAt(gapStart, nextObjSeq.subtract(gapStart));
+            // Note that we have already added first object table entries for fillers during fixup.
+        } else {
+            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objSeq);
+            assert objSeq.add(size).equal(HeapChunk.getTopPointer(chunk));
         }
         return true;
     }
