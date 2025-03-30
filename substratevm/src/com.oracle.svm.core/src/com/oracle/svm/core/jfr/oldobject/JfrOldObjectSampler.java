@@ -148,7 +148,7 @@ final class JfrOldObjectSampler {
     private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
         long threadId = thread == null ? 0L : JavaThreads.getThreadId(thread);
-        long stackTraceId = thread == null ? 0L : SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample, 0);
+        long stackTraceId = thread == null ? 0L : SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample);
         UnsignedWord heapUsedAfterLastGC = Heap.getHeap().getUsedMemoryAfterLastGC();
 
         JfrOldObject sample = (JfrOldObject) freeList.pop();

@@ -57,10 +57,16 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
     /** This value is used by multiple threads but only by a single thread at a time. */
     private static final CodeInfoDecoder.FrameInfoCursor FRAME_INFO_CURSOR = new CodeInfoDecoder.FrameInfoCursor();
 
+    /*
+     * This is static so that a single instance can be preallocated and reused. Only one thread ever
+     * serializes at a given time.
+     */
+    private static final FrameCountData FRAME_COUNT_DATA = new FrameCountData();
+
     @Override
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     public Pointer serializeStackTrace(Pointer rawStackTrace, Pointer bufferEnd, int sampleSize, int sampleHash,
-                    boolean isTruncated, long sampleTick, long threadId, long threadState) {
+                    boolean isTruncated, long sampleTick, long threadId, long threadState, int skipCount) {
         Pointer current = rawStackTrace;
         CIntPointer statusPtr = StackValue.get(CIntPointer.class);
         JfrStackTraceRepository.JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, Word.unsigned(sampleSize), sampleHash, statusPtr);
@@ -70,7 +76,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
         if (status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.EXISTING_RAW) {
             /* Walk the IPs and serialize the stacktrace. */
             assert current.add(sampleSize).belowThan(bufferEnd);
-            boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId);
+            boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId, skipCount);
             if (serialized) {
                 SubstrateJVM.getStackTraceRepo().commitSerializedStackTrace(entry);
             }
@@ -100,7 +106,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static boolean serializeStackTrace(Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId) {
+    private static boolean serializeStackTrace(Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId, int skipCount) {
         assert sampleSize % Long.BYTES == 0;
 
         JfrBuffer targetBuffer = SubstrateJVM.getStackTraceRepo().getCurrentBuffer();
@@ -112,8 +118,10 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
          * One IP may correspond to multiple Java-level stack frames. We need to precompute the
          * number of stack trace elements because the count can't be patched later on
          * (JfrNativeEventWriter.putInt() would not necessarily reserve enough bytes).
+         *
+         * The first pass-through also sets FRAME_COUNT_DATA.isTruncated().
          */
-        int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, Word.nullPointer());
+        int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, Word.nullPointer(), skipCount);
         if (numStackTraceElements == 0) {
             return false;
         }
@@ -121,9 +129,9 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, targetBuffer);
         JfrNativeEventWriter.putLong(data, stackTraceId);
-        JfrNativeEventWriter.putBoolean(data, isTruncated);
+        JfrNativeEventWriter.putBoolean(data, isTruncated || FRAME_COUNT_DATA.isTruncated());
         JfrNativeEventWriter.putInt(data, numStackTraceElements);
-        visitRawStackTrace(rawStackTrace, sampleSize, data);
+        visitRawStackTrace(rawStackTrace, sampleSize, data, skipCount);
         boolean success = JfrNativeEventWriter.commit(data);
 
         /* Buffer can get replaced with a larger one. */
@@ -132,10 +140,14 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
+    private static int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data, int skipCount) {
         int numStackTraceElements = 0;
         Pointer rawStackTraceEnd = rawStackTrace.add(sampleSize);
         Pointer ipPtr = rawStackTrace;
+
+        // Reset FrameCountData before every serialization of a new stacktrace.
+        FRAME_COUNT_DATA.reset(skipCount);
+
         while (ipPtr.belowThan(rawStackTraceEnd)) {
             long ip = ipPtr.readLong(0);
             numStackTraceElements += visitFrame(data, ip);
@@ -167,10 +179,18 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
         int numStackTraceElements = 0;
         FRAME_INFO_CURSOR.initialize(codeInfo, ip, false);
         while (FRAME_INFO_CURSOR.advance()) {
+            if (FRAME_COUNT_DATA.shouldSkip()) {
+                FRAME_COUNT_DATA.incrementSkipped();
+                continue;
+            } else if (FRAME_COUNT_DATA.shouldTruncate()) {
+                FRAME_COUNT_DATA.setTruncated();
+                break;
+            }
             if (data.isNonNull()) {
                 FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();
                 serializeStackTraceElement(data, frame);
             }
+            FRAME_COUNT_DATA.incrementTotal();
             numStackTraceElements++;
         }
         return numStackTraceElements;
@@ -184,5 +204,50 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
         JfrNativeEventWriter.putInt(data, stackTraceElement.getSourceLineNumber());
         JfrNativeEventWriter.putInt(data, stackTraceElement.getBci());
         JfrNativeEventWriter.putLong(data, JfrFrameType.FRAME_AOT_COMPILED.getId());
+    }
+
+    private static final class FrameCountData {
+        private int skipcount;
+        private int totalCount;
+        private int skippedCount;
+        private boolean truncated;
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void reset(int skipCount) {
+            this.skipcount = skipCount;
+            totalCount = 0;
+            skippedCount = 0;
+            truncated = false;
+        }
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true) //
+        public boolean shouldSkip() {
+            return skippedCount < skipcount;
+        }
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true) //
+        public boolean shouldTruncate() {
+            return totalCount > SubstrateJVM.getStackTraceRepo().getStackTraceDepth();
+        }
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void setTruncated() {
+            truncated = true;
+        }
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public boolean isTruncated() {
+            return truncated;
+        }
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void incrementSkipped() {
+            skippedCount++;
+        }
+
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void incrementTotal() {
+            totalCount++;
+        }
     }
 }

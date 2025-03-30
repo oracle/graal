@@ -89,6 +89,9 @@ public final class VMInspectionOptions {
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
+    @Option(help = "Determine whether to trim internal frames from JFR stacktraces (defaults to true).")//
+    public static final HostedOptionKey<Boolean> JfrTrimInternalStackTraces = new HostedOptionKey<>(true, VMInspectionOptions::notSupportedOnWindows);
+
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
     public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::notSupportedOnWindows);
 
