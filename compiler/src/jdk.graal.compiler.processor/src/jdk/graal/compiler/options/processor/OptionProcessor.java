@@ -201,7 +201,7 @@ public class OptionProcessor extends AbstractProcessor {
                 }
                 try (InputStream in = file.openInputStream()) {
                     help = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                    helpLines = List.of(help.split(System.lineSeparator()));
+                    helpLines = List.of(help.split("\\r?\\n"));
                 }
             } catch (IOException e) {
                 String msg = String.format("Error reading %s containing the help text for option field: %s", path, e);
