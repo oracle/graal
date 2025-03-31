@@ -458,6 +458,39 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testGetSourcePositionsEnclosingRootSections() {
+        Source source = Source.newBuilder("test", "other; def test() { return 1 }", "testGetSourcePositions").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginSource(source);
+            beginSourceSection(b, 0, 30);
+            beginSourceSection(b, 7, 23);
+
+            b.beginRoot();
+            beginSourceSection(b, 20, 8);
+
+            b.beginReturn();
+
+            beginSourceSection(b, 27, 1);
+            b.emitGetSourcePositions();
+            endSourceSection(b, 27, 1);
+
+            b.endReturn();
+
+            endSourceSection(b, 20, 8);
+            b.endRoot();
+
+            endSourceSection(b, 7, 23);
+            endSourceSection(b, 0, 30);
+            b.endSource();
+        });
+
+        SourceSection[] result = (SourceSection[]) node.getCallTarget().call();
+
+        // Only the directly enclosing source section should be included.
+        assertSourceSections(result, source, 27, 1, 20, 8, 7, 23);
+    }
+
+    @Test
     public void testGetSourcePositionFrameInstance() {
         Source fooSource = Source.newBuilder("test", "return arg0()", "testGetSourcePositionFrameInstance#foo").build();
         BasicInterpreter foo = parseNodeWithSource("foo", b -> {

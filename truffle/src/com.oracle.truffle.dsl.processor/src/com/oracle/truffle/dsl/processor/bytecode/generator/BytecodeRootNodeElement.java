@@ -4382,13 +4382,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("startBci = bci");
                     b.end();
 
-                    String index;
-                    String length;
                     if (operation.operationBeginArguments.length == 0) {
                         yield createOperationData(className, "foundSourceIndex", "startBci", "-2", "-2");
                     } else {
-                        index = operation.getOperationBeginArgumentName(0);
-                        length = operation.getOperationBeginArgumentName(1);
+                        String index = operation.getOperationBeginArgumentName(0);
+                        String length = operation.getOperationBeginArgumentName(1);
 
                         emitValidateSourceSection(b, index, length);
 
@@ -11944,30 +11942,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.startIf().string("info == null").end().startBlock();
+            b.startIf().string("info == null || info.length == 0").end().startBlock();
             b.startReturn().string("null").end();
             b.end();
 
-            b.lineComment("The source table encodes a preorder traversal of a logical tree of source sections (with entries in reverse).");
-            b.lineComment("The most specific source section corresponds to the \"lowest\" node in the tree that covers the whole bytecode range.");
-            b.lineComment("We find this node by iterating the entries from the root until we hit a node that does not cover the bytecode range.");
-            b.declaration(type(int.class), "mostSpecific", "-1");
-
-            b.startFor().string("int i = info.length - SOURCE_INFO_LENGTH; i >= 0; i -= SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "lastEntry", "info.length - SOURCE_INFO_LENGTH");
             b.startIf();
-            b.string("info[i + SOURCE_INFO_OFFSET_START_BCI] != 0 ||").startIndention().newLine();
-            b.string("info[i + SOURCE_INFO_OFFSET_END_BCI] != bytecodes.length").end();
+            b.string("info[lastEntry + SOURCE_INFO_OFFSET_START_BCI] == 0 &&").startIndention().newLine();
+            b.string("info[lastEntry + SOURCE_INFO_OFFSET_END_BCI] == bytecodes.length").end();
             b.end().startBlock();
-            b.statement("break");
-            b.end(); // if
-            b.statement("mostSpecific = i"); // best so far
-            b.end(); // for
-
-            b.startIf().string("mostSpecific != -1").end().startBlock();
             b.startReturn();
-            b.string("createSourceSection(sources, info, mostSpecific)");
+            b.string("createSourceSection(sources, info, lastEntry)");
             b.end();
-            b.end();
+            b.end(); // if
+
             b.startReturn().string("null").end();
             return ex;
         }
