@@ -7307,7 +7307,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SU
 
 ================================================================================
 
-Ruby 3.3.5
+Ruby 3.3.7
 
 Ruby is copyrighted free software by Yukihiro Matsumoto <matz@netlab.jp>.
 You can redistribute it and/or modify it under either the terms of the
