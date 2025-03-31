@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATI
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static jdk.graal.compiler.nodes.java.ArrayLengthNode.readArrayLength;
+import static jdk.graal.compiler.phases.common.LockEliminationPhase.removeMonitorAccess;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -132,6 +133,7 @@ import jdk.graal.compiler.nodes.java.LogicCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
+import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
@@ -1115,6 +1117,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
+    private static boolean isNestedLock(MonitorIdNode lock, CommitAllocationNode commit) {
+        for (MonitorIdNode otherLock : commit.getLocks()) {
+            if (otherLock.getLockDepth() < lock.getLockDepth() && commit.getObjectIndex(lock) == commit.getObjectIndex(otherLock)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
@@ -1151,6 +1162,20 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             // Ensure that the lock operations are performed in lock depth order
             ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
             newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            // Eliminate nested locks
+            newList.removeIf(lock -> isNestedLock(lock, commit));
+
+            for (MonitorIdNode lock : locks) {
+                if (!newList.contains(lock)) {
+                    // lock is nested and eliminated
+                    for (Node usage : lock.usages().snapshot()) {
+                        if (usage.isAlive() && usage instanceof MonitorExitNode exit) {
+                            removeMonitorAccess(exit);
+                        }
+                    }
+                    lock.setEliminated();
+                }
+            }
             locks = newList;
         }
 

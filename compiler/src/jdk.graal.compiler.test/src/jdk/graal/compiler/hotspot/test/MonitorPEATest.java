@@ -32,6 +32,7 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
@@ -273,5 +274,130 @@ public final class MonitorPEATest extends HotSpotGraalCompilerTest {
     @Test
     public void testSnippet8() {
         test("snippet8");
+    }
+
+    public static void snippet9() {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (b) {
+                    synchronized (c) {
+                        synchronized (B.class) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet9() {
+        test("snippet9");
+    }
+
+    public static void snippet15(boolean deoptimize) {
+        synchronized (new B()) {
+            synchronized (new StringBuilder()) {
+                synchronized (B.class) {
+                    if (deoptimize) {
+                        GraalDirectives.deoptimize();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet15() {
+        test("snippet15", true);
+    }
+
+    public static void snippet16(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (B.class) {
+                    if (deoptimize) {
+                        GraalDirectives.deoptimize();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet16() {
+        test("snippet16", true);
+    }
+
+    public static void snippet17(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (c) {
+                synchronized (b) {
+                    synchronized (b) {
+                        synchronized (B.class) {
+                            if (deoptimize) {
+                                GraalDirectives.deoptimize();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet17() {
+        test("snippet17", true);
+    }
+
+    public static void snippet18(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (c) {
+                    synchronized (b) {
+                        synchronized (B.class) {
+                            if (deoptimize) {
+                                GraalDirectives.deoptimize();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet18() {
+        test("snippet18", true);
+    }
+
+    public static void snippet19(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (b) {
+                    synchronized (c) {
+                        synchronized (B.class) {
+                            if (deoptimize) {
+                                GraalDirectives.deoptimize();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet19() {
+        test("snippet19", true);
     }
 }
