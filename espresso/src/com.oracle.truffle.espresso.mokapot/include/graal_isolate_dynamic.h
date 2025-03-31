@@ -127,6 +127,12 @@ typedef int (*graal_detach_thread_fn_t)(graal_isolatethread_t* thread);
  * waiting for any attached threads to detach from it, then discards its objects,
  * threads, and any other state or context that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
+ * 
+ * If this call blocks indefinitely, this means there are still Java-application threads running.
+ * To prevent indefinite blocking, these threads must be cooperatively shut down within Java before invoking this call.
+ * To fix this use the option '-R:TearDownWarningSeconds=<secs>' at image build time to detect the threads that are still running.
+ * This will print the stack traces of all threads that have not been cooperatively terminated.
+ * Those threads need to be terminated from Java before calling tear_down_isolate.
  */
 typedef int (*graal_tear_down_isolate_fn_t)(graal_isolatethread_t* isolateThread);
 
@@ -141,6 +147,12 @@ typedef int (*graal_tear_down_isolate_fn_t)(graal_isolatethread_t* isolateThread
  * Java code at the time when this function is called or at any point in the future
  * or this will cause entirely undefined (and likely fatal) behavior.
  * Returns 0 on success, or a non-zero value on (non-fatal) failure.
+ * 
+ * If this call blocks indefinitely, this means there are still Java-application threads running.
+ * To prevent indefinite blocking, these threads must be cooperatively shut down within Java before invoking this call.
+ * To fix this use the option '-R:TearDownWarningSeconds=<secs>' at image build time to detect the threads that are still running.
+ * This will print the stack traces of all threads that have not been cooperatively terminated.
+ * Those threads need to be terminated from Java before calling tear_down_isolate.
  */
 typedef int (*graal_detach_all_threads_and_tear_down_isolate_fn_t)(graal_isolatethread_t* isolateThread);
 

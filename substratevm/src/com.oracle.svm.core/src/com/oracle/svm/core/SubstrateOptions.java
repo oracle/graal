@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.SubstrateOptions.DeprecatedOptions.TearDownFailureNanos;
+import static com.oracle.svm.core.SubstrateOptions.DeprecatedOptions.TearDownWarningNanos;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
@@ -63,6 +65,7 @@ import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -576,6 +579,13 @@ public class SubstrateOptions {
                 }
             }
         };
+
+        @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.", deprecated = true, deprecationMessage = "Use TearDownWarningSeconds instead")//
+        public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message. 0 implies no message.", deprecated = true, deprecationMessage = "Use TearDownFailureSeconds instead")//
+        public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
     }
 
     @Option(help = "Enable detection and runtime container configuration support.")//
@@ -818,18 +828,30 @@ public class SubstrateOptions {
      * Isolate tear down options.
      */
 
-    @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message.  0 implies no warning.")//
-    public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+    @Option(help = "The number of seconds before and between which tearing down an isolate gives a warning message. 0 implies no warning.")//
+    public static final RuntimeOptionKey<Long> TearDownWarningSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
-    @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message.  0 implies no message.")//
-    public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+    @Option(help = "The number of seconds before tearing down an isolate gives a failure message. 0 implies no message.")//
+    public static final RuntimeOptionKey<Long> TearDownFailureSeconds = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
     public static long getTearDownWarningNanos() {
-        return TearDownWarningNanos.getValue();
+        if (TearDownWarningSeconds.hasBeenSet() && TearDownWarningNanos.hasBeenSet()) {
+            throw new IllegalArgumentException("Can't set both TearDownWarningSeconds and TearDownWarningNanos at the same time. Use TearDownWarningSeconds.");
+        }
+        if (TearDownWarningNanos.hasBeenSet()) {
+            return TearDownWarningNanos.getValue();
+        }
+        return TearDownWarningSeconds.getValue() * TimeUtils.nanosPerSecond;
     }
 
     public static long getTearDownFailureNanos() {
-        return TearDownFailureNanos.getValue();
+        if (TearDownFailureSeconds.hasBeenSet() && TearDownFailureNanos.hasBeenSet()) {
+            throw new IllegalArgumentException("Can't set both TearDownFailureSeconds and TearDownFailureNanos at the same time. Use TearDownFailureSeconds.");
+        }
+        if (TearDownFailureNanos.hasBeenSet()) {
+            return TearDownFailureNanos.getValue();
+        }
+        return TearDownFailureSeconds.getValue() * TimeUtils.nanosPerSecond;
     }
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
