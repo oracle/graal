@@ -42,10 +42,8 @@ public class Config {
     String className;
     int warmupIterations;
     int iterations;
-    Mode mode;
     Metric metric;
     boolean evalSourceOnlyDefault;
-    boolean compileTheWorld;
 
     final List<String> unrecognizedArguments = new ArrayList<>();
 
@@ -63,7 +61,6 @@ public class Config {
         this.className = null;
         this.warmupIterations = UNINITIALIZED_ITERATIONS;
         this.iterations = UNINITIALIZED_ITERATIONS;
-        this.mode = Mode.standard;
         this.metric = new PeakTimeMetric();
     }
 
@@ -103,8 +100,7 @@ public class Config {
 
     @Override
     public String toString() {
-        String config = "execution-mode:    " + mode + "\n" +
-                        "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
+        String config = "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
                         // This output is used by external tools to extract the metric name
                         "metric class:      " + metric.getClass().getSimpleName() + "\n" +
                         "warmup-iterations: " + (warmupIterations == UNINITIALIZED_ITERATIONS ? "default" : warmupIterations) + "\n" +
@@ -118,36 +114,6 @@ public class Config {
 
     boolean isSingleEngine() {
         return multiEngine == null;
-    }
-
-    String compilation() {
-        String compilationOptionValue;
-        switch (mode) {
-            case interpreter:
-                compilationOptionValue = "false";
-                break;
-            case standard:
-                compilationOptionValue = "true";
-                break;
-            default:
-                throw new AssertionError("Unknown execution-mode: " + mode);
-        }
-        return compilationOptionValue;
-    }
-
-    enum Mode {
-        interpreter,
-        standard;
-
-        static Mode parse(String name) throws IllegalArgumentException {
-            for (Mode mode : Mode.values()) {
-                if (name.equals(mode.name())) {
-                    return mode;
-                }
-            }
-            throw new IllegalArgumentException("Unknown execution-mode: " + name);
-        }
-
     }
 
     static boolean isPolybenchRunOption(String optionName) {
