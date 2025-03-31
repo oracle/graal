@@ -41,6 +41,7 @@ import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lan
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.LM_UNCONDITIONAL;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_HIDDEN_MEMBER;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_FIELD;
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_METHOD;
@@ -638,6 +639,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
         if (target.isCallerSensitive()) {
             res |= MN_CALLER_SENSITIVE;
+        }
+        if (target.isHidden()) {
+            res |= MN_HIDDEN_MEMBER;
         }
         return res;
     }

@@ -69,13 +69,13 @@ public abstract class MHLinkToNativeNode extends MethodHandleIntrinsicNode {
         assert args.length == argCount;
         long downcallStubId = getDowncallStubId(args);
         EspressoContext context = getContext();
-        DowncallStubs.DowncallStub stub = context.getDowncallStubs().getStub(downcallStubId);
+        DowncallStubs.DowncallStub stub = context.getDowncallStubs().getStub(downcallStubId, context);
         return stub.uncachedCall(args, context);
     }
 
     protected DowncallStubNode createDowncallStubNode(long downcallStubId) {
         EspressoContext context = getContext();
-        DowncallStubs.DowncallStub stub = context.getDowncallStubs().getStub(downcallStubId);
+        DowncallStubs.DowncallStub stub = context.getDowncallStubs().getStub(downcallStubId, context);
         return DowncallStubNode.create(stub, context.getNativeAccess());
     }
 

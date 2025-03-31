@@ -276,10 +276,6 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-Xshare:off":
                     // ignore
                     break;
-                case "-XX:+UseJVMCICompiler":
-                case "-XX:-UseJVMCICompiler":
-                    getError().println("Ignoring " + arg);
-                    break;
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
@@ -435,6 +431,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     "WhiteBoxAPI",
                     "EnableJVMCI");
 
+    private static final Set<String> ignoredXXOptions = Set.of(
+                    "UseJVMCICompiler",
+                    "EnableDynamicAgentLoading");
+
     private void handleXXArg(String fullArg, ArrayList<String> unrecognized) {
         String arg = fullArg.substring("-XX:".length());
         String name;
@@ -450,6 +450,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             }
             name = arg.substring(0, idx);
             value = arg.substring(idx + 1);
+        }
+        if (ignoredXXOptions.contains(name)) {
+            getError().println("Ignoring " + arg);
+            return;
         }
         if (knownPassThroughOptions.contains(name)) {
             espressoOptions.put("java." + name, value);
