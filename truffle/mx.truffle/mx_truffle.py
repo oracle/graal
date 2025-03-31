@@ -370,8 +370,8 @@ mx_unittest.add_unittest_argument('--nfi-config', default=None, help='Select tes
 # for building a language module path
 def resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True):
     if use_optimized_runtime:
-        enterprise_dist = _get_enterprise_truffle()
-        if enterprise_dist and use_enterprise:
+        enterprise = _get_enterprise_truffle()
+        if enterprise and use_enterprise:
             return ['truffle-enterprise:TRUFFLE_ENTERPRISE']
         else:
             return ['truffle:TRUFFLE_RUNTIME']
@@ -379,7 +379,7 @@ def resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True):
         return ['truffle:TRUFFLE_API']
 
 def _get_enterprise_truffle():
-    return mx.distribution('truffle-enterprise:TRUFFLE_ENTERPRISE', False)
+    return mx.suite('truffle-enterprise', False)
 
 def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
     return ['TRUFFLE_SL', 'TRUFFLE_SL_LAUNCHER', 'TRUFFLE_NFI_LIBFFI'] + resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
