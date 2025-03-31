@@ -955,17 +955,20 @@ public abstract class TypeFlow<T> {
 
     /** This flow will swap itself out at all uses and observers. */
     protected void swapOut(PointsToAnalysis bb, TypeFlow<?> newFlow) {
+        assert isSaturated() : "This operation should only be called on saturated flows:" + this;
         for (TypeFlow<?> use : getUses()) {
             swapAtUse(bb, newFlow, use);
         }
         for (TypeFlow<?> observer : getObservers()) {
             swapAtObserver(bb, newFlow, observer);
         }
+        /*
+         * Before performing the swap, make sure addPredicated will immediately enable any newly
+         * added predicated flows.
+         */
+        AtomicUtils.atomicMark(this, PREDICATE_TRIGGERED_UPDATER);
         for (TypeFlow<?> predicatedFlow : getPredicatedFlows()) {
             swapAtPredicated(bb, newFlow, predicatedFlow);
-        }
-        if (isSaturated()) {
-            AtomicUtils.atomicMark(this, PREDICATE_TRIGGERED_UPDATER);
         }
     }
 
