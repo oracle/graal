@@ -46,6 +46,9 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
 
 /**
  * Represents the compiled code of a {@link SubstrateOptimizedCallTarget}.
@@ -257,7 +260,29 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     @Override
     public byte[] getCode() {
-        throw VMError.shouldNotReachHere(NOT_CALLED_IN_SUBSTRATE_VM);
+        CodeInfo codeInfo = lookupCodeInfo();
+        if (codeInfo.isNull()) {
+            return null;
+        }
+        CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
+        int codeSize = (int) CodeInfoAccess.getCodeSize(codeInfo).rawValue();
+        byte[] code = new byte[codeSize];
+        CTypeConversion.asByteBuffer(codeStart, codeSize).get(code);
+        return code;
+    }
+
+    @Uninterruptible(reason = "Looks up code info.")
+    private CodeInfo lookupCodeInfo() {
+        UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(Word.pointer(entryPoint));
+        if (untetheredCodeInfo.isNull()) {
+            return WordFactory.nullPointer();
+        }
+        Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
+        try {
+            return CodeInfoAccess.convert(untetheredCodeInfo, tether);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
+        }
     }
 
     @Override
