@@ -1419,7 +1419,7 @@ JNIEXPORT void JNICALL JVM_BeforeHalt() {
 JNIEXPORT void JNICALL
 JVM_ExpandStackFrameInfo(JNIEnv *env, jobject obj) {
   IMPLEMENTED(JVM_ExpandStackFrameInfo);
-  return (*getEnv())->JVM_ExpandStackFrameInfo(env, obj);
+  (*getEnv())->JVM_ExpandStackFrameInfo(env, obj);
 }
 
 JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
