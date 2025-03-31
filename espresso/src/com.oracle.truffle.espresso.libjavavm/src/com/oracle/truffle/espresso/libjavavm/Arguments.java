@@ -77,7 +77,8 @@ public final class Arguments {
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
                     "HeapDumpOnOutOfMemoryError",
-                    "UseJVMCICompiler");
+                    "UseJVMCICompiler",
+                    "EnableDynamicAgentLoading");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
