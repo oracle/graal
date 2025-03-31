@@ -1707,6 +1707,20 @@ suite = {
       ],
       "defaultBuild": False,
     },
+
+    "benchmarks.interpreter.llvm.native": {
+      "native": True,
+      "results": ["interpreter/"],
+      "dir": "benchmarks/interpreter",
+      "buildEnv": {
+        'NATIVE_LLVM_CC': '<toolchainGetToolPath:native,CC>',
+      },
+      "buildDependencies": ["SULONG_BOOTSTRAP_TOOLCHAIN"],
+      "vpath": True,
+      "clangFormat": False,
+      "defaultBuild": False,
+      "testProject": True,
+    }
   },
 
   "distributions" : {
@@ -2569,6 +2583,17 @@ suite = {
         "THIRD_PARTY_LICENSE_SULONG.txt" : "file:THIRD_PARTY_LICENSE.txt",
       },
       "license" : "BSD-new",
+    },
+
+    "SULONG_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for Sulong polybench benchmarks",
+      "layout": {
+        "./": [
+          "dependency:benchmarks.interpreter.llvm.native/*"
+        ]
+      },
+      "defaultBuild": False,
+      "testDistribution": True,
     },
   }
 }

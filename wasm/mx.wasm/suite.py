@@ -38,6 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
 suite = {
   "mxversion": "7.55.2",
   "name" : "wasm",
@@ -221,6 +222,13 @@ suite = {
       "javaCompliance" : "21+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "testProject" : True,
+    },
+
+    "org.graalvm.wasm.polybench": {
+      "subDir": "benchmarks",
+      "class": "GraalVmWatProject",
+      "defaultBuild": False,
+      "testProject": True,
     },
 
     "org.graalvm.wasm.memory" : {
@@ -457,6 +465,17 @@ suite = {
       "platformDependent" : True,
       "maven" : False,
       "testDistribution" : True,
+    },
+
+    "WASM_POLYBENCH_BENCHMARKS": {
+      "description": "Distribution for Wasm polybench benchmarks",
+      "layout": {
+        "./": [
+          "dependency:org.graalvm.wasm.polybench/*",
+        ],
+      },
+      "defaultBuild": False,
+      "testDistribution": True,
     },
 
     "WASM_GRAALVM_SUPPORT": {
