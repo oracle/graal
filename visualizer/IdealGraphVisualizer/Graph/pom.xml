@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.graalvm.visualizer</groupId>
         <artifactId>IdealGraphVisualizer-parent</artifactId>
-        <version>1.21</version>
+        <version>1.22-SNAPSHOT</version>
     </parent>
     <artifactId>Graph</artifactId>
     <packaging>nbm</packaging>
