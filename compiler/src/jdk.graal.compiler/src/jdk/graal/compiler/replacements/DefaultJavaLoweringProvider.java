@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,6 +122,7 @@ import jdk.graal.compiler.nodes.extended.UnsafeMemoryStoreNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.AccessIndexedNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
@@ -133,7 +134,6 @@ import jdk.graal.compiler.nodes.java.LogicCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
-import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
@@ -1169,8 +1169,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (!newList.contains(lock)) {
                     // lock is nested and eliminated
                     for (Node usage : lock.usages().snapshot()) {
-                        if (usage.isAlive() && usage instanceof MonitorExitNode exit) {
-                            removeMonitorAccess(exit);
+                        if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
+                            removeMonitorAccess(access);
                         }
                     }
                     lock.setEliminated();
@@ -1184,6 +1184,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int lastDepth = -1;
         for (MonitorIdNode monitorId : locks) {
             GraalError.guarantee(lastDepth < monitorId.getLockDepth(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
+            GraalError.guarantee(!monitorId.isEliminated(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
             lastDepth = monitorId.getLockDepth();
             MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[commit.getObjectIndex(monitorId)], monitorId));
             enter.setSynthetic();
