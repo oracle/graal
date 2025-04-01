@@ -117,6 +117,13 @@ public final class Safepoint {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isPendingOrInProgress() {
+        /* Only read the state once. */
+        int state = safepointState;
+        return state == SYNCHRONIZING || state == AT_SAFEPOINT;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getSafepointId() {
         return safepointId;
     }
@@ -124,11 +131,6 @@ public final class Safepoint {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isMasterThread() {
         return requestingThread == CurrentIsolate.getCurrentThread();
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isPendingOrInProgress() {
-        return requestingThread.isNonNull();
     }
 
     /**
@@ -150,12 +152,13 @@ public final class Safepoint {
             THREAD_MUTEX.lock();
         }
 
+        assert requestingThread.isNull();
         requestingThread = CurrentIsolate.getCurrentThread();
         ImageSingletons.lookup(Heap.class).prepareForSafepoint();
-        safepointState = SYNCHRONIZING;
 
-        int numJavaThreads = requestThreadsEnterSafepoint();
-        waitUntilThreadsEnterSafepoint(reason);
+        safepointState = SYNCHRONIZING;
+        int numJavaThreads = requestThreadsEnterSafepoint(reason);
+
         safepointState = AT_SAFEPOINT;
         safepointId = safepointId.add(1);
         SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
@@ -167,46 +170,34 @@ public final class Safepoint {
     void endSafepoint(boolean unlock) {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
+
         safepointState = NOT_AT_SAFEPOINT;
         releaseThreadsFromSafepoint();
         /* Some Java threads can continue execution now. */
 
-        SafepointEndEvent.emit(getSafepointId(), startTicks);
-        ImageSingletons.lookup(Heap.class).endSafepoint();
-
-        requestingThread = Word.nullPointer();
         if (unlock) {
             THREAD_MUTEX.unlock();
         }
 
-        /* This can take a moment, so we do it after letting all other threads proceed. */
+        /*
+         * Now that the safepoint was released, we can treat this thread like a normal VM thread and
+         * don't need the special handling in the safepoint slowpath anymore. Other threads also
+         * can't start a new safepoint yet (this code is still executed in the VM operation thread
+         * and only the VM operation thread may start a safepoint).
+         */
+        requestingThread = Word.nullPointer();
+
+        /*
+         * Everything down here can take a moment, so we do it after letting all other threads
+         * proceed.
+         */
+        ImageSingletons.lookup(Heap.class).endSafepoint();
+        SafepointEndEvent.emit(getSafepointId(), startTicks);
         VMThreads.singleton().cleanupExitedOsThreads();
     }
 
-    /**
-     * Ask all other threads to come to a safepoint. There is no guarantee that the threads will
-     * comply with the request.
-     */
-    private static int requestThreadsEnterSafepoint() {
-        assert THREAD_MUTEX.isOwner() : "must hold mutex while requesting a safepoint";
-        int numJavaThreads = 0;
-
-        for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-            numJavaThreads++;
-            if (thread == CurrentIsolate.getCurrentThread()) {
-                continue;
-            }
-            if (SafepointBehavior.ignoresSafepoints(thread)) {
-                /* If safepoints are disabled, do not ask it to stop at safepoints. */
-                continue;
-            }
-            requestEnterSafepoint(thread);
-        }
-        return numJavaThreads;
-    }
-
-    /** Wait until all other threads reach a safepoint. Re-requests safepoints if necessary. */
-    private static void waitUntilThreadsEnterSafepoint(String reason) {
+    /** Blocks until all other threads entered the safepoint. */
+    private static int requestThreadsEnterSafepoint(String reason) {
         assert THREAD_MUTEX.isOwner() : "must hold mutex while waiting for safepoints";
 
         long startNanos = System.nanoTime();
@@ -216,12 +207,13 @@ public final class Safepoint {
         long failureNanos = -1;
 
         for (int loopCount = 1; /* return */ ; loopCount++) {
+            int numThreads = 0;
             int atSafepoint = 0;
             int ignoreSafepoints = 0;
             int notAtSafepoint = 0;
-            int lostUpdates = 0;
 
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                numThreads++;
                 if (thread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
@@ -245,10 +237,9 @@ public final class Safepoint {
                     switch (status) {
                         case StatusSupport.STATUS_IN_JAVA:
                         case StatusSupport.STATUS_IN_VM: {
-                            /* Re-request the safepoint in case of a lost update. */
+                            /* Request the safepoint (or re-request in case of a lost update). */
                             if (SafepointCheckCounter.getVolatile(thread) > 0) {
                                 requestEnterSafepoint(thread);
-                                lostUpdates++;
                             }
                             notAtSafepoint++;
                             break;
@@ -274,8 +265,8 @@ public final class Safepoint {
             }
 
             if (notAtSafepoint == 0) {
-                /* All threads entered the safepoint. */
-                return;
+                /* All relevant threads entered the safepoint. */
+                return numThreads;
             }
 
             if (warningNanos == -1 || failureNanos == -1) {
@@ -297,7 +288,6 @@ public final class Safepoint {
                                     .string("  atSafepoint: ").signed(atSafepoint)
                                     .string("  ignoreSafepoints: ").signed(ignoreSafepoints)
                                     .string("  notAtSafepoint: ").signed(notAtSafepoint)
-                                    .string("  lostUpdates: ").signed(lostUpdates)
                                     .string("]")
                                     .newline();
 
@@ -333,6 +323,7 @@ public final class Safepoint {
                 continue;
             }
 
+            assert StatusSupport.getStatusVolatile(thread) == StatusSupport.STATUS_IN_SAFEPOINT;
             restoreCounter(thread);
 
             /* Skip suspended threads so that they remain in STATUS_IN_SAFEPOINT. */

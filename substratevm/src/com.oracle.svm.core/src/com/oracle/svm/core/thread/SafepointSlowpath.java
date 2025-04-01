@@ -38,6 +38,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
+import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
@@ -48,11 +49,11 @@ import com.oracle.svm.core.util.VMError;
  * {@link #slowPathSafepointCheck(int, boolean, boolean) slowpath}. See {@link SafepointCheckNode}
  * and {@link SafepointSnippets} for more details.
  * <p>
- * {@link RecurringCallbackSupport} are implemented on top of the safepoint mechanism. If
- * {@linkplain RecurringCallbackSupport#isEnabled supported}, each safepoint check decrements
- * {@link SafepointCheckCounter} before the comparison. So, threads enter the safepoint slowpath
- * periodically, even if no safepoint is pending. At the end of the slowpath, the recurring callback
- * is executed if the timer has expired.
+ * {@link RecurringCallbackSupport Recurring callbacks} are implemented on top of the safepoint
+ * mechanism. If {@linkplain RecurringCallbackSupport#isEnabled supported}, each safepoint check
+ * decrements {@link SafepointCheckCounter} before the comparison. So, threads enter the safepoint
+ * slowpath periodically, even if no safepoint is pending. At the end of the slowpath, the recurring
+ * callback is executed if the timer has expired.
  */
 public class SafepointSlowpath {
     /*
@@ -134,7 +135,7 @@ public class SafepointSlowpath {
             slowPathSafepointCheck0(newStatus, callerHasJavaFrameAnchor, popFrameAnchor);
         } catch (RecurringCallbackSupport.SafepointException e) {
             /* This exception is intended to be thrown from safepoint checks, at one's own risk */
-            throw RecurringCallbackSupport.RecurringCallbackTimer.getAndClearPendingException();
+            throw RecurringCallbackTimer.getAndClearPendingException();
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we

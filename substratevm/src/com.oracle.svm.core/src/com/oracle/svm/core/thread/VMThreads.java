@@ -69,6 +69,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
@@ -214,6 +215,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
             /* Already initialized, or some other thread claimed the initialization lock. */
             while (initializationState.get() < STATE_INITIALIZED) {
                 /* Busy wait until the other thread finishes the initialization. */
+                PauseNode.pause();
             }
         }
         return result;

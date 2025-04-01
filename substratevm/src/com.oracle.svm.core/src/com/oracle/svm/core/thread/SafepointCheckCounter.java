@@ -39,13 +39,17 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 /**
  * Per-thread counter for safepoint checks. If the counter reaches a value less or equal 0, the
  * {@link SafepointSlowpath} is entered.
- *
+ * <p>
  * Be careful when calling any of the methods that manipulate or set the counter value directly as
  * they have the potential to destroy or skew the data that is needed for scheduling the execution
  * of recurring callbacks (i.e., the number of executed safepoints in a period of time). See class
  * {@link RecurringCallbackSupport} for more details about recurring callbacks.
- *
- * The safepoint check counter can have one of the following values:
+ * <p>
+ * If the recurring callback support is disabled, the safepoint check counter can only be 0
+ * (safepoint requested) or {@link #MAX_VALUE} (normal execution).
+ * <p>
+ * If the recurring callback support is enabled, the safepoint check counter can have one of the
+ * following values:
  * <ul>
  * <li>value > 0: remaining number of safepoint checks before the safepoint slowpath code is
  * executed.</li>
@@ -69,7 +73,7 @@ public class SafepointCheckCounter {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setVolatile(IsolateThread thread, int value) {
         assert CurrentIsolate.getCurrentThread() == thread || VMThreads.StatusSupport.isStatusCreated(thread) || VMOperationControl.mayExecuteVmOperations();
-        assert value > 0;
+        assert RecurringCallbackSupport.isEnabled() && value > 0 || !RecurringCallbackSupport.isEnabled() && (value == 0 || value == MAX_VALUE);
         valueTL.setVolatile(thread, value);
     }
 
