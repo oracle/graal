@@ -34,9 +34,11 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -65,7 +67,7 @@ public class RecurringCallbackSupport {
 
     public static class ConcealedOptions {
         @Option(help = "Support a per-thread timer that is called at a specific interval.") //
-        public static final HostedOptionKey<Boolean> SupportRecurringCallback = new HostedOptionKey<>(true);
+        public static final HostedOptionKey<Boolean> SupportRecurringCallback = new HostedOptionKey<>(false);
     }
 
     /**
@@ -78,7 +80,8 @@ public class RecurringCallbackSupport {
 
     @Fold
     public static boolean isEnabled() {
-        return ConcealedOptions.SupportRecurringCallback.getValue();
+        VMError.guarantee(BuildPhaseProvider.isSetupFinished(), "JfrRecurringCallbackExecutionSampler.isPresent() must not be called too early");
+        return ConcealedOptions.SupportRecurringCallback.getValue() || JfrRecurringCallbackExecutionSampler.isPresent();
     }
 
     public static RecurringCallbackTimer createCallbackTimer(long intervalNanos, RecurringCallback callback) {

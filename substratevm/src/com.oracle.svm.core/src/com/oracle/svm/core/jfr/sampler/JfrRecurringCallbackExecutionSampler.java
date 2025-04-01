@@ -54,11 +54,22 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
 public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecutionSampler {
     private static final ExecutionSampleCallback CALLBACK = new ExecutionSampleCallback();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrRecurringCallbackExecutionSampler() {
+    }
+
+    @Fold
+    public static boolean isPresent() {
+        if (ImageSingletons.contains(JfrExecutionSampler.class)) {
+            JfrExecutionSampler sampler = ImageSingletons.lookup(JfrExecutionSampler.class);
+            return sampler instanceof JfrRecurringCallbackExecutionSampler;
+        }
+        return false;
     }
 
     @Override
