@@ -58,6 +58,7 @@ import mx_native
 import mx_sdk
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_vm_ng
 import mx_subst
 import mx_unittest
 import mx_jardistribution
@@ -1492,7 +1493,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         if build_for_current_platform:
             # 2. Register a project building the isolate library
             isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE']
-            build_library = mx_sdk_vm_impl.PolyglotIsolateLibrary(language_suite, language_id, isolate_deps, isolate_build_options)
+            build_library = __PolyglotIsolateProject(language_suite, language_id, isolate_deps, isolate_build_options)
             register_project(build_library)
 
             # 3. Register layout distribution with isolate library and isolate resources
@@ -1509,9 +1510,9 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                 deps=[],
                 layout={
                     f'{resource_base_folder}/': f'dependency:{build_library.name}',
-                    f'{resource_base_folder}/resources': {"source_type": "dependency",
+                    f'{resource_base_folder}/resources/': {"source_type": "dependency",
                                                           "dependency": f'{build_library.name}',
-                                                          "path": 'resources',
+                                                          "path": 'language_resources/resources/*',
                                                           "optional": True},
                 },
                 path=None,
@@ -1608,6 +1609,28 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 
 
 mx.add_argument('--polyglot-isolates', action='store', help='Comma-separated list of languages for which the polyglot isolate library should be built. Setting the value to `true` builds all polyglot isolate libraries.')
+
+
+class __PolyglotIsolateProject(mx_sdk_vm_ng.LanguageLibraryProject):
+    """
+    A language library project dedicated to construct a language polyglot isolate library.
+    Instances are created by register_polyglot_isolate_distributions when a language
+    dynamically registers a polyglot isolate distribution.
+    """
+    def __init__(self, language_suite, language_id, isolate_deps, isolate_build_options):
+        build_args = [
+            '--features=com.oracle.svm.enterprise.truffle.PolyglotIsolateGuestFeature',
+            '-H:APIFunctionPrefix=truffle_isolate_',
+            '-H:+CopyLanguageResources'
+        ] + isolate_build_options
+        super().__init__(language_suite, f'lib{language_id}vm', isolate_deps, ['Truffle'], None, **{'build_args': build_args})
+
+    def resolveDeps(self):
+        super().resolveDeps()
+        # The polyglot isolate build does not use the --native-images option; it uses its own --polyglot-isolates option.
+        # The parent NativeImageLibraryProject uses mx_sdk_vm_impl._skip_libraries which marks the project as ignored.
+        # We need to remove the ignore flag
+        delattr(self, 'ignore')
 
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
