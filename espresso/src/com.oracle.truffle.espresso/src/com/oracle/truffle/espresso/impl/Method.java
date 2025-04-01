@@ -115,6 +115,7 @@ import com.oracle.truffle.espresso.impl.generics.visitor.Reifier;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVersionRef;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -274,22 +275,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedMethod().getAttribute(attrName);
-    }
-
-    @Override
-    @TruffleBoundary
-    public int bciToLineNumber(int bci) {
-        if (bci < 0) {
-            return bci;
-        }
-        if (isNative()) {
-            return EspressoStackElement.NATIVE_BCI;
-        }
-        if (getCodeAttribute() == null) {
-            assert isAbstract();
-            return EspressoStackElement.UNKNOWN_BCI;
-        }
-        return getCodeAttribute().bciToLineNumber(bci);
     }
 
     @Override
@@ -849,11 +834,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return this;
     }
 
-    @Override
-    public boolean hasSourceFileAttribute() {
-        return declaringKlass.getAttribute(Names.SourceFile) != null;
-    }
-
     public String report(int curBCI) {
         String sourceFile = getDeclaringKlass().getSourceFile();
         if (sourceFile == null) {
@@ -1000,103 +980,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getNameAsString() + AbstractLookupNode.METHOD_SELECTION_SEPARATOR + getRawSignature();
     }
 
-    @Override
-    public boolean hasActiveHook() {
-        return hasActiveHook.get();
-    }
-
-    @Override
-    public synchronized MethodHook[] getMethodHooks() {
-        return Arrays.copyOf(hooks, hooks.length);
-    }
-
-    @Override
-    public synchronized void addMethodHook(MethodHook info) {
-        hasActiveHook.set(true);
-        hooks = Arrays.copyOf(hooks, hooks.length + 1);
-        hooks[hooks.length - 1] = info;
-    }
-
-    private void expectActiveHooks() {
-        if (hooks.length == 0) {
-            throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
-        }
-    }
-
-    @Override
-    public synchronized void removeMethodHook(int requestId) {
-        expectActiveHooks();
-        boolean removed = false;
-        // shrink the array to avoid null values
-        if (hooks.length == 1) {
-            // make sure it's the right hook
-            if (hooks[0].getRequestId() == requestId) {
-                hooks = MethodHook.EMPTY;
-                hasActiveHook.set(false);
-                removed = true;
-            }
-        } else {
-            int removeIndex = -1;
-            for (int i = 0; i < hooks.length; i++) {
-                if (hooks[i].getRequestId() == requestId) {
-                    removeIndex = i;
-                    break;
-                }
-            }
-            if (removeIndex != -1) {
-                MethodHook[] temp = new MethodHook[hooks.length - 1];
-                for (int i = 0; i < temp.length; i++) {
-                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
-                }
-                hooks = temp;
-                removed = true;
-            }
-        }
-        if (!removed) {
-            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
-        }
-    }
-
-    @Override
-    public synchronized void removeMethodHook(MethodHook hook) {
-        expectActiveHooks();
-        boolean removed = false;
-        // shrink the array to avoid null values
-        if (hooks.length == 1) {
-            // make sure it's the right hook
-            if (hooks[0] == hook) {
-                hooks = MethodHook.EMPTY;
-                hasActiveHook.set(false);
-                removed = true;
-            }
-        } else {
-            int removeIndex = -1;
-            for (int i = 0; i < hooks.length; i++) {
-                if (hooks[i] == hook) {
-                    removeIndex = i;
-                    break;
-                }
-            }
-            if (removeIndex != -1) {
-                MethodHook[] temp = new MethodHook[hooks.length - 1];
-                for (int i = 0; i < temp.length; i++) {
-                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
-                }
-                hooks = temp;
-                removed = true;
-            }
-        }
-        if (!removed) {
-            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
-        }
-    }
-
-    @Override
-    public synchronized void disposeHooks() {
-        hasActiveHook.set(false);
-        hooks = MethodHook.EMPTY;
-    }
-
     SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass) {
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
@@ -1149,6 +1032,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         removedByRedefinition = true;
     }
 
+    @Override
     public boolean isRemovedByRedefinition() {
         return removedByRedefinition;
     }
@@ -1408,11 +1292,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
-    public String getNameAsString() {
-        return getName().toString();
-    }
-
-    @Override
     public String getSignatureAsString() {
         return getRawSignature().toString();
     }
@@ -1461,40 +1340,40 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     @Override
     public Object invokeMethodVirtual(Object... args) {
-        getMethodVersion().checkRemovedByRedefinition();
+        checkRemovedByRedefinition();
         return invokeDirectVirtual(args);
     }
 
     @Override
     public Object invokeMethodStatic(Object... args) {
-        getMethodVersion().checkRemovedByRedefinition();
+        checkRemovedByRedefinition();
         return invokeDirectStatic(args);
     }
 
     @Override
     public Object invokeMethodSpecial(Object... args) {
-        getMethodVersion().checkRemovedByRedefinition();
+        checkRemovedByRedefinition();
         return invokeDirectSpecial(args);
     }
 
     @Override
     public Object invokeMethodInterface(Object... args) {
-        getMethodVersion().checkRemovedByRedefinition();
+        checkRemovedByRedefinition();
         return invokeDirectInterface(args);
     }
 
     @Override
     public Object invokeMethodNonVirtual(Object... args) {
-        getMethodVersion().checkRemovedByRedefinition();
+        checkRemovedByRedefinition();
         return invokeDirect(args);
     }
 
-    @Override
-    public boolean isLastLine(long codeIndex) {
-        LineNumberTableAttribute table = getLineNumberTable();
-        int lastLine = table.getLastLine();
-        int lineAt = table.getLineNumber((int) codeIndex);
-        return lastLine == lineAt;
+    private void checkRemovedByRedefinition() {
+        if (isRemovedByRedefinition()) {
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                            meta.toGuestString(getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));
+        }
     }
 
     @Override
@@ -1505,11 +1384,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     @Override
     public int getLastLine() {
         return getLineNumberTable().getLastLine();
-    }
-
-    @Override
-    public boolean isObsolete() {
-        return !getMethodVersion().klassVersion.getAssumption().isValid();
     }
 
     @Override
@@ -1529,6 +1403,126 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return bci;
     }
 
+    @Override
+    public int bciToLineNumber(int bci) {
+        if (bci < 0) {
+            return bci;
+        }
+        if (isNative()) {
+            return EspressoStackElement.NATIVE_BCI;
+        }
+        if (getCodeAttribute() == null) {
+            assert isAbstract();
+            return EspressoStackElement.UNKNOWN_BCI;
+        }
+        return getCodeAttribute().bciToLineNumber(bci);
+    }
+
+    @Override
+    public boolean hasSourceFileAttribute() {
+        return declaringKlass.getAttribute(Names.SourceFile) != null;
+    }
+
+    @Override
+    public String getNameAsString() {
+        return getName().toString();
+    }
+
+    @Override
+    public boolean hasActiveHook() {
+        return hasActiveHook.get();
+    }
+
+    @Override
+    public synchronized MethodHook[] getMethodHooks() {
+        return Arrays.copyOf(hooks, hooks.length);
+    }
+
+    @Override
+    public synchronized void addMethodHook(MethodHook info) {
+        hasActiveHook.set(true);
+        hooks = Arrays.copyOf(hooks, hooks.length + 1);
+        hooks[hooks.length - 1] = info;
+    }
+
+    private void expectActiveHooks() {
+        if (hooks.length == 0) {
+            throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
+        }
+    }
+
+    @Override
+    public synchronized void removeMethodHook(int requestId) {
+        expectActiveHooks();
+        boolean removed = false;
+        // shrink the array to avoid null values
+        if (hooks.length == 1) {
+            // make sure it's the right hook
+            if (hooks[0].getRequestId() == requestId) {
+                hooks = MethodHook.EMPTY;
+                hasActiveHook.set(false);
+                removed = true;
+            }
+        } else {
+            int removeIndex = -1;
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i].getRequestId() == requestId) {
+                    removeIndex = i;
+                    break;
+                }
+            }
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
+            }
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+        }
+    }
+
+    @Override
+    public synchronized void removeMethodHook(MethodHook hook) {
+        expectActiveHooks();
+        boolean removed = false;
+        // shrink the array to avoid null values
+        if (hooks.length == 1) {
+            // make sure it's the right hook
+            if (hooks[0] == hook) {
+                hooks = MethodHook.EMPTY;
+                hasActiveHook.set(false);
+                removed = true;
+            }
+        } else {
+            int removeIndex = -1;
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i] == hook) {
+                    removeIndex = i;
+                    break;
+                }
+            }
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
+            }
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+        }
+    }
+
+    public synchronized void disposeHooks() {
+        hasActiveHook.set(false);
+        hooks = MethodHook.EMPTY;
+    }
     // endregion Methodref impl
 
     private static final class Continuum {
@@ -1586,7 +1580,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
      * Each time a method is changed via class redefinition it gets a new version, and therefore a
      * new MethodVersion object.
      */
-    public final class MethodVersion implements ModifiersProvider {
+    public final class MethodVersion implements MethodVersionRef, ModifiersProvider {
         private static final int CODE_FLAGS_MASK = 0b00001111;
         private static final int CODE_FLAGS_READY = 0x1;
         private static final int CODE_FLAGS_HAS_JSR = 0x2;
@@ -1712,9 +1706,15 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return linkedMethod;
         }
 
+        @Override
         @Idempotent
         public Method getMethod() {
             return Method.this;
+        }
+
+        @Override
+        public boolean isObsolete() {
+            return !klassVersion.getAssumption().isValid();
         }
 
         public Symbol<Name> getName() {
@@ -1975,14 +1975,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                 return lineNumberTable != null ? lineNumberTable : LineNumberTableAttribute.EMPTY;
             }
             return LineNumberTableAttribute.EMPTY;
-        }
-
-        private void checkRemovedByRedefinition() {
-            if (getMethod().isRemovedByRedefinition()) {
-                Meta meta = getMeta();
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));
-            }
         }
 
         @Override

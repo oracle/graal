@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2029, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,7 @@ public interface VMListener {
      * This method should be called when when the monitor wait(timeout) method is invoked in the
      * guest VM. A monitor wait event will then be sent through JDWP, if there was a request for the
      * current thread.
-     * 
+     *
      * @param monitor the monitor object
      * @param timeout the timeout in ms before the wait will time out
      */

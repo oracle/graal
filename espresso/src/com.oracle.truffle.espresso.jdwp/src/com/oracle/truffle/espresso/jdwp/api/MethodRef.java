@@ -176,14 +176,6 @@ public interface MethodRef {
     boolean hasSourceFileAttribute();
 
     /**
-     * Determines if the code index is located in the source file on the last line of this method.
-     *
-     * @param codeIndex
-     * @return true if last line, false otherwise
-     */
-    boolean isLastLine(long codeIndex);
-
-    /**
      * Returns the klass that declares this method.
      *
      * @return the declaring klass
@@ -235,16 +227,6 @@ public interface MethodRef {
     void disposeHooks();
 
     /**
-     * Determine if this method is obsolete. A method is obsolete if it has been replaced by a
-     * non-equivalent method using the RedefineClasses command. The original and redefined methods
-     * are considered equivalent if their bytecodes are the same except for indices into the
-     * constant pool and the referenced constants are equal.
-     *
-     * @return true if the method is obsolete
-     */
-    boolean isObsolete();
-
-    /**
      * Returns the last bci of the method.
      *
      * @return last bci
@@ -264,4 +246,11 @@ public interface MethodRef {
      * @return true if the method is a static initializer
      */
     boolean isClassInitializer();
+
+    /**
+     * Determines if this method was removed by redefinition.
+     *
+     * @return true if removed
+     */
+    boolean isRemovedByRedefinition();
 }

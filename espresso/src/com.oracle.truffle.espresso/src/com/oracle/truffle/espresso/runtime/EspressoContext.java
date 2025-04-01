@@ -1143,14 +1143,14 @@ public final class EspressoContext
         espressoEnv.getEventListener().onContendedMonitorEntered(obj);
     }
 
-    public boolean reportOnMethodEntry(Method.MethodVersion method, Object scope) {
+    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Object scope) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodEntry(method.getMethod(), scope);
+        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), scope);
     }
 
-    public boolean reportOnMethodReturn(Method.MethodVersion method, Object returnValue) {
+    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Object returnValue) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodReturn(method.getMethod(), returnValue);
+        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), returnValue);
     }
 
     public boolean reportOnFieldModification(Field field, StaticObject receiver, Object value) {

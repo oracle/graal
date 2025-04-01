@@ -68,6 +68,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVersionRef;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
 public final class DebuggerController implements ContextsListener {
@@ -415,10 +416,10 @@ public final class DebuggerController implements ContextsListener {
         SteppingInfo steppingInfo = commandRequestIds.get(susp.getThread());
         if (steppingInfo != null && stepOutBCI != -1) {
             // record the location that we'll land on after the step out completes
-            MethodRef method = context.getMethodFromRootNode(callerRoot);
+            MethodVersionRef method = context.getMethodFromRootNode(callerRoot);
             if (method != null) {
-                KlassRef klass = method.getDeclaringKlassRef();
-                steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method), stepOutBCI);
+                KlassRef klass = method.getMethod().getDeclaringKlassRef();
+                steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method.getMethod()), stepOutBCI);
             }
         }
     }
@@ -869,16 +870,17 @@ public final class DebuggerController implements ContextsListener {
         List<CallFrame> callFrames = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(frameInstance -> {
             KlassRef klass;
-            MethodRef method;
+            MethodVersionRef methodVersion;
             RootNode root = getRootNode(frameInstance);
             if (root == null) {
                 return null;
             }
-            method = getContext().getMethodFromRootNode(root);
-            if (method == null) {
+            methodVersion = getContext().getMethodFromRootNode(root);
+            if (methodVersion == null) {
                 return null;
             }
 
+            MethodRef method = methodVersion.getMethod();
             klass = method.getDeclaringKlassRef();
             long klassId = ids.getIdAsLong(klass);
             long methodId = ids.getIdAsLong(method);
@@ -914,7 +916,7 @@ public final class DebuggerController implements ContextsListener {
             if (currentNode instanceof RootNode) {
                 currentNode = context.getInstrumentableNode((RootNode) currentNode);
             }
-            callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context, jdwpLogger));
+            callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, methodVersion, methodId, codeIndex, frame, currentNode, root, null, context, jdwpLogger));
             return null;
         });
         return callFrames.toArray(new CallFrame[0]);
@@ -1227,11 +1229,11 @@ public final class DebuggerController implements ContextsListener {
                 }
 
                 Frame rawFrame = frame.getRawFrame(context.getLanguageClass(), FrameInstance.FrameAccess.READ_WRITE);
-                MethodRef method = context.getMethodFromRootNode(root);
-                KlassRef klass = method.getDeclaringKlassRef();
+                MethodVersionRef methodVersion = context.getMethodFromRootNode(root);
+                KlassRef klass = methodVersion.getMethod().getDeclaringKlassRef();
 
                 klassId = ids.getIdAsLong(klass);
-                methodId = ids.getIdAsLong(method);
+                methodId = ids.getIdAsLong(methodVersion.getMethod());
                 typeTag = TypeTag.getKind(klass);
 
                 // check if we have a dedicated step out code index on the top frame
@@ -1241,7 +1243,7 @@ public final class DebuggerController implements ContextsListener {
                     codeIndex = context.getBCI(rawNode, rawFrame);
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context, jdwpLogger));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, methodVersion, methodId, codeIndex, rawFrame, rawNode, root, frame, context, jdwpLogger));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[0]);

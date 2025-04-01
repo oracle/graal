@@ -42,7 +42,7 @@ public final class CallFrame {
 
     private final byte typeTag;
     private final long classId;
-    private final MethodRef method;
+    private final MethodVersionRef methodVersion;
     private final long methodId;
     private final long codeIndex;
     private final long threadId;
@@ -55,14 +55,14 @@ public final class CallFrame {
     private Object scope;
     private final TruffleLogger logger;
 
-    public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
+    public CallFrame(long threadId, byte typeTag, long classId, MethodVersionRef methodVersion, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
                     DebugStackFrame debugStackFrame, JDWPContext context, TruffleLogger logger) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
-        this.method = method;
+        this.methodVersion = methodVersion;
         this.methodId = methodId;
-        this.codeIndex = method != null && method.isObsolete() ? -1 : codeIndex;
+        this.codeIndex = methodVersion != null && methodVersion.isObsolete() ? -1 : codeIndex;
         this.frame = frame;
         this.currentNode = currentNode;
         this.rootNode = rootNode;
@@ -85,15 +85,22 @@ public final class CallFrame {
         return classId;
     }
 
+    public MethodVersionRef getMethodVersion() {
+        return methodVersion;
+    }
+
     public MethodRef getMethod() {
-        return method;
+        if (methodVersion != null) {
+            return methodVersion.getMethod();
+        }
+        return null;
     }
 
     public long getMethodId() {
-        if (method == null) {
+        if (methodVersion == null) {
             return methodId;
         }
-        return method.isObsolete() ? 0 : methodId;
+        return methodVersion.isObsolete() ? 0 : methodId;
     }
 
     public long getCodeIndex() {
