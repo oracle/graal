@@ -246,6 +246,8 @@ public class BinaryReader implements GraphParser, ModelControl {
         public final String name;
 
         private Member(Klass holder, String name, int accessFlags) {
+            assert holder != null : "GraphElements.methodDeclaringClass must not return null!";
+            assert name != null;
             this.holder = holder;
             this.accessFlags = accessFlags;
             this.name = name;
