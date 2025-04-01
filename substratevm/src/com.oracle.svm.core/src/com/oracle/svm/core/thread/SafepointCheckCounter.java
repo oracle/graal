@@ -42,8 +42,8 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
  *
  * Be careful when calling any of the methods that manipulate or set the counter value directly as
  * they have the potential to destroy or skew the data that is needed for scheduling the execution
- * of recurring callbacks (i.e., the number of executed safepoints in a period of time). See
- * {@link ThreadingSupportImpl} for more details about recurring callbacks.
+ * of recurring callbacks (i.e., the number of executed safepoints in a period of time). See class
+ * {@link RecurringCallbackSupport} for more details about recurring callbacks.
  *
  * The safepoint check counter can have one of the following values:
  * <ul>

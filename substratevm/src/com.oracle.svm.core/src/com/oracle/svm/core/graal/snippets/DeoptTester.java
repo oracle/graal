@@ -49,7 +49,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -118,7 +118,7 @@ public class DeoptTester {
         try {
             if (Heap.getHeap().isAllocationDisallowed() ||
                             !CEntryPointSnippets.isIsolateInitialized() ||
-                            ThreadingSupportImpl.isRecurringCallbackPaused() ||
+                            (RecurringCallbackSupport.isEnabled() && RecurringCallbackSupport.isCallbackExecutionSuspended()) ||
                             VMOperation.isInProgress() ||
                             SafepointBehavior.ignoresSafepoints() ||
                             !PlatformThreads.isCurrentAssigned()) {

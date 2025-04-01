@@ -76,7 +76,7 @@ import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.UserError;
@@ -268,7 +268,7 @@ public class JavaMainWrapper {
 
     @Uninterruptible(reason = "The caller initialized the thread state, so the callees do not need to be uninterruptible.", calleeMustBe = false)
     private static void runShutdown() {
-        ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks can't be executed during shutdown.");
+        RecurringCallbackSupport.suspendCallbackExecution("Recurring callbacks can't be executed during shutdown.");
         runShutdown0();
     }
 

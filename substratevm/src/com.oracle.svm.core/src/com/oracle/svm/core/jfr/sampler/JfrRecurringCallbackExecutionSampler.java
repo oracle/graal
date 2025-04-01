@@ -47,9 +47,9 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
+import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.ThreadingSupportImpl.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -90,7 +90,8 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
     }
 
     private RecurringCallbackTimer createRecurringCallbackTimer() {
-        return ThreadingSupportImpl.createRecurringCallbackTimer(TimeUtils.millisToNanos(newIntervalMillis), CALLBACK);
+        /* Allocates an object, so this can only be done in interruptible code. */
+        return RecurringCallbackSupport.createCallbackTimer(TimeUtils.millisToNanos(newIntervalMillis), CALLBACK);
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
@@ -98,10 +99,10 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
         if (ExecutionSamplerInstallation.isAllowed(thread)) {
-            Threading.RecurringCallback currentCallback = ThreadingSupportImpl.getRecurringCallback(thread);
+            Threading.RecurringCallback currentCallback = RecurringCallbackSupport.getCallback(thread);
             if (currentCallback == null) {
                 ExecutionSamplerInstallation.installed(thread);
-                ThreadingSupportImpl.setRecurringCallback(thread, callbackTimer);
+                RecurringCallbackSupport.installCallback(thread, callbackTimer);
             }
         }
     }
@@ -112,9 +113,9 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
         if (ExecutionSamplerInstallation.isInstalled(thread)) {
-            Threading.RecurringCallback currentCallback = ThreadingSupportImpl.getRecurringCallback(thread);
+            Threading.RecurringCallback currentCallback = RecurringCallbackSupport.getCallback(thread);
             if (currentCallback == CALLBACK) {
-                ThreadingSupportImpl.removeRecurringCallback(thread);
+                RecurringCallbackSupport.uninstallCallback(thread);
             }
             ExecutionSamplerInstallation.uninstalled(thread);
         }
@@ -122,15 +123,15 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
 
     @Override
     public void beforeThreadRun() {
-        RecurringCallbackTimer callbackTimer = createRecurringCallbackTimer();
-        beforeThreadRun0(callbackTimer);
+        RecurringCallbackTimer callback = createRecurringCallbackTimer();
+        beforeThreadRun0(callback);
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify the execution sampler or the recurring callbacks.")
-    private void beforeThreadRun0(RecurringCallbackTimer callbackTimer) {
+    private void beforeThreadRun0(RecurringCallbackTimer callback) {
         if (isSampling()) {
             SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
-            install(CurrentIsolate.getCurrentThread(), callbackTimer);
+            install(CurrentIsolate.getCurrentThread(), callback);
         }
     }
 

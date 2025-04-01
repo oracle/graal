@@ -29,8 +29,6 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
 import java.nio.charset.StandardCharsets;
 
-import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,6 +36,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -48,13 +47,14 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -673,7 +673,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         @Uninterruptible(reason = "Prevent JFR recording.")
         private static void processSamplerBuffers() {
             assert VMOperation.isInProgressAtSafepoint();
-            assert ThreadingSupportImpl.isRecurringCallbackPaused();
+            assert RecurringCallbackSupport.isCallbackExecutionNotSupportedOrSuspended();
 
             JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
             try {

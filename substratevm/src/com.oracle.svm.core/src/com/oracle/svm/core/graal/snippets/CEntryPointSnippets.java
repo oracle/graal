@@ -95,9 +95,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadStatusTransition;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -666,7 +666,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
 
             /* After threadExit(), only uninterruptible code may be executed. */
-            ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+            RecurringCallbackSupport.suspendCallbackExecution("Execution of arbitrary code is prohibited during the last teardown steps.");
 
             /* Shut down VM thread. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {

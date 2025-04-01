@@ -26,8 +26,6 @@ package com.oracle.svm.core.thread;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
-import org.graalvm.nativeimage.CurrentIsolate;
-
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -50,11 +48,11 @@ import com.oracle.svm.core.util.VMError;
  * {@link #slowPathSafepointCheck(int, boolean, boolean) slowpath}. See {@link SafepointCheckNode}
  * and {@link SafepointSnippets} for more details.
  * <p>
- * Recurring callbacks (see {@link ThreadingSupportImpl}) are implemented on top of the safepoint
- * mechanism. If {@linkplain ThreadingSupportImpl.Options#SupportRecurringCallback supported}, each
- * safepoint check decrements {@link SafepointCheckCounter} before the comparison. So, threads enter
- * the safepoint slowpath periodically, even if no safepoint is pending. At the end of the slowpath,
- * the recurring callback is executed if the timer has expired.
+ * {@link RecurringCallbackSupport} are implemented on top of the safepoint mechanism. If
+ * {@linkplain RecurringCallbackSupport#isEnabled supported}, each safepoint check decrements
+ * {@link SafepointCheckCounter} before the comparison. So, threads enter the safepoint slowpath
+ * periodically, even if no safepoint is pending. At the end of the slowpath, the recurring callback
+ * is executed if the timer has expired.
  */
 public class SafepointSlowpath {
     /*
@@ -134,9 +132,9 @@ public class SafepointSlowpath {
     private static void slowPathSafepointCheck(int newStatus, boolean callerHasJavaFrameAnchor, boolean popFrameAnchor) throws Throwable {
         try {
             slowPathSafepointCheck0(newStatus, callerHasJavaFrameAnchor, popFrameAnchor);
-        } catch (ThreadingSupportImpl.SafepointException e) {
+        } catch (RecurringCallbackSupport.SafepointException e) {
             /* This exception is intended to be thrown from safepoint checks, at one's own risk */
-            throw ThreadingSupportImpl.RecurringCallbackTimer.getAndClearPendingException();
+            throw RecurringCallbackSupport.RecurringCallbackTimer.getAndClearPendingException();
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -162,7 +160,7 @@ public class SafepointSlowpath {
     private static void slowPathSafepointCheck0(int newStatus, boolean callerHasJavaFrameAnchor, boolean popFrameAnchor) {
         if (Safepoint.singleton().isMasterThread()) {
             /* Must not stop at a safepoint nor trigger a callback. */
-            assert !ThreadingSupportImpl.isRecurringCallbackRegistered(CurrentIsolate.getCurrentThread()) || ThreadingSupportImpl.isRecurringCallbackPaused();
+            assert RecurringCallbackSupport.isCallbackExecutionNotSupportedOrSuspended();
         } else {
             do {
                 if (Safepoint.singleton().isPendingOrInProgress() || ThreadSuspendSupport.isCurrentThreadSuspended()) {
@@ -187,7 +185,7 @@ public class SafepointSlowpath {
 
         if (newStatus == StatusSupport.STATUS_IN_JAVA) {
             ActionOnTransitionToJavaSupport.runPendingActions();
-            ThreadingSupportImpl.onSafepointCheckSlowpath();
+            RecurringCallbackSupport.maybeExecuteCallback();
         }
     }
 

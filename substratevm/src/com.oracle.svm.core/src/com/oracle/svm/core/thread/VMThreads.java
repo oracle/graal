@@ -341,7 +341,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
         OSThreadHandleTL.set(thread, getCurrentOSThreadHandle());
 
         /* Set initial safepoint counter value before making the thread visible. */
-        assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
+        assert !RecurringCallbackSupport.isCallbackInstalled(thread);
         SafepointCheckCounter.setVolatile(thread, SafepointCheckCounter.MAX_VALUE);
 
         THREAD_MUTEX.lockNoTransition();

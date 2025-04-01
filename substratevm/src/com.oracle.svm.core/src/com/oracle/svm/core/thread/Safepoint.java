@@ -361,7 +361,7 @@ public final class Safepoint {
      * value before a safepoint was requested.
      */
     private static void requestEnterSafepoint(IsolateThread thread) {
-        if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+        if (RecurringCallbackSupport.isEnabled()) {
             int value;
             do {
                 value = SafepointCheckCounter.getVolatile(thread);
