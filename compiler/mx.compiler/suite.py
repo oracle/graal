@@ -65,8 +65,8 @@ suite = {
       "packedResource": True,
     },
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.20-ea624c6066a.zip"],
-      "digest" : "sha512:263aefe418be987fc4e9a84cc301d0cc23858175ff0688791468ca31bae91e3fd51409a6167e1e6bd596e7ebe0fab1f26a025fcd6aac0b750fde62edaec33c0a",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.21-6336c496583.zip"],
+      "digest" : "sha512:978b5f2e7f807238dcb2bf4e5b7acdd88176c3742bdc0e472d96cbd5a5d72ff411a110098abbbbcd6ad55c6baa27ea9b530e78736085e1bee80d61f723e47c60",
       "packedResource": True,
     },
 
