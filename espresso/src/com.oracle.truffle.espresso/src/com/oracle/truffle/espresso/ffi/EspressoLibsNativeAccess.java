@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.ffi;
 
 import java.nio.file.Path;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -79,6 +80,7 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     }
 
     @Override
+    @TruffleBoundary
     public String mapLibraryName(String libname) {
         if (libs.isKnown(libname)) {
             return libname;
@@ -174,6 +176,7 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
         delegate.prepareThread();
     }
 
+    @TruffleBoundary
     public boolean isKnownBootLibrary(String path) {
         Path p = Path.of(path);
         Path name = p.getFileName();
