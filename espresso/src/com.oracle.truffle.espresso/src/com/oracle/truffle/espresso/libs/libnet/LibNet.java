@@ -38,6 +38,6 @@ public final class LibNet implements Lib.Factory {
 
     @Override
     public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, List.of() /*- LibNetCollector.getInstances(JavaSubstitution.Factory.class) */);
+        return new Lib(ctx, List.of() /*- LibNetCollector.getInstances(JavaSubstitution.Factory.class) */, name());
     }
 }

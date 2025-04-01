@@ -37,6 +37,6 @@ public final class LibNio implements Lib.Factory {
 
     @Override
     public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, LibNioCollector.getInstances(JavaSubstitution.Factory.class));
+        return new Lib(ctx, LibNioCollector.getInstances(JavaSubstitution.Factory.class), name());
     }
 }

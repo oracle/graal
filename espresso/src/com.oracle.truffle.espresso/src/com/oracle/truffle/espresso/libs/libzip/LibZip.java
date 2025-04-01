@@ -37,6 +37,6 @@ public final class LibZip implements Lib.Factory {
 
     @Override
     public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, LibZipCollector.getInstances(JavaSubstitution.Factory.class));
+        return new Lib(ctx, LibZipCollector.getInstances(JavaSubstitution.Factory.class), name());
     }
 }

@@ -55,12 +55,11 @@ public final class Target_java_lang_StackTraceElement {
 
     // for JDK >= 19
     @Substitution(flags = {needsSignatureMangle})
-    public static void initStackTraceElements(@JavaType(StackTraceElement[].class) StaticObject stack, @JavaType(Object.class) StaticObject backtrace,
+    public static void initStackTraceElements(
+                    @JavaType(StackTraceElement[].class) StaticObject stack,
+                    @JavaType(Object.class) StaticObject backtrace,
                     @SuppressWarnings("unused") int depth,
-                    @Inject VM vm,
-                    @Inject EspressoLanguage language,
-                    @Inject Meta meta,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject VM vm, @Inject EspressoLanguage language, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         vm.JVM_InitStackTraceElementArray(stack, backtrace, language, meta, profiler);
     }
 }

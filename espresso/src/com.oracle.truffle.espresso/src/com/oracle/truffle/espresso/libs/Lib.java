@@ -59,17 +59,31 @@ public final class Lib implements TruffleObject {
         Lib create(EspressoContext ctx);
     }
 
-    public Lib(EspressoContext context, List<JavaSubstitution.Factory> collector) {
+    private final String name;
+
+    public Lib(EspressoContext context, List<JavaSubstitution.Factory> collector, String name) {
+        this.name = name;
         for (JavaSubstitution.Factory factory : collector) {
             if (factory.isValidFor(context.getLanguage())) {
                 List<MethodKey> refs = getRefs(context, factory);
                 for (MethodKey ref : refs) {
-                    String key = Mangle.mangleMethod(ref.getHolderType(), ref.getName().toString(), factory.needsSignatureMangle() ? ref.getSignature() : null, false);
+                    String key = Mangle.mangleMethod(
+                                    ref.getHolderType(),
+                                    ref.getName().toString(),
+                                    factory.needsSignatureMangle()
+                                                    ? ref.getSignature()
+                                                    : null,
+                                    false);
                     assert !bindings.containsKey(key);
+                    context.getLogger().finer(() -> "Registering " + name() + " library entry: " + key);
                     bindings.put(key, factory);
                 }
             }
         }
+    }
+
+    public String name() {
+        return name;
     }
 
     /**
@@ -89,9 +103,10 @@ public final class Lib implements TruffleObject {
     private static List<MethodKey> getRefs(EspressoContext ctx, JavaSubstitution.Factory factory) {
         List<Symbol<Type>> params = new ArrayList<>(factory.parameterTypes().length);
         for (String param : factory.parameterTypes()) {
-            params.add(ctx.getTypes().fromClassGetName(param));
+            Symbol<Type> e = ctx.getTypes().fromDescriptorString(param);
+            params.add(e);
         }
-        Symbol<Type> rType = ctx.getTypes().fromClassGetName(factory.returnType());
+        Symbol<Type> rType = ctx.getTypes().fromDescriptorString(factory.returnType());
         Symbol<Signature> signature = ctx.getSignatures().makeRaw(rType, params.toArray(Symbol.EMPTY_ARRAY));
 
         int nRefs = factory.getMethodNames().length;

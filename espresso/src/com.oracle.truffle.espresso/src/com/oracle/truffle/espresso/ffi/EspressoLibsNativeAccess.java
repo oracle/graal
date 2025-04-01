@@ -103,11 +103,13 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
         if (library instanceof Lib lib) {
             TruffleObject result = lib.find(symbolName);
             if (result != null) {
-                getLogger().fine(() -> "Found symbol '" + symbolName + "' in espresso libs.");
+                getLogger().fine(() -> "Found symbol '" + symbolName + "' in espresso lib " + lib.name());
                 return result;
             }
+            getLogger().fine(() -> "Failed to locate symbol '" + symbolName + "' in espresso lib " + lib.name());
         } else {
             // Delegate library
+            getLogger().fine(() -> "Espresso libs delegating for: " + symbolName);
             return delegate.lookupSymbol(library, symbolName);
         }
         return null;

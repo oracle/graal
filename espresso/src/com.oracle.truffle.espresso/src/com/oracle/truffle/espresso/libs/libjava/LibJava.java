@@ -37,6 +37,6 @@ public final class LibJava implements Lib.Factory {
 
     @Override
     public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, LibJavaCollector.getInstances(JavaSubstitution.Factory.class));
+        return new Lib(ctx, LibJavaCollector.getInstances(JavaSubstitution.Factory.class), name());
     }
 }
