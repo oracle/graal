@@ -84,6 +84,7 @@
             <file name="NodePositionCurrent.xml" url="NodePositionCurrent.xml"/>
             <file name="CallSiteCurrent.xml" url="CallSiteCurrent.xml"/>
             <file name="CalledSiteCurrent.xml" url="CalledSiteCurrent.xml"/>
+            <file name="NodePositionOffset.xml" url="NodePositionOffset.xml"/>
         </folder>
         <folder name="FontsColors">
             <folder name="NetBeans">
