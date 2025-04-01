@@ -10,11 +10,11 @@ import java.util.Objects;
  *
  * @param <State> the type of the finite state
  */
-public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteAbstractDomain<State>> {
+public abstract class FiniteDomain<State> extends AbstractDomain<FiniteDomain<State>> {
     private State state;
     private AbstractValueKind kind;
 
-    public FiniteAbstractDomain(State initialState, AbstractValueKind initialKind) {
+    public FiniteDomain(State initialState, AbstractValueKind initialKind) {
         this.state = initialState;
         this.kind = initialKind;
     }
@@ -46,7 +46,7 @@ public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteA
     }
 
     @Override
-    public boolean leq(FiniteAbstractDomain<State> other) {
+    public boolean leq(FiniteDomain<State> other) {
         if (isBot()) return true;
         if (other.isBot()) return false;
         if (other.isTop()) return true;
@@ -57,7 +57,7 @@ public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteA
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
-        FiniteAbstractDomain<?> that = (FiniteAbstractDomain<?>) o;
+        FiniteDomain<?> that = (FiniteDomain<?>) o;
         return Objects.equals(state, that.state) && kind == that.kind;
     }
 
@@ -77,7 +77,7 @@ public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteA
     }
 
     @Override
-    public void joinWith(FiniteAbstractDomain<State> other) {
+    public void joinWith(FiniteDomain<State> other) {
         if (isTop() || other.isBot()) return;
         if (other.isTop()) {
             setToTop();
@@ -92,12 +92,12 @@ public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteA
     }
 
     @Override
-    public void widenWith(FiniteAbstractDomain<State> other) {
+    public void widenWith(FiniteDomain<State> other) {
         joinWith(other);
     }
 
     @Override
-    public void meetWith(FiniteAbstractDomain<State> other) {
+    public void meetWith(FiniteDomain<State> other) {
         if (isBot() || other.isTop()) return;
         if (other.isBot()) {
             setToBot();
@@ -113,12 +113,12 @@ public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteA
 
     @Override
     public String toString() {
-        return "FiniteAbstractDomain{" +
+        return "FiniteDomain{" +
                 "state=" + state +
                 ", kind=" + kind +
                 '}';
     }
 
     @Override
-    public abstract FiniteAbstractDomain<State> copyOf();
+    public abstract FiniteDomain<State> copyOf();
 }

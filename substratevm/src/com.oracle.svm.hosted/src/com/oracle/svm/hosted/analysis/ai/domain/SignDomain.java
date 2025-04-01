@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.domain.value.Sign;
 
-public final class SignDomain extends FiniteAbstractDomain<Sign> {
+public final class SignDomain extends FiniteDomain<Sign> {
 
     public SignDomain() {
         super(Sign.BOT, AbstractValueKind.BOT);
