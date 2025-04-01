@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,31 +170,6 @@ public final class Ids<T> {
             pinnedObjects.add(object);
         }
         return id;
-    }
-
-    public void replaceObject(T original, T replacement) {
-        int id = (int) getIdAsLong(original);
-        objects[id] = new WeakReference<>(replacement);
-        log(() -> "Replaced ID: " + id);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void updateId(KlassRef klass) {
-        // remove existing ID
-        removeId(klass);
-        Long theId = innerClassIDMap.get(klass.getNameAsString());
-        if (theId != null) {
-            // then inject klass under the new ID
-            objects[(int) (long) theId] = new WeakReference(klass);
-        }
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private void removeId(KlassRef klass) {
-        int id = (int) getId(klass);
-        if (id > 0) {
-            objects[id] = new WeakReference<>(null);
-        }
     }
 
     public boolean checkRemoved(long refTypeId) {
