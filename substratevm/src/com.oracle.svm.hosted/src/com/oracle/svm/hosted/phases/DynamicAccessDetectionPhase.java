@@ -33,7 +33,6 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.Loader;
-import org.graalvm.collections.Pair;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.VerifyAccess;
 import sun.reflect.annotation.AnnotationParser;
@@ -71,12 +70,12 @@ import java.util.random.RandomGeneratorFactory;
  * providing the desired class or module path entry/s.
  */
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
-    public record MethodInfo(String type, String name) {}
+    public record MethodInfo(String accessType, String name) {}
 
-    private static final String METHODTYPE_REFLECTION = "reflection";
-    private static final String METHODTYPE_RESOURCE = "resource";
-    private static final String METHODTYPE_SERIALIZATION = "serialization";
-    private static final String METHODTYPE_PROXY = "proxy";
+    private static final String ACCESSTYPE_REFLECTION = "reflection";
+    private static final String ACCESSTYPE_RESOURCE = "resource";
+    private static final String ACCESSTYPE_SERIALIZATION = "serialization";
+    private static final String ACCESSTYPE_PROXY = "proxy";
 
     private static final Map<String, Set<String>> reflectMethodNames = new HashMap<>();
     private static final Map<String, Set<String>> resourceMethodNames = new HashMap<>();
@@ -191,7 +190,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
             MethodInfo methodDetails = getMethod(callTarget);
 
             if (methodDetails != null && entryPath != null) {
-                String methodType = methodDetails.type();
+                String methodType = methodDetails.accessType();
                 String methodName = methodDetails.name();
 
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
@@ -210,7 +209,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     }
 
     /*
-     * Returns the name and type of a method if it exists in the predetermined set, based on its
+     * Returns the name and dynamic access type of a method if it exists in the predetermined set, based on its
      * graph and MethodCallTargetNode; otherwise, returns null.
      */
     private static MethodInfo getMethod(MethodCallTargetNode callTarget) {
@@ -218,13 +217,13 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
         if (reflectMethodNames.containsKey(declaringClass) && reflectMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(METHODTYPE_REFLECTION, declaringClass + "#" + methodName);
+            return new MethodInfo(ACCESSTYPE_REFLECTION, declaringClass + "#" + methodName);
         } else if (resourceMethodNames.containsKey(declaringClass) && resourceMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(METHODTYPE_RESOURCE, declaringClass + "#" + methodName);
+            return new MethodInfo(ACCESSTYPE_RESOURCE, declaringClass + "#" + methodName);
         } else if (serializationMethodNames.containsKey(declaringClass) && serializationMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(METHODTYPE_SERIALIZATION, declaringClass + "#" + methodName);
+            return new MethodInfo(ACCESSTYPE_SERIALIZATION, declaringClass + "#" + methodName);
         } else if (proxyMethodNames.containsKey(declaringClass) && proxyMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(METHODTYPE_PROXY, declaringClass + "#" + methodName);
+            return new MethodInfo(ACCESSTYPE_PROXY, declaringClass + "#" + methodName);
         }
         return null;
     }
