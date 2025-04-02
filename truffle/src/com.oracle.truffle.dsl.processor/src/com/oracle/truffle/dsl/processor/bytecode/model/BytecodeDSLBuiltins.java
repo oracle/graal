@@ -292,15 +292,29 @@ public class BytecodeDSLBuiltins {
                         .setVariadic(true, 0) //
                         .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations")) //
                         .setDynamicOperands(transparentOperationChild());
-        m.sourceSectionOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSection",
-                        """
-                                        SourceSection associates the children in its {@code body} with the source section with the given character {@code index} and {@code length}.
-                                        To specify an {@link Source#createUnavailableSection() unavailable source section}, provide {@code -1} for both arguments.
-                                        This operation must be (directly or indirectly) enclosed within a Source operation.
-                                        """) //
+
+        String sourceDoc = """
+                        SourceSection associates the children in its {@code body} with the source section with the given character {@code index} and {@code length}.
+                        To specify an {@link Source#createUnavailableSection() unavailable source section}, provide {@code -1} for both arguments.
+                        This operation must be (directly or indirectly) enclosed within a Source operation.
+                        """;
+
+        m.sourceSectionPrefixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionPrefix",
+                        sourceDoc, "SourceSection") //
                         .setTransparent(true) //
                         .setVariadic(true, 0) //
                         .setOperationBeginArguments(
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
+                                                        "the starting character index of the source section, or -1 if the section is unavailable"),
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",
+                                                        "the length (in characters) of the source section, or -1 if the section is unavailable")) //
+                        .setDynamicOperands(transparentOperationChild());
+
+        m.sourceSectionSuffixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionSuffix",
+                        sourceDoc, "SourceSection") //
+                        .setTransparent(true) //
+                        .setVariadic(true, 0) //
+                        .setOperationEndArguments(
                                         new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
                                                         "the starting character index of the source section, or -1 if the section is unavailable"),
                                         new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",

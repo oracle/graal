@@ -53,6 +53,10 @@ import com.oracle.truffle.api.frame.Frame;
 @RunWith(Parameterized.class)
 public class CopyLocalsTest extends AbstractBasicInterpreterTest {
 
+    public CopyLocalsTest(TestRun run) {
+        super(run);
+    }
+
     @Test
     public void testCopyAllLocals() {
         /**

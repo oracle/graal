@@ -60,6 +60,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class TryFinallyTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
+    public TryFinallyTest(TestRun run) {
+        super(run);
+    }
+
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
         testOrderingWithArguments(expectException, root, null, order);
     }
