@@ -2596,6 +2596,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             this.add(createDoEmitFinallyHandler());
             this.add(createDoCreateExceptionHandler());
+
+            this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "PATCH_CURRENT_SOURCE")).createInitBuilder().string("-2");
+            this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "PATCH_NODE_SOURCE")).createInitBuilder().string("-3");
+
             this.add(createDoPatchSourceInfo());
             this.add(createDoEmitSourceInfo());
             this.add(createFinish());
@@ -6979,7 +6983,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.declaration(type(int.class), "oldStart", "info[index + SOURCE_INFO_OFFSET_START]");
             b.declaration(type(int.class), "oldEnd", "info[index + SOURCE_INFO_OFFSET_LENGTH]");
-            b.statement("assert nodeId >= 0 ? oldEnd == -3 : oldEnd == -2");
+            b.statement("assert nodeId >= 0 ? oldEnd == PATCH_NODE_SOURCE : oldEnd == PATCH_CURRENT_SOURCE");
             b.statement("info[index + SOURCE_INFO_OFFSET_START] = start");
             b.statement("info[index + SOURCE_INFO_OFFSET_LENGTH] = length");
             b.statement("index = oldStart");
@@ -7299,7 +7303,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("0");
                 b.string("bci");
                 b.string("operationData.start");
-                b.string("-3");
+                b.string("PATCH_NODE_SOURCE");
                 b.end(2);
                 b.statement("return");
                 b.end();
@@ -7538,7 +7542,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("operationData.startBci");
                 b.string("bci");
                 b.string("operationData.start");
-                b.string("-2");
+                b.string("PATCH_CURRENT_SOURCE");
                 b.end(2);
                 b.statement("needsRewind = true");
                 b.statement("break");
