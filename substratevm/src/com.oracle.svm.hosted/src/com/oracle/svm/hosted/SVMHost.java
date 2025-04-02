@@ -118,6 +118,7 @@ import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingPhase;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -209,6 +210,8 @@ public class SVMHost extends HostVM {
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
     private final boolean enableTrackAcrossLayers;
     private final boolean enableReachableInCurrentLayer;
+    private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+    private final LayeredStaticFieldSupport layeredStaticFieldSupport;
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -237,7 +240,7 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
+        layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             initializeExcludedFields();
@@ -245,6 +248,7 @@ public class SVMHost extends HostVM {
 
         enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
         enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
+        layeredStaticFieldSupport = ImageLayerBuildingSupport.buildingImageLayer() ? LayeredStaticFieldSupport.singleton() : null;
     }
 
     /**
@@ -1059,6 +1063,21 @@ public class SVMHost extends HostVM {
     @Override
     public boolean enableReachableInCurrentLayer() {
         return enableReachableInCurrentLayer;
+    }
+
+    @Override
+    public boolean buildingImageLayer() {
+        return buildingImageLayer;
+    }
+
+    @Override
+    public boolean installableInLayer(AnalysisField aField) {
+        return layeredStaticFieldSupport.installableInLayer(aField);
+    }
+
+    @Override
+    public boolean preventConstantFolding(AnalysisField aField) {
+        return layeredStaticFieldSupport.preventConstantFolding(aField);
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();

@@ -109,7 +109,7 @@ public class ObjectScanner {
         }
         for (AnalysisField field : fields) {
             if (Modifier.isStatic(field.getModifiers()) && field.isRead()) {
-                execute(() -> scanRootField(field));
+                execute(() -> scanStaticFieldRoot(field));
             }
         }
 
@@ -155,9 +155,9 @@ public class ObjectScanner {
      *
      * @param field the scanned root field
      */
-    protected final void scanRootField(AnalysisField field) {
-        if (field.isInBaseLayer()) {
-            // skip base layer roots
+    protected final void scanStaticFieldRoot(AnalysisField field) {
+        if (!field.installableInLayer()) {
+            // skip fields not installable in this layer
             return;
         }
         scanField(field, null, null);

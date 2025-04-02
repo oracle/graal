@@ -128,7 +128,7 @@ struct PersistedAnalysisField {
   declaringTypeId @2 :TypeId;
   typeId @3 :TypeId;
   position @4 :Int32;
-  location @5 :Int32;
+  location @5 :Int32; # note currently we only read information about static fields' location
   modifiers @6 :Int32;
   isInternal @7 :Bool;
   isAccessed @8 :Bool;
@@ -139,6 +139,8 @@ struct PersistedAnalysisField {
   isSynthetic @13 :Bool;
   annotationList @14 :List(Annotation);
   name @15 :Text;
+  priorInstalledLayerNum @16 :Int32;
+  assignmentStatus @17 :Int32;
 }
 
 struct CEntryPointLiteralReference {
