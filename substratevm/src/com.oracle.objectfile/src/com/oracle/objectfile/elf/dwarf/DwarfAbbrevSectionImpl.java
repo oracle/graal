@@ -956,10 +956,11 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * if address rebasing is not required then a data_location attribute on the layout type
          * will ensure that address tag bits are removed.
+         *
+         * The compressed layout is also used for representing the decode step for dynamic hubs.
+         * I.e. this is also required for builds without isolates
          */
-        if (dwarfSections.useHeapBase()) {
-            pos = writeCompressedLayoutAbbrev(context, buffer, pos);
-        }
+        pos = writeCompressedLayoutAbbrev(context, buffer, pos);
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
         pos = writeLocalDeclarationAbbrevs(context, buffer, pos);
@@ -1116,9 +1117,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_TU, buffer, pos);
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_CU, buffer, pos);
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_ARRAY, buffer, pos);
-        if (!dwarfSections.useHeapBase()) {
-            pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_TU_2, buffer, pos);
-        }
         return pos;
     }
 
@@ -1147,10 +1145,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         } else {
             pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-            if (abbrevCode == AbbrevCode.CLASS_LAYOUT_TU_2) {
-                pos = writeAttrType(DwarfAttribute.DW_AT_data_location, buffer, pos);
-                pos = writeAttrForm(DwarfForm.DW_FORM_expr_loc, buffer, pos);
-            }
         }
         /*
          * Now terminate.

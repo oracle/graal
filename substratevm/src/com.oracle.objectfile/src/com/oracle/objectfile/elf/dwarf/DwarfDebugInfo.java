@@ -68,9 +68,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
         CLASS_CONSTANT,
         NAMESPACE,
         CLASS_LAYOUT_TU,
-        CLASS_LAYOUT_TU_2,
-        CLASS_LAYOUT_ARRAY,
         CLASS_LAYOUT_CU,
+        CLASS_LAYOUT_ARRAY,
         TYPE_POINTER_SIG,
         TYPE_POINTER,
         FOREIGN_TYPEDEF,
@@ -140,7 +139,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * The name of the type for header field hub which needs special case processing to remove tag
      * bits
      */
-    public static final String HUB_TYPE_NAME = "java.lang.Class";
+    public static final String HUB_TYPE_NAME = "Encoded$Dynamic$Hub";
     /* Full byte/word values. */
     private final DwarfStrSectionImpl dwarfStrSection;
     private final DwarfAbbrevSectionImpl dwarfAbbrevSection;

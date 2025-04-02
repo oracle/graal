@@ -301,21 +301,80 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeHeaderType(DebugContext context, HeaderTypeEntry headerTypeEntry, byte[] buffer, int p) {
         int pos = p;
+        long typeSignature = headerTypeEntry.getTypeSignature();
+        FieldEntry hubField = headerTypeEntry.getHubField();
+        ClassEntry hubType = (ClassEntry) hubField.getValueType();
+        assert hubType.equals(dwarfSections.lookupClassClass());
 
         // Write a type unit header
         int lengthPos = pos;
-        pos = writeTUPreamble(context, headerTypeEntry.getTypeSignature(), "", buffer, p);
+        pos = writeTUHeader(typeSignature, buffer, pos);
+        int typeOffsetPos = pos - 4;
+        assert pos == lengthPos + TU_DIE_HEADER_SIZE;
+        AbbrevCode abbrevCode = AbbrevCode.TYPE_UNIT;
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
+        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        log(context, "  [0x%08x]     use_UTF8", pos);
+        pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
 
-        String name = headerTypeEntry.getTypeName();
-        byte size = (byte) headerTypeEntry.getSize();
+        /*
+         * Write a wrapper type with a data_location attribute that can act as a target for the hub
+         * field in the object header. Reuse compressed layout as it accomplishes the same for
+         * compressed types.
+         */
+        int hubLayoutTypeIdx = pos;
+        log(context, "  [0x%08x] hub type layout", pos);
+        abbrevCode = AbbrevCode.COMPRESSED_LAYOUT;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        String name = uniqueDebugString(DwarfDebugInfo.HUB_TYPE_NAME);
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        pos = writeStrSectionOffset(name, buffer, pos);
+        int size = hubType.getSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
+        pos = writeAttrData2((short) size, buffer, pos);
+        /* Write a data location expression to mask and/or rebase hub pointers. */
+        log(context, "  [0x%08x]     data_location", pos);
+        pos = writeCompressedOopConversionExpression(true, buffer, pos);
+
+        /* Now write the child field. */
+        pos = writeSuperReference(context, hubType.getLayoutTypeSignature(), name, buffer, pos);
+
+        /* Write a terminating null attribute for the compressed layout. */
+        pos = writeAttrNull(buffer, pos);
+
+        /*
+         * Define a pointer type referring to the hub type layout. This is the actual type of the
+         * hub field.
+         */
+        int hubTypeIdx = pos;
+        log(context, "  [0x%08x] hub pointer type", pos);
+        abbrevCode = AbbrevCode.TYPE_POINTER;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        int pointerSize = dwarfSections.referenceSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
+        pos = writeAttrData1((byte) pointerSize, buffer, pos);
+        log(context, "  [0x%08x]     type 0x%x", pos, hubLayoutTypeIdx);
+        pos = writeAttrRef4(hubLayoutTypeIdx, buffer, pos);
+
+        /* Fix up the type offset. */
+        writeInt(pos - lengthPos, buffer, typeOffsetPos);
+
+        /* Write the type representing the object header. */
+        name = headerTypeEntry.getTypeName();
+        size = hubField.getSize();
         log(context, "  [0x%08x] header type %s", pos, name);
-        AbbrevCode abbrevCode = AbbrevCode.OBJECT_HEADER;
+        abbrevCode = AbbrevCode.OBJECT_HEADER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
         log(context, "  [0x%08x]     byte_size  0x%x", pos, size);
-        pos = writeAttrData1(size, buffer, pos);
+        pos = writeAttrData1((byte) size, buffer, pos);
+        pos = writeHubField(context, hubField, hubTypeIdx, buffer, pos);
         pos = writeStructFields(context, headerTypeEntry.fields(), buffer, pos);
 
         /* Write a terminating null attribute. */
@@ -327,6 +386,27 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Fix up the type offset. */
         patchLength(lengthPos, buffer, pos);
         return pos;
+    }
+
+    private int writeHubField(DebugContext context, FieldEntry hubFieldEntry, int hubTypeIdx, byte[] buffer, int p) {
+        int pos = p;
+
+        AbbrevCode abbrevCode = AbbrevCode.STRUCT_FIELD;
+        log(context, "  [0x%08x] hub field", pos);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        String fieldName = hubFieldEntry.fieldName();
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
+        pos = writeStrSectionOffset(fieldName, buffer, pos);
+        log(context, "  [0x%08x]     type 0x%x (%s)", pos, hubTypeIdx, DwarfDebugInfo.HUB_TYPE_NAME);
+        pos = writeInfoSectionOffset(hubTypeIdx, buffer, pos);
+        short offset = (short) hubFieldEntry.getOffset();
+        int size = hubFieldEntry.getSize();
+        log(context, "  [0x%08x]     offset 0x%x (size 0x%x)", pos, offset, size);
+        pos = writeAttrData2(offset, buffer, pos);
+        int modifiers = hubFieldEntry.getModifiers();
+        log(context, "  [0x%08x]     modifiers %s", pos, hubFieldEntry.getModifiersString());
+        return writeAttrAccessibility(modifiers, buffer, pos);
     }
 
     private int writeStructFields(DebugContext context, Stream<FieldEntry> fields, byte[] buffer, int p) {
@@ -581,7 +661,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData2((short) size, buffer, pos);
         /* Write a data location expression to mask and/or rebase oop pointers. */
         log(context, "  [0x%08x]     data_location", pos);
-        pos = writeCompressedOopConversionExpression(dwarfSections.isHubClassEntry(typeEntry), buffer, pos);
+        pos = writeCompressedOopConversionExpression(false, buffer, pos);
 
         /* Now write the child field. */
         pos = writeSuperReference(context, typeEntry.getLayoutTypeSignature(), name, buffer, pos);
@@ -634,13 +714,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         log(context, "  [0x%08x] type layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_TU;
-        /*
-         * when we don't have a separate compressed type then hub layouts need an extra
-         * data_location attribute
-         */
-        if (!dwarfSections.useHeapBase() && dwarfSections.isHubClassEntry(classEntry)) {
-            abbrevCode = AbbrevCode.CLASS_LAYOUT_TU_2;
-        }
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = classEntry.getTypeName();
@@ -649,11 +722,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = classEntry.getSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
         pos = writeAttrData2((short) size, buffer, pos);
-        if (abbrevCode == AbbrevCode.CLASS_LAYOUT_TU_2) {
-            /* Write a data location expression to mask and/or rebase oop pointers. */
-            log(context, "  [0x%08x]     data_location", pos);
-            pos = writeCompressedOopConversionExpression(true, buffer, pos);
-        }
 
         StructureTypeEntry superClassEntry = classEntry.getSuperClass();
         if (superClassEntry == null) {
@@ -934,10 +1002,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeStrSectionOffset(name, buffer, pos);
         /*
          * This is a direct reference to the object rather than a compressed oop reference. So, we
-         * need to use the direct layout type for hub class to type it.
+         * need to use the direct layout type.
          */
-        ClassEntry valueType = dwarfSections.getHubClassEntry();
-        long typeSignature = valueType == null ? lookupObjectClass().getLayoutTypeSignature() : valueType.getLayoutTypeSignature();
+        long typeSignature = dwarfSections.lookupClassClass().getLayoutTypeSignature();
         log(context, "  [0x%08x]     type  0x%x (<hub type>)", pos, typeSignature);
         pos = writeTypeSignature(typeSignature, buffer, pos);
         log(context, "  [0x%08x]     accessibility public static final", pos);
@@ -2143,22 +2210,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * The required expression will be one of these paths:
          *
          * push object address ................................ (1 byte) ..... [offset] ............
-         * IF reservedHubBitsMask != 0 .............................................................
-         * . push reservedHubBitsMask.......................... (1 byte) ..... [offset, mask] ......
-         * . NOT .............................................. (1 byte) ..... [offset, ~mask] .....
-         * . AND .............................................. (1 byte) ..... [offset] ............
+         * IF isHub && reservedHubBitsMask != 0 .............................. [offset == hub] .....
          * . IF numReservedHubBits == numAlignmentBits && compressionShift == 0 ....................
-         * ... push numReservedHubBits ........................ (1 byte) ..... [offset, right shift]
-         * ... LSHR ........................................... (1 byte) ..... [offset] ............
+         * ... push reservedHubBitsMask ....................... (1 byte) ..... [hub, mask] .........
+         * ... NOT ............................................ (1 byte) ..... [hub, ~mask] ........
+         * ... AND ............................................ (1 byte) ..... [hub] ...............
+         * . ELSE ..................................................................................
+         * ... push numReservedHubBits ........................ (1 byte) ..... [hub, reserved bits]
+         * ... LSHR ........................................... (1 byte) ..... [hub] ...............
          * ... IF compressionShift != numAlignmentBits .............................................
-         * ..... push numAlignmentBits - compressionShift ..... (1 byte) ..... [offset, left shift]
-         * ..... LSHL ......................................... (1 byte) ..... [offset] ............
+         * ..... push numAlignmentBits - compressionShift ..... (1 byte) ..... [hub, alignment] ....
+         * ..... LSHL ......................................... (1 byte) ..... [hub] ...............
          * ... END IF ..............................................................................
          * . END IF ................................................................................
          * END IF ..................................................................................
          * IF useHeapBase ..........................................................................
          * . IF compressionShift != 0 ..............................................................
-         * ... push compressionShift .......................... (1 byte) ..... [offset, left shift]
+         * ... push compressionShift .......................... (1 byte) ..... [offset, comp shift]
          * ... LSHL ........................................... (1 byte) ..... [offset] ............
          * . END IF ................................................................................
          * . push rheap+0 ..................................... (2 bytes) .... [offset, rheap] .....
@@ -2202,7 +2270,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
 
         int exprSize = pos - exprStart;
-        assert exprSize > 0 && exprSize <= 10;
+        assert (exprSize >> 7) == 0; // expression length field should fit in one byte
         writeULEB(exprSize, buffer, lengthPos);  // fixup expression length
 
         return pos;

@@ -288,8 +288,8 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     @Override
-    protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
+    protected FieldEntry createField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        FieldEntry fieldEntry = super.createField(debugFieldInfo, debugInfoBase, debugContext);
         return fieldEntry;
     }
 
