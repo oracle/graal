@@ -1722,6 +1722,8 @@ suite = {
           # Qualified exports
           "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
           "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.object.enterprise to com.oracle.truffle.enterprise",
+          # GR-64984: Exports to com.oracle.truffle.enterprise are only needed for jdk21.
         ],
         "opens" : [
           "com.oracle.truffle.polyglot to org.graalvm.truffle.runtime",
