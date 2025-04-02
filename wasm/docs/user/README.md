@@ -1,11 +1,4 @@
----
-layout: docs
-toc_group: wasm
-link_title: GraalWasm 
-permalink: /reference-manual/wasm/
----
-
-# GraalWasm
+# GraalWasm Documentation
 
 GraalWasm is an open-source WebAssembly runtime.
 It runs WebAssembly programs in binary format and can be used to embed and leverage WebAssembly modules in Java applications.
@@ -153,7 +146,7 @@ The following stable options are provided:
 ### Experimental Options
 
 Note that these options are experimental and are not guaranteed to be maintained or supported in the future.
-To use them, the `--experimental-options` option is required, or experimental options have to be enabled on the `Context`, see [above](#graalwasm-engine-options).
+To use them, the `--experimental-options` option is required, or experimental options have to be enabled on the `Context`.
 
 The options below correspond to feature proposals that add new features to the WebAssembly standard.
 The accepted values are `true` for enabling a feature and `false` for disabling a feature.
@@ -192,7 +185,7 @@ Users can override the defaults to experiment with upcoming features or opt out 
 
 GraalWasm standalones provide the `wasm` launcher, which you can use to execute programs compiled as WebAssembly binary modules.
 
-```
+```bash
 wasm [OPTION...] [--entry-point=FN] FILE [ARG...]
 ```
 
@@ -224,5 +217,5 @@ wasm [OPTION...] [--entry-point=FN] FILE [ARG...]
 ### Related Documentation
 
 - [Embed C in Java Using GraalWasm](https://github.com/graalvm/graal-languages-demos/tree/main/graalwasm/graalwasm-embed-c-code-guide){:target="_blank"}
-- [Embedding Languages documentation](../embedding/embed-languages.md)
+- [Embedding Languages documentation](https://www.graalvm.org/latest/reference-manual/embed-languages/){:target="_blank"}
 - [GraalWasm](https://github.com/oracle/graal/tree/master/wasm){:target="_blank"}
