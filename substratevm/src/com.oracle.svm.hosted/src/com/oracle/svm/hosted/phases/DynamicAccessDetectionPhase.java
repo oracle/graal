@@ -62,14 +62,14 @@ import java.util.Set;
 import java.util.random.RandomGeneratorFactory;
 
 /**
- * This phase detects usages of any dynamic access calls that might require metadata in reached
- * parts of the project, given the class or module path entries in which to search, and outputs and
- * serializes them to the image-build output. It is an optional phase that happens before
+ * This phase detects usages of dynamic access calls that might require metadata in
+ * reached parts of the project. It does so by analyzing the specified class or
+ * module path entries and identifying relevant accesses. The phase then outputs
+ * and serializes the detected usages to the image-build output. It is an optional phase that happens before
  * {@link com.oracle.graal.pointsto.results.StrengthenGraphs} by using the
  * {@link com.oracle.svm.hosted.DynamicAccessDetectionFeature.Options#TrackDynamicAccess} option and
  * providing the desired class or module path entry/s.
  */
-
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     private static final String METHODTYPE_REFLECTION = "reflection";
     private static final String METHODTYPE_RESOURCE = "resource";
