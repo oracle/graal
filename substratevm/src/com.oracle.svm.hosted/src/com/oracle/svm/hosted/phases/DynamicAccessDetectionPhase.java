@@ -71,6 +71,8 @@ import java.util.random.RandomGeneratorFactory;
  * providing the desired class or module path entry/s.
  */
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
+    public record MethodInfo(String type, String name) {}
+
     private static final String METHODTYPE_REFLECTION = "reflection";
     private static final String METHODTYPE_RESOURCE = "resource";
     private static final String METHODTYPE_SERIALIZATION = "serialization";
@@ -186,10 +188,11 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         for (MethodCallTargetNode callTarget : callTargetNodes) {
             AnalysisType callerClass = (AnalysisType) graph.method().getDeclaringClass();
             String entryPath = getEntryPath(callerClass);
-            Pair<String, String> methodDetails = getMethod(callTarget);
+            MethodInfo methodDetails = getMethod(callTarget);
+
             if (methodDetails != null && entryPath != null) {
-                String methodType = methodDetails.getLeft();
-                String methodName = methodDetails.getRight();
+                String methodType = methodDetails.type();
+                String methodName = methodDetails.name();
 
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null) {
@@ -210,21 +213,22 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
      * Returns the name and type of a method if it exists in the predetermined set, based on its
      * graph and MethodCallTargetNode; otherwise, returns null.
      */
-    private static Pair<String, String> getMethod(MethodCallTargetNode callTarget) {
+    private static MethodInfo getMethod(MethodCallTargetNode callTarget) {
         String methodName = callTarget.targetMethod().getName();
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
         if (reflectMethodNames.containsKey(declaringClass) && reflectMethodNames.get(declaringClass).contains(methodName)) {
-            return Pair.create(METHODTYPE_REFLECTION, declaringClass + "#" + methodName);
+            return new MethodInfo(METHODTYPE_REFLECTION, declaringClass + "#" + methodName);
         } else if (resourceMethodNames.containsKey(declaringClass) && resourceMethodNames.get(declaringClass).contains(methodName)) {
-            return Pair.create(METHODTYPE_RESOURCE, declaringClass + "#" + methodName);
+            return new MethodInfo(METHODTYPE_RESOURCE, declaringClass + "#" + methodName);
         } else if (serializationMethodNames.containsKey(declaringClass) && serializationMethodNames.get(declaringClass).contains(methodName)) {
-            return Pair.create(METHODTYPE_SERIALIZATION, declaringClass + "#" + methodName);
+            return new MethodInfo(METHODTYPE_SERIALIZATION, declaringClass + "#" + methodName);
         } else if (proxyMethodNames.containsKey(declaringClass) && proxyMethodNames.get(declaringClass).contains(methodName)) {
-            return Pair.create(METHODTYPE_PROXY, declaringClass + "#" + methodName);
+            return new MethodInfo(METHODTYPE_PROXY, declaringClass + "#" + methodName);
         }
         return null;
     }
+
 
     /*
      * Returns the class or module path entry path of the caller class if it is included in the path
