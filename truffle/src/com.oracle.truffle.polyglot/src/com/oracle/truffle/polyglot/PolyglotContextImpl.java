@@ -1911,8 +1911,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     public PolyglotLanguage requirePublicLanguage(String languageId) {
-        PolyglotLanguage language = engine.idToLanguage.get(languageId);
-        if (language == null || language.cache.isInternal()) {
+        PolyglotLanguage language = engine.idToPublicLanguage.get(languageId);
+        if (language == null) {
             engine.requireLanguage(languageId, false); // will trigger the error
             assert false;
             return null;
