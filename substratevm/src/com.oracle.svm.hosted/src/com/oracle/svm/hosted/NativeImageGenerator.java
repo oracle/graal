@@ -73,6 +73,7 @@ import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -1029,11 +1030,13 @@ public class NativeImageGenerator {
                 if (imageLayerLoader != null) {
                     imageLayerLoader.setHostedValuesProvider(hostedValuesProvider);
                 }
+                SVMHost hostVM = (SVMHost) aUniverse.hostVM();
+                ((ConditionalConfigurationRegistry) ImageSingletons.lookup(RuntimeSerializationSupport.class)).setHostVM(hostVM);
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 HostedProviders aProviders = createHostedProviders(target, aUniverse, originalProviders, platformConfig, aMetaAccess, classInitializationSupport);
                 aUniverse.hostVM().initializeProviders(aProviders);
 
-                ImageSingletons.add(SimulateClassInitializerSupport.class, ((SVMHost) aUniverse.hostVM()).createSimulateClassInitializerSupport(aMetaAccess));
+                ImageSingletons.add(SimulateClassInitializerSupport.class, (hostVM).createSimulateClassInitializerSupport(aMetaAccess));
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
@@ -1098,7 +1101,7 @@ public class NativeImageGenerator {
                 }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
-                                new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
+                                new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
                 PreserveOptionsSupport.registerPreservedClasses(loader.classLoaderSupport);

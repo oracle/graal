@@ -203,7 +203,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private void registerField(HostedType declaringType, Object field, FieldMetadata metadata) {
         if (ImageLayerBuildingSupport.buildingImageLayer() &&
-                        !LayeredRuntimeMetadataSingleton.singleton().registerField(field, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess())) {
+                        !LayeredRuntimeMetadataSingleton.singleton().shouldRegisterField(field, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -219,7 +219,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private void registerMethod(HostedType declaringType, Object method, MethodMetadata metadata) {
         if (ImageLayerBuildingSupport.buildingImageLayer() &&
-                        !LayeredRuntimeMetadataSingleton.singleton().registerMethod(method, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess())) {
+                        !LayeredRuntimeMetadataSingleton.singleton().shouldRegisterMethod(method, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -235,7 +235,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private void registerConstructor(HostedType declaringType, Object constructor, ConstructorMetadata metadata) {
         if (ImageLayerBuildingSupport.buildingImageLayer() &&
-                        !LayeredRuntimeMetadataSingleton.singleton().registerMethod(constructor, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess())) {
+                        !LayeredRuntimeMetadataSingleton.singleton().shouldRegisterMethod(constructor, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -1249,7 +1249,15 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return ImageSingletons.lookup(LayeredRuntimeMetadataSingleton.class);
         }
 
-        public boolean registerMethod(Object method, AnalysisMetaAccess metaAccess) {
+        public boolean shouldRegisterMethod(Object method, AnalysisMetaAccess metaAccess, AccessibleObjectMetadata metadata) {
+            if (!metadata.complete) {
+                /*
+                 * The method should be added to the list of registered methods only if the metadata
+                 * is complete. Incomplete metadata should always be registered and should not be
+                 * counted as the only metadata registered for a given method.
+                 */
+                return true;
+            }
             if (method instanceof AnalysisMethod analysisMethod) {
                 return registeredMethods.add(analysisMethod.getId());
             } else if (method instanceof HostedMethod hostedMethod) {
@@ -1262,7 +1270,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return true;
         }
 
-        public boolean registerField(Object field, AnalysisMetaAccess metaAccess) {
+        public boolean shouldRegisterField(Object field, AnalysisMetaAccess metaAccess, AccessibleObjectMetadata metadata) {
+            if (!metadata.complete) {
+                return true;
+            }
             if (field instanceof AnalysisField analysisField) {
                 return registeredFields.add(analysisField.getId());
             } else if (field instanceof HostedField hostedField) {

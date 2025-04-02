@@ -123,7 +123,7 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.ConstructorDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.FieldDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
-import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
+import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
@@ -1140,7 +1140,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean isRegisteredForSerialization() {
-        return ImageSingletons.lookup(SerializationRegistry.class).isRegisteredForSerialization(DynamicHub.toClass(this));
+        return SerializationSupport.isRegisteredForSerialization(this);
     }
 
     @KeepOriginal
@@ -2335,8 +2335,7 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
 
     @Substitute
     private Constructor<?> generateConstructor(Class<?> cl, Constructor<?> constructorToCall) {
-        SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
-        ConstructorAccessor acc = (ConstructorAccessor) serializationRegistry.getSerializationConstructorAccessor(cl, constructorToCall.getDeclaringClass());
+        ConstructorAccessor acc = (ConstructorAccessor) SerializationSupport.getSerializationConstructorAccessor(cl, constructorToCall.getDeclaringClass());
         /*
          * Unlike other root constructors, this constructor is not copied for mutation but directly
          * mutated, as it is not cached. To cache this constructor, setAccessible call must be done
