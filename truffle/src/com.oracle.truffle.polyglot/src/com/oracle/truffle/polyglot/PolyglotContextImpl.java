@@ -1912,10 +1912,12 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     public PolyglotLanguage requirePublicLanguage(String languageId) {
         PolyglotLanguage language = engine.idToLanguage.get(languageId);
-        if (language == null || language.cache.isInternal()) {
+        if (language == null) {
             engine.requireLanguage(languageId, false); // will trigger the error
             assert false;
             return null;
+        } else if (language.cache.isInternal()) {
+            throw PolyglotEngineException.illegalArgument(String.format("Language with id '%s' is an internal language and is not accessible via the polyglot API.", languageId));
         }
         return language;
     }
