@@ -49,6 +49,8 @@ import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
@@ -74,8 +76,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
 
     private static final SnippetRuntime.SubstrateForeignCallDescriptor POST_WRITE_BARRIER = SnippetRuntime.findForeignCall(BarrierSnippets.class, "postWriteBarrierStub",
-                    NO_SIDE_EFFECT,
-                    CARD_REMEMBERED_SET_LOCATION);
+                    NO_SIDE_EFFECT, CARD_REMEMBERED_SET_LOCATION);
 
     private final SnippetInfo postWriteBarrierSnippet;
 
@@ -108,8 +109,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
-    @Node.NodeIntrinsic(ForeignCallNode.class)
-    private static native void callPostWriteBarrierStub(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void callPostWriteBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
 
     @Snippet
     public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean shouldOutline, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean verifyOnly) {
@@ -120,18 +121,12 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
             /*
              * To increase verification coverage, we do the verification before checking if a
-             * barrier is needed at all. And in addition to verifying that the object is in an
-             * aligned chunk, we also verify that it is not an array at all because most arrays are
-             * small and therefore in an aligned chunk.
+             * barrier is needed at all.
              */
-
             if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, ObjectHeaderImpl.isUnalignedHeader(objectHeader))) {
                 BreakpointNode.breakpoint();
             }
             if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject == null)) {
-                BreakpointNode.breakpoint();
-            }
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject.getClass().isArray())) {
                 BreakpointNode.breakpoint();
             }
         }
