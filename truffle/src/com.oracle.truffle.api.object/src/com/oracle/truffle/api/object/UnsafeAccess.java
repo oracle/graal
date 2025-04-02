@@ -42,6 +42,9 @@ package com.oracle.truffle.api.object;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+
 import sun.misc.Unsafe;
 
 final class UnsafeAccess {
@@ -50,6 +53,9 @@ final class UnsafeAccess {
 
     static final long ARRAY_INT_BASE_OFFSET = UNSAFE.arrayBaseOffset(int[].class);
     static final long ARRAY_INT_INDEX_SCALE = UNSAFE.arrayIndexScale(int[].class);
+
+    private UnsafeAccess() {
+    }
 
     @SuppressWarnings("deprecation")
     static long objectFieldOffset(Field field) {
@@ -72,17 +78,333 @@ final class UnsafeAccess {
         UNSAFE.putLong(receiver, offset, value);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Cast {@code boolean} to {@code int}.
+     */
+    static int intCast(boolean value) {
+        return value ? 1 : 0;
+    }
+
+    /**
+     * Cast {@code int} to {@code boolean}.
+     */
+    static boolean booleanCast(int value) {
+        return value != 0;
+    }
+
+    /**
+     * Casts the given value to the value of the given type without any checks. The type, nonNull,
+     * and exact must evaluate to a constant. The condition parameter gives a hint to the compiler
+     * under which circumstances this cast can be moved to an earlier location in the program.
+     *
+     * @param value the value that is known to have the specified type
+     * @param type the specified new type of the value
+     * @param condition the condition that makes this cast safe also at an earlier location
+     * @param nonNull whether value is known to never be null
+     * @param exact whether the value is known to be of exactly the specified class
+     * @return the value to be cast to the new type
+     */
+    @SuppressWarnings("unchecked")
+    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
+        return (T) value;
+    }
+
+    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+        return unsafeCast(value, type, condition, nonNull, false);
+    }
+
+    /**
+     * Like {@link System#arraycopy}, but kills any location.
+     */
+    static void arraycopy(Object from, int fromIndex, Object to, int toIndex, int length) {
+        System.arraycopy(from, fromIndex, to, toIndex, length);
+    }
+
+    /**
+     * Reads a boolean value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getBoolean(receiver, offset);
+    }
+
+    /**
+     * Reads a byte value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getByte(receiver, offset);
+    }
+
+    /**
+     * Reads a short value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getShort(receiver, offset);
+    }
+
+    /**
+     * Reads an int value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getInt(receiver, offset);
+    }
+
+    /**
+     * Reads a long value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
     static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
         return UNSAFE.getLong(receiver, offset);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Reads a float value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getFloat(receiver, offset);
+    }
+
+    /**
+     * Reads a double value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getDouble(receiver, offset);
+    }
+
+    /**
+     * Reads an Object value from an object, with optional location identity and guarding condition.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @return the accessed value
+     */
+    static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        assert receiver != null;
+        return UNSAFE.getObject(receiver, offset);
+    }
+
+    /**
+     * Writes a boolean value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putBoolean(receiver, offset, value);
+    }
+
+    /**
+     * Writes a byte value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putByte(receiver, offset, value);
+    }
+
+    /**
+     * Writes a short value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putShort(receiver, offset, value);
+    }
+
+    /**
+     * Writes an int value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putInt(receiver, offset, value);
+    }
+
+    /**
+     * Writes a long value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
     static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
+        assert receiver != null;
         UNSAFE.putLong(receiver, offset, value);
     }
 
-    private UnsafeAccess() {
+    /**
+     * Writes a float value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putFloat(receiver, offset, value);
+    }
+
+    /**
+     * Writes a double value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putDouble(receiver, offset, value);
+    }
+
+    /**
+     * Writes an Object value into an object, with an optional custom location identity.
+     *
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     */
+    static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
+        assert receiver != null;
+        UNSAFE.putObject(receiver, offset, value);
+    }
+
+    static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return unsafeGetInt(receiver, offset, condition, locationIdentity);
+    }
+
+    static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return unsafeGetLong(receiver, offset, condition, locationIdentity);
+    }
+
+    static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return unsafeGetDouble(receiver, offset, condition, locationIdentity);
+    }
+
+    static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return unsafeGetObject(receiver, offset, condition, locationIdentity);
+    }
+
+    static final Object ANY_LOCATION = new Object();
+
+    private static final int MAX_UNROLL = 32;
+    private static final boolean USE_ARRAYCOPY = true;
+
+    static void arrayCopy(Object[] from, Object[] to, int length) {
+        if (CompilerDirectives.isPartialEvaluationConstant(length) && length <= MAX_UNROLL) {
+            arrayCopyUnroll(from, to, length);
+        } else if (USE_ARRAYCOPY) {
+            UnsafeAccess.arraycopy(from, 0, to, 0, length);
+        } else {
+            arrayCopyLoop(from, to, length);
+        }
+    }
+
+    @ExplodeLoop
+    private static void arrayCopyUnroll(Object[] from, Object[] to, int length) {
+        for (int i = 0; i < length; ++i) {
+            Object value = UnsafeAccess.unsafeGetObject(from, Unsafe.ARRAY_OBJECT_BASE_OFFSET + i * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, false, null);
+            UnsafeAccess.unsafePutObject(to, Unsafe.ARRAY_OBJECT_BASE_OFFSET + i * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, UnsafeAccess.ANY_LOCATION);
+        }
+    }
+
+    private static void arrayCopyLoop(Object[] from, Object[] to, int length) {
+        for (int i = 0; i < length; ++i) {
+            Object value = UnsafeAccess.unsafeGetObject(from, Unsafe.ARRAY_OBJECT_BASE_OFFSET + i * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, false, null);
+            UnsafeAccess.unsafePutObject(to, Unsafe.ARRAY_OBJECT_BASE_OFFSET + i * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, UnsafeAccess.ANY_LOCATION);
+        }
+    }
+
+    static void arrayCopy(int[] from, int[] to, int length) {
+        if (CompilerDirectives.isPartialEvaluationConstant(length) && length <= MAX_UNROLL) {
+            arrayCopyUnroll(from, to, length);
+        } else if (USE_ARRAYCOPY) {
+            UnsafeAccess.arraycopy(from, 0, to, 0, length);
+        } else {
+            arrayCopyLoop(from, to, length);
+        }
+    }
+
+    @ExplodeLoop
+    private static void arrayCopyUnroll(int[] from, int[] to, int length) {
+        for (int i = 0; i < length; ++i) {
+            int value = UnsafeAccess.unsafeGetInt(from, Unsafe.ARRAY_INT_BASE_OFFSET + i * (long) Unsafe.ARRAY_INT_INDEX_SCALE, false, null);
+            UnsafeAccess.unsafePutInt(to, Unsafe.ARRAY_INT_BASE_OFFSET + i * (long) Unsafe.ARRAY_INT_INDEX_SCALE, value, UnsafeAccess.ANY_LOCATION);
+        }
+    }
+
+    private static void arrayCopyLoop(int[] from, int[] to, int length) {
+        for (int i = 0; i < length; ++i) {
+            int value = UnsafeAccess.unsafeGetInt(from, Unsafe.ARRAY_INT_BASE_OFFSET + i * (long) Unsafe.ARRAY_INT_INDEX_SCALE, false, null);
+            UnsafeAccess.unsafePutInt(to, Unsafe.ARRAY_INT_BASE_OFFSET + i * (long) Unsafe.ARRAY_INT_INDEX_SCALE, value, UnsafeAccess.ANY_LOCATION);
+        }
     }
 
     private static Unsafe getUnsafe() {

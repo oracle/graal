@@ -1,1 +1,2 @@
 com.oracle.truffle.api.object.CoreLayoutFactory
+com.oracle.truffle.api.object.ExtLayoutFactory
