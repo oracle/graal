@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -397,7 +398,7 @@ public final class CallTreePrinter {
     }
 
     private static void printInvokeNodes(Map<AnalysisMethod, MethodNode> methodToNode, PrintWriter writer) {
-        writer.println(convertToCSV("Id", "MethodId", "BytecodeIndexes", "TargetId", "IsDirect"));
+        writer.println(convertToCSV("Id", "MethodId", "BytecodeIndexes", "TargetId", "IsDirect", "LineNumbers"));
         /*
          * Methods that act as call targets, but are not reachable (e.g. abstract methods), will not
          * have a MethodNode allocated yet. We store them in a separate map, because methodToNode
@@ -448,9 +449,10 @@ public final class CallTreePrinter {
         return Arrays.asList(
                         String.valueOf(invoke.id),
                         String.valueOf(method.id),
-                        showBytecodeIndexes(bytecodeIndexes(invoke)),
+                        showIndexes(extractIndexes(invoke, source -> source.bci)),
                         String.valueOf(targetMethod.id),
-                        String.valueOf(invoke.isDirectInvoke));
+                        String.valueOf(invoke.isDirectInvoke),
+                        showIndexes(extractIndexes(invoke, source -> source.trace.getLineNumber())));
     }
 
     private static List<String> callTargetInfo(InvokeNode invoke, Node callee) {
@@ -458,13 +460,13 @@ public final class CallTreePrinter {
         return Arrays.asList(String.valueOf(invoke.id), String.valueOf(node.id));
     }
 
-    private static List<Integer> bytecodeIndexes(InvokeNode node) {
+    private static List<Integer> extractIndexes(InvokeNode node, Function<SourceReference, Integer> extractor) {
         return Stream.of(node.sourceReferences)
-                        .map(source -> source.bci)
+                        .map(extractor)
                         .collect(Collectors.toList());
     }
 
-    private static String showBytecodeIndexes(List<Integer> bytecodeIndexes) {
+    private static String showIndexes(List<Integer> bytecodeIndexes) {
         return bytecodeIndexes.stream()
                         .map(String::valueOf)
                         .collect(Collectors.joining("->"));

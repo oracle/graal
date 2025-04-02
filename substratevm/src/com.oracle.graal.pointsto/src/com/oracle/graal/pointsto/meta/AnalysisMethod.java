@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -118,6 +119,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Boolean> reachableInCurrentLayerUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Boolean.class, "reachableInCurrentLayer");
+
+    private boolean isJudgeTestMethod;
 
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
@@ -276,6 +279,20 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
 
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
+
+        var judgeTestJar = PointstoOptions.JudgeJarName.getValue(getUniverse().hostVM.options());
+        if (judgeTestJar != null && !judgeTestJar.isBlank()) {
+            ProtectionDomain protectionDomain = getDeclaringClass().getJavaClass().getProtectionDomain();
+            if (protectionDomain != null) {
+                var codeSource = protectionDomain.getCodeSource();
+                if (codeSource != null) {
+                    var location = codeSource.getLocation();
+                    if (location != null && location.toString().contains(judgeTestJar)) {
+                        isJudgeTestMethod = true;
+                    }
+                }
+            }
+        }
     }
 
     @SuppressWarnings("this-escape")
@@ -907,6 +924,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public boolean canBeInlined() {
+        if (isJudgeTestMethod) {
+            System.out.println("Disallow inlining of " + this);
+            return false;
+        }
         return !hasNeverInlineDirective();
     }
 
