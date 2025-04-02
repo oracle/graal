@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,47 +40,18 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import static org.junit.Assert.assertSame;
-
-import java.util.Arrays;
-import java.util.List;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-@RunWith(Parameterized.class)
-public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
+class TestDynamicObjectDefault extends TestDynamicObject {
+    @DynamicField Object o0;
+    @DynamicField Object o1;
+    @DynamicField Object o2;
+    @DynamicField Object o3;
+    @DynamicField long p0;
+    @DynamicField long p1;
+    @DynamicField long p2;
 
-    @Parameters(name = "{0}")
-    public static List<TestRun> data() {
-        return Arrays.asList(TestRun.values());
+    protected TestDynamicObjectDefault(Shape shape) {
+        super(shape);
     }
-
-    @Test
-    public void testDynamicTypeCanBeAnyObject() {
-        Object dynamicType = new Object();
-        Shape emptyShape = Shape.newBuilder().dynamicType(dynamicType).build();
-        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
-        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
-        assertSame(dynamicType, lib.getDynamicType(obj));
-        dynamicType = new Object();
-        lib.setDynamicType(obj, dynamicType);
-        assertSame(dynamicType, lib.getDynamicType(obj));
-    }
-
-    @Test
-    public void testDynamicTypeCannotBeNull() {
-        assertFails(() -> Shape.newBuilder().dynamicType(null).build(), NullPointerException.class);
-        Shape emptyShape = Shape.newBuilder().dynamicType(new Object()).build();
-        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
-        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
-        assertFails(() -> lib.setDynamicType(obj, null), NullPointerException.class);
-    }
-
 }

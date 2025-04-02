@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,50 +40,47 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
+import static org.junit.Assert.assertSame;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-@SuppressWarnings("truffle")
-public abstract class TestNestedDispatchNode extends Node {
+@RunWith(Parameterized.class)
+public class DynamicTypeTest extends AbstractParametrizedLibraryTest {
 
-    final Object key = "testKey";
-
-    public abstract Object execute(DynamicObject obj);
-
-    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
-    Object cached(DynamicObject obj,
-                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
-                    // @CachedLibrary({"obj", "key"}) DynamicObjectLibrary lib,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib,
-                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
-                    @Cached TestNestedDispatchNode nested) {
-        Object value = lib.getOrDefault(obj, key, null);
-        if (hasProperty) {
-            assert value != null;
-            if (value instanceof DynamicObject) {
-                return nested.execute((DynamicObject) value);
-            }
-        }
-        return value;
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.values());
     }
 
-    @Specialization(limit = "3")
-    Object cached(DynamicObject obj,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib,
-                    @Cached(value = "obj.getShape().getProperty(key) != null", uncached = "obj.getShape().getProperty(key) != null") boolean hasProperty,
-                    @Cached TestNestedDispatchNode nested) {
-        Object value = lib.getOrDefault(obj, key, null);
-        if (hasProperty) {
-            assert value != null;
-            if (value instanceof DynamicObject) {
-                return nested.execute((DynamicObject) value);
-            }
-        }
-        return value;
+    @Test
+    public void testDynamicTypeCanBeAnyObject() {
+        Object dynamicType = new Object();
+        Shape emptyShape = Shape.newBuilder().dynamicType(dynamicType).build();
+        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        assertSame(dynamicType, lib.getDynamicType(obj));
+        dynamicType = new Object();
+        lib.setDynamicType(obj, dynamicType);
+        assertSame(dynamicType, lib.getDynamicType(obj));
+    }
+
+    @Test
+    public void testDynamicTypeCannotBeNull() {
+        assertFails(() -> Shape.newBuilder().dynamicType(null).build(), NullPointerException.class);
+        Shape emptyShape = Shape.newBuilder().dynamicType(new Object()).build();
+        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+        assertFails(() -> lib.setDynamicType(obj, null), NullPointerException.class);
     }
 
 }

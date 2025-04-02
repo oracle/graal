@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,36 +40,20 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import java.lang.invoke.MethodHandles;
-
-import org.junit.Test;
-
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-public class DynamicObjectConstructorTest extends AbstractLibraryTest {
+@GenerateInline(false)
+abstract class CachedPutNode extends Node {
+    public abstract void execute(DynamicObject obj, Object key, Object value);
 
-    @Test
-    public void testIncompatibleShape() {
-        Shape shape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
-
-        assertFails(() -> new TestDynamicObjectMinimal(shape), IllegalArgumentException.class,
-                        ex -> assertThat(ex.getMessage(), containsString("Incompatible shape")));
+    @Specialization(limit = "3")
+    static void write(DynamicObject obj, Object key, Object value,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib) {
+        lib.put(obj, key, value);
     }
-
-    @Test
-    public void testNonEmptyShape() {
-        Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
-        TestDynamicObjectDefault obj = new TestDynamicObjectDefault(emptyShape);
-        DynamicObjectLibrary.getUncached().put(obj, "key", "value");
-        Shape nonEmptyShape = obj.getShape();
-
-        assertFails(() -> new TestDynamicObjectDefault(nonEmptyShape), IllegalArgumentException.class,
-                        ex -> assertThat(ex.getMessage(), containsString("Shape must not have instance properties")));
-    }
-
 }

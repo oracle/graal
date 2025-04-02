@@ -800,7 +800,7 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.object.basic.test" : {
+    "com.oracle.truffle.api.object.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -2201,7 +2201,7 @@ suite = {
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.strings.test",
          "com.oracle.truffle.api.bytecode.test",
-         "com.oracle.truffle.object.basic.test",
+         "com.oracle.truffle.api.object.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
        "exclude" : [

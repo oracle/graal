@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,50 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
-@GenerateInline(false)
-abstract class CachedPutNode extends Node {
-    public abstract void execute(DynamicObject obj, Object key, Object value);
+@SuppressWarnings("truffle")
+public abstract class TestNestedDispatchNode extends Node {
+
+    final Object key = "testKey";
+
+    public abstract Object execute(DynamicObject obj);
+
+    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
+    Object cached(DynamicObject obj,
+                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
+                    // @CachedLibrary({"obj", "key"}) DynamicObjectLibrary lib,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = lib.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
+    }
 
     @Specialization(limit = "3")
-    static void write(DynamicObject obj, Object key, Object value,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib) {
-        lib.put(obj, key, value);
+    Object cached(DynamicObject obj,
+                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @Cached(value = "obj.getShape().getProperty(key) != null", uncached = "obj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = lib.getOrDefault(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
+
 }
