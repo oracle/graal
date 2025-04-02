@@ -25,14 +25,14 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.reflect.Constructor;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -62,7 +62,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
     private Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap;
 
     /** AssertionErrors are cut points, because their allocations are removed. */
-    private List<ResolvedJavaMethod> assertionErrorConstructorList;
+    private UnmodifiableEconomicSet<ResolvedJavaMethod> assertionErrorConstructorList;
 
     /** Initialize the set of callees only once. */
     private boolean initialized;
@@ -70,12 +70,12 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
     /** Constructor for the singleton instance. */
     public RestrictHeapAccessCalleesImpl() {
         calleeToCallerMap = Collections.emptyMap();
-        this.assertionErrorConstructorList = Collections.emptyList();
+        this.assertionErrorConstructorList = EconomicSet.create();
         initialized = false;
     }
 
     /** This gets called multiple times, but I only need one AnalysisMethod to be happy. */
-    public void setAssertionErrorConstructors(List<ResolvedJavaMethod> resolvedConstructorList) {
+    public void setAssertionErrorConstructors(EconomicSet<ResolvedJavaMethod> resolvedConstructorList) {
         if (assertionErrorConstructorList.isEmpty()) {
             assertionErrorConstructorList = resolvedConstructorList;
         }
@@ -171,10 +171,10 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         private final Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap;
 
         /** The constructor {@link AssertionError#AssertionError()}. */
-        private final List<ResolvedJavaMethod> assertionErrorConstructorList;
+        private final UnmodifiableEconomicSet<ResolvedJavaMethod> assertionErrorConstructorList;
 
         /** Constructor. */
-        MethodAggregator(Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap, List<ResolvedJavaMethod> assertionErrorConstructorList) {
+        MethodAggregator(Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap, UnmodifiableEconomicSet<ResolvedJavaMethod> assertionErrorConstructorList) {
             this.calleeToCallerMap = calleeToCallerMap;
             this.assertionErrorConstructorList = assertionErrorConstructorList;
         }
@@ -266,12 +266,12 @@ class RestrictHeapAccessCalleesFeature implements InternalFeature {
     /** This is called during analysis, to find the AssertionError constructors. */
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        List<ResolvedJavaMethod> assertionErrorConstructorList = initializeAssertionErrorConstructors(access);
+        EconomicSet<ResolvedJavaMethod> assertionErrorConstructorList = initializeAssertionErrorConstructors(access);
         ((RestrictHeapAccessCalleesImpl) ImageSingletons.lookup(RestrictHeapAccessCallees.class)).setAssertionErrorConstructors(assertionErrorConstructorList);
     }
 
-    private static List<ResolvedJavaMethod> initializeAssertionErrorConstructors(DuringAnalysisAccess access) {
-        final List<ResolvedJavaMethod> result = new ArrayList<>();
+    private static EconomicSet<ResolvedJavaMethod> initializeAssertionErrorConstructors(DuringAnalysisAccess access) {
+        final EconomicSet<ResolvedJavaMethod> result = EconomicSet.create(9);
         result.add(findAssertionConstructor(access));
         result.add(findAssertionConstructor(access, boolean.class));
         result.add(findAssertionConstructor(access, char.class));

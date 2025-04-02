@@ -71,7 +71,7 @@ public interface CrossLayerConstantRegistry {
      * {@link #finalizeFutureHeapConstant}. The constant can be retrieved via {@link #getConstant}
      * in all layers except the layer which calls {@link #finalizeFutureHeapConstant}.
      */
-    void registerFutureHeapConstant(String keyName, AnalysisType futureType);
+    ImageHeapConstant registerFutureHeapConstant(String keyName, AnalysisType futureType);
 
     /**
      * Registers a value to associate with a prior {@link #registerFutureHeapConstant} registration.

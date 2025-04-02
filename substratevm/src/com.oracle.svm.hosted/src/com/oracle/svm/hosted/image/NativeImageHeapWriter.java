@@ -139,11 +139,7 @@ public final class NativeImageHeapWriter {
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
-            if (field.wrapped.isInBaseLayer()) {
-                /* Base layer static field values are accessed via the base layer arrays. */
-                continue;
-            }
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
+            if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
@@ -484,8 +480,15 @@ public final class NativeImageHeapWriter {
                 writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
             } else {
                 heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
-                    final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, index));
-                    writeConstant(buffer, elementIndex, kind, element, info);
+                    long elementOffset = objectLayout.getArrayElementOffset(kind, index);
+                    final int elementIndex = getIndexInBuffer(info, elementOffset);
+                    if (element instanceof ImageHeapRelocatableConstant ihcConstant) {
+                        int heapOffset = NumUtil.safeToInt(info.getOffset() + elementOffset);
+                        CrossLayerConstantRegistryFeature.singleton().markFutureHeapConstantPatchSite(ihcConstant, heapOffset);
+                        fillReferenceWithGarbage(buffer, elementIndex);
+                    } else {
+                        writeConstant(buffer, elementIndex, kind, element, info);
+                    }
                 });
             }
         } else {

@@ -283,7 +283,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature, Fe
         for (Node n : graph.getNodes()) {
             if (n instanceof StoreFieldNode node) {
                 AnalysisField field = (AnalysisField) node.field();
-                if (field.isStatic() && field.isFinal() && !field.isInBaseLayer()) {
+                if (field.isStatic() && field.isFinal() && field.installableInLayer()) {
                     if (isClassInitializer && field.getDeclaringClass().equals(method.getDeclaringClass())) {
                         analyzeStoreInClassInitializer(node, field, optimizableFields, ineligibleFields);
                     } else {

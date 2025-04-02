@@ -110,6 +110,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
@@ -647,12 +648,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsWritten(field.getWrittenReason() != null);
         builder.setIsFolded(field.getFoldedReason() != null);
 
-        HostedField hostedField = hUniverse.lookup(field);
-        int location = hostedField.getLocation();
-        if (location > 0) {
-            builder.setLocation(location);
-        }
-
         Field originalField = OriginalFieldProvider.getJavaField(field);
         if (originalField != null && !originalField.getDeclaringClass().equals(field.getDeclaringClass().getJavaClass())) {
             builder.setClassName(originalField.getDeclaringClass().getName());
@@ -663,6 +658,22 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setTypeId(field.getType().getId());
         builder.setModifiers(field.getModifiers());
         builder.setPosition(field.getPosition());
+
+        HostedField hostedField = hUniverse.lookup(field);
+        builder.setLocation(hostedField.getLocation());
+        int fieldInstalledNum = MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+        LayeredStaticFieldSupport.LayerAssignmentStatus assignmentStatus = LayeredStaticFieldSupport.singleton().getAssignmentStatus(field);
+        if (hostedField.hasInstalledLayerNum()) {
+            fieldInstalledNum = hostedField.getInstalledLayerNum();
+            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNDECIDED) {
+                assignmentStatus = LayeredStaticFieldSupport.LayerAssignmentStatus.PRIOR_LAYER;
+            } else {
+                assert assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.APP_LAYER_REQUESTED ||
+                                assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.APP_LAYER_DEFERRED : assignmentStatus;
+            }
+        }
+        builder.setPriorInstalledLayerNum(fieldInstalledNum);
+        builder.setAssignmentStatus(assignmentStatus.ordinal());
 
         persistAnnotations(field, builder::initAnnotationList);
     }
@@ -857,7 +868,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private static boolean shouldRelinkField(AnalysisField field) {
         return ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
-                        field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers();
+                        field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers() && field.installableInLayer();
     }
 
     private static boolean requiresLateLoading(ImageHeapConstant imageHeapConstant, AnalysisField field) {
@@ -1074,7 +1085,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             }
             String key = singletonInfo.getKey().getName();
             if (!singletonInfoMap.containsKey(singleton)) {
-                var writer = new ImageSingletonWriterImpl(snapshotBuilder);
+                var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
                 var flags = singleton.preparePersist(writer);
                 boolean persistData = flags == LayeredImageSingleton.PersistFlags.CREATE;
                 var info = new SingletonPersistInfo(flags, persistData ? nextID++ : -1, persistData ? writer.getKeyValueStore() : null);
@@ -1154,13 +1165,19 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     public static class ImageSingletonWriterImpl implements ImageSingletonWriter {
         private final EconomicMap<String, Object> keyValueStore = EconomicMap.create();
         private final SharedLayerSnapshot.Builder snapshotBuilder;
+        private final HostedUniverse hUniverse;
 
-        ImageSingletonWriterImpl(SharedLayerSnapshot.Builder snapshotBuilder) {
+        ImageSingletonWriterImpl(SharedLayerSnapshot.Builder snapshotBuilder, HostedUniverse hUniverse) {
             this.snapshotBuilder = snapshotBuilder;
+            this.hUniverse = hUniverse;
         }
 
         EconomicMap<String, Object> getKeyValueStore() {
             return keyValueStore;
+        }
+
+        public HostedUniverse getHostedUniverse() {
+            return hUniverse;
         }
 
         private static boolean nonNullEntries(List<?> list) {

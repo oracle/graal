@@ -391,6 +391,20 @@ public abstract class HostVM {
         return false;
     }
 
+    public boolean buildingImageLayer() {
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean installableInLayer(AnalysisField aField) {
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean preventConstantFolding(AnalysisField aField) {
+        return false;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */

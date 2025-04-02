@@ -415,7 +415,7 @@ public abstract class NativeImage extends AbstractImage {
 
     public static String getTextSectionStartSymbol() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            return String.format("__svm_layer_code_section_%s", DynamicImageLayerInfo.singleton().layerNumber);
+            return String.format("__svm_layer_code_section_%s", DynamicImageLayerInfo.getCurrentLayerNumber());
         } else {
             return "__svm_code_section";
         }
