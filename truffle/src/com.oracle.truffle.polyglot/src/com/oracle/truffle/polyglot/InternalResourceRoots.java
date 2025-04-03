@@ -319,6 +319,7 @@ final class InternalResourceRoots {
                 yield userCacheDir;
             }
             case WINDOWS -> new ResolvedCacheFolder(userHome.resolve(Path.of("AppData", "Local")), "user home", userHome);
+            case ZOS -> new ResolvedCacheFolder(userHome.resolve(".cache"), "user home", userHome);
         };
         return container.resolve("org.graalvm.polyglot");
     }
