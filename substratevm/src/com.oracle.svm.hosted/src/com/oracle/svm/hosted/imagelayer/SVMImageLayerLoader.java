@@ -1141,15 +1141,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     @Override
     public void addBaseLayerField(AnalysisField analysisField) {
         fields.putIfAbsent(analysisField.getId(), analysisField);
+        if (analysisField.isStatic()) {
+            PersistedAnalysisField.Reader fieldData = getFieldData(analysisField);
+            assert fieldData != null : "The field should be in the base layer";
+            layeredStaticFieldSupport.ensureInitializedFromFieldData(analysisField, fieldData);
+        }
     }
 
     @Override
     public void initializeBaseLayerField(AnalysisField analysisField) {
         PersistedAnalysisField.Reader fieldData = getFieldData(analysisField);
         assert fieldData != null : "The field should be in the base layer";
-        if (analysisField.isStatic()) {
-            layeredStaticFieldSupport.initializeFromFieldData(analysisField, fieldData);
-        }
 
         boolean isAccessed = fieldData.getIsAccessed();
         boolean isRead = fieldData.getIsRead();
