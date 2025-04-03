@@ -92,9 +92,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
 
     public static boolean areFunctionCallsSupported() {
         return switch (CABI.current()) {
-            case CABI.SYS_V -> !OS.DARWIN.isCurrent(); // GR-63074: code emit failures on
-                                                       // darwin-amd64
-            case CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
+            case CABI.SYS_V, CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
             default -> false;
         };
     }
