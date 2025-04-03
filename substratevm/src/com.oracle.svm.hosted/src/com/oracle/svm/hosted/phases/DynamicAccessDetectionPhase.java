@@ -61,21 +61,22 @@ import java.util.Set;
 import java.util.random.RandomGeneratorFactory;
 
 /**
- * This phase detects usages of dynamic access calls that might require metadata in
- * reached parts of the project. It does so by analyzing the specified class or
- * module path entries and identifying relevant accesses. The phase then outputs
- * and serializes the detected usages to the image-build output. It is an optional phase that happens before
+ * This phase detects usages of dynamic access calls that might require metadata in reached parts of
+ * the project. It does so by analyzing the specified class or module path entries and identifying
+ * relevant accesses. The phase then outputs and serializes the detected usages to the image-build
+ * output. It is an optional phase that happens before
  * {@link com.oracle.graal.pointsto.results.StrengthenGraphs} by using the
  * {@link com.oracle.svm.hosted.DynamicAccessDetectionFeature.Options#TrackDynamicAccess} option and
  * providing the desired class or module path entry/s.
  */
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
-    public record MethodInfo(String accessType, String name) {}
+    public record MethodInfo(String dynamicMethodType, String name) {
+    }
 
-    private static final String ACCESSTYPE_REFLECTION = "reflection";
-    private static final String ACCESSTYPE_RESOURCE = "resource";
-    private static final String ACCESSTYPE_SERIALIZATION = "serialization";
-    private static final String ACCESSTYPE_PROXY = "proxy";
+    private static final String DMETHODTYPE_REFLECTION = "reflection";
+    private static final String DMETHODTYPE_RESOURCE = "resource";
+    private static final String DMETHODTYPE_SERIALIZATION = "serialization";
+    private static final String DMETHODTYPE_PROXY = "proxy";
 
     private static final Map<String, Set<String>> reflectMethodNames = new HashMap<>();
     private static final Map<String, Set<String>> resourceMethodNames = new HashMap<>();
@@ -190,7 +191,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
             MethodInfo methodDetails = getMethod(callTarget);
 
             if (methodDetails != null && entryPath != null) {
-                String methodType = methodDetails.accessType();
+                String methodType = methodDetails.dynamicMethodType();
                 String methodName = methodDetails.name();
 
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
@@ -209,25 +210,25 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     }
 
     /*
-     * Returns the name and dynamic access type of a method if it exists in the predetermined set, based on its
-     * graph and MethodCallTargetNode; otherwise, returns null.
+     * Returns the name and dynamic method type (e.g., reflective, proxy, resource, etc.) of a
+     * method if it exists in the predetermined set, based on its graph and MethodCallTargetNode;
+     * otherwise, returns null.
      */
     private static MethodInfo getMethod(MethodCallTargetNode callTarget) {
         String methodName = callTarget.targetMethod().getName();
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
         if (reflectMethodNames.containsKey(declaringClass) && reflectMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(ACCESSTYPE_REFLECTION, declaringClass + "#" + methodName);
+            return new MethodInfo(DMETHODTYPE_REFLECTION, declaringClass + "#" + methodName);
         } else if (resourceMethodNames.containsKey(declaringClass) && resourceMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(ACCESSTYPE_RESOURCE, declaringClass + "#" + methodName);
+            return new MethodInfo(DMETHODTYPE_RESOURCE, declaringClass + "#" + methodName);
         } else if (serializationMethodNames.containsKey(declaringClass) && serializationMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(ACCESSTYPE_SERIALIZATION, declaringClass + "#" + methodName);
+            return new MethodInfo(DMETHODTYPE_SERIALIZATION, declaringClass + "#" + methodName);
         } else if (proxyMethodNames.containsKey(declaringClass) && proxyMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(ACCESSTYPE_PROXY, declaringClass + "#" + methodName);
+            return new MethodInfo(DMETHODTYPE_PROXY, declaringClass + "#" + methodName);
         }
         return null;
     }
-
 
     /*
      * Returns the class or module path entry path of the caller class if it is included in the path
