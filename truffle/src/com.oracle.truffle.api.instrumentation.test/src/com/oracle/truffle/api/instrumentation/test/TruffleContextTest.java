@@ -240,12 +240,12 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         assertFails(() -> tc.closeCancelled(node, "testreason"), getCancelExecutionClass(), (e) -> {
             assertSame(getCancelExecutionLocation(e), node);
-            assertEquals("testreason", ((Throwable) e).getMessage());
+            assertEquals("testreason", e.getMessage());
         });
 
         assertFails(() -> tc.closeResourceExhausted(node, "testreason"), getCancelExecutionClass(), (e) -> {
             assertSame(getCancelExecutionLocation(e), node);
-            assertEquals("testreason", ((Throwable) e).getMessage());
+            assertEquals("testreason", e.getMessage());
         });
 
         tc.leave(null, prev);
