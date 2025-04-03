@@ -24,16 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
-
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 
 /** Common options that can be specified for both the serial and the epsilon GC. */
@@ -45,13 +41,7 @@ public final class SerialAndEpsilonGCOptions {
     public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new NotifyGCRuntimeOptionKey<>(10, SerialAndEpsilonGCOptions::validateSerialOrEpsilonRuntimeOption);
 
     @Option(help = "The size of an aligned chunk. Serial and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            int multiple = 4096;
-            UserError.guarantee(newValue > 0 && newValue % multiple == 0, "%s value must be a multiple of %d.", getName(), multiple);
-        }
-    };
+    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
 
     /*
      * This should be a fraction of the size of an aligned chunk, else large small arrays will not
