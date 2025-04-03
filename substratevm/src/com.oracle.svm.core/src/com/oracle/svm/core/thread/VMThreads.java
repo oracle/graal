@@ -973,8 +973,21 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
     }
 
     /**
-     * A thread-local enum conveying any actions needed before thread begins executing Java code.
-     * Only used on aarch64 at the moment.
+     * A thread-local enum conveying any actions needed before thread begins executing Java code. At
+     * the moment, only used on aarch64 where it is necessary to issue an ISB (instruction
+     * synchronization barrier) if new code was made executable (see
+     * <a href="https://developer.arm.com/documentation/ddi0487/latest">ARM Architecture Reference
+     * Manual</a> Section B2.2.5).
+     * 
+     * <pre>
+     * For example, assume there are 4 cores and 2 Java threads:
+     * - Thread A runs on core 0
+     * - Thread B runs on core 1 and installs code. We initiate a safepoint and force all Java
+     *   threads to call ISB
+     * - After the safepoint, thread A still runs on core 0 and executes ISB
+     * - If the OS switches thread A to core 2, the context switch also executes an appropriate
+     *   instruction
+     * </pre>
      */
     public static class ActionOnTransitionToJavaSupport {
 
