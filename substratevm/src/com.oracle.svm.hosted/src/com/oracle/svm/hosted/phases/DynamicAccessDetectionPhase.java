@@ -75,18 +75,14 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
 
     private static final String DMETHODTYPE_REFLECTION = "reflection";
     private static final String DMETHODTYPE_RESOURCE = "resource";
-    private static final String DMETHODTYPE_SERIALIZATION = "serialization";
-    private static final String DMETHODTYPE_PROXY = "proxy";
 
-    private static final Map<String, Set<String>> reflectMethodNames = new HashMap<>();
+    private static final Map<String, Set<String>> reflectionMethodNames = new HashMap<>();
     private static final Map<String, Set<String>> resourceMethodNames = new HashMap<>();
-    private static final Map<String, Set<String>> serializationMethodNames = new HashMap<>();
-    private static final Map<String, Set<String>> proxyMethodNames = new HashMap<>();
 
     private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
 
     static {
-        reflectMethodNames.put(Class.class.getTypeName(), Set.of(
+        reflectionMethodNames.put(Class.class.getTypeName(), Set.of(
                         "forName",
                         "getClasses",
                         "getDeclaredClasses",
@@ -108,8 +104,8 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         "getSigners",
                         "arrayType",
                         "newInstance"));
-        reflectMethodNames.put(Method.class.getTypeName(), Set.of("invoke"));
-        reflectMethodNames.put(MethodHandles.Lookup.class.getTypeName(), Set.of(
+        reflectionMethodNames.put(Method.class.getTypeName(), Set.of("invoke"));
+        reflectionMethodNames.put(MethodHandles.Lookup.class.getTypeName(), Set.of(
                         "findClass",
                         "findVirtual",
                         "findStatic",
@@ -127,36 +123,44 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         "unreflectGetter",
                         "unreflectSetter",
                         "unreflectVarHandle"));
-        reflectMethodNames.put(ClassLoader.class.getTypeName(), Set.of(
+        reflectionMethodNames.put(ClassLoader.class.getTypeName(), Set.of(
                         "loadClass",
                         "findBootstrapClassOrNull",
                         "findLoadedClass",
                         "findSystemClass"));
-        reflectMethodNames.put(URLClassLoader.class.getTypeName(), Set.of("loadClass"));
-        reflectMethodNames.put(Array.class.getTypeName(), Set.of("newInstance"));
-        reflectMethodNames.put(Constructor.class.getTypeName(), Set.of("newInstance"));
-        reflectMethodNames.put("java.lang.reflect.ReflectAccess", Set.of("newInstance"));
-        reflectMethodNames.put("sun.misc.Unsafe", Set.of("allocateInstance"));
-        reflectMethodNames.put("java.lang.constant.ReferenceClassDescImpl", Set.of("resolveConstantDesc"));
-        reflectMethodNames.put(ObjectInputStream.class.getTypeName(), Set.of("resolveClass", "resolveProxyClass"));
-        reflectMethodNames.put("javax.crypto.extObjectInputStream", Set.of("resolveClass"));
-        reflectMethodNames.put(VerifyAccess.class.getTypeName(), Set.of("isTypeVisible"));
-        reflectMethodNames.put("sun.reflect.generics.factory.CoreReflectionFactory", Set.of("makeNamedType"));
-        reflectMethodNames.put("sun.reflect.misc.ReflectUtil", Set.of("forName"));
-        reflectMethodNames.put("sun.security.tools.KeyStoreUtil", Set.of("loadProvidedByClass"));
-        reflectMethodNames.put("sun.util.locale.provider.LocaleProviderAdapter", Set.of("forType"));
-        reflectMethodNames.put("sun.reflect.misc.ConstructorUtil", Set.of("getConstructor", "getConstructors"));
-        reflectMethodNames.put("java.lang.invoke.ClassSpecializer", Set.of("reflectConstructor"));
-        reflectMethodNames.put("sun.reflect.misc.FieldUtil", Set.of("getField", "getFields"));
-        reflectMethodNames.put("sun.reflect.misc.MethodUtil", Set.of("getMethod", "getMethods", "loadClass"));
-        reflectMethodNames.put("sun.security.util.KeyStoreDelegator", Set.of("engineLoad", "engineProbe"));
-        reflectMethodNames.put(ValueConversions.class.getTypeName(), Set.of("boxExact"));
-        reflectMethodNames.put(ConstantBootstraps.class.getTypeName(), Set.of("getStaticFinal", "staticFieldVarHandle", "fieldVarHandle"));
-        reflectMethodNames.put(VarHandle.VarHandleDesc.class.getTypeName(), Set.of("resolveConstantDesc"));
-        reflectMethodNames.put(RandomGeneratorFactory.class.getTypeName(), Set.of("create"));
-        reflectMethodNames.put(X500Name.class.getTypeName(), Set.of("asX500Principal"));
-        reflectMethodNames.put(MethodHandleProxies.class.getTypeName(), Set.of("asInterfaceInstance"));
-        reflectMethodNames.put(AnnotationParser.class.getTypeName(), Set.of("annotationForMap"));
+        reflectionMethodNames.put(URLClassLoader.class.getTypeName(), Set.of("loadClass"));
+        reflectionMethodNames.put(Array.class.getTypeName(), Set.of("newInstance"));
+        reflectionMethodNames.put(Constructor.class.getTypeName(), Set.of("newInstance"));
+        reflectionMethodNames.put("java.lang.reflect.ReflectAccess", Set.of("newInstance"));
+        reflectionMethodNames.put("sun.misc.Unsafe", Set.of("allocateInstance"));
+        reflectionMethodNames.put("java.lang.constant.ReferenceClassDescImpl", Set.of("resolveConstantDesc"));
+        reflectionMethodNames.put(ObjectInputStream.class.getTypeName(), Set.of("resolveClass", "resolveProxyClass"));
+        reflectionMethodNames.put("javax.crypto.extObjectInputStream", Set.of("resolveClass"));
+        reflectionMethodNames.put(VerifyAccess.class.getTypeName(), Set.of("isTypeVisible"));
+        reflectionMethodNames.put("sun.reflect.generics.factory.CoreReflectionFactory", Set.of("makeNamedType"));
+        reflectionMethodNames.put("sun.reflect.misc.ReflectUtil", Set.of("forName"));
+        reflectionMethodNames.put("sun.security.tools.KeyStoreUtil", Set.of("loadProvidedByClass"));
+        reflectionMethodNames.put("sun.util.locale.provider.LocaleProviderAdapter", Set.of("forType"));
+        reflectionMethodNames.put("sun.reflect.misc.ConstructorUtil", Set.of("getConstructor", "getConstructors"));
+        reflectionMethodNames.put("java.lang.invoke.ClassSpecializer", Set.of("reflectConstructor"));
+        reflectionMethodNames.put("sun.reflect.misc.FieldUtil", Set.of("getField", "getFields"));
+        reflectionMethodNames.put("sun.reflect.misc.MethodUtil", Set.of("getMethod", "getMethods", "loadClass"));
+        reflectionMethodNames.put("sun.security.util.KeyStoreDelegator", Set.of("engineLoad", "engineProbe"));
+        reflectionMethodNames.put(ValueConversions.class.getTypeName(), Set.of("boxExact"));
+        reflectionMethodNames.put(ConstantBootstraps.class.getTypeName(), Set.of("getStaticFinal", "staticFieldVarHandle", "fieldVarHandle"));
+        reflectionMethodNames.put(VarHandle.VarHandleDesc.class.getTypeName(), Set.of("resolveConstantDesc"));
+        reflectionMethodNames.put(RandomGeneratorFactory.class.getTypeName(), Set.of("create"));
+        reflectionMethodNames.put(X500Name.class.getTypeName(), Set.of("asX500Principal"));
+        reflectionMethodNames.put(MethodHandleProxies.class.getTypeName(), Set.of("asInterfaceInstance"));
+        reflectionMethodNames.put(AnnotationParser.class.getTypeName(), Set.of("annotationForMap"));
+
+        reflectionMethodNames.put(ObjectOutputStream.class.getTypeName(), Set.of("writeObject", "writeUnshared"));
+        reflectionMethodNames.put(ObjectInputStream.class.getTypeName(), Set.of("readObject", "readUnshared"));
+        reflectionMethodNames.put(ObjectStreamClass.class.getTypeName(), Set.of("lookup"));
+        reflectionMethodNames.put("sun.reflect.ReflectionFactory", Set.of("newConstructorForSerialization"));
+        reflectionMethodNames.put("jdk.internal.reflect.ReflectionFactory", Set.of("newConstructorForSerialization"));
+
+        reflectionMethodNames.put(Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"));
 
         resourceMethodNames.put(ClassLoader.class.getTypeName(), Set.of(
                         "getResource",
@@ -168,14 +172,6 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         resourceMethodNames.put(ResourceBundle.class.getTypeName(), Set.of("getBundleImpl"));
         resourceMethodNames.put(Module.class.getTypeName(), Set.of("getResourceAsStream"));
         resourceMethodNames.put(Class.class.getTypeName(), Set.of("getResource", "getResourceAsStream"));
-
-        serializationMethodNames.put(ObjectOutputStream.class.getTypeName(), Set.of("writeObject", "writeUnshared"));
-        serializationMethodNames.put(ObjectInputStream.class.getTypeName(), Set.of("readObject", "readUnshared"));
-        serializationMethodNames.put(ObjectStreamClass.class.getTypeName(), Set.of("lookup"));
-        serializationMethodNames.put("sun.reflect.ReflectionFactory", Set.of("newConstructorForSerialization"));
-        serializationMethodNames.put("jdk.internal.reflect.ReflectionFactory", Set.of("newConstructorForSerialization"));
-
-        proxyMethodNames.put(Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"));
     }
 
     public DynamicAccessDetectionPhase() {
@@ -218,14 +214,10 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         String methodName = callTarget.targetMethod().getName();
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
-        if (reflectMethodNames.containsKey(declaringClass) && reflectMethodNames.get(declaringClass).contains(methodName)) {
+        if (reflectionMethodNames.containsKey(declaringClass) && reflectionMethodNames.get(declaringClass).contains(methodName)) {
             return new MethodInfo(DMETHODTYPE_REFLECTION, declaringClass + "#" + methodName);
         } else if (resourceMethodNames.containsKey(declaringClass) && resourceMethodNames.get(declaringClass).contains(methodName)) {
             return new MethodInfo(DMETHODTYPE_RESOURCE, declaringClass + "#" + methodName);
-        } else if (serializationMethodNames.containsKey(declaringClass) && serializationMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(DMETHODTYPE_SERIALIZATION, declaringClass + "#" + methodName);
-        } else if (proxyMethodNames.containsKey(declaringClass) && proxyMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(DMETHODTYPE_PROXY, declaringClass + "#" + methodName);
         }
         return null;
     }
