@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVersionRef;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
@@ -306,9 +307,9 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public MethodRef getMethodFromRootNode(RootNode root) {
+    public MethodVersionRef getMethodFromRootNode(RootNode root) {
         if (root != null && root instanceof EspressoRootNode) {
-            return ((EspressoRootNode) root).getMethod();
+            return ((EspressoRootNode) root).getMethodVersion();
         }
         return null;
     }
@@ -646,7 +647,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (callerRoot instanceof EspressoRootNode espressoRootNode) {
             int bci = (int) readBCIFromFrame(callerRoot, frame);
             if (bci >= 0) {
-                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethod().getOriginalCode());
+                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
                 return bs.nextBCI(bci);
             }
         }
@@ -665,8 +666,8 @@ public final class JDWPContextImpl implements JDWPContext {
     public CallFrame locateObjectWaitFrame() {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
-        MethodRef method = context.getMeta().java_lang_Object_wait;
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null, LOGGER);
+        MethodVersionRef methodVersion = context.getMeta().java_lang_Object_wait.getMethodVersion();
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), methodVersion, ids.getIdAsLong(methodVersion.getMethod()), 0, null, null, null, null, null, LOGGER);
     }
 
     @Override

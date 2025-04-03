@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -260,12 +259,6 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         int hubOffset = ol.getHubOffset();
         int bytesToRead = ol.getHubSize();
         long reservedHubBitsMask = oh.getReservedHubBitsMask();
-        if (hubOffset == Integer.BYTES && hubOffset + ol.getHubSize() == Long.BYTES && target.arch.getByteOrder() == ByteOrder.LITTLE_ENDIAN) {
-            /* Prepare to emit a 64-bit read at offset 0 (reduces the code size). */
-            hubOffset = 0;
-            bytesToRead = Long.BYTES;
-            reservedHubBitsMask = (reservedHubBitsMask << Integer.SIZE) | ((1L << Integer.SIZE) - 1);
-        }
 
         /* Read the raw hub data from the correct part of the object header. */
         IntegerStamp readStamp = StampFactory.forUnsignedInteger(bytesToRead * Byte.SIZE);

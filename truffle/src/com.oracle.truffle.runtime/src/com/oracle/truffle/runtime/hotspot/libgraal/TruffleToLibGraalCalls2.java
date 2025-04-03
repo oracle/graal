@@ -44,6 +44,14 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.
 
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 
+/**
+ * The method defined in this class can't be added to {@link TruffleToLibGraalCalls}, because the
+ * code has to work also with libgraal which does not have the entry point for the method.
+ * Therefore, {@link jdk.vm.ci.hotspot.HotSpotJVMCIRuntime#registerNativeMethods(Class) registering}
+ * this class might throw an {@link UnsatisfiedLinkError error}. If more methods like that need to
+ * be added, then new classes TruffleToLibGraalCalls3, TruffleToLibGraalCalls4, etc. have to be
+ * created.
+ */
 final class TruffleToLibGraalCalls2 {
 
     @TruffleToLibGraal(GetCompilationId)

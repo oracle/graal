@@ -2021,7 +2021,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class PersistedAnalysisField {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)3);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)3);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -2181,6 +2181,20 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final org.capnproto.Text.Builder initName(int size) {
         return _initPointerField(org.capnproto.Text.factory, 2, size);
       }
+      public final int getPriorInstalledLayerNum() {
+        return _getIntField(7);
+      }
+      public final void setPriorInstalledLayerNum(int value) {
+        _setIntField(7, value);
+      }
+
+      public final int getAssignmentStatus() {
+        return _getIntField(8);
+      }
+      public final void setAssignmentStatus(int value) {
+        _setIntField(8, value);
+      }
+
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -2259,6 +2273,14 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public org.capnproto.Text.Reader getName() {
         return _getPointerField(org.capnproto.Text.factory, 2, null, 0, 0);
+      }
+
+      public final int getPriorInstalledLayerNum() {
+        return _getIntField(7);
+      }
+
+      public final int getAssignmentStatus() {
+        return _getIntField(8);
       }
 
     }

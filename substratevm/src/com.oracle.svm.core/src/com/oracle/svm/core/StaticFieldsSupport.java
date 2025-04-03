@@ -54,6 +54,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -99,9 +100,9 @@ public final class StaticFieldsSupport {
             return ImageSingletons.lookup(HostedStaticFieldSupport.class);
         }
 
-        JavaConstant getStaticPrimitiveFieldsConstant(int layerNum, Function<Object, JavaConstant> toConstant);
+        JavaConstant getStaticFieldsBaseConstant(int layerNum, boolean primitive, Function<Object, JavaConstant> toConstant);
 
-        JavaConstant getStaticObjectFieldsConstant(int layerNum, Function<Object, JavaConstant> toConstant);
+        FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
 
         boolean isPrimitive(ResolvedJavaField field);
 
@@ -137,7 +138,7 @@ public final class StaticFieldsSupport {
         var hostedSupport = HostedStaticFieldSupport.singleton();
         boolean primitive = hostedSupport.isPrimitive(field);
         int layerNum = getInstalledLayerNum(field);
-        return primitive ? hostedSupport.getStaticPrimitiveFieldsConstant(layerNum, toConstant) : hostedSupport.getStaticObjectFieldsConstant(layerNum, toConstant);
+        return hostedSupport.getStaticFieldsBaseConstant(layerNum, primitive, toConstant);
     }
 
     public static int getInstalledLayerNum(ResolvedJavaField field) {
@@ -249,25 +250,22 @@ public final class StaticFieldsSupport {
                  */
                 return;
             }
-            JavaConstant constant;
+            FloatingNode replacement;
             if (SubstrateUtil.HOSTED) {
                 /*
                  * Build-time version of lowering.
                  */
-                Function<Object, JavaConstant> toConstantFunction = (obj) -> tool.getSnippetReflection().forObject(obj);
-
                 HostedStaticFieldSupport hostedSupport = HostedStaticFieldSupport.singleton();
-                constant = primitive ? hostedSupport.getStaticPrimitiveFieldsConstant(layerNum, toConstantFunction)
-                                : hostedSupport.getStaticObjectFieldsConstant(layerNum, toConstantFunction);
+                replacement = hostedSupport.getStaticFieldsBaseReplacement(layerNum, primitive, tool, graph());
             } else {
                 /*
                  * JIT version of lowering.
                  */
-                constant = tool.getSnippetReflection()
+                JavaConstant constant = tool.getSnippetReflection()
                                 .forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNum) : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(layerNum));
+                replacement = ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
             }
-            assert constant.isNonNull() : constant;
-            replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
+            replaceAndDelete(graph().addOrUniqueWithInputs(replacement));
         }
     }
 

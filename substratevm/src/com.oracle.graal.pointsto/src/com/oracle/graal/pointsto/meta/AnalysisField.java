@@ -107,6 +107,13 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      */
     protected Object fieldValueInterceptor;
 
+    /**
+     * When building layered images, for static fields we must keep track of what layer's static
+     * fields array the field is assigned in. This also impacts when the underlying value can be
+     * read and/or constant folded.
+     */
+    private final boolean isLayeredStaticField;
+
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         super(universe.hostVM.enableTrackAcrossLayers());
@@ -152,6 +159,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             id = universe.computeNextFieldId();
             isInBaseLayer = false;
         }
+        isLayeredStaticField = isStatic() && universe.hostVM.buildingImageLayer();
     }
 
     @Override
@@ -186,6 +194,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public boolean isInBaseLayer() {
         return isInBaseLayer;
+    }
+
+    public boolean installableInLayer() {
+        if (isLayeredStaticField) {
+            return getUniverse().hostVM.installableInLayer(this);
+        } else {
+            return true;
+        }
+    }
+
+    public boolean preventConstantFolding() {
+        if (isLayeredStaticField) {
+            return getUniverse().hostVM.preventConstantFolding(this);
+        } else {
+            return false;
+        }
     }
 
     @Override

@@ -139,7 +139,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     }
 
     private static ImageLayerSectionImpl createImageLayerSection() {
-        CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.singleton().layerNumber)) : null;
+        CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber())) : null;
         CGlobalData<WordPointer> cachedImageFDs;
         CGlobalData<WordPointer> cachedImageHeapOffsets;
         CGlobalData<WordPointer> cachedImageHeapRelocations;
@@ -221,7 +221,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         }
 
         // this symbol must be global when it will be read by the prior section
-        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.singleton().layerNumber), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
+        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber()), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
 
         if (numSingletonSlots != 0) {
             assert ImageLayerBuildingSupport.buildingApplicationLayer() : "Currently only application layer is supported";

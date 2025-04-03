@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import static com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -56,7 +58,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         this.holder = holder;
         this.type = type;
         this.location = LOC_UNINITIALIZED;
-        this.installedLayerNum = MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+        this.installedLayerNum = LAYER_NUM_UNINSTALLED;
     }
 
     @Override
@@ -64,23 +66,37 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped;
     }
 
-    protected void setLocation(int location, int installLayerNum) {
-        wrapped.checkGuaranteeFolded();
-        assert this.location == LOC_UNINITIALIZED && this.installedLayerNum == MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
-        assert location >= 0;
-        assert installLayerNum != MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
-        if (wrapped.isStatic()) {
-            assert ImageLayerBuildingSupport.buildingImageLayer() ? installLayerNum >= 0 : installLayerNum == MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
-        } else {
-            assert installLayerNum == MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
+    public void setLocation(int newLocation, int newInstallLayerNum) {
+        assert this.location == LOC_UNINITIALIZED;
+        assert newLocation >= 0 || newLocation == LOC_UNMATERIALIZED_STATIC_CONSTANT;
+
+        if (newLocation != LOC_UNMATERIALIZED_STATIC_CONSTANT) {
+            wrapped.checkGuaranteeFolded();
         }
-        this.location = location;
-        this.installedLayerNum = installLayerNum;
+        this.location = newLocation;
+
+        setInstalledLayerNum(newInstallLayerNum);
     }
 
-    protected void setUnmaterializedStaticConstant() {
-        assert this.location == LOC_UNINITIALIZED && isStatic();
-        this.location = LOC_UNMATERIALIZED_STATIC_CONSTANT;
+    private void setInstalledLayerNum(int newInstallLayerNum) {
+        assert this.installedLayerNum == LAYER_NUM_UNINSTALLED;
+        assert newInstallLayerNum != LAYER_NUM_UNINSTALLED;
+        if (wrapped.isStatic()) {
+            assert ImageLayerBuildingSupport.buildingImageLayer() ? newInstallLayerNum >= 0 : newInstallLayerNum == MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        } else {
+            assert newInstallLayerNum == MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
+        }
+        this.installedLayerNum = newInstallLayerNum;
+    }
+
+    protected void setUnmaterializedStaticConstant(int newInstalledLayerNum) {
+        assert isStatic();
+        if (location == LOC_UNMATERIALIZED_STATIC_CONSTANT) {
+            // already set via prior layer
+            assert installedLayerNum != newInstalledLayerNum;
+            return;
+        }
+        setLocation(LOC_UNMATERIALIZED_STATIC_CONSTANT, newInstalledLayerNum);
     }
 
     public boolean isUnmaterialized() {
@@ -186,11 +202,13 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped;
     }
 
+    public boolean hasInstalledLayerNum() {
+        return !(installedLayerNum == LAYER_NUM_UNINSTALLED || installedLayerNum == MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER);
+    }
+
     @Override
     public int getInstalledLayerNum() {
-        VMError.guarantee(!(installedLayerNum == MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED || installedLayerNum == MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER),
-                        "Bad installed layer value: %s %s",
-                        installedLayerNum, this);
+        VMError.guarantee(hasInstalledLayerNum(), "Bad installed layer value: %s %s", installedLayerNum, this);
         return installedLayerNum;
     }
 }

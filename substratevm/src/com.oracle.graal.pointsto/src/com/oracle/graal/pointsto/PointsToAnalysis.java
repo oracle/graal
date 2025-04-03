@@ -650,10 +650,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public void afterAnalysis() {
         /*
-         * Only verify in the context-insensitive configuration as context-sensitive analysis is not
+         * Only verify in the context-insensitive analysis because context-sensitive analysis is not
          * compatible with predicates.
          */
-        assert !PointstoOptions.AnalysisContextSensitivity.getValue(options).equals("insens") || validateFixedPointState();
+        assert analysisPolicy().isContextSensitiveAnalysis() || validateFixedPointState();
     }
 
     /**
