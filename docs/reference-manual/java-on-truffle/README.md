@@ -31,7 +31,7 @@ Espresso passes the Java Compatibility Kit (JCK or TCK for Java SE).
 ## Getting Started
 
 Espresso is available as a standalone distribution that provides a Java 21 environment.
-You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
+You can download a standalone based on Oracle GraalVM or GraalVM Community Edition.
 
 1. Download the Espresso 24.2 standalone for your operating system:
 
@@ -45,7 +45,7 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
     ```shell
     tar -xzf <archive>.tar.gz
     ```
-   
+
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the runtime is active:
     ```shell
     # Path to Espresso installation
