@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -616,7 +616,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final int testAndJcc(OperandSize size, Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return applyMIOpAndJcc(AMD64MIOp.TEST, size, src, imm32, cc, branchTarget, isShortJmp, false, null);
+        AMD64MIOp op = size == OperandSize.BYTE ? AMD64MIOp.TESTB : AMD64MIOp.TEST;
+        return applyMIOpAndJcc(op, size, src, imm32, cc, branchTarget, isShortJmp, false, null);
     }
 
     public final int testlAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
@@ -628,11 +629,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final int testAndJcc(OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
-        return applyMIOpAndJcc(AMD64MIOp.TEST, size, src, imm32, cc, branchTarget, isShortJmp, false, applyBeforeFusedPair);
+        AMD64MIOp op = size == OperandSize.BYTE ? AMD64MIOp.TESTB : AMD64MIOp.TEST;
+        return applyMIOpAndJcc(op, size, src, imm32, cc, branchTarget, isShortJmp, false, applyBeforeFusedPair);
     }
 
     public final int testAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return applyRMOpAndJcc(AMD64RMOp.TEST, size, src1, src2, cc, branchTarget, isShortJmp);
+        AMD64RMOp op = size == OperandSize.BYTE ? AMD64RMOp.TESTB : AMD64RMOp.TEST;
+        return applyRMOpAndJcc(op, size, src1, src2, cc, branchTarget, isShortJmp);
     }
 
     public final int testlAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
@@ -644,11 +647,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final int testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
-        return applyRMOpAndJcc(AMD64RMOp.TEST, size, src1, src2, cc, branchTarget, isShortJmp, null);
+        AMD64RMOp op = size == OperandSize.BYTE ? AMD64RMOp.TESTB : AMD64RMOp.TEST;
+        return applyRMOpAndJcc(op, size, src1, src2, cc, branchTarget, isShortJmp, null);
     }
 
     public final int testAndJcc(OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
-        return applyRMOpAndJcc(AMD64RMOp.TEST, size, src1, src2, cc, branchTarget, isShortJmp, applyBeforeFusedPair);
+        AMD64RMOp op = size == OperandSize.BYTE ? AMD64RMOp.TESTB : AMD64RMOp.TEST;
+        return applyRMOpAndJcc(op, size, src1, src2, cc, branchTarget, isShortJmp, applyBeforeFusedPair);
     }
 
     public final int testbAndJcc(Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {

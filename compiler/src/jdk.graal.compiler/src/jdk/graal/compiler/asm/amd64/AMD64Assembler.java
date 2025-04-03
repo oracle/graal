@@ -592,14 +592,15 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      */
     public static class AMD64MIOp extends AMD64ImmOp {
         // @formatter:off
-        public static final AMD64MIOp BT   = new AMD64MIOp("BT",   true,  P_0F, 0xBA, 4, true, OpAssertion.WordOrLargerAssertion);
-        public static final AMD64MIOp BTR  = new AMD64MIOp("BTR",  true,  P_0F, 0xBA, 6, true, OpAssertion.WordOrLargerAssertion);
-        public static final AMD64MIOp MOVB = new AMD64MIOp("MOVB", true,        0xC6, 0, false, OpAssertion.ByteAssertion);
-        public static final AMD64MIOp MOV  = new AMD64MIOp("MOV",  false,       0xC7, 0, false, OpAssertion.WordOrLargerAssertion);
-        public static final AMD64MIOp SAR  = new AMD64MIOp("SAR",  true,        0xC1, 7, true, OpAssertion.WordOrLargerAssertion);
-        public static final AMD64MIOp SHL  = new AMD64MIOp("SHL",  true,        0xC1, 4, true, OpAssertion.WordOrLargerAssertion);
-        public static final AMD64MIOp SHR  = new AMD64MIOp("SHR",  true,        0xC1, 5, true, OpAssertion.WordOrLargerAssertion);
-        public static final AMD64MIOp TEST = new AMD64MIOp("TEST", false,       0xF7, 0, true);
+        public static final AMD64MIOp BT    = new AMD64MIOp("BT",   true,  P_0F, 0xBA, 4, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp BTR   = new AMD64MIOp("BTR",  true,  P_0F, 0xBA, 6, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp MOVB  = new AMD64MIOp("MOVB", true,        0xC6, 0, false, OpAssertion.ByteAssertion);
+        public static final AMD64MIOp MOV   = new AMD64MIOp("MOV",  false,       0xC7, 0, false, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp SAR   = new AMD64MIOp("SAR",  true,        0xC1, 7, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp SHL   = new AMD64MIOp("SHL",  true,        0xC1, 4, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp SHR   = new AMD64MIOp("SHR",  true,        0xC1, 5, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp TESTB = new AMD64MIOp("TEST", true,        0xF6, 0, true, OpAssertion.ByteAssertion);
+        public static final AMD64MIOp TEST  = new AMD64MIOp("TEST", false,       0xF7, 0, true, OpAssertion.WordOrLargerAssertion);
         // @formatter:on
 
         private final int ext;
