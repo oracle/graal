@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -37,11 +36,15 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 /**
  * A set of trampolines that can be assigned to specific upcall stubs with specific method handles.
@@ -154,6 +157,15 @@ final class TrampolineSet {
         VMError.guarantee(memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
                         "Error when making the trampoline allocation executable");
 
+        /*
+         * On some architectures, it is necessary to flush the instruction cache if new code was
+         * installed and/or to issue an instruction synchronization barrier on other cores currently
+         * running a thread that may execute the newly installed code.
+         */
+        if (RuntimeCodeInstallerPlatformHelper.singleton().needsInstructionCacheSynchronization()) {
+            new InstructionCacheOperation(page.rawValue(), pageSize.rawValue()).enqueue();
+        }
+
         return page;
     }
 
@@ -172,5 +184,21 @@ final class TrampolineSet {
             patchedStubs.clear();
         }
         return true;
+    }
+
+    private static class InstructionCacheOperation extends JavaVMOperation {
+        private final long codeStart;
+        private final long codeSize;
+
+        InstructionCacheOperation(long codeStart, long codeSize) {
+            super(VMOperationInfos.get(InstructionCacheOperation.class, "Prepare FFM API trampoline set", SystemEffect.SAFEPOINT));
+            this.codeStart = codeStart;
+            this.codeSize = codeSize;
+        }
+
+        @Override
+        protected void operate() {
+            RuntimeCodeInstallerPlatformHelper.singleton().performCodeSynchronization(codeStart, codeSize);
+        }
     }
 }
