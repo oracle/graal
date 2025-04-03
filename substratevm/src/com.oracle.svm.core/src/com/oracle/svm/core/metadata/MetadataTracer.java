@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -70,6 +71,21 @@ public final class MetadataTracer {
     @Fold
     public static MetadataTracer singleton() {
         return ImageSingletons.lookup(MetadataTracer.class);
+    }
+
+    public boolean enabled() {
+        VMError.guarantee(Options.MetadataTracingSupport.getValue());
+        return config != null;
+    }
+
+    public void traceResource(String resourceName, String moduleName) {
+        assert enabled();
+        config.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
+    }
+
+    public void traceResourceBundle(String baseName) {
+        assert enabled();
+        config.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
     }
 
     private static void initialize() {
