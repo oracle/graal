@@ -486,6 +486,13 @@ public interface InternalResource {
          */
         WINDOWS("windows");
 
+        /**
+         * IBM z/OS operating system.
+         *
+         * @since 24.2-kiwi1969-patch
+         */
+        IBM_ZOS("z/OS");
+
         private final String id;
 
         OS(String id) {
@@ -517,6 +524,8 @@ public interface InternalResource {
                 return DARWIN;
             } else if (os.toLowerCase().startsWith("windows")) {
                 return WINDOWS;
+            } else if (os.equalsIgnoreCase("z/OS")) {
+                return IBM_ZOS;
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported OS name " + os);
             }
@@ -543,6 +552,13 @@ public interface InternalResource {
          * @since 23.1
          */
         AMD64("amd64");
+
+        /**
+         * The s390x 64-bit architecture.
+         *
+         * @since 24.2-kiwi1969-patch
+         */
+        S390X("s390x");
 
         private final String id;
 
@@ -573,6 +589,7 @@ public interface InternalResource {
             return switch (arch) {
                 case "amd64", "x86_64" -> AMD64;
                 case "aarch64", "arm64" -> AARCH64;
+                case "s390x" -> S390X;
                 default -> throw CompilerDirectives.shouldNotReachHere("Unsupported CPU architecture " + arch);
             };
         }
