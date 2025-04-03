@@ -86,8 +86,8 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
     final Set<Object> appLayerFields;
 
     final Map<AnalysisField, LayerAssignmentStatus> assignmentStatusMap;
-    final Map<AnalysisField, Integer> priorInstalledLayerNum;
-    final Map<AnalysisField, Integer> priorInstalledLocation;
+    final Map<AnalysisField, Integer> priorInstalledLayerMap;
+    final Map<AnalysisField, Integer> priorInstalledLocationMap;
 
     public static final String appLayerPrimitiveStaticFieldsBaseName = "APPLAYER_PRIMITIVE_STATICFIELDSBASE";
     public static final String appLayerObjectStaticFieldsBaseName = "APPLAYER_OBJECT_STATICFIELDSBASE";
@@ -107,8 +107,8 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         this.appLayerFields = appLayerFields;
         assignmentStatusMap = new ConcurrentHashMap<>();
         inAppLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
-        priorInstalledLayerNum = inAppLayer ? new ConcurrentHashMap<>() : null;
-        priorInstalledLocation = inAppLayer ? new ConcurrentHashMap<>() : null;
+        priorInstalledLayerMap = inAppLayer ? new ConcurrentHashMap<>() : null;
+        priorInstalledLocationMap = inAppLayer ? new ConcurrentHashMap<>() : null;
         this.appLayerStaticFieldOffsets = appLayerStaticFieldOffsets;
     }
 
@@ -150,13 +150,16 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         }
     }
 
-    public void initializeFromFieldData(AnalysisField aField, SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.Reader fieldData) {
-        Object previous = priorInstalledLayerNum.put(aField, fieldData.getPriorInstalledLayerNum());
-        assert previous == null : previous;
-        previous = assignmentStatusMap.put(aField, LayerAssignmentStatus.values()[fieldData.getAssignmentStatus()]);
-        assert previous == null : previous;
-        previous = priorInstalledLocation.put(aField, fieldData.getLocation());
-        assert previous == null : previous;
+    public void ensureInitializedFromFieldData(AnalysisField aField, SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.Reader fieldData) {
+        Integer priorInstalledLayerNum = fieldData.getPriorInstalledLayerNum();
+        Object result = priorInstalledLayerMap.computeIfAbsent(aField, f -> priorInstalledLayerNum);
+        assert priorInstalledLayerNum.equals(result) : result;
+        LayerAssignmentStatus assignmentStatus = LayerAssignmentStatus.values()[fieldData.getAssignmentStatus()];
+        result = assignmentStatusMap.computeIfAbsent(aField, f -> assignmentStatus);
+        assert assignmentStatus.equals(result);
+        Integer priorInstalledLocation = fieldData.getLocation();
+        result = priorInstalledLocationMap.computeIfAbsent(aField, f -> priorInstalledLocation);
+        assert priorInstalledLocation.equals(result);
     }
 
     private void installFieldInAppLayer(Field field, MetaAccessProvider meta) {
@@ -216,7 +219,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
             if (!(inAppLayer && analysisField.isInBaseLayer())) {
                 return LayerAssignmentStatus.UNDECIDED;
             }
-            throw VMError.shouldNotReachHere("base layer types should have already been initialized");
+            throw VMError.shouldNotReachHere(String.format("Base analysis field assignment status queried before it is initialized: %s", analysisField));
         });
     }
 
@@ -225,8 +228,8 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
             return MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         }
 
-        assert priorInstalledLayerNum.containsKey(analysisField);
-        return priorInstalledLayerNum.get(analysisField);
+        assert priorInstalledLayerMap.containsKey(analysisField);
+        return priorInstalledLayerMap.get(analysisField);
     }
 
     public boolean preventConstantFolding(AnalysisField aField) {
@@ -265,13 +268,13 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
             LayerAssignmentStatus state = getAssignmentStatus(aField);
             if (state == LayerAssignmentStatus.PRIOR_LAYER) {
                 int layerNum = getPriorInstalledLayerNum(aField);
-                assert priorInstalledLocation.containsKey(aField);
-                int location = priorInstalledLocation.get(aField);
+                assert priorInstalledLocationMap.containsKey(aField);
+                int location = priorInstalledLocationMap.get(aField);
                 hField.setLocation(location, layerNum);
             } else if (state == LayerAssignmentStatus.APP_LAYER_DEFERRED) {
                 assert inAppLayer;
-                assert priorInstalledLocation.containsKey(aField);
-                int location = priorInstalledLocation.get(aField);
+                assert priorInstalledLocationMap.containsKey(aField);
+                int location = priorInstalledLocationMap.get(aField);
                 hField.setLocation(location, currentLayerNum);
             }
         }
