@@ -59,7 +59,7 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
         this.arguments = Collections.unmodifiableList(arguments);
-        collectOptions(OptionsContainer.load(imageClassLoader), allHostedOptions, allRuntimeOptions);
+        collectOptions(OptionsContainer.getDiscoverableOptions(imageClassLoader), allHostedOptions, allRuntimeOptions);
     }
 
     public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, EconomicMap<String, OptionDescriptor> allHostedOptions,

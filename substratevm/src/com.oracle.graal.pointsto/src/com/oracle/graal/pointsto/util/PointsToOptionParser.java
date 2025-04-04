@@ -63,7 +63,7 @@ public final class PointsToOptionParser {
 
     private PointsToOptionParser() {
         ClassLoader appClassLoader = PointsToOptionParser.class.getClassLoader();
-        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.load(appClassLoader);
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(appClassLoader);
         CommonOptionParser.collectOptions(optionDescriptors, descriptor -> {
             String name = descriptor.getName();
             if (descriptor.getOptionKey() != null) {

@@ -218,8 +218,7 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
                             d.valueType(),
                             assign,
                             "[community edition]",
-                            d.help(),
-                            List.of());
+                            List.of(d.help()));
         });
     }
 

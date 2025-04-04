@@ -245,7 +245,7 @@ public class DebugOptions {
                    The accepted values are:
                          File - Dump IGV graphs to the local file system (see DumpPath).
                       Network - Dump IGV graphs to the network destination specified by PrintGraphHost and PrintGraphPort.
-                                If a network connection cannot be opened, dumping falls back to file dumping.\s
+                                If a network connection cannot be opened, dumping falls back to file dumping.
                       Disable - Do not dump IGV graphs.""", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
