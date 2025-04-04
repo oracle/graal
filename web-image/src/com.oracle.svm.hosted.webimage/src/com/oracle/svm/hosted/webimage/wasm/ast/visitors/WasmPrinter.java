@@ -773,6 +773,26 @@ public class WasmPrinter extends WasmVisitor {
 
     @Override
     @SuppressWarnings("try")
+    public void visitTryTable(Instruction.TryTable tryBlock) {
+        printBlockPrefix("try_table", tryBlock);
+
+        try (var ignored = new Indenter()) {
+            for (Instruction.TryTable.Catch catchBlock : tryBlock.catchBlocks) {
+                newline();
+                parenOpen("catch");
+                space();
+                printId(catchBlock.tag);
+                space();
+                printId(catchBlock.label);
+                parenClose();
+            }
+            super.visitInstructions(tryBlock.instructions);
+        }
+        newline();
+    }
+
+    @Override
+    @SuppressWarnings("try")
     public void visitTry(Instruction.Try tryBlock) {
         printBlockPrefix("try", tryBlock);
 

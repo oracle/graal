@@ -223,9 +223,49 @@ public abstract class Instruction {
     }
 
     /**
-     * The WASM try block from the exception handling proposal.
+     * The WASM try_table from the exception handling proposal.
      * <p>
      * Ref: https://github.com/WebAssembly/exception-handling
+     */
+    public static final class TryTable extends WasmBlock {
+        /**
+         * A catch clause for a certain tag.
+         * <p>
+         * When an exception is caught, the block branches to the label of the appropriate clause.
+         */
+        public static final class Catch {
+            public final WasmId.Tag tag;
+            public final WasmId.Label label;
+
+            private Catch(WasmId.Tag tag, WasmId.Label label) {
+                this.tag = tag;
+                this.label = label;
+            }
+
+            @Override
+            public String toString() {
+                return "Catch{tag=" + tag + ", label=" + label + '}';
+            }
+        }
+
+        public final Instructions instructions = new Instructions();
+        public final List<Catch> catchBlocks = new ArrayList<>();
+
+        public TryTable(WasmId.Label label) {
+            super(label, null);
+        }
+
+        public void addCatch(WasmId.Tag tag, WasmId.Label catchLabel) {
+            var catchBlock = new Catch(tag, catchLabel);
+            catchBlocks.add(catchBlock);
+        }
+    }
+
+    /**
+     * The WASM try block from the legacy exception handling proposal.
+     * <p>
+     * Ref:
+     * https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/legacy/Exceptions.md
      */
     public static final class Try extends WasmBlock {
 
