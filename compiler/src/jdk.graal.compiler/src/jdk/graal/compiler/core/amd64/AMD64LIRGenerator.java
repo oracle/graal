@@ -446,11 +446,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             assert ((AMD64Kind) left.getPlatformKind()).isInteger();
             OperandSize size = left.getPlatformKind() == AMD64Kind.QWORD ? QWORD : DWORD;
-            if (isJavaConstant(right) && NumUtil.is32bit(asJavaConstant(right).asLong())) {
-                append(new TestConstBranchOp(size, asAllocatable(left), (int) asJavaConstant(right).asLong(), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
-            } else if (isJavaConstant(left) && NumUtil.is32bit(asJavaConstant(left).asLong())) {
-                append(new TestConstBranchOp(size, asAllocatable(right), (int) asJavaConstant(left).asLong(), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
-            } else if (isAllocatableValue(right)) {
+            if (isJavaConstant(left) || isJavaConstant(right)) {
+                Value x = isJavaConstant(right) ? left : right;
+                Value y = isJavaConstant(right) ? right : left;
+                long con = asJavaConstant(y).asLong();
+                if (NumUtil.isUByte(con)) {
+                    size = BYTE;
+                } else if (NumUtil.isUInt(con)) {
+                    size = DWORD;
+                }
+                if (size != QWORD || NumUtil.isInt(con)) {
+                    append(new TestConstBranchOp(size, asAllocatable(x), (int) con, null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
+                    return;
+                }
+            }
+
+            if (isAllocatableValue(right)) {
                 append(new TestBranchOp(size, asAllocatable(right), asAllocatable(left), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
             } else {
                 append(new TestBranchOp(size, asAllocatable(left), asAllocatable(right), null, Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
@@ -559,11 +570,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             assert ((AMD64Kind) a.getPlatformKind()).isInteger();
             OperandSize size = a.getPlatformKind() == AMD64Kind.QWORD ? QWORD : DWORD;
-            if (isJavaConstant(b) && NumUtil.is32bit(asJavaConstant(b).asLong())) {
-                append(new AMD64BinaryConsumer.ConstOp(AMD64MIOp.TEST, size, asAllocatable(a), (int) asJavaConstant(b).asLong()));
-            } else if (isJavaConstant(a) && NumUtil.is32bit(asJavaConstant(a).asLong())) {
-                append(new AMD64BinaryConsumer.ConstOp(AMD64MIOp.TEST, size, asAllocatable(b), (int) asJavaConstant(a).asLong()));
-            } else if (isAllocatableValue(b)) {
+            if (isJavaConstant(a) || isJavaConstant(b)) {
+                Value x = isJavaConstant(b) ? a : b;
+                Value y = isJavaConstant(b) ? b : a;
+                long con = asJavaConstant(y).asLong();
+                if (NumUtil.isUByte(con)) {
+                    size = BYTE;
+                } else if (NumUtil.isUInt(con)) {
+                    size = DWORD;
+                }
+                if (size != QWORD || NumUtil.isInt(con)) {
+                    AMD64MIOp op = size == BYTE ? AMD64MIOp.TESTB : AMD64MIOp.TEST;
+                    append(new AMD64BinaryConsumer.ConstOp(op, size, asAllocatable(x), (int) con));
+                    return;
+                }
+            }
+
+            if (isAllocatableValue(b)) {
                 append(new AMD64BinaryConsumer.Op(AMD64RMOp.TEST, size, asAllocatable(b), asAllocatable(a)));
             } else {
                 append(new AMD64BinaryConsumer.Op(AMD64RMOp.TEST, size, asAllocatable(a), asAllocatable(b)));

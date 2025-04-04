@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -259,7 +260,6 @@ public class AMD64ControlFlow {
 
         public TestConstBranchOp(OperandSize size, Value x, int y, LIRFrameState state, Condition cond, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
-            assert size == DWORD || size == QWORD : size;
             this.size = size;
 
             assert x.getPlatformKind().getVectorLength() == 1 : Assertions.errorMessage(x);
@@ -340,7 +340,7 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.btq(asRegister(value), index);
+            AMD64Assembler.AMD64MIOp.BT.emit(masm, index < Integer.SIZE ? DWORD : QWORD, asRegister(value), index);
             super.emitCode(crb, masm);
         }
     }
