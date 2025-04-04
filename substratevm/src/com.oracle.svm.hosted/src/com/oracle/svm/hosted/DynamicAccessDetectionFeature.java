@@ -173,7 +173,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
             MethodsByType methodsByType = getMethodsByType(entry);
             for (String methodType : methodsByType.getMethodTypes()) {
                 Path entryDirectory = getOrCreateDirectory(reportDirectory.resolve(getEntryName(entry)));
-                Path targetPath = entryDirectory.resolve(methodType + "_calls.json");
+                Path targetPath = entryDirectory.resolve(methodType + "-calls.json");
                 try (var writer = new JsonPrettyWriter(targetPath)) {
                     try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
                         for (String methodName : methodsByType.getCallLocationsByMethod(methodType).getMethods()) {
