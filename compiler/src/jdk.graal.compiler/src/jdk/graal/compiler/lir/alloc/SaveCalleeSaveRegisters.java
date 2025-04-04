@@ -79,9 +79,11 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         List<Register> allocatables = lirGenRes.getRegisterConfig().getAllocatableRegisters();
         RegisterMap<AllocatableValue> saveMap = new RegisterMap<>(arch);
         for (Register register : calleeSaveRegisters) {
-            PlatformKind registerPlatformKind = arch.getLargestStorableKind(register.getRegisterCategory());
+            PlatformKind registerPlatformKind = lirGenRes.getRegisterConfig().getCalleeSaveRegisterStorageKind(arch, register);
             LIRKind lirKind = LIRKind.value(registerPlatformKind);
             RegisterValue registerValue = register.asValue(lirKind);
+            // Force a non-allocatable register to be saved to a stack slot
+            // so as to avoid unnecessary register pressure.
             AllocatableValue saveVariable = allocatables.contains(registerValue.getRegister()) ? lirGen.newVariable(lirKind) : lirGenRes.getFrameMapBuilder().allocateSpillSlot(lirKind);
             LIRInstruction save = lirGen.getSpillMoveFactory().createMove(saveVariable, registerValue);
             buffer.append(insertionIndex, save);
