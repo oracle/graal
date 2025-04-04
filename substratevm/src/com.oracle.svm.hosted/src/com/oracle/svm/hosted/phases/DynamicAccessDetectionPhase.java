@@ -30,6 +30,7 @@ import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.Loader;
@@ -70,11 +71,19 @@ import java.util.random.RandomGeneratorFactory;
  * providing the desired class or module path entry/s.
  */
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
-    public record MethodInfo(String dynamicMethodType, String name) {
+    public enum DynamicMethodType{
+        Reflection("reflection-calls.json"),
+        Resource("resource-calls.json");
+
+        public final String fileName;
+
+        DynamicMethodType(String fileName) {
+            this.fileName = fileName;
+        }
     }
 
-    private static final String DMETHODTYPE_REFLECTION = "reflection";
-    private static final String DMETHODTYPE_RESOURCE = "resource";
+    public record MethodInfo(DynamicMethodType dynamicMethodType, String name) {
+    }
 
     private static final Map<String, Set<String>> reflectionMethodNames = new HashMap<>();
     private static final Map<String, Set<String>> resourceMethodNames = new HashMap<>();
@@ -187,7 +196,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
             MethodInfo methodDetails = getMethod(callTarget);
 
             if (methodDetails != null && entryPath != null) {
-                String methodType = methodDetails.dynamicMethodType();
+                DynamicMethodType methodType = methodDetails.dynamicMethodType();
                 String methodName = methodDetails.name();
 
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
@@ -206,7 +215,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     }
 
     /*
-     * Returns the name and dynamic method type (e.g., reflective, proxy, resource, etc.) of a
+     * Returns the name and dynamic method type (reflective or resource) of a
      * method if it exists in the predetermined set, based on its graph and MethodCallTargetNode;
      * otherwise, returns null.
      */
@@ -215,9 +224,9 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
         if (reflectionMethodNames.containsKey(declaringClass) && reflectionMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(DMETHODTYPE_REFLECTION, declaringClass + "#" + methodName);
+            return new MethodInfo(DynamicMethodType.Reflection, declaringClass + "#" + methodName);
         } else if (resourceMethodNames.containsKey(declaringClass) && resourceMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(DMETHODTYPE_RESOURCE, declaringClass + "#" + methodName);
+            return new MethodInfo(DynamicMethodType.Resource, declaringClass + "#" + methodName);
         }
         return null;
     }

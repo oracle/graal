@@ -65,16 +65,16 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
 
-    private record MethodsByType(Map<String, CallLocationsByMethod> methodsByType) {
+    private record MethodsByType(Map<DynamicAccessDetectionPhase.DynamicMethodType, CallLocationsByMethod> methodsByType) {
         MethodsByType() {
             this(new TreeMap<>());
         }
 
-        public Set<String> getMethodTypes() {
+        public Set<DynamicAccessDetectionPhase.DynamicMethodType> getMethodTypes() {
             return methodsByType.keySet();
         }
 
-        public CallLocationsByMethod getCallLocationsByMethod(String methodType) {
+        public CallLocationsByMethod getCallLocationsByMethod(DynamicAccessDetectionPhase.DynamicMethodType methodType) {
             return methodsByType.getOrDefault(methodType, new CallLocationsByMethod());
         }
     }
@@ -113,7 +113,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         return ImageSingletons.lookup(DynamicAccessDetectionFeature.class);
     }
 
-    public void addCall(String entry, String methodType, String call, String callLocation) {
+    public void addCall(String entry, DynamicAccessDetectionPhase.DynamicMethodType methodType, String call, String callLocation) {
         MethodsByType entryContent = this.callsByPathEntry.computeIfAbsent(entry, k -> new MethodsByType());
         CallLocationsByMethod methodCallLocations = entryContent.methodsByType().computeIfAbsent(methodType, k -> new CallLocationsByMethod());
         List<String> callLocations = methodCallLocations.callLocationsByMethod().computeIfAbsent(call, k -> new ArrayList<>());
@@ -139,8 +139,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private void printReportForEntry(String entry) {
         System.out.println("Dynamic method usage detected in " + entry + ":");
         MethodsByType methodsByType = getMethodsByType(entry);
-        for (String methodType : methodsByType.getMethodTypes()) {
-            System.out.println("    " + methodType.substring(0, 1).toUpperCase(Locale.ROOT) + methodType.substring(1) + " calls detected:");
+        for (DynamicAccessDetectionPhase.DynamicMethodType methodType : methodsByType.getMethodTypes()) {
+            System.out.println("    " + methodType + " calls detected:");
             CallLocationsByMethod methodCallLocations = methodsByType.getCallLocationsByMethod(methodType);
             for (String call : methodCallLocations.getMethods()) {
                 System.out.println("        " + call + ":");
@@ -171,9 +171,9 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         try {
             Path reportDirectory = getOrCreateDirectory(NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(OUTPUT_DIR_NAME));
             MethodsByType methodsByType = getMethodsByType(entry);
-            for (String methodType : methodsByType.getMethodTypes()) {
+            for (DynamicAccessDetectionPhase.DynamicMethodType methodType : methodsByType.getMethodTypes()) {
                 Path entryDirectory = getOrCreateDirectory(reportDirectory.resolve(getEntryName(entry)));
-                Path targetPath = entryDirectory.resolve(methodType + "-calls.json");
+                Path targetPath = entryDirectory.resolve(methodType.fileName);
                 try (var writer = new JsonPrettyWriter(targetPath)) {
                     try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
                         for (String methodName : methodsByType.getCallLocationsByMethod(methodType).getMethods()) {
