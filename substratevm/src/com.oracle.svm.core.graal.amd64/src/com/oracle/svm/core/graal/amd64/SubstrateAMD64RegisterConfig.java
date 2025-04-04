@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,12 +63,14 @@ import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
+import static jdk.vm.ci.amd64.AMD64Kind.V128_QWORD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -232,6 +234,18 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     @Override
     public RegisterArray getCalleeSaveRegisters() {
         return calleeSaveRegisters;
+    }
+
+    @Override
+    public PlatformKind getCalleeSaveRegisterStorageKind(Architecture arch, Register calleeSaveRegister) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            return switch (calleeSaveRegister) {
+                case xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15 -> V128_QWORD;
+                default -> super.getCalleeSaveRegisterStorageKind(arch, calleeSaveRegister);
+            };
+        } else {
+            return super.getCalleeSaveRegisterStorageKind(arch, calleeSaveRegister);
+        }
     }
 
     @Override
@@ -405,7 +419,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             kinds = Arrays.copyOf(kinds, kinds.length + 1);
             locations = Arrays.copyOf(locations, locations.length + 1);
             kinds[kinds.length - 1] = JavaKind.Int;
-            locations[locations.length - 1] = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+            locations[locations.length - 1] = rax.asValue(LIRKind.value(AMD64Kind.DWORD));
             if (type.customABI()) {
                 var extendsParametersAssignment = Arrays.copyOf(type.fixedParameterAssignment, type.fixedParameterAssignment.length + 1);
                 extendsParametersAssignment[extendsParametersAssignment.length - 1] = AssignedLocation.forRegister(rax, JavaKind.Long);
