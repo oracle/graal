@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -196,7 +196,6 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
          */
         assert !savedRegisters.asList().contains(registers.methodHandle());
         assert !savedRegisters.asList().contains(registers.isolate());
-        var save = kit.saveRegisters(savedRegisters);
         ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
@@ -235,8 +234,6 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             long offset = 0;
             for (AssignedLocation loc : AbiUtils.create().toMemoryAssignment(jep.returnAssignment(), true)) {
                 assert loc.assignsToRegister();
-                // an output location must not be a callee-save register
-                assert !save.containsKey(loc.register());
 
                 AddressNode address = new OffsetAddressNode(returnBuffer, ConstantNode.forLong(offset, kit.getGraph()));
                 ReadNode val = kit.append(new ReadNode(address, LocationIdentity.any(), StampFactory.forKind(loc.registerKind()), BarrierType.NONE, MemoryOrderMode.PLAIN));
@@ -251,7 +248,6 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             assert offset == jep.returnBufferSize();
         }
         kit.append(new CEntryPointLeaveNode(CEntryPointLeaveNode.LeaveAction.Leave));
-        kit.restoreRegisters(save);
         kit.createReturn(returnValue, jep.cMethodType());
 
         return kit.finalizeGraph();
