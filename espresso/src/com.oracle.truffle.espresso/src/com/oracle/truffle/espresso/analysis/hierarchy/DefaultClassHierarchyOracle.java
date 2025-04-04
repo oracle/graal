@@ -97,8 +97,7 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
         // We only reach here for concrete classes, we need to be careful that there might
         // be some "leaf" methods that have already been overridden in abstract classes
         // those must be taken care of now that we see a concrete subclass
-        ObjectKlass newKlass = newKlassVersion.getKlass();
-        Method.MethodVersion[] vTable = newKlass.getVTable();
+        Method.MethodVersion[] vTable = newKlassVersion.getVtable();
         for (int i = 0; i < vTable.length; i++) {
             Method.MethodVersion m = vTable[i];
             ObjectKlass current = newKlassVersion.getSuperKlass();
@@ -108,7 +107,7 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
                     break;
                 }
                 Method.MethodVersion overridden = superVTable[i];
-                if (overridden != m) {
+                if (overridden.getMethod() != m.getMethod()) {
                     overridden.getMethod().getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
                 }
                 if (current.isConcrete()) {
