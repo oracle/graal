@@ -108,7 +108,7 @@ class SVMUtil:
     string_type = gdb.lookup_type("java.lang.String")
     enum_type = gdb.lookup_type("java.lang.Enum")
     object_type = gdb.lookup_type("java.lang.Object")
-    hub_type = gdb.lookup_type("java.lang.Class")
+    hub_type = gdb.lookup_type("Encoded$Dynamic$Hub")
     null = gdb.Value(0).cast(object_type.pointer())
     classloader_type = gdb.lookup_type("java.lang.ClassLoader")
     wrapper_types = [gdb.lookup_type(f'java.lang.{x}') for x in
@@ -141,7 +141,7 @@ class SVMUtil:
         # compressed types only exist for java type which are either struct or union
         if t.code != gdb.TYPE_CODE_STRUCT and t.code != gdb.TYPE_CODE_UNION:
             return t
-        result = cls.get_base_class(t) if cls.is_compressed(t) else t
+        result = cls.get_base_class(t) if (cls.is_compressed(t) and t != cls.hub_type) else t
         trace(f'<SVMUtil> - get_uncompressed_type({t}) = {result}')
         return result
 
@@ -177,7 +177,7 @@ class SVMUtil:
         # recreate compressed oop from the object address
         # this reverses the uncompress expression from
         # com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl#writeIndirectOopConversionExpression
-        is_hub = cls.get_rtt(obj) == cls.hub_type
+        is_hub = cls.get_basic_type(obj.type) == cls.hub_type
         compression_shift = cls.compression_shift
         num_reserved_bits = int.bit_count(cls.reserved_bits_mask)
         num_alignment_bits = int.bit_count(cls.object_alignment - 1)
@@ -205,6 +205,11 @@ class SVMUtil:
 
     @classmethod
     def is_compressed(cls, t: gdb.Type) -> bool:
+        # for the hub type we always want handle it as compressed as there is no clear distinction in debug info for
+        # the hub field, and it may always have an expression in the type's data_location attribute
+        if cls.get_basic_type(t) == cls.hub_type:
+            return True
+
         type_name = cls.get_basic_type(t).name
         if type_name is None:
             # fallback to the GDB type printer for t
@@ -362,6 +367,9 @@ class SVMUtil:
     @classmethod
     def get_rtt(cls, obj: gdb.Value) -> gdb.Type:
         static_type = cls.get_basic_type(obj.type)
+
+        if static_type == cls.hub_type:
+            return cls.hub_type
 
         # check for interfaces and cast them to Object to make the hub accessible
         if cls.get_uncompressed_type(cls.get_basic_type(obj.type)).code == gdb.TYPE_CODE_UNION:

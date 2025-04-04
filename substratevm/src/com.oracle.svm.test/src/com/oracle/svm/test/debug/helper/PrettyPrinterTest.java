@@ -99,6 +99,18 @@ public class PrettyPrinterTest {
         }
     }
 
+    public static class Holder {
+        final Class<?> c;
+        final Object o;
+
+        Holder(Class<?> c, Object o) {
+            this.c = c;
+            this.o = o;
+        }
+    }
+
+    private static Holder staticHolder = new Holder(String.class, String.class);
+
     @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testPrimitive(byte b, Byte bObj, short s, Short sObj, char c, Character cObj, int i, Integer iObj, long l, Long lObj,
@@ -142,6 +154,14 @@ public class PrettyPrinterTest {
         System.out.print("");
     }
 
+    @SuppressWarnings("unused")
+    @NeverInline("For testing purposes")
+    static void testClassType(Class<?> clazz, Holder dyn) {
+        System.out.print("");
+        System.out.print(staticHolder.c);
+        System.out.print(staticHolder.o);
+    }
+
     static ExampleClass setupExampleObject(boolean recursive) {
         ExampleClass example = new ExampleClass();
         example.f10 = new ExampleClass(10, 20, (short) 30, '\40', (byte) 50, true, "60", Day.Sunday, new Object(), null);
@@ -172,5 +192,7 @@ public class PrettyPrinterTest {
                         new HashMap<>(Map.of(1, new ExampleClass(), 2L, "string", (byte) 3, new ArrayList<>())));
 
         testLambda(str -> str);
+        testClassType(String.class, new Holder(String.class, String.class));
+        staticHolder = null;
     }
 }
