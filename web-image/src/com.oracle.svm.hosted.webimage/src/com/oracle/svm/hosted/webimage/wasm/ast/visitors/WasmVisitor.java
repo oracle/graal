@@ -337,8 +337,11 @@ public abstract class WasmVisitor {
         }
     }
 
-    public void visitBlockInstr(@SuppressWarnings("unused") Instruction.WasmBlock block) {
+    public void visitBlockInstr(Instruction.WasmBlock block) {
         visitId(block.getLabel());
+        if (block.hasResult()) {
+            visitType(block.getResult());
+        }
     }
 
     public void visitBlock(Instruction.Block block) {

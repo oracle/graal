@@ -148,13 +148,32 @@ public abstract class Instruction {
          * If set to null, the block has no named identifier
          */
         protected final WasmId.Label label;
+        protected final WasmValType result;
 
-        public WasmBlock(WasmId.Label label) {
+        protected WasmBlock(WasmId.Label label, WasmValType result) {
             this.label = label;
+            this.result = result;
         }
 
         public WasmId.Label getLabel() {
             return label;
+        }
+
+        public WasmValType getResult() {
+            return result;
+        }
+
+        public boolean hasResult() {
+            return result != null;
+        }
+
+        @Override
+        protected String toInnerString() {
+            if (hasResult()) {
+                return "() -> " + result;
+            } else {
+                return "() -> ()";
+            }
         }
     }
 
@@ -165,7 +184,11 @@ public abstract class Instruction {
         public final Instructions instructions = new Instructions();
 
         public Block(WasmId.Label label) {
-            super(label);
+            this(label, null);
+        }
+
+        public Block(WasmId.Label label, WasmValType result) {
+            super(label, result);
         }
     }
 
@@ -176,7 +199,7 @@ public abstract class Instruction {
         public final Instructions instructions = new Instructions();
 
         public Loop(WasmId.Label label) {
-            super(label);
+            super(label, null);
         }
     }
 
@@ -190,7 +213,7 @@ public abstract class Instruction {
         public final Instruction condition;
 
         public If(WasmId.Label label, Instruction condition) {
-            super(label);
+            super(label, null);
             this.condition = condition;
         }
 
@@ -222,7 +245,7 @@ public abstract class Instruction {
         public final List<Catch> catchBlocks = new ArrayList<>();
 
         public Try(WasmId.Label label) {
-            super(label);
+            super(label, null);
         }
 
         public Instructions addCatch(WasmId.Tag tag) {

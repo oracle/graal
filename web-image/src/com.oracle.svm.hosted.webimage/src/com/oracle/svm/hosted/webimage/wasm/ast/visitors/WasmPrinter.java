@@ -710,14 +710,22 @@ public class WasmPrinter extends WasmVisitor {
         parenClose();
     }
 
+    private void printBlockPrefix(String name, Instruction.WasmBlock block) {
+        print(name);
+        space();
+        printId(block.getLabel());
+        if (block.hasResult()) {
+            space();
+            printResult(block.getResult());
+        }
+        space();
+        printComment(block.getComment());
+    }
+
     @Override
     @SuppressWarnings("try")
     public void visitBlock(Instruction.Block block) {
-        print("block");
-        space();
-        printId(block.getLabel());
-        space();
-        printComment(block.getComment());
+        printBlockPrefix("block", block);
         try (var ignored = new Indenter()) {
             super.visitBlock(block);
         }
@@ -727,11 +735,7 @@ public class WasmPrinter extends WasmVisitor {
     @Override
     @SuppressWarnings("try")
     public void visitLoop(Instruction.Loop loop) {
-        print("loop");
-        space();
-        printId(loop.getLabel());
-        space();
-        printComment(loop.getComment());
+        printBlockPrefix("loop", loop);
         try (var ignored = new Indenter()) {
             super.visitLoop(loop);
         }
@@ -741,11 +745,7 @@ public class WasmPrinter extends WasmVisitor {
     @Override
     @SuppressWarnings("try")
     public void visitIf(Instruction.If ifBlock) {
-        print("if");
-        space();
-        printId(ifBlock.getLabel());
-        space();
-        printComment(ifBlock.getComment());
+        printBlockPrefix("if", ifBlock);
 
         try (var ignored = new Indenter()) {
             visitInstruction(ifBlock.condition);
@@ -774,11 +774,7 @@ public class WasmPrinter extends WasmVisitor {
     @Override
     @SuppressWarnings("try")
     public void visitTry(Instruction.Try tryBlock) {
-        print("try");
-        space();
-        printId(tryBlock.getLabel());
-        space();
-        printComment(tryBlock.getComment());
+        printBlockPrefix("try", tryBlock);
 
         try (var ignored = new Indenter()) {
             newline();
