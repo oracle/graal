@@ -850,6 +850,8 @@ public class MonitorSnippets implements Snippets {
 
         public final Counters counters;
 
+        private final boolean requiresStrictLockOrder;
+
         @SuppressWarnings("this-escape")
         public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, GraalHotSpotVMConfig config) {
             super(options, providers);
@@ -899,6 +901,7 @@ public class MonitorSnippets implements Snippets {
             this.checkCounter = snippet(providers, MonitorSnippets.class, "checkCounter");
 
             this.counters = new Counters(factory);
+            this.requiresStrictLockOrder = providers.getPlatformConfigurationProvider().requiresStrictLockOrder();
         }
 
         public void lower(CheckFastPathMonitorEnterNode checkFastPathMonitorEnterNode, HotSpotRegistersProvider registers, GraalHotSpotVMConfig config, LoweringTool tool) {
@@ -916,11 +919,31 @@ public class MonitorSnippets implements Snippets {
             template(tool, checkFastPathMonitorEnterNode, args).instantiate(tool.getMetaAccess(), checkFastPathMonitorEnterNode, DEFAULT_REPLACER, args);
         }
 
+        private boolean verifyLockOrder(MonitorEnterNode monitorenterNode) {
+            if (requiresStrictLockOrder) {
+                FrameState state = monitorenterNode.stateAfter();
+                boolean subsequentLocksMustBeEliminated = false;
+                for (int lockIdx = 0; lockIdx < state.locksSize(); lockIdx++) {
+                    if (subsequentLocksMustBeEliminated) {
+                        if (!state.monitorIdAt(lockIdx).isEliminated()) {
+                            return false;
+                        }
+                    }
+                    if (state.monitorIdAt(lockIdx) == monitorenterNode.getMonitorId()) {
+                        subsequentLocksMustBeEliminated = true;
+                    }
+                }
+            }
+            return true;
+        }
+
         public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorenterNode.graph();
             checkBalancedMonitors(graph, tool);
 
-            assert ((ObjectStamp) monitorenterNode.object().stamp(NodeView.DEFAULT)).nonNull();
+            GraalError.guarantee(((ObjectStamp) monitorenterNode.object().stamp(NodeView.DEFAULT)).nonNull(), "should have a non-null stamp: %s", monitorenterNode);
+            GraalError.guarantee(!monitorenterNode.getMonitorId().isEliminated(), "current monitor is eliminated: %s", monitorenterNode);
+            GraalError.guarantee(verifyLockOrder(monitorenterNode), "locks are disordered: %s", monitorenterNode);
 
             Arguments args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("object", monitorenterNode.object());

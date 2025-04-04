@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,7 +104,7 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;
-            if (virtual.hasIdentity()) {
+            if (virtual.hasIdentity() && tool.canVirtualizeLock(virtual, getMonitorId())) {
                 tool.addLock(virtual, getMonitorId());
                 if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
                     // Ensure that the locks appear to have been acquired in the nearest FrameState.

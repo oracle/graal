@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,13 +32,8 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeFlood;
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
-import jdk.graal.compiler.nodes.AbstractEndNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.MonitorEnterNode;
-import jdk.graal.compiler.nodes.java.MonitorExitNode;
 
 /**
  * Tests that PEA preserves the monitorenter order. This is essential for lightweight locking.
@@ -163,33 +158,292 @@ public final class MonitorPEATest extends HotSpotGraalCompilerTest {
         test("snippet4", new Object(), true, true);
     }
 
-    @Override
-    protected void checkMidTierGraph(StructuredGraph graph) {
-        // The following lock depth check only works with simple control flow.
-        NodeFlood flood = graph.createNodeFlood();
-        flood.add(graph.start());
+    public static class B {
+        Float f = 1.0f;
+    }
 
-        int lockDepth = -1;
-
-        for (Node current : flood) {
-            if (current instanceof AbstractEndNode) {
-                AbstractEndNode end = (AbstractEndNode) current;
-                flood.add(end.merge());
-            } else {
-                if (current instanceof MonitorEnterNode enter) {
-                    int depth = enter.getMonitorId().getLockDepth();
-                    assertTrue(lockDepth < depth);
-                    lockDepth = depth;
-                } else if (current instanceof MonitorExitNode exit) {
-                    int depth = exit.getMonitorId().getLockDepth();
-                    assertTrue(lockDepth >= depth);
-                    lockDepth = depth;
-                }
-
-                for (Node successor : current.successors()) {
-                    flood.add(successor);
+    public static void snippet5() {
+        synchronized (new B()) {
+            synchronized (new StringBuilder()) {
+                synchronized (B.class) {
                 }
             }
         }
+    }
+
+    @Test
+    public void testSnippet5() {
+        test("snippet5");
+    }
+
+    static class C {
+        B b;
+
+        C(B b) {
+            this.b = b;
+        }
+    }
+
+    public static void snippet6() {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (B.class) {
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet6() {
+        test("snippet6");
+    }
+
+    public static void snippet7() {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (c) {
+                synchronized (b) {
+                    synchronized (b) {
+                        synchronized (B.class) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet7() {
+        test("snippet7");
+    }
+
+    public static void snippet8() {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (c) {
+                    synchronized (b) {
+                        synchronized (B.class) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet8() {
+        test("snippet8");
+    }
+
+    public static void snippet9() {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (b) {
+                    synchronized (c) {
+                        synchronized (B.class) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet9() {
+        test("snippet9");
+    }
+
+    @BytecodeParserNeverInline
+    public static void callee0() {
+        synchronized (B.class) {
+        }
+    }
+
+    @BytecodeParserNeverInline
+    public static void callee1() {
+        staticObj = new B();
+        callee0();
+    }
+
+    @BytecodeParserNeverInline
+    public static void callee() {
+        callee1();
+    }
+
+    public static void snippet10() {
+        B b = new B();
+        synchronized (b) {
+            callee();
+        }
+    }
+
+    @Test
+    public void testSnippet10() {
+        test("snippet10");
+    }
+
+    static RuntimeException cachedException = new RuntimeException();
+
+    public static void snippet11(boolean flag) {
+        B b = new B();
+        synchronized (b) {
+            if (flag) {
+                staticObj = b;
+                throw cachedException;
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet11() {
+        test("snippet11", true);
+    }
+
+    public static void snippet12() {
+        B b = new B();
+        synchronized (b) {
+            callee();
+            staticObj = b;
+        }
+    }
+
+    @Test
+    public void testSnippet12() {
+        test("snippet12");
+    }
+
+    public static void snippet13(boolean flag, boolean escape) {
+        B b = new B();
+
+        synchronized (b) {
+            synchronized (b) {
+                if (GraalDirectives.injectBranchProbability(0.9, flag)) {
+                    GraalDirectives.controlFlowAnchor();
+                    if (GraalDirectives.injectBranchProbability(0.1, escape)) {
+                        staticObj = b;
+                    }
+                } else {
+                    staticObj1 = b;
+                    throw cachedException;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet13() {
+        test("snippet13", true, true);
+    }
+
+    public static void snippet15(boolean deoptimize) {
+        synchronized (new B()) {
+            synchronized (new StringBuilder()) {
+                synchronized (B.class) {
+                    if (deoptimize) {
+                        GraalDirectives.deoptimize();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet15() {
+        test("snippet15", true);
+    }
+
+    public static void snippet16(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (B.class) {
+                    if (deoptimize) {
+                        GraalDirectives.deoptimize();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet16() {
+        test("snippet16", true);
+    }
+
+    public static void snippet17(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (c) {
+                synchronized (b) {
+                    synchronized (b) {
+                        synchronized (B.class) {
+                            if (deoptimize) {
+                                GraalDirectives.deoptimize();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet17() {
+        test("snippet17", true);
+    }
+
+    public static void snippet18(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (c) {
+                    synchronized (b) {
+                        synchronized (B.class) {
+                            if (deoptimize) {
+                                GraalDirectives.deoptimize();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet18() {
+        test("snippet18", true);
+    }
+
+    public static void snippet19(boolean deoptimize) {
+        B b = new B();
+        C c = new C(b);
+        synchronized (c) {
+            synchronized (b) {
+                synchronized (b) {
+                    synchronized (c) {
+                        synchronized (B.class) {
+                            if (deoptimize) {
+                                GraalDirectives.deoptimize();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet19() {
+        test("snippet19", true);
     }
 }

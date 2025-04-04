@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.util.function.IntUnaryOperator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
@@ -72,7 +71,6 @@ import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
-import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -531,14 +529,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    /**
-     * @return true if materialization happened, false if not.
-     */
     protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, CounterKey counter) {
-        return ensureMaterialized(state, object, materializeBefore, effects, counter, true);
-    }
-
-    private boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, CounterKey counter, boolean materializedAcquiredLocks) {
         ObjectState objectState = state.getObjectState(object);
         if (objectState.isVirtual()) {
             if (currentMode == EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST) {
@@ -560,16 +551,24 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                  * it means we try to materialize an allocation from an outer loop, this causes
                  * multiple iterations of the PEA algorithm for iterative loop processing and the
                  * algorithm becomes exponential over the loop depth, thus we leave this loop and do
-                 * not virtualize anything
+                 * not virtualize anything.
                  */
                 throw new EffectsClosure.EffecsClosureOverflowException();
             }
             counter.increment(debug);
             VirtualObjectNode virtual = virtualObjects.get(object);
-            state.materializeBefore(materializeBefore, virtual, effects);
 
-            if (requiresStrictLockOrder && materializedAcquiredLocks && objectState.hasLocks()) {
+            GraalError.guarantee(objectState.isVirtual(), "%s is not virtual", objectState);
+            if (requiresStrictLockOrder && objectState.hasLocks()) {
                 materializeVirtualLocksBefore(state, materializeBefore, effects, counter, objectState.getLockDepth());
+            }
+            /*
+             * At this point, the current object may have been materialized due to materializing
+             * lower depth locks that have a data dependency to the current object.
+             */
+            objectState = state.getObjectState(object);
+            if (objectState.isVirtual()) {
+                state.materializeBefore(materializeBefore, virtual, effects);
             }
 
             assert !updateStatesForMaterialized(state, virtual, state.getObjectState(object).getMaterializedValue()) : "method must already have been called before";
@@ -593,7 +592,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      *     }
      * }
      * </pre>
-     *
+     * <p>
      * PEA may emit:
      *
      * <pre>
@@ -605,14 +604,14 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * monitorexit otherObj
      * monitorexit obj
      * </pre>
-     *
+     * <p>
      * On HotSpot, unstructured locking is acceptable for stack locking (LM_LEGACY) and heavy
      * monitor (LM_MONITOR). This is because locks under these locking modes are referenced by
      * pointers stored in the object mark word, and are not necessary contiguous in memory. There is
      * no way to observe a lock disorder from outside, as long as PEA guarantee that a virtual lock
      * is materialized and held before it escapes or before the runtime deoptimizes and transfers to
      * interpreter.
-     *
+     * <p>
      * Lightweight locking (LM_LIGHTWEIGHT), however, maintains locks in a thread-local lock stack.
      * The more inner lock occupies the closer slot to the lock stack top. Unstructured locking code
      * will disrupt the lock stack and result in an inconsistent state. For instance, the lock stack
@@ -625,7 +624,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * | otherObj |
      * ------------
      * </pre>
-     *
+     * <p>
      * and is
      *
      * <pre>
@@ -633,18 +632,15 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * | otherObj | <-- stack top
      * ------------
      * </pre>
-     *
+     * <p>
      * after the first {code monitorexit} instruction. At this point, the still-locked object
      * {@code obj} is not maintained in the lock stack, while the lock stack top points to
      * {@code otherObj}, which is with an unlocked mark word. Such inconsistent state can be
      * observed from outside by scanning a thread's lock stack.
-     *
+     * <p>
      * To avoid such scenario, we disallow PEA to emit unstructured locking code when using
      * lightweight locking. We materialize all virtual objects that potentially get materialized in
      * subsequent control flow point and hold locks with lock depth smaller than {@code lockDepth}.
-     * For those will not get materialized (see {@link #mayBeMaterialized}), we keep them virtual
-     * and effectively apply lock elimination. The runtime deoptimization code will take care of
-     * rematerialization of these virtual locks (see JDK-8318895).
      */
     private void materializeVirtualLocksBefore(PartialEscapeBlockState<?> state, FixedNode materializeBefore,
                     GraphEffectList effects, CounterKey counter, int lockDepth) {
@@ -652,27 +648,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             int otherID = other.getObjectId();
             if (state.hasObjectState(otherID)) {
                 ObjectState otherState = state.getObjectState(other);
-                if (otherState.isVirtual() && otherState.hasLocks() && otherState.getLockDepth() < lockDepth && mayBeMaterialized(other)) {
-                    ensureMaterialized(state, other.getObjectId(), materializeBefore, effects, counter, false);
+                if (otherState.isVirtual() && otherState.hasLocks() && otherState.getLockDepth() < lockDepth) {
+                    ensureMaterialized(state, other.getObjectId(), materializeBefore, effects, counter);
                 }
             }
         }
-    }
-
-    /**
-     * @return true if this virtual object may be materialized.
-     */
-    private boolean mayBeMaterialized(VirtualObjectNode virtualObjectNode) {
-        MapCursor<Node, ValueNode> cursor = aliases.getEntries();
-        while (cursor.advance()) {
-            if (virtualObjectNode == cursor.getValue()) {
-                Node allocation = cursor.getKey();
-                // This is conservative. In practice, PEA may scalar-replace field accesses and
-                // prevent this virtual object from escaping.
-                return allocation.usages().filter(n -> n instanceof ValueNode && !(n instanceof AccessMonitorNode)).isNotEmpty();
-            }
-        }
-        return true;
     }
 
     public static boolean updateStatesForMaterialized(PartialEscapeBlockState<?> state, VirtualObjectNode virtual, ValueNode materializedValue) {
