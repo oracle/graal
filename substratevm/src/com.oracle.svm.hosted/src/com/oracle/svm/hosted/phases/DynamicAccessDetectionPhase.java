@@ -70,18 +70,18 @@ import java.util.random.RandomGeneratorFactory;
  * providing the desired class or module path entry/s.
  */
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
-    public enum DynamicMethodType{
+    public enum DynamicAccessKind {
         Reflection("reflection-calls.json"),
         Resource("resource-calls.json");
 
         public final String fileName;
 
-        DynamicMethodType(String fileName) {
+        DynamicAccessKind(String fileName) {
             this.fileName = fileName;
         }
     }
 
-    public record MethodInfo(DynamicMethodType dynamicMethodType, String name) {
+    public record MethodInfo(DynamicAccessKind accessKind, String name) {
     }
 
     private static final Map<String, Set<String>> reflectionMethodNames = new HashMap<>();
@@ -183,11 +183,11 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         for (MethodCallTargetNode callTarget : callTargetNodes) {
             AnalysisType callerClass = (AnalysisType) graph.method().getDeclaringClass();
             String entryPath = getEntryPath(callerClass);
-            MethodInfo methodDetails = getMethod(callTarget);
+            MethodInfo methodInfo = getMethod(callTarget);
 
-            if (methodDetails != null && entryPath != null) {
-                DynamicMethodType methodType = methodDetails.dynamicMethodType();
-                String methodName = methodDetails.name();
+            if (methodInfo != null && entryPath != null) {
+                DynamicAccessKind accessKind = methodInfo.accessKind();
+                String methodName = methodInfo.name();
 
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null) {
@@ -197,7 +197,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                     int bci = nspToShow.getBCI();
                     if (!dynamicAccessDetectionFeature.containsFoldEntry(bci, nspToShow.getMethod())) {
                         String callLocation = nspToShow.getMethod().asStackTraceElement(bci).toString();
-                        dynamicAccessDetectionFeature.addCall(entryPath, methodType, methodName, callLocation);
+                        dynamicAccessDetectionFeature.addCall(entryPath, accessKind, methodName, callLocation);
                     }
                 }
             }
@@ -205,7 +205,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     }
 
     /*
-     * Returns the name and dynamic method type (reflective or resource) of a
+     * Returns the name and dynamic access kind (reflective or resource) of a
      * method if it exists in the predetermined set, based on its graph and MethodCallTargetNode;
      * otherwise, returns null.
      */
@@ -214,9 +214,9 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
         if (reflectionMethodNames.containsKey(declaringClass) && reflectionMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(DynamicMethodType.Reflection, declaringClass + "#" + methodName);
+            return new MethodInfo(DynamicAccessKind.Reflection, declaringClass + "#" + methodName);
         } else if (resourceMethodNames.containsKey(declaringClass) && resourceMethodNames.get(declaringClass).contains(methodName)) {
-            return new MethodInfo(DynamicMethodType.Resource, declaringClass + "#" + methodName);
+            return new MethodInfo(DynamicAccessKind.Resource, declaringClass + "#" + methodName);
         }
         return null;
     }
