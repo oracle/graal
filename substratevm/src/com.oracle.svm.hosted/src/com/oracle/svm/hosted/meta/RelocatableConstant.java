@@ -114,7 +114,7 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
     @Override
     public String toValueString() {
         if (pointer instanceof MethodPointer mp) {
-            return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", isAbsolute: " + mp.isAbsolute();
+            return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", permitsRewriteToPLT: " + mp.permitsRewriteToPLT();
         }
         return "relocatable constant";
     }

@@ -301,7 +301,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
-        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), Word.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
     }
 
     static class HostedConstantAccess extends ConstantAccess {
