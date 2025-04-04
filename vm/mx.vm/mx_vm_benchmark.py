@@ -518,18 +518,17 @@ def register_graalvm_vms():
 
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
+            config_names = list()
             for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
-                final_config_name = f'{main_config}-{config_suffix}'
-                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
-                # ' '  force the empty O<> configs as well
-            for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
-                for optimization_level in optimization_levels:
-                    if len(main_config) > 0:
-                        final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'
-                    else:
-                        final_config_name = f'{optimization_level}-{config_suffix}'
-                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
+                config_names.append(f'{main_config}-{config_suffix}')
 
+            for optimization_level in optimization_levels:
+                config_names.append(f'{optimization_level}-{config_suffix}')
+                for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
+                    config_names.append(f'{main_config}-{optimization_level}-{config_suffix}')
+
+            for config_name in config_names:
+                mx_benchmark.add_java_vm(NativeImageVM('native-image', config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
     for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:
