@@ -64,7 +64,7 @@ import jdk.graal.compiler.debug.GraalError;
  * <ul>
  * <li>Makes some simplifying assumptions (which the AST currently satisfies):
  * <ul>
- * <li>Any labeled block has no input or output types.</li>
+ * <li>Any labeled block has no input and at most one output value.</li>
  * <li>No vector or reference types exist</li>
  * <li>Functions only have a single return value</li>
  * </ul>
@@ -432,6 +432,16 @@ public class WasmValidator extends WasmVisitor {
         ctrls.pop();
     }
 
+    private void popBlockCtrl(Instruction.WasmBlock block) {
+        if (block.hasResult()) {
+            popVals(block.getResult());
+        }
+        popCtrl(block.getLabel());
+        if (block.hasResult()) {
+            pushVal(block.getResult());
+        }
+    }
+
     private void unreachable() {
         CtrlFrame top = topFrame();
         vals.clear();
@@ -568,14 +578,14 @@ public class WasmValidator extends WasmVisitor {
     public void visitBlock(Instruction.Block block) {
         pushCtrl(block.getLabel());
         super.visitBlock(block);
-        popCtrl(block.getLabel());
+        popBlockCtrl(block);
     }
 
     @Override
     public void visitLoop(Instruction.Loop loop) {
         pushCtrl(loop.getLabel());
         super.visitLoop(loop);
-        popCtrl(loop.getLabel());
+        popBlockCtrl(loop);
     }
 
     @Override
@@ -584,12 +594,12 @@ public class WasmValidator extends WasmVisitor {
         popVals(i32);
         pushCtrl(ifBlock.getLabel());
         visitInstructions(ifBlock.thenInstructions);
+        popBlockCtrl(ifBlock);
         if (ifBlock.hasElse()) {
-            popCtrl(ifBlock.getLabel());
             pushCtrl(ifBlock.getLabel());
             visitInstructions(ifBlock.elseInstructions);
+            popBlockCtrl(ifBlock);
         }
-        popCtrl(ifBlock.getLabel());
     }
 
     @Override
@@ -605,7 +615,7 @@ public class WasmValidator extends WasmVisitor {
             popCtrl(null);
         }
 
-        popCtrl(tryBlock.getLabel());
+        popBlockCtrl(tryBlock);
     }
 
     @Override
