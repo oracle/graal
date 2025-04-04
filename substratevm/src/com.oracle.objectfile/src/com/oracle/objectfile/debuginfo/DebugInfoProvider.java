@@ -219,6 +219,8 @@ public interface DebugInfoProvider {
     interface DebugHeaderTypeInfo extends DebugTypeInfo {
 
         Stream<DebugFieldInfo> fieldInfoProvider();
+
+        DebugFieldInfo hubField();
     }
 
     interface DebugMemberInfo extends DebugFileInfo {

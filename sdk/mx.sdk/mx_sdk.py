@@ -46,6 +46,7 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_vm_ng
 import pathlib
 import mx_sdk_benchmark # pylint: disable=unused-import
 import mx_sdk_clangformat # pylint: disable=unused-import
@@ -193,6 +194,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
+    mx_sdk_vm_ng.mx_register_dynamic_suite_constituents(register_project, register_distribution)
 
 
 def mx_post_parse_cmd_line(args):

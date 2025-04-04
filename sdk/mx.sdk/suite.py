@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.36.5",
+  "mxversion": "7.45.0",
   "name" : "sdk",
   "version" : "25.0.0",
   "release" : False,
@@ -737,6 +737,16 @@ suite = {
       ],
       "graalCompilerSourceEdition": "ignore",
     },
+    "org.graalvm.resourcecopy" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "license" : "UPL",
+      "dependencies": [
+        "sdk:POLYGLOT",
+      ],
+      "graalCompilerSourceEdition": "ignore",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -774,6 +784,10 @@ suite = {
     "EPL-2.0": {
       "name": "Eclipse Public License 2.0",
       "url": "https://opensource.org/licenses/EPL-2.0",
+    },
+    "Oracle Proprietary": {
+      "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
+      "url": "http://www.oracle.com/us/legal/copyright/index.html"
     },
 },
 
@@ -1190,6 +1204,17 @@ suite = {
       },
       "maven": False,
       "testDistribution" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "RESOURCECOPY" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.resourcecopy"
+      ],
+      "distDependencies" : [
+        "POLYGLOT",
+      ],
+      "maven": False,
       "graalCompilerSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN": {
