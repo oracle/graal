@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
 
 /**
  * This is a support class that keeps track of dynamic access calls requiring metadata usage
@@ -100,12 +101,14 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
 
     public DynamicAccessDetectionFeature() {
         this.callsByPathEntry = new ConcurrentSkipListMap<>();
-        this.pathEntries = Set.copyOf(Options.TrackDynamicAccess.getValue().values().stream().map(entry -> {
-            if (entry.endsWith("/")) {
-                return entry.substring(0, entry.length() - 1);
-            }
-            return entry;
-        }).toList());
+        this.pathEntries = Options.TrackDynamicAccess.getValue().values().stream()
+                .map(entry -> {
+                    if (entry.endsWith("/")) {
+                        return entry.substring(0, entry.length() - 1);
+                    }
+                    return entry;
+                })
+                .collect(Collectors.toSet());
     }
 
     public static DynamicAccessDetectionFeature instance() {
