@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,11 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.java.MonitorIdNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -96,6 +95,8 @@ public interface VirtualizerTool extends CoreProviders {
     }
 
     ValueNode getEntry(VirtualObjectNode virtualObject, int index);
+
+    boolean canVirtualizeLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId);
 
     void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId);
 

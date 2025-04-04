@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,6 +170,14 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
 
     public void escape(int object, ValueNode materialized) {
         getObjectStateForModification(object).escape(materialized);
+    }
+
+    public boolean isNonImmediateRecursiveLock(int object, MonitorIdNode monitorId) {
+        ObjectState state = getObjectStateForModification(object);
+        if (state.hasLocks()) {
+            return state.getLocks().monitorId.getLockDepth() < monitorId.getLockDepth() - 1;
+        }
+        return false;
     }
 
     public void addLock(int object, MonitorIdNode monitorId) {

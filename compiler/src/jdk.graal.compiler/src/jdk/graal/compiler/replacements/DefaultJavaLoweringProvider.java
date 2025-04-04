@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATI
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static jdk.graal.compiler.nodes.java.ArrayLengthNode.readArrayLength;
+import static jdk.graal.compiler.phases.common.LockEliminationPhase.removeMonitorAccess;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -121,6 +122,7 @@ import jdk.graal.compiler.nodes.extended.UnsafeMemoryStoreNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.AccessIndexedNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
@@ -1115,6 +1117,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
+    private static boolean isNestedLock(MonitorIdNode lock, CommitAllocationNode commit) {
+        for (MonitorIdNode otherLock : commit.getLocks()) {
+            if (otherLock.getLockDepth() < lock.getLockDepth() && commit.getObjectIndex(lock) == commit.getObjectIndex(otherLock)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
@@ -1140,7 +1151,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * these objects. This means PEA must treat MonitorEnterNodes as having a side effect even
          * after being virtualized to ensure that the lock is released after being acquired..
          * Additionally we must ensure that the MonitorEnterNodes can't deoptimize as it will use
-         * the FrqmeState where the locks are still virtual and the lock acquired by the
+         * the FrameState where the locks are still virtual and the lock acquired by the
          * MonitorEnterNode won't be released.
          */
         ArrayList<MonitorEnterNode> enters = null;
@@ -1151,6 +1162,20 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             // Ensure that the lock operations are performed in lock depth order
             ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
             newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            // Eliminate nested locks
+            newList.removeIf(lock -> isNestedLock(lock, commit));
+
+            for (MonitorIdNode lock : locks) {
+                if (!newList.contains(lock)) {
+                    // lock is nested and eliminated
+                    for (Node usage : lock.usages().snapshot()) {
+                        if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
+                            removeMonitorAccess(access);
+                        }
+                    }
+                    lock.setEliminated();
+                }
+            }
             locks = newList;
         }
 
@@ -1159,6 +1184,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int lastDepth = -1;
         for (MonitorIdNode monitorId : locks) {
             GraalError.guarantee(lastDepth < monitorId.getLockDepth(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
+            GraalError.guarantee(!monitorId.isEliminated(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
             lastDepth = monitorId.getLockDepth();
             MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[commit.getObjectIndex(monitorId)], monitorId));
             enter.setSynthetic();
