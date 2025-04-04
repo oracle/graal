@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
@@ -1098,10 +1099,10 @@ public class NativeImageGenerator {
 
                 var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
 
-                var classesToIgnore = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.IgnorePreserveForClasses, SubstrateOptions.IgnorePreserveForClassesPaths);
+                Set<String> classesOrPackagesToIgnore = ignoredClassesOrPackagesForPreserve();
                 loader.classLoaderSupport.getClassesToPreserve().parallel()
                                 .filter(ClassInclusionPolicy::isClassIncludedBase)
-                                .filter(c -> classesToIgnore.isIncluded(c) == null)
+                                .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
                                 .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
                 for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
                     RuntimeReflection.registerClassLookup(className);
@@ -1112,6 +1113,13 @@ public class NativeImageGenerator {
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
+    }
+
+    private static Set<String> ignoredClassesOrPackagesForPreserve() {
+        Set<String> ignoredClassesOrPackages = new HashSet<>(SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet());
+        // GR-63360: Parsing of constant_ lambda forms fails
+        ignoredClassesOrPackages.add("java.lang.invoke.LambdaForm$Holder");
+        return Collections.unmodifiableSet(ignoredClassesOrPackages);
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
