@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -86,6 +87,11 @@ public final class MetadataTracer {
     public void traceResourceBundle(String baseName) {
         assert enabled();
         config.getResourceConfiguration().addBundle(UnresolvedConfigurationCondition.alwaysTrue(), baseName, List.of());
+    }
+
+    public void traceSerializationType(String className) {
+        assert enabled();
+        config.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor(className)).setSerializable();
     }
 
     private static void initialize() {

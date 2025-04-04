@@ -35,8 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -45,7 +43,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.serialize.MissingSerializationRegistrationUtils;
+
+import jdk.graal.compiler.java.LambdaUtils;
 
 @TargetClass(java.io.FileDescriptor.class)
 final class Target_java_io_FileDescriptor {
@@ -68,8 +69,8 @@ final class Target_java_io_ObjectStreamClass {
             return null;
         }
 
-        if (Serializable.class.isAssignableFrom(cl)) {
-            if (!cl.isArray() && !DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
+        if (Serializable.class.isAssignableFrom(cl) && !cl.isArray()) {
+            if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
                 boolean isLambda = cl.getTypeName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);
                 boolean isProxy = Proxy.isProxyClass(cl);
                 if (isProxy || isLambda) {
@@ -86,6 +87,9 @@ final class Target_java_io_ObjectStreamClass {
                 } else {
                     MissingSerializationRegistrationUtils.missingSerializationRegistration(cl, "type " + cl.getTypeName());
                 }
+            }
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                MetadataTracer.singleton().traceSerializationType(cl.getName());
             }
         }
 
