@@ -36,6 +36,9 @@ import jdk.graal.compiler.options.OptionKey;
 
 public class PointstoOptions {
 
+    @Option(help = "Specify which jar contains the Judge Test classes, whose methods should not be inlined.")//
+    public static final OptionKey<String> JudgeJarName = new OptionKey<>("");
+
     @Option(help = "Track primitive values using the infrastructure of points-to analysis.")//
     public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(true);
 
