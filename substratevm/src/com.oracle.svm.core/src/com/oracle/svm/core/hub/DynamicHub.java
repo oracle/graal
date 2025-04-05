@@ -85,7 +85,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
@@ -1567,28 +1566,24 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitive
     private static Class<?> forName(String className) throws Throwable {
         return forName(className, Reflection.getCallerClass());
     }
 
     @Substitute
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitiveAdapter
     private static Class<?> forName(String className, Class<?> caller) throws Throwable {
-        return forName(className, true, caller.getClassLoader(), caller);
+        return forName(className, true, caller == null ? ClassLoader.getSystemClassLoader() : caller.getClassLoader(), caller);
     }
 
     @Substitute
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitive
     private static Class<?> forName(Module module, String className) throws Throwable {
         return forName(module, className, Reflection.getCallerClass());
     }
 
     @Substitute
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitiveAdapter
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
