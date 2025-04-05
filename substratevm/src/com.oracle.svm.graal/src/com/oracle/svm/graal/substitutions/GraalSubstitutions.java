@@ -27,6 +27,7 @@ package com.oracle.svm.graal.substitutions;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -219,6 +221,19 @@ final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
     @Substitute
     public static long getIsolateID() {
         return Isolates.getIsolateId();
+    }
+}
+
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.GraalServices", onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
+
+    /**
+     * This substitution is required to bypass the HotSpot specific MXBean used in
+     * {@code jdk.graal.compiler.management.JMXServiceProvider}.
+     */
+    @Substitute
+    public static void dumpHeap(String outputFile, boolean live) throws IOException {
+        VMRuntime.dumpHeap(outputFile, live);
     }
 }
 

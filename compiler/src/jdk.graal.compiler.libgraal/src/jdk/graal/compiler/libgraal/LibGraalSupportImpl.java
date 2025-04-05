@@ -25,6 +25,7 @@
 package jdk.graal.compiler.libgraal;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -158,6 +159,11 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
     @Override
     public void processReferences() {
         LibGraalRuntime.processReferences();
+    }
+
+    @Override
+    public void dumpHeap(String outputFile, boolean live) throws IOException {
+        VMRuntime.dumpHeap(outputFile, live);
     }
 
     @Override
