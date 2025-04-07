@@ -183,7 +183,9 @@ public class VerifyLockDepthPhase extends Phase {
                 state.verifyState(during.asFixedNode(), during.stateDuring());
             }
             if (node instanceof MonitorEnterNode) {
-                state.push((MonitorEnterNode) node);
+                MonitorEnterNode enter = (MonitorEnterNode) node;
+                state.push(enter);
+                state.verifyState(node, enter.stateAfter());
             } else if (node instanceof MonitorExitNode) {
                 state.pop((MonitorExitNode) node);
             } else if (node instanceof AccessMonitorNode) {
