@@ -446,4 +446,23 @@ public final class MonitorPEATest extends HotSpotGraalCompilerTest {
     public void testSnippet19() {
         test("snippet19", true);
     }
+
+    public static void snippet20(Object o) {
+        synchronized (A.class) {
+            synchronized ((new Object())) {
+                synchronized ((new Object())) {
+                    staticObj = o;
+                }
+                // The following monitorenter's stateBefore will contain the preceding eliminated
+                // lock, whose monitor ID is not marked as eliminated
+                synchronized (B.class) {
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet20() {
+        test("snippet20", new Object());
+    }
 }

@@ -114,6 +114,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
@@ -144,8 +145,12 @@ import jdk.graal.compiler.nodes.java.CheckFastPathMonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorExitNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.nodes.virtual.EscapeObjectState;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.replacements.SnippetCounter;
@@ -919,13 +924,36 @@ public class MonitorSnippets implements Snippets {
             template(tool, checkFastPathMonitorEnterNode, args).instantiate(tool.getMetaAccess(), checkFastPathMonitorEnterNode, DEFAULT_REPLACER, args);
         }
 
+        private static boolean isVirtualLock(FrameState frameState, int lockIdx) {
+            MonitorIdNode monitorIdNode = frameState.monitorIdAt(lockIdx);
+            if (monitorIdNode.isEliminated()) {
+                return true;
+            }
+
+            ValueNode lock = frameState.lockAt(lockIdx);
+            if (lock instanceof VirtualObjectNode virtualObject) {
+                FrameState current = frameState;
+                do {
+                    if (current.virtualObjectMappingCount() > 0) {
+                        for (EscapeObjectState state : current.virtualObjectMappings()) {
+                            if (state instanceof VirtualObjectState && virtualObject == state.object()) {
+                                return true;
+                            }
+                        }
+                    }
+                    current = current.outerFrameState();
+                } while (current != null);
+            }
+            return false;
+        }
+
         private boolean verifyLockOrder(MonitorEnterNode monitorenterNode) {
-            if (requiresStrictLockOrder) {
+            if (Assertions.assertionsEnabled() && requiresStrictLockOrder) {
                 FrameState state = monitorenterNode.stateAfter();
                 boolean subsequentLocksMustBeEliminated = false;
                 for (int lockIdx = 0; lockIdx < state.locksSize(); lockIdx++) {
                     if (subsequentLocksMustBeEliminated) {
-                        if (!state.monitorIdAt(lockIdx).isEliminated()) {
+                        if (!isVirtualLock(state, lockIdx)) {
                             return false;
                         }
                     }
