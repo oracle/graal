@@ -48,7 +48,7 @@ from mx_gate import Task, add_gate_runner, Tags
 from mx_substratevm import locale_US_args
 from mx_unittest import unittest
 
-_suite = mx.suite('web-image')
+_suite = mx.suite("web-image")
 
 _web_image_js_engine_name = os.getenv("NODE_EXE", "node")
 
@@ -63,10 +63,10 @@ web_image_builder_jars = [
 
 
 class WebImageConfiguration:
-    test_cases = ['WEBIMAGE_TESTCASES']
+    test_cases = ["WEBIMAGE_TESTCASES"]
     """List of dependencies containing test cases"""
 
-    graalvm_component = 'web-image'
+    graalvm_component = "web-image"
 
     builder_jars = web_image_builder_jars
 
@@ -92,7 +92,7 @@ mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes.append(web_image_buil
 
 def concatCP(old, new):
     if old and new:
-        return old + ':' + new
+        return old + ":" + new
     elif old:
         return old
     elif new:
@@ -107,18 +107,19 @@ def addCP(vmargs, cp):
     if cpIndex:
         vmargs[cpIndex] = concatCP(cp, cpValue)
     else:
-        vmargs += ['-cp', cp]
+        vmargs += ["-cp", cp]
 
     return vmargs
 
 
 def run_javac(args, out=None, err=None, cwd=None, nonZeroIsFatal=True):
-    jdk = mx.get_jdk(tag='jvmci')
+    jdk = mx.get_jdk(tag="jvmci")
     cmd = [jdk.javac] + args
     mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
+
 def web_image_main_class():
-    return 'com.oracle.svm.webimage.driver.WebImage'
+    return "com.oracle.svm.webimage.driver.WebImage"
 
 
 def _graalvm_web_image_config(suite: mx.Suite):
@@ -129,17 +130,17 @@ def _graalvm_web_image_config(suite: mx.Suite):
 
 def vm_web_image_path(suite=None):
     suite = suite or WebImageConfiguration.get_suite()
-    return mx_substratevm.vm_executable_path('web-image', _graalvm_web_image_config(suite))
+    return mx_substratevm.vm_executable_path("web-image", _graalvm_web_image_config(suite))
 
 
 def compile_web_image(args, out=None, err=None, cwd=None, nonZeroIsFatal=True, suite=None):
-    if any(arg.startswith('--help') or arg == '--version' for arg in args):
+    if any(arg.startswith("--help") or arg == "--version" for arg in args):
         final_args = args
     else:
         # Enables assertions in the JVM running the builder
-        extra_args = ['-J-ea', '-J-esa']
+        extra_args = ["-J-ea", "-J-esa"]
         # Enables assertions in the driver
-        extra_args += ['--vm.ea', '--vm.esa']
+        extra_args += ["--vm.ea", "--vm.esa"]
         final_args = mx_sdk_vm_impl.svm_experimental_options(extra_args + args)
 
     return mx.run([vm_web_image_path(suite)] + final_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
@@ -172,20 +173,27 @@ def web_image(args=None):
 
 
 class GraalWebImageTags:
-    webimagebuild = 'webimagebuild'
-    webimagespectest = 'webimagespectest'
-    webimagespectest_closure = 'webimagespectest_closure'
-    webimagespectest_noclosure = 'webimagespectest_no-closure'
-    webimageunittest = 'webimageunittest'
-    webimageprettier = 'webimageprettier'
-    webimagehelp = 'webimagehelp'
+    webimagebuild = "webimagebuild"
+    webimagespectest = "webimagespectest"
+    webimagespectest_closure = "webimagespectest_closure"
+    webimagespectest_noclosure = "webimagespectest_no-closure"
+    webimageunittest = "webimageunittest"
+    webimageprettier = "webimageprettier"
+    webimagehelp = "webimagehelp"
 
 
 @mx.command(_suite.name, "webimageprettier")
 def prettier(args=None):
-    parser = ArgumentParser(prog='mx webimageprettier')
-    parser.add_argument('source_files', metavar='FILE', nargs='*', help='Source files to format (formats all by default)')
-    parser.add_argument('-n', '--dry-run', action='store_true', help='Do not write files to disk. Will abort if any files have formatting errors')
+    parser = ArgumentParser(prog="mx webimageprettier")
+    parser.add_argument(
+        "source_files", metavar="FILE", nargs="*", help="Source files to format (formats all by default)"
+    )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Do not write files to disk. Will abort if any files have formatting errors",
+    )
     parsed_args = parser.parse_args(args)
 
     source_files = parsed_args.source_files
@@ -197,10 +205,10 @@ def prettier(args=None):
             sourceDirs = p.source_dirs()
             for sourceDir in sourceDirs:
                 for root, _, files in os.walk(sourceDir):
-                    for f in [join(root, name) for name in files if name.endswith('.js')]:
+                    for f in [join(root, name) for name in files if name.endswith(".js")]:
                         source_files.append(f)
 
-    (rc, out, err) = prettier_runner(['--list-different'], files=source_files, nonZeroIsFatal=False)
+    (rc, out, err) = prettier_runner(["--list-different"], files=source_files, nonZeroIsFatal=False)
 
     if err:
         mx.log(err)
@@ -214,10 +222,10 @@ def prettier(args=None):
         for f in diff_files:
             mx.log(f)
             (_, formatted, _) = prettier_runner([], files=[f], nonZeroIsFatal=True)
-            mx.run(['diff', '-u', '-p', f, '-'], stdin=formatted, nonZeroIsFatal=False)
+            mx.run(["diff", "-u", "-p", f, "-"], stdin=formatted, nonZeroIsFatal=False)
 
             if not parsed_args.dry_run:
-                with open(f, 'w') as out_file:
+                with open(f, "w") as out_file:
                     out_file.write(formatted)
 
         if parsed_args.dry_run:
@@ -229,7 +237,7 @@ def prettier(args=None):
 
 
 def prettier_gate():
-    prettier(['-n'])
+    prettier(["-n"])
 
 
 def prettier_runner(args=None, files=None, nonZeroIsFatal=False):
@@ -239,13 +247,13 @@ def prettier_runner(args=None, files=None, nonZeroIsFatal=False):
     if args is None:
         args = []
 
-    config = _suite.mxDir + '/.prettierrc'
+    config = _suite.mxDir + "/.prettierrc"
 
-    exe = os.environ.get('PRETTIER_EXE', 'npx prettier').split(' ')
+    exe = os.environ.get("PRETTIER_EXE", "npx prettier").split(" ")
 
     if not files:
-        mx.log('[no JS sources - skipping]')
-        return (0, '', '')
+        mx.log("[no JS sources - skipping]")
+        return (0, "", "")
 
     final_rc = 0
 
@@ -253,7 +261,9 @@ def prettier_runner(args=None, files=None, nonZeroIsFatal=False):
     errCapture = mx.OutputCapture()
 
     for chunk in mx._chunk_files_for_command_line(files):
-        rc = mx.run(exe + ['--config', config] + args + chunk, out=outCapture, err=errCapture, nonZeroIsFatal=nonZeroIsFatal)
+        rc = mx.run(
+            exe + ["--config", config] + args + chunk, out=outCapture, err=errCapture, nonZeroIsFatal=nonZeroIsFatal
+        )
 
         final_rc = max(final_rc, rc)
 
@@ -261,22 +271,22 @@ def prettier_runner(args=None, files=None, nonZeroIsFatal=False):
 
 
 def determine_gate_unittest_args(gate_args):
-    vm_options = ['-Dwebimage.test.max_failures=10']
+    vm_options = ["-Dwebimage.test.max_failures=10"]
 
     if gate_args.extra_unittest_argument:
         vm_options += gate_args.extra_unittest_argument
 
-    builder_options = ['-H:+StrictWarnings', f"-H:Backend={gate_args.backend}"]
+    builder_options = ["-H:+StrictWarnings", f"-H:Backend={gate_args.backend}"]
     if gate_args.spectest_argument:
         builder_options += gate_args.spectest_argument
 
     if builder_options:
-        vm_options += ['-Dwebimage.test.additional_vm_options=' + (','.join(builder_options))]
+        vm_options += ["-Dwebimage.test.additional_vm_options=" + (",".join(builder_options))]
 
     if gate_args.spectest:
         spec_tests = [gate_args.spectest]
     else:
-        spec_tests = ['JS_JTT_Spec_Test']
+        spec_tests = ["JS_JTT_Spec_Test"]
 
     return vm_options + spec_tests
 
@@ -285,52 +295,60 @@ def gate_runner(args, tasks):
     unittest_args = determine_gate_unittest_args(args)
 
     # build vm
-    with Task('BuildHotSpotGraalServer', tasks, tags=[GraalWebImageTags.webimagebuild]) as t:
+    with Task("BuildHotSpotGraalServer", tasks, tags=[GraalWebImageTags.webimagebuild]) as t:
         if t:
             mx.build([])
 
-    with Task('Web Image JSFormatCheck', tasks, tags=[Tags.style, GraalWebImageTags.webimageprettier]) as t:
+    with Task("Web Image JSFormatCheck", tasks, tags=[Tags.style, GraalWebImageTags.webimageprettier]) as t:
         if t:
             prettier_gate()
 
-    with Task('Web Image Unit Tests', tasks, tags=[GraalWebImageTags.webimageunittest]) as t:
+    with Task("Web Image Unit Tests", tasks, tags=[GraalWebImageTags.webimageunittest]) as t:
         if t:
-            unittest(['--verbose', '--enable-timing', 'WebImageUnitTests'])
+            unittest(["--verbose", "--enable-timing", "WebImageUnitTests"])
 
-    with Task('Web Image Spec Tests Without Closure Compiler', tasks,
-              tags=[GraalWebImageTags.webimagespectest, GraalWebImageTags.webimagespectest_noclosure]) as t:
+    with Task(
+        "Web Image Spec Tests Without Closure Compiler",
+        tasks,
+        tags=[GraalWebImageTags.webimagespectest, GraalWebImageTags.webimagespectest_noclosure],
+    ) as t:
         if t:
-            unittest(['--verbose', '--enable-timing', '-Dwebimage.test.closure_compiler=false'] + unittest_args)
+            unittest(["--verbose", "--enable-timing", "-Dwebimage.test.closure_compiler=false"] + unittest_args)
 
-    with Task('Web Image Spec Tests With Closure Compiler', tasks,
-              tags=[GraalWebImageTags.webimagespectest, GraalWebImageTags.webimagespectest_closure]) as t:
+    with Task(
+        "Web Image Spec Tests With Closure Compiler",
+        tasks,
+        tags=[GraalWebImageTags.webimagespectest, GraalWebImageTags.webimagespectest_closure],
+    ) as t:
         if t:
-            unittest(['--verbose', '--enable-timing', '-Dwebimage.test.closure_compiler=true'] + unittest_args)
+            unittest(["--verbose", "--enable-timing", "-Dwebimage.test.closure_compiler=true"] + unittest_args)
 
-    with Task('Check mx web-image --help', tasks, tags=[GraalWebImageTags.webimagehelp]) as t:
+    with Task("Check mx web-image --help", tasks, tags=[GraalWebImageTags.webimagehelp]) as t:
         if t:
             # This check works by scanning stdout for the 'Usage' keyword. If that keyword does not appear, it means something broke mx web-image --help.
             found_usage = False
 
             def help_stdout_check(output):
                 nonlocal found_usage
-                if 'Usage' in output:
+                if "Usage" in output:
                     found_usage = True
 
             # mx web-image --help is definitely broken if a non zero code is returned.
-            mx.run(['mx', 'web-image', '--help'], out=help_stdout_check, nonZeroIsFatal=True)
+            mx.run(["mx", "web-image", "--help"], out=help_stdout_check, nonZeroIsFatal=True)
             if not found_usage:
                 mx.abort(
-                        'mx web-image --help does not seem to output the proper message. '
-                        'This can happen if you add extra arguments the mx web-image call without checking if an argument was --help or --help-extra.'
-                        )
+                    "mx web-image --help does not seem to output the proper message. "
+                    "This can happen if you add extra arguments the mx web-image call without checking if an argument was --help or --help-extra."
+                )
 
 
 add_gate_runner(_suite, gate_runner)
 # Defaults to JS backend
 mx_gate.add_gate_argument("--backend", default="JS", help="Backend that should be used for this gate run")
 mx_gate.add_gate_argument("--spectest", help="Test suite that should be run, only used for webimagespectest tags")
-mx_gate.add_gate_argument("--spectest-argument", action=mx_compiler.ShellEscapedStringAction, help="Builder flags for spectest runs")
+mx_gate.add_gate_argument(
+    "--spectest-argument", action=mx_compiler.ShellEscapedStringAction, help="Builder flags for spectest runs"
+)
 
 
 def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
@@ -351,16 +369,15 @@ def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
 
 
 class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
-
     def __init__(self):
         super().__init__("web-image")
 
     def apply(self, config):
         vm_args, main_class, main_class_args = config
 
-        vm_args += ['-Dwebimage.test.js=' + _web_image_js_engine_name]
-        vm_args += ['-Dwebimage.test.launcher=' + vm_web_image_path()]
-        vm_args += ['-Dwebimage.test.flags=' + ','.join(get_launcher_flags(WebImageConfiguration.test_cases))]
+        vm_args += ["-Dwebimage.test.js=" + _web_image_js_engine_name]
+        vm_args += ["-Dwebimage.test.launcher=" + vm_web_image_path()]
+        vm_args += ["-Dwebimage.test.flags=" + ",".join(get_launcher_flags(WebImageConfiguration.test_cases))]
         # If any of the arguments contains spaces and double quotes, on Windows it will add its own quotes around
         # the argument but not escape the inner quotes. This will be interpreted by Windows as separate arguments.
         # For example if the command line arguments are (as Java code):
@@ -369,7 +386,7 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
         # prg "print("hello world")"
         # Which is interpreted as multiple arguments.
         # This system property ensures that quotes inside arguments are properly escaped.
-        vm_args += ['-Djdk.lang.Process.allowAmbiguousCommands=false']
+        vm_args += ["-Djdk.lang.Process.allowAmbiguousCommands=false"]
         vm_args += locale_US_args()
 
         # The compiler suite imposes a maximum test execution time, which may not
@@ -390,13 +407,14 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
 
 mx_unittest.register_unittest_config(WebImageUnittestConfig())
 
+
 def pom_from_template(proj_dir):
     # Create pom with correct version info from template
-    version = _suite.release_version(snapshotSuffix='SNAPSHOT')
-    dom = minidom.parse(os.path.join(proj_dir, 'template-pom.xml'))
-    for element in dom.getElementsByTagName('webImageVersion'):
+    version = _suite.release_version(snapshotSuffix="SNAPSHOT")
+    dom = minidom.parse(os.path.join(proj_dir, "template-pom.xml"))
+    for element in dom.getElementsByTagName("webImageVersion"):
         element.parentNode.replaceChild(dom.createTextNode(version), element)
-    with open(os.path.join(proj_dir, 'pom.xml'), 'w') as pom_file:
+    with open(os.path.join(proj_dir, "pom.xml"), "w") as pom_file:
         dom.writexml(pom_file)
 
 
@@ -408,7 +426,15 @@ class WebImageMacroBuilder(mx.ArchivableProject):
     This includes adding additional builder jars, additional builder arguments, and additional exports to the builder JVM.
     """
 
-    def __init__(self, suite: mx.Suite, name: str, builder_dists: List[str], macro_location: str, java_args: Optional[List[str]] = None, image_provided_jars: Optional[List[str]] = None):
+    def __init__(
+        self,
+        suite: mx.Suite,
+        name: str,
+        builder_dists: List[str],
+        macro_location: str,
+        java_args: Optional[List[str]] = None,
+        image_provided_jars: Optional[List[str]] = None,
+    ):
         """
         :param builder_dists: Distributions included for the builder. Exactly these are added to
         ``ImageBuilderModulePath`` and their required exports to ``JavaArgs``. No transitive dependencies are included,
@@ -490,7 +516,9 @@ class WebImageMacroBuildTask(mx.ArchivableBuildTask):
         exclude = mx.classpath_entries(include, includeSelf=False)
         # Calculate classpath relative to the macro directory. These paths can be referenced in the macro using
         # the ${.} syntax.
-        return mx_sdk_vm_impl.graalvm_home_relative_classpath(include, start=self.subject.macro_location, exclude_names=exclude).split(os.pathsep)
+        return mx_sdk_vm_impl.graalvm_home_relative_classpath(
+            include, start=self.subject.macro_location, exclude_names=exclude
+        ).split(os.pathsep)
 
     @staticmethod
     def _path_for_macro(macro_relative_path: str) -> str:
@@ -516,14 +544,19 @@ class WebImageMacroBuildTask(mx.ArchivableBuildTask):
 
             if builder_jars:
                 # Adds the builder jars
-                lines.append("ImageBuilderModulePath = " + self._escaped_macro_paths(self._macro_relative_paths(builder_jars)))
+                lines.append(
+                    "ImageBuilderModulePath = " + self._escaped_macro_paths(self._macro_relative_paths(builder_jars))
+                )
 
             if self.subject.image_provided_jars:
                 # These jars are added to the module path passed to the builder (not the builder's JVM)
                 # It only differs from ImageModulePath in that the latter will not result in "." being added to the
                 # classpath if the user doesn't specify any module or class path. This can be unexpected for users,
                 # which is why ImageProvidedJars is used, which does not have this behavior.
-                lines.append("ImageProvidedJars = " + self._escaped_macro_paths(self._macro_relative_paths(self.subject.image_provided_jars)))
+                lines.append(
+                    "ImageProvidedJars = "
+                    + self._escaped_macro_paths(self._macro_relative_paths(self.subject.image_provided_jars))
+                )
 
             # Required exports for the additional builder jars
             required_exports = mx_javamodules.requiredExports(builder_jars, mx.get_jdk())
@@ -537,7 +570,6 @@ class WebImageMacroBuildTask(mx.ArchivableBuildTask):
 
                 for flag in java_args:
                     lines.append("  " + mx_sdk_vm_impl.java_properties_escape(flag) + " \\")
-
 
             self._computed_lines = lines
 
@@ -555,7 +587,13 @@ class WebImageMacroBuildTask(mx.ArchivableBuildTask):
             mx.rmtree(self.subject.output_dir())
 
 
-def create_web_image_macro_builder(defining_suite, name: str, component: mx_sdk_vm.GraalVmComponent, builder_jars: List[str], java_args: Optional[List[str]] = None) -> WebImageMacroBuilder:
+def create_web_image_macro_builder(
+    defining_suite,
+    name: str,
+    component: mx_sdk_vm.GraalVmComponent,
+    builder_jars: List[str],
+    java_args: Optional[List[str]] = None,
+) -> WebImageMacroBuilder:
     """
     Creates a :class:`WebImageMacroBuilder`.
 
@@ -565,7 +603,9 @@ def create_web_image_macro_builder(defining_suite, name: str, component: mx_sdk_
     If the component (and thus the support distribution) is not included in the graalvm distribution, the macro is
     useless since it only makes sense inside a graalvm distribution. And thus, we just generate an empty macro
     """
-    assert len(component.support_distributions) == 1, f"Component {component.short_name} does not have exactly one support_distributions. This code assumes it only has one and uses it to locate the macro directory"
+    assert (
+        len(component.support_distributions) == 1
+    ), f"Component {component.short_name} does not have exactly one support_distributions. This code assumes it only has one and uses it to locate the macro directory"
 
     graalvm_dist = mx_sdk_vm_impl.get_final_graalvm_distribution()
 
@@ -576,7 +616,9 @@ def create_web_image_macro_builder(defining_suite, name: str, component: mx_sdk_
     else:
         # It seems we can't look up the path of the component itself. Instead, we use the support distribution,
         # which is placed at the macro root, to look up the macro location
-        macro_path = graalvm_dist.find_single_source_location(f"extracted-dependency:{component.support_distributions[0]}", abort_on_multiple=True)
+        macro_path = graalvm_dist.find_single_source_location(
+            f"extracted-dependency:{component.support_distributions[0]}", abort_on_multiple=True
+        )
 
         return WebImageMacroBuilder(
             defining_suite,
@@ -590,13 +632,13 @@ def create_web_image_macro_builder(defining_suite, name: str, component: mx_sdk_
 
 web_image_macro = mx_sdk_vm.GraalVmSvmTool(
     suite=_suite,
-    name='Web Image',
-    short_name='web-image',
-    dir_name='web-image',
-    installable_id='web-image',
+    name="Web Image",
+    short_name="web-image",
+    dir_name="web-image",
+    installable_id="web-image",
     license_files=[],
     third_party_license_files=[],
-    dependencies=['ni'],
+    dependencies=["ni"],
     jar_distributions=[
         "web-image:WEBIMAGE_LIBRARY_SUPPORT",
     ],
@@ -604,7 +646,7 @@ web_image_macro = mx_sdk_vm.GraalVmSvmTool(
     support_distributions=["web-image:WEBIMAGE_DRIVER_SUPPORT"],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
-            use_modules='image',
+            use_modules="image",
             main_module="org.graalvm.extraimage.driver",
             destination="bin/<exe:web-image>",
             jar_distributions=["web-image:WEBIMAGE_DRIVER", "web-image:SVM_WASM"],
@@ -619,35 +661,38 @@ mx_sdk_vm.register_graalvm_component(web_image_macro)
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
-    register_project(create_web_image_macro_builder(
-        _suite,
-        "web-image-macro-builder",
-        web_image_macro,
-        WebImageConfiguration.get_builder_jars(),
-        java_args=[
-            # Tell the builder that it was started from the web-image launcher
-            "-Dcom.oracle.graalvm.iswebimage=true",
-            # The closure compiler is only an optional dependency and as such is not part of the
-            # module graph by default (even if it is on the module path), it has to be added
-            # explicitly using `--add-modules`.
-            "--add-modules=org.graalvm.wrapped.google.closure",
-        ],
-    ))
+    register_project(
+        create_web_image_macro_builder(
+            _suite,
+            "web-image-macro-builder",
+            web_image_macro,
+            WebImageConfiguration.get_builder_jars(),
+            java_args=[
+                # Tell the builder that it was started from the web-image launcher
+                "-Dcom.oracle.graalvm.iswebimage=true",
+                # The closure compiler is only an optional dependency and as such is not part of the
+                # module graph by default (even if it is on the module path), it has to be added
+                # explicitly using `--add-modules`.
+                "--add-modules=org.graalvm.wrapped.google.closure",
+            ],
+        )
+    )
 
 
 def assert_equals(msg, expected, actual):
     if expected != actual:
-        mx.abort('Assertion failed: {} expected: {!r} but was: {!r}'.format(msg, expected, actual))
+        mx.abort("Assertion failed: {} expected: {!r} but was: {!r}".format(msg, expected, actual))
 
 
 def graalvm_home():
     capture = mx.OutputCapture()
-    mx.run_mx(['graalvm-home'], out=capture, quiet=True)
+    mx.run_mx(["graalvm-home"], out=capture, quiet=True)
     return capture.data.strip()
+
 
 # This callback is essential for mx to generate the manifest file so that the ServiceLoader can find
 # the OptionDescripter defined in Web Image
 def mx_post_parse_cmd_line(opts):
     for dist in _suite.dists:
         if not dist.isTARDistribution():
-            dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+            dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith("_TEST")))
