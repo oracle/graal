@@ -72,6 +72,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -317,5 +318,9 @@ public class WasmFunctionRootNode extends WasmRootNode {
             }
         }
         return sourceSection;
+    }
+
+    public final Node[] getCallNodes() {
+        return functionNode.getCallNodes();
     }
 }

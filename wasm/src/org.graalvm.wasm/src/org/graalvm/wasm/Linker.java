@@ -73,8 +73,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
-import org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportFunctionSym;
@@ -99,9 +97,6 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmDirectCallNode;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -109,7 +104,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
+<<<<<<< HEAD
 import com.oracle.truffle.api.nodes.Node;
+=======
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+>>>>>>> f58cdfc7533 (Make wasm code entry instantiation and direct call site resolution thread-safe.)
 
 public class Linker {
     public enum LinkState {
@@ -457,33 +456,6 @@ public class Linker {
         final ImportDescriptor importDescriptor = function.importDescriptor();
         final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor, functionIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
-    }
-
-    public void resolveCallNode(Node[] callNodes, WasmInstance instance, int callNodeIndex, int bytecodeOffset) {
-        Node unresolvedCallNode = callNodes[callNodeIndex];
-        if (unresolvedCallNode instanceof WasmCallStubNode) {
-            final WasmFunction function = ((WasmCallStubNode) unresolvedCallNode).function();
-            final CallTarget target = instance.target(function.index());
-            callNodes[callNodeIndex] = WasmDirectCallNode.create(target, bytecodeOffset);
-        } else {
-            assert unresolvedCallNode instanceof WasmIndirectCallNode : unresolvedCallNode;
-        }
-    }
-
-    public void resolveCallsite(WasmInstance instance, Node[] callNodes, int instructionOffset, int controlTableOffset, int bytecodeOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> resolveCallNode(callNodes, instance, controlTableOffset, bytecodeOffset);
-        final Sym[] dependencies = new Sym[]{
-                        function.isImported()
-                                        ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index())
-                                        : new CodeEntrySym(instance.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(instance.name(), instructionOffset, controlTableOffset), dependencies, resolveAction);
-    }
-
-    void resolveCodeEntry(WasmModule module, int functionIndex) {
-        if (resolutionDag == null) {
-            resolutionDag = new ResolutionDag();
-        }
-        resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
     void resolveMemoryImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
@@ -1154,64 +1126,6 @@ public class Linker {
                 }
                 final ExportFunctionSym that = (ExportFunctionSym) object;
                 return this.moduleName.equals(that.moduleName) && this.functionName.equals(that.functionName);
-            }
-        }
-
-        static class CallsiteSym extends Sym {
-            final int instructionOffset;
-            final int controlTableOffset;
-
-            CallsiteSym(String moduleName, int instructionOffset, int controlTableOffset) {
-                super(moduleName);
-                this.instructionOffset = instructionOffset;
-                this.controlTableOffset = controlTableOffset;
-            }
-
-            @Override
-            public String toString() {
-                return String.format(Locale.ROOT, "(callsite %d at %d in %s)", controlTableOffset, instructionOffset, moduleName);
-            }
-
-            @Override
-            public int hashCode() {
-                return moduleName.hashCode() ^ instructionOffset ^ (controlTableOffset << 16);
-            }
-
-            @Override
-            public boolean equals(Object object) {
-                if (!(object instanceof CallsiteSym)) {
-                    return false;
-                }
-                final CallsiteSym that = (CallsiteSym) object;
-                return this.instructionOffset == that.instructionOffset && this.controlTableOffset == that.controlTableOffset && this.moduleName.equals(that.moduleName);
-            }
-        }
-
-        static class CodeEntrySym extends Sym {
-            final int functionIndex;
-
-            CodeEntrySym(String moduleName, int functionIndex) {
-                super(moduleName);
-                this.functionIndex = functionIndex;
-            }
-
-            @Override
-            public String toString() {
-                return String.format(Locale.ROOT, "(code entry at %d in %s)", functionIndex, moduleName);
-            }
-
-            @Override
-            public int hashCode() {
-                return moduleName.hashCode() ^ functionIndex;
-            }
-
-            @Override
-            public boolean equals(Object object) {
-                if (!(object instanceof CodeEntrySym)) {
-                    return false;
-                }
-                final CodeEntrySym that = (CodeEntrySym) object;
-                return this.functionIndex == that.functionIndex && this.moduleName.equals(that.moduleName);
             }
         }
 
