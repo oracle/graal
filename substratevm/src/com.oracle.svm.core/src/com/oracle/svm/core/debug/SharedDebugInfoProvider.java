@@ -195,7 +195,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     protected final SharedType wordBaseType;
 
     /**
-     * The {@code SharedType} for {@link Void}. This is used as fallback for foreign pinter types,
+     * The {@code SharedType} for {@code void}. This is used as fallback for foreign pointer types,
      * if there is no type it points to.
      */
     protected final SharedType voidType;
@@ -252,6 +252,12 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     public static final String LAYOUT_PREFIX = "_layout_.";
 
+    /**
+     * A prefix used for type signature generation with {@link #getTypeSignature} to generate unique
+     * type signatures for foreign primitive type units.
+     */
+    public static final String FOREIGN_PREFIX = "_foreign_.";
+
     static final Path EMPTY_PATH = Paths.get("");
 
     public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess) {
@@ -262,7 +268,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
          * Use a disabled DebugContext if log is disabled here. We need to make sure the log stays
          * disabled, as we use parallel streams if it is disabled
          */
-        this.debug = debug.isLogEnabled() ? debug : DebugContext.disabled(null);
+        this.debug = debug.isLogEnabledForMethod() ? debug : DebugContext.disabled(null);
 
         // Fetch special types that have special use cases.
         // hubType: type of the 'hub' field in the object header.
@@ -270,7 +276,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         // voidType: fallback type to point to for foreign pointer types
         this.hubType = (SharedType) metaAccess.lookupJavaType(Class.class);
         this.wordBaseType = (SharedType) metaAccess.lookupJavaType(WordBase.class);
-        this.voidType = (SharedType) metaAccess.lookupJavaType(Void.class);
+        this.voidType = (SharedType) metaAccess.lookupJavaType(void.class);
 
         // Get some information on heap layout and object/object header layout
         this.useHeapBase = ReferenceAccess.singleton().haveCompressedReferences() && ReferenceAccess.singleton().getCompressEncoding().hasBase();
@@ -398,9 +404,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     @SuppressWarnings("try")
     public void installDebugInfo() {
         // we can only meaningfully provide logging if debug info is produced sequentially
-        Stream<SharedType> typeStream = debug.isLogEnabled() ? typeInfo() : typeInfo().parallel();
-        Stream<Pair<SharedMethod, CompilationResult>> codeStream = debug.isLogEnabled() ? codeInfo() : codeInfo().parallel();
-        Stream<Object> dataStream = debug.isLogEnabled() ? dataInfo() : dataInfo().parallel();
+        Stream<SharedType> typeStream = debug.isLogEnabledForMethod() ? typeInfo() : typeInfo().parallel();
+        Stream<Pair<SharedMethod, CompilationResult>> codeStream = debug.isLogEnabledForMethod() ? codeInfo() : codeInfo().parallel();
+        Stream<Object> dataStream = debug.isLogEnabledForMethod() ? dataInfo() : dataInfo().parallel();
 
         try (DebugContext.Scope s = debug.scope("DebugInfoProvider")) {
             // Create and index an empty dir with index 0 for null paths.
