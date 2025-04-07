@@ -46,7 +46,7 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
  */
 public final class DeferredCommonPool extends ForkJoinPool {
 
-    private static final Method methodInvokeAllUninterruptibly = ReflectionUtil.lookupMethod(ForkJoinPool.class, "invokeAllUninterruptibly", Collection.class);
+    private static final Method methodInvokeAllUninterruptibly = JavaVersionUtil.JAVA_SPEC >= 22 ? ReflectionUtil.lookupMethod(ForkJoinPool.class, "invokeAllUninterruptibly", Collection.class) : null;
 
     public DeferredCommonPool() {
         super(1, new DisallowingForkJoinWorkerThreadFactory(), null, false);
