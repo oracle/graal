@@ -916,8 +916,11 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         int pos = p;
         // Write Abbrevs that are shared for AOT and Runtime compilation
         pos = writeCompileUnitAbbrevs(context, buffer, pos);
+        pos = writeTypeUnitAbbrev(context, buffer, pos);
         pos = writeNamespaceAbbrev(context, buffer, pos);
         pos = writeClassLayoutAbbrevs(context, buffer, pos);
+        pos = writeDummyClassLayoutAbbrev(context, buffer, pos);
+        pos = writeClassReferenceAbbrevs(context, buffer, pos);
         pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
         pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
@@ -929,14 +932,12 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeLocalLocationAbbrevs(context, buffer, pos);
 
         // Write Abbrevs that are only used for AOT debuginfo generation
-        if (!dwarfSections.isRuntimeCompilation()) {
-            pos = writeTypeUnitAbbrev(context, buffer, pos);
+        if (!dwarfSections.isRuntimeCompilation() || true) {
 
             pos = writePrimitiveTypeAbbrev(context, buffer, pos);
             pos = writeVoidTypeAbbrev(context, buffer, pos);
             pos = writeObjectHeaderAbbrev(context, buffer, pos);
 
-            pos = writeClassReferenceAbbrevs(context, buffer, pos);
             pos = writeFieldDeclarationAbbrevs(context, buffer, pos);
             pos = writeClassConstantAbbrev(context, buffer, pos);
 
@@ -988,7 +989,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
     private int writeCompileUnitAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        if (!dwarfSections.isRuntimeCompilation()) {
+        if (!dwarfSections.isRuntimeCompilation() || true) {
             pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_CONSTANT_UNIT, buffer, pos);
             pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_1, buffer, pos);
             pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_2, buffer, pos);
@@ -1158,6 +1159,27 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeDummyClassLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        pos = writeAbbrevCode(AbbrevCode.CLASS_LAYOUT_DUMMY, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_structure_type, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
+
+        return pos;
+    }
+
     private int writeClassReferenceAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
         pos = writeClassReferenceAbbrev(context, AbbrevCode.TYPE_POINTER_SIG, buffer, pos);
@@ -1191,7 +1213,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_INLINE, buffer, pos);
         pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_STATIC, buffer, pos);
         pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_INLINE_STATIC, buffer, pos);
-        if (!dwarfSections.isRuntimeCompilation()) {
+        if (!dwarfSections.isRuntimeCompilation() || true) {
             pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_SKELETON, buffer, pos);
         }
         return pos;
@@ -1255,6 +1277,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeFieldDeclarationAbbrev(context, AbbrevCode.FIELD_DECLARATION_3, buffer, pos);
         /* A static field with line and file. */
         pos = writeFieldDeclarationAbbrev(context, AbbrevCode.FIELD_DECLARATION_4, buffer, pos);
+
+        pos = writeFieldDeclarationRelTypeAbbrev(context, buffer, pos);
         return pos;
     }
 
@@ -1609,7 +1633,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_1, buffer, pos);
         pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_2, buffer, pos);
         pos = writeParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_3, buffer, pos);
-        if (!dwarfSections.isRuntimeCompilation()) {
+        if (!dwarfSections.isRuntimeCompilation() || true) {
             pos = writeSkeletonParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_4, buffer, pos);
             pos = writeSkeletonParameterDeclarationAbbrev(context, AbbrevCode.METHOD_PARAMETER_DECLARATION_5, buffer, pos);
         }
