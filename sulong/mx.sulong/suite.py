@@ -1661,7 +1661,7 @@ suite = {
       "mainClass": "com.oracle.truffle.llvm.launcher.LLVMLauncher",
       "jar_distributions": ["sulong:SULONG_LAUNCHER"],
       "relative_home_paths": {
-        "llvm": "..",
+        "llvm": "../lib/sulong",
       },
       "relative_jre_path": "../jvm",
       "relative_module_path": "../modules",
