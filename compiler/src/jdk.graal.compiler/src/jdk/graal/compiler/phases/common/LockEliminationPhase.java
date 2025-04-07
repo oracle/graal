@@ -26,7 +26,6 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -69,7 +68,7 @@ public class LockEliminationPhase extends Phase {
             if ((next instanceof MonitorEnterNode)) {
                 // should never happen, osr monitor enters are always direct successors of the graph
                 // start
-                assert !(next instanceof OSRMonitorEnterNode) : Assertions.errorMessageContext("next", next);
+                GraalError.guarantee(!(next instanceof OSRMonitorEnterNode), "OSRMonitorEnterNode can't be seen here: %s", next);
                 AccessMonitorNode monitorEnterNode = (AccessMonitorNode) next;
                 if (isCompatibleLock(monitorEnterNode, monitorExitNode, true, cfg)) {
                     /*
