@@ -744,7 +744,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             AbstractObjectStamp stamp = (AbstractObjectStamp) compression.stamp(NodeView.DEFAULT);
             ConditionalEliminationUtil.InfoElement infoElement = infoElementProvider.infoElements(compression.getValue());
             while (infoElement != null) {
-                if (infoElement.getStamp() instanceof AbstractObjectStamp objStamp) {
+                if (infoElement.getStamp() instanceof AbstractObjectStamp) {
                     Stamp improvedStamp = compression.foldStamp(infoElement.getStamp());
                     if (!stamp.equals(improvedStamp)) {
                         registerNewStamp(compression, improvedStamp, infoElement.getGuard());
