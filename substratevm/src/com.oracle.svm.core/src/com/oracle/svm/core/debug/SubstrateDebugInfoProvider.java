@@ -227,7 +227,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
         if (type.isPrimitive()) {
             JavaKind kind = type.getStorageKind();
-            return new PrimitiveTypeEntry(typeName, kind == JavaKind.Void ? 0 : kind.getByteCount(), classOffset, typeSignature, kind);
+            return new PrimitiveTypeEntry(typeName, size, classOffset, typeSignature, kind);
         } else {
             // otherwise we have a structured type
             long layoutTypeSignature = getTypeSignature(LAYOUT_PREFIX + typeName + loaderName);

@@ -30,12 +30,21 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class PrimitiveTypeEntry extends TypeEntry {
 
-    private final JavaKind kind;
+    private final int bitCount;
+    private final boolean isNumericInteger;
+    private final boolean isNumericFloat;
+    private final boolean isUnsigned;
 
-    public PrimitiveTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                    JavaKind kind) {
+    public PrimitiveTypeEntry(String typeName, int size, long classOffset, long typeSignature, JavaKind kind) {
+        this(typeName, size, classOffset, typeSignature, kind == JavaKind.Void ? 0 : kind.getBitCount(), kind.isNumericInteger(), kind.isNumericFloat(), kind.isUnsigned());
+    }
+
+    public PrimitiveTypeEntry(String typeName, int size, long classOffset, long typeSignature, int bitCount, boolean isNumericInteger, boolean isNumericFloat, boolean isUnsigned) {
         super(typeName, size, classOffset, typeSignature, typeSignature);
-        this.kind = kind;
+        this.bitCount = bitCount;
+        this.isNumericInteger = isNumericInteger;
+        this.isNumericFloat = isNumericFloat;
+        this.isUnsigned = isUnsigned;
     }
 
     @Override
@@ -43,23 +52,19 @@ public class PrimitiveTypeEntry extends TypeEntry {
         return true;
     }
 
-    public char getTypeChar() {
-        return kind.getTypeChar();
-    }
-
     public int getBitCount() {
-        return (kind == JavaKind.Void ? 0 : kind.getBitCount());
+        return bitCount;
     }
 
     public boolean isNumericInteger() {
-        return kind.isNumericInteger();
+        return isNumericInteger;
     }
 
     public boolean isNumericFloat() {
-        return kind.isNumericFloat();
+        return isNumericFloat;
     }
 
     public boolean isUnsigned() {
-        return kind.isUnsigned();
+        return isUnsigned;
     }
 }
