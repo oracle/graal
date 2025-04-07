@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -53,6 +54,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -65,6 +67,7 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
 
     @Fold
     public static boolean isPresent() {
+        VMError.guarantee(BuildPhaseProvider.isSetupFinished(), "JfrRecurringCallbackExecutionSampler.isPresent() must not be called too early");
         if (ImageSingletons.contains(JfrExecutionSampler.class)) {
             JfrExecutionSampler sampler = ImageSingletons.lookup(JfrExecutionSampler.class);
             return sampler instanceof JfrRecurringCallbackExecutionSampler;

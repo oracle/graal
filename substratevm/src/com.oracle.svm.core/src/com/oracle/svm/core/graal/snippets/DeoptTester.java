@@ -118,7 +118,7 @@ public class DeoptTester {
         try {
             if (Heap.getHeap().isAllocationDisallowed() ||
                             !CEntryPointSnippets.isIsolateInitialized() ||
-                            (RecurringCallbackSupport.isEnabled() && RecurringCallbackSupport.isCallbackExecutionSuspended()) ||
+                            (RecurringCallbackSupport.isEnabled() && RecurringCallbackSupport.isCallbackTimerSuspended()) ||
                             VMOperation.isInProgress() ||
                             SafepointBehavior.ignoresSafepoints() ||
                             !PlatformThreads.isCurrentAssigned()) {

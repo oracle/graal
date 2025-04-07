@@ -201,7 +201,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
              * a recurring callback in the yellow zone is dangerous because a stack overflow in the
              * recurring callback would then lead to a fatal error.
              */
-            RecurringCallbackSupport.suspendCallbackExecution("Recurring callbacks are considered user code and must not run in yellow zone");
+            RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks are considered user code and must not run in yellow zone");
 
             stackBoundaryTL.set(stackBoundaryTL.get().subtract(Options.StackYellowZoneSize.getValue()));
         }
@@ -241,7 +241,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         VMError.guarantee(newState < oldState && newState >= STATE_YELLOW_ENABLED, "StackOverflowCheckImpl.onYellowZoneProtected: Illegal state");
 
         if (newState == STATE_YELLOW_ENABLED) {
-            RecurringCallbackSupport.resumeCallbackExecutionAtNextSafepoint();
+            RecurringCallbackSupport.resumeCallbackTimerAtNextSafepointCheck();
 
             stackBoundaryTL.set(stackBoundaryTL.get().add(Options.StackYellowZoneSize.getValue()));
         }

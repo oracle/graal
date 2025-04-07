@@ -161,7 +161,7 @@ public class SafepointSlowpath {
     private static void slowPathSafepointCheck0(int newStatus, boolean callerHasJavaFrameAnchor, boolean popFrameAnchor) {
         if (Safepoint.singleton().isMasterThread()) {
             /* Must not stop at a safepoint nor trigger a callback. */
-            assert RecurringCallbackSupport.isCallbackExecutionNotSupportedOrSuspended();
+            assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
         } else {
             do {
                 if (Safepoint.singleton().isPendingOrInProgress() || ThreadSuspendSupport.isCurrentThreadSuspended()) {

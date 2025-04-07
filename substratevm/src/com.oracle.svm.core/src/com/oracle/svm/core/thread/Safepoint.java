@@ -196,7 +196,7 @@ public final class Safepoint {
         VMThreads.singleton().cleanupExitedOsThreads();
     }
 
-    /** Blocks until all other threads entered the safepoint. */
+    /** Blocks until all threads (other than the current thread) have entered the safepoint. */
     private static int requestThreadsEnterSafepoint(String reason) {
         assert THREAD_MUTEX.isOwner() : "must hold mutex while waiting for safepoints";
 

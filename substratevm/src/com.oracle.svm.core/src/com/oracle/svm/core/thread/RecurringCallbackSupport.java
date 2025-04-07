@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -60,14 +59,12 @@ import jdk.graal.compiler.options.Option;
  * VM. Even allocating Java objects can already be enough to cause problems.
  */
 public class RecurringCallbackSupport {
-    public static class Options {
-        @Option(help = "Test whether a thread's recurring callback is pending on each transition from native code to Java.") //
-        public static final HostedOptionKey<Boolean> CheckRecurringCallbackOnNativeToJavaTransition = new HostedOptionKey<>(false);
-    }
-
     public static class ConcealedOptions {
         @Option(help = "Support a per-thread timer that is called at a specific interval.") //
         public static final HostedOptionKey<Boolean> SupportRecurringCallback = new HostedOptionKey<>(false);
+
+        @Option(help = "Test whether a thread's recurring callback is pending on each transition from native code to Java.") //
+        static final HostedOptionKey<Boolean> CheckRecurringCallbackOnNativeToJavaTransition = new HostedOptionKey<>(false);
     }
 
     /**
@@ -80,7 +77,6 @@ public class RecurringCallbackSupport {
 
     @Fold
     public static boolean isEnabled() {
-        VMError.guarantee(BuildPhaseProvider.isSetupFinished(), "JfrRecurringCallbackExecutionSampler.isPresent() must not be called too early");
         return ConcealedOptions.SupportRecurringCallback.getValue() || JfrRecurringCallbackExecutionSampler.isPresent();
     }
 
@@ -158,7 +154,7 @@ public class RecurringCallbackSupport {
     }
 
     static boolean needsNativeToJavaSlowpath() {
-        return isEnabled() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && timerTL.get() != null && !isCallbackExecutionSuspended();
+        return isEnabled() && ConcealedOptions.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && timerTL.get() != null && !isCallbackTimerSuspended();
     }
 
     /**
@@ -167,7 +163,7 @@ public class RecurringCallbackSupport {
      * temporarily because we can't deal with arbitrary code execution or thrown exceptions.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void suspendCallbackExecution(@SuppressWarnings("unused") String reason) {
+    public static void suspendCallbackTimer(@SuppressWarnings("unused") String reason) {
         if (!isEnabled()) {
             return;
         }
@@ -184,13 +180,13 @@ public class RecurringCallbackSupport {
      * might be triggered at the next safepoint check.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void resumeCallbackExecutionAtNextSafepoint() {
+    public static void resumeCallbackTimerAtNextSafepointCheck() {
         if (!isEnabled()) {
             return;
         }
 
         decrementSuspended();
-        if (!isCallbackExecutionSuspended()) {
+        if (!isCallbackTimerSuspended()) {
             RecurringCallbackTimer timer = timerTL.get();
             if (timer != null) {
                 timer.updateStatistics();
@@ -200,22 +196,22 @@ public class RecurringCallbackSupport {
     }
 
     /**
-     * Like {@link #resumeCallbackExecutionAtNextSafepoint()} but with the difference that this
+     * Like {@link #resumeCallbackTimerAtNextSafepointCheck()} but with the difference that this
      * method may trigger the execution of the recurring callback right away.
      */
-    public static void resumeCallbackExecution() {
+    public static void resumeCallbackTimer() {
         if (!isEnabled()) {
             return;
         }
 
         decrementSuspended();
-        if (!isCallbackExecutionSuspended()) {
-            resumeCallbackExecution0();
+        if (!isCallbackTimerSuspended()) {
+            resumeCallbackTimer0();
         }
     }
 
     @Uninterruptible(reason = "Prevent unexpected recurring callback execution (pending exception must not be destroyed).")
-    private static void resumeCallbackExecution0() {
+    private static void resumeCallbackTimer0() {
         try {
             maybeExecuteCallback();
         } catch (SafepointException e) {
@@ -225,12 +221,12 @@ public class RecurringCallbackSupport {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isCallbackExecutionNotSupportedOrSuspended() {
-        return !isEnabled() || isCallbackExecutionSuspended();
+    public static boolean isCallbackUnsupportedOrTimerSuspended() {
+        return !isEnabled() || isCallbackTimerSuspended();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isCallbackExecutionSuspended() {
+    public static boolean isCallbackTimerSuspended() {
         assert isEnabled();
         return suspendedTL.get() != 0;
     }
@@ -403,7 +399,7 @@ public class RecurringCallbackSupport {
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private boolean isCallbackDisabled() {
-            return isExecuting || isCallbackExecutionSuspended();
+            return isExecuting || isCallbackTimerSuspended();
         }
 
         /**

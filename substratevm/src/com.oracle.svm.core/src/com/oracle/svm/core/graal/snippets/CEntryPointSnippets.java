@@ -666,7 +666,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
 
             /* After threadExit(), only uninterruptible code may be executed. */
-            RecurringCallbackSupport.suspendCallbackExecution("Execution of arbitrary code is prohibited during the last teardown steps.");
+            RecurringCallbackSupport.suspendCallbackTimer("Execution of arbitrary code is prohibited during the last teardown steps.");
 
             /* Shut down VM thread. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {

@@ -268,7 +268,7 @@ public class JavaMainWrapper {
 
     @Uninterruptible(reason = "The caller initialized the thread state, so the callees do not need to be uninterruptible.", calleeMustBe = false)
     private static void runShutdown() {
-        RecurringCallbackSupport.suspendCallbackExecution("Recurring callbacks can't be executed during shutdown.");
+        RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");
         runShutdown0();
     }
 

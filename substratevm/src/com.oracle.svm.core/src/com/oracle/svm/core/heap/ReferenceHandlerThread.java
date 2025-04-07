@@ -76,7 +76,7 @@ public final class ReferenceHandlerThread implements Runnable {
 
     @Override
     public void run() {
-        RecurringCallbackSupport.suspendCallbackExecution("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
+        RecurringCallbackSupport.suspendCallbackTimer("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
 
         this.isolateThread = CurrentIsolate.getCurrentThread();
         try {

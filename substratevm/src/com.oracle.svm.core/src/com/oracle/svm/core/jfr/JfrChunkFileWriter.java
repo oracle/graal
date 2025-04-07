@@ -673,7 +673,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         @Uninterruptible(reason = "Prevent JFR recording.")
         private static void processSamplerBuffers() {
             assert VMOperation.isInProgressAtSafepoint();
-            assert RecurringCallbackSupport.isCallbackExecutionNotSupportedOrSuspended();
+            assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
 
             JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
             try {

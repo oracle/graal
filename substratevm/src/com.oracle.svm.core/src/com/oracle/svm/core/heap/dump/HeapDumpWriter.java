@@ -421,7 +421,7 @@ public class HeapDumpWriter {
 
     public boolean dumpHeap(RawFileDescriptor fd) {
         assert VMOperation.isInProgressAtSafepoint();
-        assert RecurringCallbackSupport.isCallbackExecutionNotSupportedOrSuspended();
+        assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
 
         noAllocationVerifier.open();
         try {

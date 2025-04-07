@@ -78,12 +78,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     // GR-63737 only called from legacy code
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void pauseRecurringCallback(String reason) {
-        RecurringCallbackSupport.suspendCallbackExecution(reason);
+        RecurringCallbackSupport.suspendCallbackTimer(reason);
     }
 
     // GR-63737 only called from legacy code
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void resumeRecurringCallbackAtNextSafepoint() {
-        RecurringCallbackSupport.resumeCallbackExecutionAtNextSafepoint();
+        RecurringCallbackSupport.resumeCallbackTimerAtNextSafepointCheck();
     }
 }

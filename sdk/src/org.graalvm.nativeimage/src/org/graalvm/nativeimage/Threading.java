@@ -60,8 +60,8 @@ public final class Threading {
      * Registers a {@link RecurringCallback callback handler} that is called by the current thread
      * approximately at the provided interval. This functionality is only supported if the native
      * binary is built with {@code -H:+SupportRecurringCallback}. Note that only carefully crafted,
-     * uninterruptible code can be executed safely in a recurring callback. Executing any other code
-     * can result in deadlocks or crashes.
+     * uninterruptible code can execute safely in a recurring callback. Executing any other code
+     * easily results in deadlocks, crashes, and difficult-to-debug anomalies.
      * <p>
      * Only one callback can be active per thread. Each thread can have its own callback with a
      * different interval (or none at all). No guarantees are made about the actual interval. For
