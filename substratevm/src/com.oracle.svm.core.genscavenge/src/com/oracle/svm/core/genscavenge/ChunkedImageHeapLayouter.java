@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -41,6 +42,8 @@ import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -75,6 +78,8 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     private static final int READ_ONLY_HUGE = WRITABLE_HUGE + 1;
     private static final int PARTITION_COUNT = READ_ONLY_HUGE + 1;
 
+    private static final String ALIGNED_HEAP_CHUNK_OPTION = SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.AlignedHeapChunkSize, "<2^n>");
+
     private final ChunkedImageHeapPartition[] partitions;
     private final ImageHeapInfo heapInfo;
     private final long startOffset;
@@ -96,11 +101,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
         UnsignedWord alignedHeaderSize = RememberedSet.get().getHeaderSizeOfAlignedChunk();
-        UnsignedWord unalignedHeaderSize = RememberedSet.get().getHeaderSizeOfUnalignedChunk();
         UnsignedWord hugeThreshold = HeapParameters.getAlignedHeapChunkSize().subtract(alignedHeaderSize);
-        if (unalignedHeaderSize.belowThan(alignedHeaderSize)) {
-            hugeThreshold = hugeThreshold.unsignedDivide(2);
-        }
         this.hugeObjectThreshold = hugeThreshold.rawValue();
     }
 
@@ -120,21 +121,37 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         if (patched) {
             return getWritablePatched();
         } else if (immutable) {
-            if (hasRelocatables) {
-                VMError.guarantee(info.getSize() < hugeObjectThreshold, "Objects with relocatable pointers cannot be huge objects");
-                return getReadOnlyRelocatable();
-            }
             if (info.getSize() >= hugeObjectThreshold) {
-                VMError.guarantee(info.getObjectClass() != DynamicHub.class, "Class metadata (dynamic hubs) cannot be huge objects");
+                if (hasRelocatables) {
+                    if (info.getObjectClass() == DynamicHub.class) {
+                        throw reportHugeObjectError(info, "Class metadata (dynamic hubs) cannot be huge objects: the dynamic hub %s", info.getObject().toString());
+                    }
+                    throw reportHugeObjectError(info, "Objects in image heap with relocatable pointers cannot be huge objects. Detected an object of type %s",
+                                    info.getObject().getClass().getTypeName());
+                }
                 return getReadOnlyHuge();
             }
-            return getReadOnlyRegular();
+            if (hasRelocatables) {
+                return getReadOnlyRelocatable();
+            } else {
+                return getReadOnlyRegular();
+            }
         } else {
             assert info.getObjectClass() != DynamicHub.class : "Class metadata (dynamic hubs) cannot be writable";
             if (info.getSize() >= hugeObjectThreshold) {
                 return getWritableHuge();
             }
             return getWritableRegular();
+        }
+    }
+
+    private Error reportHugeObjectError(ImageHeapObject info, String objectTypeMsg, String objectText) {
+        String msg = String.format(objectTypeMsg + " with size %d B and the limit is %d B. Use '%s' to increase GC chunk size to be larger than the object.",
+                        objectText, info.getSize(), hugeObjectThreshold, ALIGNED_HEAP_CHUNK_OPTION);
+        if (ImageInfo.inImageBuildtimeCode()) {
+            throw UserError.abort(msg);
+        } else {
+            throw VMError.shouldNotReachHere(msg);
         }
     }
 

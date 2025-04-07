@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,8 @@ import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
@@ -74,8 +76,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
 
     private static final SnippetRuntime.SubstrateForeignCallDescriptor POST_WRITE_BARRIER = SnippetRuntime.findForeignCall(BarrierSnippets.class, "postWriteBarrierStub",
-                    NO_SIDE_EFFECT,
-                    CARD_REMEMBERED_SET_LOCATION);
+                    NO_SIDE_EFFECT, CARD_REMEMBERED_SET_LOCATION);
 
     private final SnippetInfo postWriteBarrierSnippet;
 
@@ -108,30 +109,29 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
-    @Node.NodeIntrinsic(ForeignCallNode.class)
-    private static native void callPostWriteBarrierStub(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void callPostWriteBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
 
     @Snippet
-    public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean shouldOutline, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean verifyOnly) {
+    public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean shouldOutline, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean eliminated) {
+        boolean shouldVerify = SerialGCOptions.VerifyWriteBarriers.getValue();
+        if (!shouldVerify && eliminated) {
+            return;
+        }
+
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
         UnsignedWord objectHeader = oh.readHeaderFromObject(fixedObject);
 
-        if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
+        if (shouldVerify && alwaysAlignedChunk) {
             /*
              * To increase verification coverage, we do the verification before checking if a
-             * barrier is needed at all. And in addition to verifying that the object is in an
-             * aligned chunk, we also verify that it is not an array at all because most arrays are
-             * small and therefore in an aligned chunk.
+             * barrier is needed at all.
              */
-
             if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, ObjectHeaderImpl.isUnalignedHeader(objectHeader))) {
                 BreakpointNode.breakpoint();
             }
             if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject == null)) {
-                BreakpointNode.breakpoint();
-            }
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject.getClass().isArray())) {
                 BreakpointNode.breakpoint();
             }
         }
@@ -141,7 +141,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        if (shouldOutline && !verifyOnly) {
+        if (shouldOutline && !eliminated) {
             callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject);
             return;
         }
@@ -149,12 +149,12 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         if (!alwaysAlignedChunk) {
             boolean unaligned = ObjectHeaderImpl.isUnalignedHeader(objectHeader);
             if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, unaligned)) {
-                RememberedSet.get().dirtyCardForUnalignedObject(fixedObject, verifyOnly);
+                RememberedSet.get().dirtyCardForUnalignedObject(fixedObject, eliminated);
                 return;
             }
         }
 
-        RememberedSet.get().dirtyCardForAlignedObject(fixedObject, verifyOnly);
+        RememberedSet.get().dirtyCardForAlignedObject(fixedObject, eliminated);
     }
 
     private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrierNode> {
@@ -184,7 +184,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             args.add("object", address.getBase());
             args.add("shouldOutline", shouldOutline(barrier));
             args.add("alwaysAlignedChunk", alwaysAlignedChunk);
-            args.add("verifyOnly", getVerifyOnly(barrier));
+            args.add("eliminated", tryEliminate(barrier));
 
             template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -193,12 +193,17 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             if (SerialGCOptions.OutlineWriteBarriers.getValue() != null) {
                 return SerialGCOptions.OutlineWriteBarriers.getValue();
             }
-            return GraalOptions.ReduceCodeSize.getValue(barrier.getOptions());
+            if (GraalOptions.ReduceCodeSize.getValue(barrier.getOptions())) {
+                return true;
+            }
+            // Newly allocated objects are likely young, so we can outline the execution after
+            // checking hasRememberedSet
+            return barrier instanceof SerialWriteBarrierNode serialBarrier && serialBarrier.getBaseStatus().likelyYoung();
         }
 
-        private static boolean getVerifyOnly(WriteBarrierNode barrier) {
-            if (barrier instanceof SerialWriteBarrierNode) {
-                return ((SerialWriteBarrierNode) barrier).getVerifyOnly();
+        private static boolean tryEliminate(WriteBarrierNode barrier) {
+            if (barrier instanceof SerialWriteBarrierNode serialBarrier) {
+                return serialBarrier.isEliminated() || serialBarrier.getBaseStatus() == SerialWriteBarrierNode.BaseStatus.NO_LOOP_OR_SAFEPOINT;
             }
             return false;
         }

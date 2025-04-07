@@ -38,9 +38,10 @@ import mx_gate
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 import mx_sdk_vm_impl
+from mx_sdk_vm_ng import JavaHomeDependency
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-from os.path import join, isabs, exists, dirname, relpath, basename
+from os.path import join, exists, dirname, relpath
 from import_order import verify_order, validate_format
 
 _suite = mx.suite('espresso')
@@ -585,49 +586,6 @@ def register_espresso_runtime_resources(register_project, register_distribution,
             "artifactId": "espresso-runtime-resources-" + espresso_runtime_resource_name,
             "tag": ["default", "public"],
         }))
-
-
-class JavaHomeDependency(mx.BaseLibrary):
-    def __init__(self, suite, name, java_home):
-        assert isabs(java_home)
-        self.java_home = java_home
-        release_dict = mx_sdk_vm.parse_release_file(join(java_home, 'release'))
-        self.is_ee_implementor = release_dict.get('IMPLEMENTOR') == 'Oracle Corporation'
-        self.version = mx.VersionSpec(release_dict.get('JAVA_VERSION'))
-        self.major_version = self.version.parts[1] if self.version.parts[0] == 1 else self.version.parts[0]
-        if self.is_ee_implementor:
-            the_license = "Oracle Proprietary"
-        else:
-            the_license = "GPLv2-CPE"
-        super().__init__(suite, name, optional=False, theLicense=the_license)
-        self.deps = []
-
-    def is_available(self):
-        return True
-
-    def getBuildTask(self, args):
-        return mx.ArchivableBuildTask(self, args, 1)
-
-    def getResults(self):
-        for root, _, files in os.walk(self.java_home):
-            for name in files:
-                yield join(root, name)
-
-    def getArchivableResults(self, use_relpath=True, single=False):
-        if single:
-            raise ValueError("single not supported")
-        for path in self.getResults():
-            if use_relpath:
-                arcname = relpath(path, self.java_home)
-            else:
-                arcname = basename(path)
-            yield path, arcname
-
-    def post_init(self):
-        pass  # help act like a distribution since this is registered as a distribution
-
-    def archived_deps(self):
-        return []  # help act like a distribution since this is registered as a distribution
 
 
 class EspressoRuntimeResourceProject(mx.JavaProject):

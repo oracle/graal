@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,7 +126,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
                 args.add("object", address.getBase());
             }
             args.add("counters", counters);
-            args.add("verifyOnly", barrier.getVerifyOnly());
+            args.add("verifyOnly", barrier.isEliminated());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -362,6 +362,15 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     @Override
     public boolean ensureMaterialized(VirtualObjectNode virtualObject) {
         return closure.ensureMaterialized(state, virtualObject.getObjectId(), position, effects, PartialEscapeClosure.COUNTER_MATERIALIZATIONS_UNHANDLED);
+    }
+
+    @Override
+    public boolean canVirtualizeLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId) {
+        if (getPlatformConfigurationProvider().requiresStrictLockOrder()) {
+            int id = virtualObject.getObjectId();
+            return !state.isNonImmediateRecursiveLock(id, monitorId);
+        }
+        return true;
     }
 
     @Override

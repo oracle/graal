@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,6 @@ package com.oracle.svm.hosted.foreign;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 
@@ -43,8 +40,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -124,19 +119,5 @@ class ForeignGraphKit extends HostedGraphKit {
 
     public ValueNode bindRegister(Register register, JavaKind kind) {
         return append(new ReadRegisterNode(register, kind, false, false));
-    }
-
-    private JavaKind getRegisterKind(Register register) {
-        // GR-62468: possible incorrect backup/restore of XMM register (Windows only)
-        return AMD64.XMM.equals(register.getRegisterCategory()) ? JavaKind.Double : getWordTypes().getWordKind();
-    }
-
-    public Map<Register, ValueNode> saveRegisters(Iterable<Register> registers) {
-        return StreamSupport.stream(registers.spliterator(), false)
-                        .collect(Collectors.toMap(reg -> reg, register -> bindRegister(register, getRegisterKind(register))));
-    }
-
-    public void restoreRegisters(Map<Register, ValueNode> save) {
-        save.forEach((register, value) -> append(new WriteRegisterNode(register, value)));
     }
 }
