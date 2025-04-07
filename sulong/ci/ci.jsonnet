@@ -39,6 +39,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/regex/**",
         "<graal>/java-benchmarks/**",
       ] + (if standalone then [
+        # tools suite (included in standalone)
+        "<graal>/tools/**",
         # substratevm and its dependencies
         "<graal>/substratevm/**",
         # vm and its dependencies
