@@ -98,6 +98,13 @@ public final class MetadataTracer {
         return config.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor(className));
     }
 
+    public ConfigurationType traceJNIType(String className) {
+        assert enabled();
+        ConfigurationType result = traceReflectionType(className);
+        result.setJniAccessible();
+        return result;
+    }
+
     public void traceResource(String resourceName, String moduleName) {
         assert enabled();
         config.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
