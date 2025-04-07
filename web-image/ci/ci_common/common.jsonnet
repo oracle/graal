@@ -58,7 +58,7 @@ local node_map = {
     },
   },
 
-  guard_suites: ['web-image', '<graal>/substratevm', '<graal>/compiler', '<graal>/sdk', '<graal>/wasm'],
+  guard_suites: ['<graal>/web-image', '<graal>/substratevm', '<graal>/compiler', '<graal>/sdk', '<graal>/wasm'],
   extra_includes: [],
 
   catch_test_failures: {

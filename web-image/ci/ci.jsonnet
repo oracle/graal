@@ -1,7 +1,7 @@
 local ci_common = import '../../ci/ci_common/common.jsonnet';
-local common = import 'ci_includes/common.jsonnet';
+local common = import 'ci_common/common.jsonnet';
 local utils = (import '../../ci/ci_common/common-utils.libsonnet');
-local r = import 'ci_includes/wi-run-spec.jsonnet';
+local r = import 'ci_common/wi-run-spec.jsonnet';
 
 local mxgate(tags) = r.mxgate(tags, suite='web-image');
 
