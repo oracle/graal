@@ -72,7 +72,7 @@ public class ThreadStatusTransition {
         int newStatus = StatusSupport.STATUS_IN_JAVA;
 
         if (probability(VERY_FAST_PATH_PROBABILITY, !VMThreads.ActionOnTransitionToJavaSupport.isActionPending()) &&
-                        probability(VERY_FAST_PATH_PROBABILITY, !ThreadingSupportImpl.needsNativeToJavaSlowpath()) &&
+                        probability(VERY_FAST_PATH_PROBABILITY, !RecurringCallbackSupport.needsNativeToJavaSlowpath()) &&
                         probability(VERY_FAST_PATH_PROBABILITY, StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
             if (popFrameAnchor) {
                 JavaFrameAnchors.popFrameAnchor();

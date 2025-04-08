@@ -53,7 +53,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -121,6 +120,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.MissingRegistrationSupport;
@@ -1086,6 +1086,7 @@ public class NativeImageGenerator {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
+                BuildPhaseProvider.markSetupFinished();
 
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                     Heap.getHeap().setStartOffset(HostedImageLayerBuildingSupport.singleton().getLoader().getImageHeapSize());
