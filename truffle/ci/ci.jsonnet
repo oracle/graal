@@ -124,9 +124,12 @@
   },
 
   local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
-    name: 'gate-truffle-oraclejdk-' + self.jdk_name,
+    name: 'gate-truffle-oraclejdk-' + self.jdk_name + '-' + self.os + '-' + self.arch,
     # The `fulltest` tag includes all Truffle test gate tasks except those that require GraalVM.
-    run: [["mx", "--strict-compliance", "gate", "--strict-mode", "--tag", "style,fullbuild,fulltest"]],
+    run: [["mx", "--strict-compliance", "gate", "--strict-mode", "--tag"] + (if (self.os == 'windows') then ["style:0:6,fullbuild,fulltest"] else ["style,fullbuild,fulltest"])],
+    environment+: if self.os == 'windows' then {
+      ECLIPSE_EXE: "$ECLIPSE\\eclipse.exe",
+    } else {},
   },
 
   local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
@@ -159,7 +162,7 @@
         gate_tag_suffix: '-quickbuild'
     },
 
-    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "1:30:00"},
     linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdkLatest + guard {
@@ -181,9 +184,8 @@
       ],
     },
 
-    # TODO Run full gate on Windows GR-51441
-    windows_amd64 + gate_lite + common.oraclejdk21 + devkits["windows-jdk21"] + guard,
-    windows_amd64 + gate_lite + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard,
+    windows_amd64 + truffle_gate + common.oraclejdk21 + devkits["windows-jdk21"] + guard + {timelimit: "1:30:00"},
+    windows_amd64 + truffle_gate + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard + {timelimit: "1:00:00", environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
       name: "weekly-truffle-coverage-21-linux-amd64",
