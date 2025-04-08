@@ -261,6 +261,9 @@ final class Target_java_util_concurrent_ForkJoinPool {
     @Alias //
     Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
     }
+
+    @Alias
+    public static native ForkJoinPool asyncCommonPool();
 }
 
 /**

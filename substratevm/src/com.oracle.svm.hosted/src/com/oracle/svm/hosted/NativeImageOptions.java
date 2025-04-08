@@ -54,6 +54,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 public class NativeImageOptions {
 
@@ -201,8 +202,18 @@ public class NativeImageOptions {
     public static int getActualNumberOfThreads() {
         int commonThreadParallelism = ForkJoinPool.getCommonPoolParallelism();
         if (NumberOfThreads.getValue() == 1) {
-            assert commonThreadParallelism == 1 : "Disabled common pool expected to report parallelism of 1";
-            commonThreadParallelism = 0; /* A disabled common pool has no actual threads */
+            if (JavaVersionUtil.JAVA_SPEC <= 21) {
+                /* Overriding zero parallelism must ensure at least one worker. */
+                assert commonThreadParallelism == 1 : "The common pool with zero parallelism has one worker thread.";
+            } else {
+                /*
+                 * Overriding zero parallelism must ensure at least one worker, but due to other
+                 * backward compatibility constraints, it ensures two.
+                 */
+                assert commonThreadParallelism == 2 : "The common pool with zero parallelism has two worker thread.";
+            }
+            /* The common pool with zero parallelism has no actual treads. */
+            commonThreadParallelism = 0;
         }
         /*
          * Main thread plus common pool threads. setCommonPoolParallelism() asserts that this number

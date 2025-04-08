@@ -50,6 +50,10 @@ final class Target_java_util_concurrent_CompletableFuture {
     @Alias @InjectAccessors(CompletableFutureAsyncPoolAccessor.class) //
     @TargetElement(onlyWith = JDK21OrEarlier.class) //
     private static Executor ASYNC_POOL;
+
+    @Alias @InjectAccessors(CompletableFutureAsyncPoolJDKLatestAccessor.class) //
+    @TargetElement(name = "ASYNC_POOL", onlyWith = JDKLatest.class) //
+    private static ForkJoinPool ASYNC_POOL_JDK_LATEST;
     // Checkstyle: resume
 }
 
@@ -93,6 +97,12 @@ class CompletableFutureAsyncPoolAccessor {
     }
 }
 
+class CompletableFutureAsyncPoolJDKLatestAccessor {
+    static ForkJoinPool get() {
+        return CompletableFutureJDKLatestFieldHolder.ASYNC_POOL;
+    }
+}
+
 /* Note that this class is initialized at run time. */
 class CompletableFutureFieldHolder {
     /* The following is copied from CompletableFuture. */
@@ -114,6 +124,14 @@ class CompletableFutureFieldHolder {
     }
 }
 
+/* Note that this class is initialized at run time. */
+class CompletableFutureJDKLatestFieldHolder {
+    /* The following is copied from CompletableFuture. */
+
+    static final ForkJoinPool ASYNC_POOL = Target_java_util_concurrent_ForkJoinPool.asyncCommonPool();
+
+}
+
 @TargetClass(value = java.util.concurrent.CompletableFuture.class, innerClass = "ThreadPerTaskExecutor", onlyWith = JDK21OrEarlier.class)
 final class Target_java_util_concurrent_CompletableFuture_ThreadPerTaskExecutor {
 }
@@ -124,5 +142,6 @@ class CompletableFutureFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitialization.initializeAtRunTime(CompletableFutureFieldHolder.class);
         RuntimeClassInitialization.initializeAtRunTime(DelaySchedulerNanoTimeOffsetHolder.class);
+        RuntimeClassInitialization.initializeAtRunTime(CompletableFutureJDKLatestFieldHolder.class);
     }
 }
