@@ -454,7 +454,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                     if (node instanceof Invoke) {
                         CallTargetNode callTarget = ((Invoke) node).callTarget();
                         if (callTarget instanceof MethodCallTargetNode) {
-                            ResolvedJavaMethod targetMethod = ((MethodCallTargetNode) callTarget).targetMethod();
+                            ResolvedJavaMethod targetMethod = callTarget.targetMethod();
                             if (targetMethod.isConstructor()) {
                                 ResolvedJavaType throwableType = replacements.providers.getMetaAccess().lookupJavaType(Throwable.class);
                                 return !throwableType.isAssignableFrom(targetMethod.getDeclaringClass());

@@ -294,7 +294,7 @@ final class TruffleFromLibGraalEntryPoints {
 
     @TruffleFromLibGraal(CompilableToString)
     static String compilableToString(Object compilable) {
-        return ((TruffleCompilable) compilable).toString();
+        return compilable.toString();
     }
 
     @TruffleFromLibGraal(GetCompilableName)
