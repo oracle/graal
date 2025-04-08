@@ -37,6 +37,7 @@ import org.capnproto.Serialize;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
@@ -182,6 +183,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                     SubstrateOptions.imageLayerCreateEnabledHandler.onOptionEnabled(values);
                 }
                 SubstrateOptions.UseContainerSupport.update(values, false);
+                enableConservativeUnsafeAccess(values);
             }
         }
         if (SubstrateOptions.LayerUse.hasBeenSet(hostedOptions)) {
@@ -196,7 +198,28 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                     SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
                 }
             }
+            enableConservativeUnsafeAccess(values);
         }
+    }
+
+    /**
+     * The default unsafe implementation assumes that all unsafe load/store operations can be
+     * tracked. This cannot be used in layered images.
+     * 
+     * First, in the base layer we cannot track the future layers' unsafe accessed fields, so all
+     * unsafe loads must be conservatively saturated. Similarly, we cannot see any unsafe writes
+     * coming from future layers so all unsafe accessed fields are injected with all instantiated
+     * subtypes of their declared type.
+     * 
+     * Second, application layer unsafe accessed fields cannot be linked to the base layer unsafe
+     * writes, so again they are injected with all instantiated subtypes of their declared type.
+     * Unsafe loads in the application layer are similarly saturated since we don't keep track of
+     * all unsafe accessed fields from the base layer. We could avoid saturating all application
+     * layer unsafe loads by persisting the base layer unsafe accessed fields per type, but these
+     * fields contain their declared type's all-instantiated so likely most loads would saturate.
+     */
+    private static void enableConservativeUnsafeAccess(EconomicMap<OptionKey<?>, Object> values) {
+        PointstoOptions.UseConservativeUnsafeAccess.update(values, true);
     }
 
     private static boolean isLayerOptionEnabled(HostedOptionKey<? extends AccumulatingLocatableMultiOptionValue<?>> option, HostedOptionValues values) {

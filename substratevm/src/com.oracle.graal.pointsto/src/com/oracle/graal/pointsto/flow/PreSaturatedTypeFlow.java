@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,43 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
-public class UnsafeWriteSinkTypeFlow extends TypeFlow<AnalysisField> {
+import jdk.vm.ci.code.BytecodePosition;
 
-    public UnsafeWriteSinkTypeFlow(PointsToAnalysis bb, AnalysisField field) {
-        /* Use the Object type as a conservative type for the values loaded. */
-        super(field, bb.getObjectType());
+/**
+ * A pre-saturated flow that will signal the saturation to any future uses. The flow will only
+ * propagate the saturation when it is enabled by its predicate.
+ */
+public class PreSaturatedTypeFlow extends TypeFlow<BytecodePosition> {
+
+    public PreSaturatedTypeFlow(BytecodePosition bytecodePosition) {
+        super(bytecodePosition, null);
+    }
+
+    private PreSaturatedTypeFlow(MethodFlowsGraph methodFlows, PreSaturatedTypeFlow original) {
+        super(original, methodFlows);
     }
 
     @Override
-    public TypeFlow<AnalysisField> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return this;
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        return new PreSaturatedTypeFlow(methodFlows, this);
+    }
+
+    @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        super.onFlowEnabled(bb);
+        this.onSaturated(bb);
+    }
+
+    @Override
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
+        throw AnalysisError.shouldNotReachHere("PreSaturated flows don't have a state.");
     }
 
     @Override
     public String toString() {
-        return "UnsafeWriteSinkTypeFlow<" + source + ">";
+        return "PreSaturatedTypeFlow<" + getStateDescription() + ">";
     }
 }
