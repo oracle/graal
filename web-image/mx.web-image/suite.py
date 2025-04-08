@@ -321,6 +321,14 @@ suite = {
             },
             "maven": False,
         },
+        "NATIVE_IMAGE_WASM_SUPPORT": {
+            "native": True,
+            "description": "Macro for the Native Image Wasm Backend",
+            "dependencies": ["svm-wasm-macro-builder"],
+            "layout": {
+                "native-image.properties": "dependency:svm-wasm-macro-builder/native-image.properties",
+            },
+        },
         "WEBIMAGE_LIBRARY_SUPPORT": {
             "subDir": "src",
             "dependencies": [

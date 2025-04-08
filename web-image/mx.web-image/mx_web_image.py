@@ -52,6 +52,10 @@ _suite = mx.suite("web-image")
 
 _web_image_js_engine_name = os.getenv("NODE_EXE", "node")
 
+# Name of GraalVm component defining the web-image macro
+web_image_component = "web-image"
+# Name of GraalVm component defining the svm-wasm macro
+svm_wasm_component = "niwasm"
 web_image_builder = "web-image:SVM_WASM"
 web_image_builder_jars = [
     web_image_builder,
@@ -66,7 +70,9 @@ class WebImageConfiguration:
     test_cases = ["WEBIMAGE_TESTCASES"]
     """List of dependencies containing test cases"""
 
-    graalvm_component = "web-image"
+    graalvm_component = web_image_component
+
+    svm_wasm_component = svm_wasm_component
 
     builder_jars = web_image_builder_jars
 
@@ -76,6 +82,10 @@ class WebImageConfiguration:
     @classmethod
     def get_graalvm_component(cls) -> mx_sdk_vm.GraalVmComponent:
         return mx_sdk_vm.graalvm_component_by_name(cls.graalvm_component)
+
+    @classmethod
+    def get_svm_wasm_component(cls) -> mx_sdk_vm.GraalVmComponent:
+        return mx_sdk_vm.graalvm_component_by_name(cls.svm_wasm_component)
 
     @classmethod
     def get_suite(cls) -> mx.Suite:
@@ -630,10 +640,31 @@ def create_web_image_macro_builder(
         )
 
 
+# Defines svm-wasm tool macro that is used to enable the Wasm backend in Native Image
+# The macro (native-image.properties) is auto-generated in WebImageMacroBuilder.
+svm_wasm_macro = mx_sdk_vm.GraalVmSvmTool(
+    suite=_suite,
+    name="Native Image Wasm Backend",
+    short_name=svm_wasm_component,
+    dir_name="svm-wasm",
+    license_files=[],
+    third_party_license_files=[],
+    jar_distributions=[],
+    priority=0,
+    builder_jar_distributions=[
+        "web-image:SVM_WASM",
+        "web-image:SVM_WASM_API",
+        "web-image:SVM_WASM_JIMFS",
+        "web-image:SVM_WASM_GUAVA",
+    ],
+    support_distributions=["web-image:NATIVE_IMAGE_WASM_SUPPORT"],
+)
+mx_sdk_vm.register_graalvm_component(svm_wasm_macro)
+
 web_image_macro = mx_sdk_vm.GraalVmSvmTool(
     suite=_suite,
     name="Web Image",
-    short_name="web-image",
+    short_name=web_image_component,
     dir_name="web-image",
     installable_id="web-image",
     license_files=[],
@@ -675,6 +706,16 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 # explicitly using `--add-modules`.
                 "--add-modules=org.graalvm.wrapped.google.closure",
             ],
+        )
+    )
+
+    wasm_component = WebImageConfiguration.get_svm_wasm_component()
+    register_project(
+        create_web_image_macro_builder(
+            _suite,
+            "svm-wasm-macro-builder",
+            wasm_component,
+            wasm_component.builder_jar_distributions,
         )
     )
 
