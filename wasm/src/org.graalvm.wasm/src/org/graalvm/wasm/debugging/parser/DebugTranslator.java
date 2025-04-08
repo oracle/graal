@@ -76,7 +76,7 @@ public class DebugTranslator {
             if (context != null) {
                 final DebugData compilationUnit = parser.readCompilationUnitChildren(unit, debugInfoOffset);
                 if (compilationUnit != null) {
-                    if (parseFunctions(context, compilationUnit)) {
+                    if (DebugTranslator.parseFunctions(context, compilationUnit)) {
                         debugFunctions.putAll(context.functions());
                     }
                 }
@@ -133,7 +133,7 @@ public class DebugTranslator {
         return new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, filePaths, languageName, objectFactory);
     }
 
-    private boolean parseFunctions(DebugParserContext context, DebugData data) {
+    private static boolean parseFunctions(DebugParserContext context, DebugData data) {
         final int[] pcs = DebugDataUtil.readPcsOrNull(data, context);
         if (pcs == null) {
             return false;

@@ -98,6 +98,7 @@ public abstract class DebugType {
      * 
      * @see #isModifiableValue()
      */
+    @SuppressWarnings("unused")
     public void setValue(DebugContext context, DebugLocation location, Object value, InteropLibrary lib) {
     }
 

@@ -834,16 +834,6 @@ public class DebugParser {
     }
 
     /**
-     * Reads two bytes as an unsigned int value from the internal byte array and advances the offset
-     * pointer.
-     * 
-     * @throws WasmDebugException if the data is beyond the current endOffset.
-     */
-    private int readUnsigned2() throws WasmDebugException {
-        return read2() & 0xffff;
-    }
-
-    /**
      * Reads four bytes as an int value from the internal byte array without advancing the offset
      * pointer.
      * 

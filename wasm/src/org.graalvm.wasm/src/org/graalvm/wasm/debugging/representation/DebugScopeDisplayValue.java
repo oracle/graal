@@ -66,6 +66,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 public final class DebugScopeDisplayValue extends DebugDisplayValue implements TruffleObject {
     private final String name;
     private final DebugContext context;
@@ -169,8 +170,8 @@ public final class DebugScopeDisplayValue extends DebugDisplayValue implements T
 
     private List<String> memberNames() {
         final List<String> names = new ArrayList<>(0);
-        for (String name : members.getKeys()) {
-            names.add(name);
+        for (String member : members.getKeys()) {
+            names.add(member);
         }
         return names;
     }

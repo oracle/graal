@@ -87,11 +87,11 @@ public final class WasmInstrumentationSupportNode extends Node {
             return;
         }
         this.sourceLocation = currentSourceLocation;
-        exitAt(frame, currentLineWrapper);
-        enterAt(frame, nextLineWrapper);
+        WasmInstrumentationSupportNode.exitAt(frame, currentLineWrapper);
+        WasmInstrumentationSupportNode.enterAt(frame, nextLineWrapper);
     }
 
-    private void enterAt(VirtualFrame frame, InstrumentableNode.WrapperNode wrapperNode) {
+    private static void enterAt(VirtualFrame frame, InstrumentableNode.WrapperNode wrapperNode) {
         if (wrapperNode == null) {
             return;
         }
@@ -110,7 +110,7 @@ public final class WasmInstrumentationSupportNode extends Node {
         }
     }
 
-    private void exitAt(VirtualFrame frame, InstrumentableNode.WrapperNode wrapperNode) {
+    private static void exitAt(VirtualFrame frame, InstrumentableNode.WrapperNode wrapperNode) {
         if (wrapperNode == null) {
             return;
         }

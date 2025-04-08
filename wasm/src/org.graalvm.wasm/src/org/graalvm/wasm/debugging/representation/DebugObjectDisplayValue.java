@@ -132,8 +132,8 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         final List<String> names = new ArrayList<>(members.size());
-        for (String name : members.getKeys()) {
-            names.add(name);
+        for (String member : members.getKeys()) {
+            names.add(member);
         }
         return new WasmVariableNamesObject(names);
     }
