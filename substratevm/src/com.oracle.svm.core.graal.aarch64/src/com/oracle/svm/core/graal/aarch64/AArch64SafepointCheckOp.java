@@ -26,10 +26,10 @@ package com.oracle.svm.core.graal.aarch64;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.thread.SafepointSlowpath;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
@@ -60,7 +60,7 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);
-            if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+            if (RecurringCallbackSupport.isEnabled()) {
                 /* Before subtraction, the counter is compared against 1. */
                 masm.subs(safepointSize, scratch, scratch, 1);
                 masm.str(safepointSize, scratch, safepointAddress);
