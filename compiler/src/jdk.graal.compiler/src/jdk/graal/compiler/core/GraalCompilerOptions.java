@@ -30,6 +30,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.phases.PhaseFilterKey;
 
 /**
  * Options related to {@link GraalCompiler}.
@@ -46,6 +47,15 @@ public class GraalCompilerOptions {
                    suffix will raise a bailout exception and a ':PermanentBailout'
                    suffix will raise a permanent bailout exception.""", type = OptionType.Debug)
     public static final OptionKey<String> CrashAt = new OptionKey<>(null);
+    @Option(help = """
+                   Emit a heap dump after each phase matching the given phase filter(s).
+
+                   Use DumpPath or ShowDumpFiles to set or see where dumps are written.
+
+                   The special phase name "<compilation>" means dump after compilation
+                   instead of after any specific phase.
+                   """ + PhaseFilterKey.HELP, type = OptionType.Debug)//
+    public static final PhaseFilterKey DumpHeapAfter = new PhaseFilterKey(null, "<compilation>");
     @Option(help = "Treats compilation bailouts as compilation failures.", type = OptionType.User, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> CompilationBailoutAsFailure = new OptionKey<>(false);
     @Option(help = """

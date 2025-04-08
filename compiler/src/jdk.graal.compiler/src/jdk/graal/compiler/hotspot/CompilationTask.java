@@ -77,17 +77,18 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class CompilationTask implements CompilationWatchDog.EventHandler {
 
-    static class Options {
-        @Option(help = "Options which are enabled based on the method being compiled. " +
-                        "The basic syntax is a MethodFilter option specification followed by a list of options to be set for that compilation. " +
-                        "\"MethodFilter:\" is used to distinguish this from normal usage of MethodFilter as option." +
-                        "This can be repeated multiple times with each MethodFilter option separating the groups. " +
-                        "For example:" +
-                        "    -D" + HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX +
-                        ".PerMethodOptions=MethodFilter:String.indexOf SpeculativeGuardMovement=false MethodFilter:Integer.* SpeculativeGuardMovement=false" +
-                        " disables SpeculativeGuardMovement for compiles of String.indexOf and all methods in Integer. " +
-                        "If the value starts with a non-letter character, that " +
-                        "character is used as the separator between options instead of a space.")//
+    public static class Options {
+        @Option(help = """
+                        Options which are enabled based on the method being compiled.
+                        The basic syntax is a MethodFilter option specification followed by a list of options to be set for that compilation.
+                        "MethodFilter:" is used to distinguish this from normal usage of MethodFilter as option.
+                        This can be repeated multiple times with each MethodFilter option separating the groups.
+                        For example:
+                        "    -D""" + HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX + """
+                        PerMethodOptions=MethodFilter:String.indexOf SpeculativeGuardMovement=false MethodFilter:Integer.* SpeculativeGuardMovement=false
+                        disables SpeculativeGuardMovement for compiles of String.indexOf and all methods in Integer.
+                        If the value starts with a non-letter character, that
+                        character is used as the separator between options instead of a space.""")//
         public static final OptionKey<String> PerMethodOptions = new OptionKey<>(null);
     }
 
@@ -157,8 +158,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
         @Override
         protected HotSpotCompilationRequestResult handleException(Throwable t) {
-            if (t instanceof BailoutException) {
-                BailoutException bailout = (BailoutException) t;
+            if (t instanceof BailoutException bailout) {
                 /*
                  * Handling of permanent bailouts: Permanent bailouts that can happen for example
                  * due to unsupported unstructured control flow in the bytecodes of a method must
@@ -190,8 +190,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
         @Override
         protected ExceptionAction lookupAction(OptionValues values, Throwable cause) {
-            if (cause instanceof BailoutException) {
-                BailoutException bailout = (BailoutException) cause;
+            if (cause instanceof BailoutException bailout) {
                 if (bailout.isPermanent()) {
                     // Respect current action if it has been explicitly set.
                     if (!CompilationBailoutAsFailure.hasBeenSet(values)) {
@@ -483,7 +482,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
     }
 
-    @SuppressWarnings({"try", "unchecked"})
+    @SuppressWarnings({"try"})
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         try (DebugCloseable a = CompilationTime.start(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
