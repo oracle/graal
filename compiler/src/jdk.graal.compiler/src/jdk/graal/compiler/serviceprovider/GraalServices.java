@@ -492,6 +492,22 @@ public final class GraalServices {
     }
 
     /**
+     * Dumps the heap to {@code outputFile} in hprof format.
+     *
+     * @param live if true, performs a full GC first so that only live objects are dumped
+     * @throws IOException if an IO error occurred dyring dumping
+     * @throws UnsupportedOperationException if this operation is not supported.
+     */
+    public static void dumpHeap(String outputFile, boolean live) throws IOException {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraal.dumpHeap(outputFile, live);
+        } else if (jmx != null) {
+            jmx.dumpHeap(outputFile, live);
+        }
+    }
+
+    /**
      * Returns the fused multiply add of the three arguments; that is, returns the exact product of
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code float}.
