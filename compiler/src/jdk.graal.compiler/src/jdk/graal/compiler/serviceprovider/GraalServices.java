@@ -41,10 +41,9 @@ import java.util.ServiceLoader;
 import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
-import jdk.vm.ci.code.Architecture;
-
 import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.misc.VM;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
@@ -498,7 +497,7 @@ public final class GraalServices {
      * @throws IOException if an IO error occurred dyring dumping
      * @throws UnsupportedOperationException if this operation is not supported.
      */
-    public static void dumpHeap(String outputFile, boolean live) throws IOException {
+    public static void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {
         LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
         if (libgraal != null) {
             libgraal.dumpHeap(outputFile, live);
