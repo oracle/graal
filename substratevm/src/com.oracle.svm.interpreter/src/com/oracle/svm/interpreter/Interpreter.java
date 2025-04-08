@@ -405,13 +405,13 @@ public final class Interpreter {
         }
 
         setLogIndent(indent + 2);
-        traceInterpreter(" ".repeat(indent))
-                        .string("[interp] Entered ")
-                        .string(method.getDeclaringClass().getName())
-                        .string("::")
-                        .string(method.getName())
-                        .string(method.getSignature().toMethodDescriptor())
-                        .string(" with bci=").unsigned(curBCI)
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("[interp] Entered ") //
+                        .string(method.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(method.getName()) //
+                        .string(method.getSignature().toMethodDescriptor()) //
+                        .string(" with bci=").unsigned(curBCI) //
                         .string("/top=").unsigned(top).newline();
     }
 
@@ -423,12 +423,12 @@ public final class Interpreter {
 
         setLogIndent(indent);
         traceInterpreter(" ".repeat(indent));
-        traceInterpreter("[interp] Leave ")
-                        .string(method.getDeclaringClass().getName())
-                        .string("::")
-                        .string(method.getName())
-                        .string(method.getSignature().toMethodDescriptor())
-                        .string(" with bci=").unsigned(curBCI)
+        traceInterpreter("[interp] Leave ") //
+                        .string(method.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(method.getName()) //
+                        .string(method.getSignature().toMethodDescriptor()) //
+                        .string(" with bci=").unsigned(curBCI) //
                         .string("/top=").unsigned(top).newline();
     }
 
@@ -438,8 +438,8 @@ public final class Interpreter {
             return;
         }
 
-        traceInterpreter(" ".repeat(indent))
-                        .string("bci=").unsigned(curBCI).string(" ")
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("bci=").unsigned(curBCI).string(" ") //
                         .string(Bytecodes.nameOf(curOpcode));
         for (int slot = top - 1; slot >= 0; slot--) {
             traceInterpreter(", s").unsigned(slot).string("=").hex(frame.getLongStatic(slot)).string("/").object(frame.getObjectStatic(slot));
@@ -454,13 +454,13 @@ public final class Interpreter {
         }
 
         setLogIndent(indent);
-        traceInterpreter(" ".repeat(indent))
-                        .string("[interp] Exception ")
-                        .string(method.getDeclaringClass().getName())
-                        .string("::")
-                        .string(method.getName())
-                        .string(method.getSignature().toMethodDescriptor())
-                        .string(" with bci=").unsigned(curBCI)
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("[interp] Exception ") //
+                        .string(method.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(method.getName()) //
+                        .string(method.getSignature().toMethodDescriptor()) //
+                        .string(" with bci=").unsigned(curBCI) //
                         .string("/top=").unsigned(top).newline();
     }
 
@@ -481,7 +481,7 @@ public final class Interpreter {
 
             int debuggerEventFlags = 0;
             if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.METHOD_ENTRY)) {
-                if (((InterpreterResolvedJavaType) method.getDeclaringClass()).isMethodEnterEvent()) {
+                if (method.getDeclaringClass().isMethodEnterEvent()) {
                     debuggerEventFlags |= EventKind.METHOD_ENTRY.getFlag();
                 }
             }
@@ -853,7 +853,7 @@ public final class Interpreter {
                             Object returnValue = getReturnValueAsObject(frame, method, top);
                             traceInterpreterReturn(method, indent, curBCI, top);
                             if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.METHOD_EXIT)) {
-                                if (((InterpreterResolvedJavaType) method.getDeclaringClass()).isMethodExitEvent()) {
+                                if (method.getDeclaringClass().isMethodExitEvent()) {
                                     int flags = EventKind.METHOD_EXIT.getFlag() | EventKind.METHOD_EXIT_WITH_RETURN_VALUE.getFlag();
                                     DebuggerEvents.singleton().getEventHandler().onEventAt(Thread.currentThread(), method, curBCI, returnValue, flags);
                                 }
