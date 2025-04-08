@@ -2111,15 +2111,30 @@ public class MethodTypeFlowBuilder {
         if (node.getStackKind() == JavaKind.Object) {
             TypeFlowBuilder<?> objectBuilder = state.lookup(object);
 
-            /*
-             * Use the Object type as a conservative approximation for both the receiver object type
-             * and the loaded values type.
-             */
-            var loadBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, UnsafeLoadTypeFlow.class, () -> {
-                UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), bb.getObjectType(), objectBuilder.get());
-                flowsGraph.addMiscEntryFlow(loadTypeFlow);
-                return loadTypeFlow;
-            });
+            TypeFlowBuilder<?> loadBuilder;
+            if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
+                /*
+                 * When unsafe loads are modeled conservatively they start as saturated since the
+                 * exact fields that are marked as unsafe accessed are not tracked and cannot be
+                 * used as an input to the UnsafeLoadTypeFlow. Using a pre-saturated flow will
+                 * signal the saturation to any future uses.
+                 */
+                loadBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, PreSaturatedTypeFlow.class, () -> {
+                    PreSaturatedTypeFlow preSaturated = new PreSaturatedTypeFlow(AbstractAnalysisEngine.sourcePosition(node));
+                    flowsGraph.addMiscEntryFlow(preSaturated);
+                    return preSaturated;
+                });
+            } else {
+                /*
+                 * Use the Object type as a conservative approximation for both the receiver object
+                 * type and the loaded values type.
+                 */
+                loadBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, UnsafeLoadTypeFlow.class, () -> {
+                    UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), bb.getObjectType(), objectBuilder.get());
+                    flowsGraph.addMiscEntryFlow(loadTypeFlow);
+                    return loadTypeFlow;
+                });
+            }
 
             loadBuilder.addObserverDependency(objectBuilder);
             state.add(node, loadBuilder);
@@ -2127,6 +2142,13 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processUnsafeStore(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+        if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
+            /*
+             * When unsafe writes are modeled conservatively all unsafe accessed fields contain all
+             * instantiated subtypes of their declared type, so no need to model the unsafe store.
+             */
+            return;
+        }
         /* All unsafe accessed primitive fields are always saturated. */
         if (newValueKind == JavaKind.Object) {
             TypeFlowBuilder<?> objectBuilder = state.lookup(object);
