@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -401,6 +401,9 @@ class NativeImageBuildTask(mx.BuildTask):
             # native image build speed doesn't scale much after 12 (on my machine ^_^)
             max_parallelism = 12
         super().__init__(project, args, min(max_parallelism, mx.cpu_count()))
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([_path for _path, _ in self.subject.getArchivableResults()])
 
     def get_build_args(self):
         experimental_build_args = [
