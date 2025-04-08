@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,7 +104,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
 
     @Override
     public boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
-        return !isArray || size.belowThan(HeapParameters.getLargeArrayThreshold());
+        return !isArray || arrayAllocatedInAlignedChunk(size);
     }
 
     @Override
@@ -120,6 +120,10 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     @Override
     public int tlabEndOffset() {
         return ThreadLocalAllocation.Descriptor.offsetOfAllocationEnd();
+    }
+
+    public static boolean arrayAllocatedInAlignedChunk(UnsignedWord objectSize) {
+        return objectSize.belowThan(HeapParameters.getLargeArrayThreshold());
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
