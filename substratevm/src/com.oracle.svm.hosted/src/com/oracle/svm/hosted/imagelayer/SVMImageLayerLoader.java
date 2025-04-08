@@ -54,12 +54,12 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.capnproto.ListReader;
-import org.capnproto.PrimitiveList;
-import org.capnproto.StructList;
-import org.capnproto.StructReader;
-import org.capnproto.Text;
-import org.capnproto.TextList;
+import com.oracle.svm.shaded.org.capnproto.ListReader;
+import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
+import com.oracle.svm.shaded.org.capnproto.StructList;
+import com.oracle.svm.shaded.org.capnproto.StructReader;
+import com.oracle.svm.shaded.org.capnproto.Text;
+import com.oracle.svm.shaded.org.capnproto.TextList;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;

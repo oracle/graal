@@ -1231,6 +1231,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:SVM_CONFIGURE',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
+        'substratevm:SVM_CAPNPROTO_RUNTIME',
         'substratevm:NATIVE_IMAGE_BASE',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
@@ -2529,5 +2530,7 @@ def capnp_compile(args):
                 f.write('@SuppressWarnings("all")\n')
             if 'public static final class Schemas {' in line:
                 break
-            f.write(line)
+            # Replace org.capnproto with com.oracle.svm.shaded.org.capnproto in generated code
+            shaded = line.replace("org.capnproto", "com.oracle.svm.shaded.org.capnproto")
+            f.write(shaded)
         f.write('}\n')
