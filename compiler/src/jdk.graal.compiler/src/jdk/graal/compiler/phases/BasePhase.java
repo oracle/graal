@@ -34,11 +34,9 @@ import java.lang.annotation.Target;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.core.GraalCompilerOptions;
-import jdk.graal.compiler.debug.GraphFilter;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.core.GraalCompilerOptions;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -46,6 +44,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.CompilerPhaseScope;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraphFilter;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
@@ -65,6 +64,7 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.contract.PhaseSizeContract;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
@@ -506,7 +506,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 try {
                     final String path = debug.getDumpPath("_" + getName() + ".hprof", false);
                     GraalServices.dumpHeap(path, false);
-                } catch (IOException e) {
+                } catch (IOException | UnsupportedOperationException e) {
                     e.printStackTrace(System.out);
                 }
             }

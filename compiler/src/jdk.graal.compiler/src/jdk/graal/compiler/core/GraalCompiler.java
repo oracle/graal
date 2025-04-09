@@ -175,7 +175,7 @@ public class GraalCompiler {
             try {
                 final String path = debug.getDumpPath(".compilation.hprof", false);
                 GraalServices.dumpHeap(path, false);
-            } catch (IOException e) {
+            } catch (IOException | UnsupportedOperationException e) {
                 e.printStackTrace(System.out);
             }
         }

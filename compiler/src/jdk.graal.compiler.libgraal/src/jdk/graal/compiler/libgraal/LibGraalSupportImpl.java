@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -49,13 +48,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -162,7 +162,7 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
     }
 
     @Override
-    public void dumpHeap(String outputFile, boolean live) throws IOException {
+    public void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {
         VMRuntime.dumpHeap(outputFile, live);
     }
 
