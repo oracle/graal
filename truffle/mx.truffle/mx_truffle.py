@@ -1493,7 +1493,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         if build_for_current_platform:
             # 2. Register a project building the isolate library
             isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE']
-            build_library = __PolyglotIsolateProject(language_suite, language_id, isolate_deps, isolate_build_options)
+            build_library = PolyglotIsolateProject(language_suite, language_id, isolate_deps, isolate_build_options)
             register_project(build_library)
 
             # 3. Register layout distribution with isolate library and isolate resources
@@ -1611,7 +1611,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 mx.add_argument('--polyglot-isolates', action='store', help='Comma-separated list of languages for which the polyglot isolate library should be built. Setting the value to `true` builds all polyglot isolate libraries.')
 
 
-class __PolyglotIsolateProject(mx_sdk_vm_ng.LanguageLibraryProject):
+class PolyglotIsolateProject(mx_sdk_vm_ng.LanguageLibraryProject):
     """
     A language library project dedicated to construct a language polyglot isolate library.
     Instances are created by register_polyglot_isolate_distributions when a language
@@ -1623,7 +1623,7 @@ class __PolyglotIsolateProject(mx_sdk_vm_ng.LanguageLibraryProject):
             '-H:APIFunctionPrefix=truffle_isolate_',
             '-H:+CopyLanguageResources'
         ] + isolate_build_options
-        super().__init__(language_suite, f'lib{language_id}vm', isolate_deps, ['Truffle'], None, **{'build_args': build_args})
+        super().__init__(language_suite, f'{language_id}.isolate', isolate_deps, ['Truffle'], None, f'{language_id}vm', **{'build_args': build_args})
 
     def resolveDeps(self):
         super().resolveDeps()
