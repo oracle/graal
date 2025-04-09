@@ -26,7 +26,6 @@ package com.oracle.svm.core.c.function;
 
 import java.util.function.Function;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -40,6 +39,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.thread.VMThreads;
+
+import jdk.graal.compiler.word.Word;
 
 @CHeader(value = GraalIsolateHeader.class)
 public final class CEntryPointNativeFunctions {
@@ -158,12 +159,26 @@ public final class CEntryPointNativeFunctions {
         return CEntryPointActions.leaveDetachThread();
     }
 
+    static final String THREAD_TERMINATION_NOTE = """
+                    
+                    If this call blocks indefinitely, this means there are still Java threads running
+                    that do not terminate after receiving a Thread.interrupt() event. To prevent indefinite blocking,
+                    these threads should be cooperatively terminated within Java before invoking this call.
+                    To diagnose such issues, use the option '-R:TearDownWarningSeconds=<secs>' at image build time
+                    to detect the threads that are still running. This will print the stack traces of all threads that block tear-down.
+                    To resolve blocking issues, utilize any available method to terminate the offending threads. This may include
+                    calling shutdown API functions, adjusting the application configuration, or leveraging reflection.
+                    """;
+
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint(name = "tear_down_isolate", documentation = {
-                    "Tears down the isolate of the passed (and still attached) isolate thread,",
-                    "waiting for any attached threads to detach from it, then discards its objects,",
-                    "threads, and any other state or context that is associated with it.",
-                    "Returns 0 on success, or a non-zero value on failure."})
+    @CEntryPoint(name = "tear_down_isolate", documentation = {"""
+                    Tears down the isolate of the passed (and still attached) isolate thread,
+                    waiting for any attached threads to detach from it, then discards its objects,
+                    threads, and any other state or context that is associated with it.
+                    Returns 0 on success, or a non-zero value on failure.
+                    """,
+                    THREAD_TERMINATION_NOTE,
+    })
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static int tearDownIsolate(IsolateThread isolateThread) {
         int result = CEntryPointActions.enter(isolateThread);
@@ -174,17 +189,20 @@ public final class CEntryPointNativeFunctions {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint(name = "detach_all_threads_and_tear_down_isolate", documentation = {
-                    "In the isolate of the passed isolate thread, detach all those threads that were",
-                    "externally started (not within Java, which includes the \"main thread\") and were",
-                    "attached to the isolate afterwards. Afterwards, all threads that were started",
-                    "within Java undergo a regular shutdown process, followed by the tear-down of the",
-                    "entire isolate, which detaches the current thread and discards the objects,",
-                    "threads, and any other state or context associated with the isolate.",
-                    "None of the manually attached threads targeted by this function may be executing",
-                    "Java code at the time when this function is called or at any point in the future",
-                    "or this will cause entirely undefined (and likely fatal) behavior.",
-                    "Returns 0 on success, or a non-zero value on (non-fatal) failure."})
+    @CEntryPoint(name = "detach_all_threads_and_tear_down_isolate", documentation = {"""
+                    In the isolate of the passed isolate thread, detach all those threads that were
+                    externally started (not within Java, which includes the "main thread") and were
+                    attached to the isolate afterwards. Afterwards, all threads that were started
+                    within Java undergo a regular shutdown process, followed by the tear-down of the
+                    entire isolate, which detaches the current thread and discards the objects,
+                    threads, and any other state or context associated with the isolate.
+                    None of the manually attached threads targeted by this function may be executing
+                    Java code at the time when this function is called or at any point in the future
+                    or this will cause entirely undefined (and likely fatal) behavior.
+                    Returns 0 on success, or a non-zero value on (non-fatal) failure.
+                    """,
+                    THREAD_TERMINATION_NOTE,
+    })
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static int detachAllThreadsAndTearDownIsolate(IsolateThread isolateThread) {
         int result = CEntryPointActions.enter(isolateThread);
