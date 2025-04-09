@@ -430,64 +430,45 @@ public class WasmInstantiator {
 
     private void instantiateCodeEntries(WasmStore store, WasmInstance instance) {
         final WasmModule module = instance.module();
-        if (store.language().isMultiContext()) {
-            instantiateCodeEntriesShared(store, instance, module);
-        } else {
-            instantiateCodeEntriesExclusive(store, instance, module);
+        final boolean multiContext = language.isMultiContext();
+        if (multiContext && module.hasBeenInstantiated()) {
+            // If the module has already been instantiated and the call targets are shared,
+            // there's no need to read and instantiate the code entries again.
+            // We only need to initialize the code entry call targets in the new instance.
+            resolveInstantiatedCodeEntries(store, instance, module);
+            return;
         }
-    }
-
-    /**
-     * Instantiate code entries of a module that is either:
-     *
-     * <ul>
-     * <li>bound to a single instance, and therefore does not need synchronization.</li>
-     * <li>shared between instances/contexts, and therefore needs synchronization.</li>
-     * </ul>
-     */
-    private void instantiateCodeEntriesExclusive(WasmStore store, WasmInstance instance, WasmModule module) {
-        assert !store.language().isMultiContext() || Thread.holdsLock(module);
-        CodeEntry[] codeEntries = module.codeEntries();
-        if (codeEntries == null) {
-            // Reread the code section if the module is instantiated multiple times
-            codeEntries = BytecodeParser.readCodeEntries(module);
-        }
-        for (int entry = 0; entry != codeEntries.length; ++entry) {
-            CodeEntry codeEntry = codeEntries[entry];
-            var callTarget = instantiateCodeEntry(store, module, instance, codeEntry);
-            instance.setTarget(codeEntry.functionIndex(), callTarget);
-        }
-        // Now that all code entry call targets are set, we can resolve all local direct call sites.
-        // Other call sites are treated as indirect calls and do not need call target resolution.
-        for (int entry = 0; entry != codeEntries.length; ++entry) {
-            CodeEntry codeEntry = codeEntries[entry];
-            resolveCallNodes(instance, instance.target(codeEntry.functionIndex()));
-        }
-        // Remove code entries from module to reduce memory footprint at runtime
-        module.setCodeEntries(null);
-    }
-
-    /**
-     * Instantiate code entries of a shared module (i.e. in multi-context mode).
-     */
-    private void instantiateCodeEntriesShared(WasmStore store, WasmInstance instance, WasmModule module) {
-        if (!module.hasBeenInstantiated()) {
-            // If module instantiation were to happen concurrently, one thread might have already
-            // finished instantiating and started executing while the other is still instantiating.
-            // So we need to ensure that instantiation is synchronized or performed atomically,
-            // and does not overwrite already instantiated (and potentially executed) code state.
-            synchronized (module) {
-                if (!module.hasBeenInstantiated()) {
-                    instantiateCodeEntriesExclusive(store, instance, module);
-                    module.setHasBeenInstantiated();
-                    return;
-                }
+        // If module instantiation were to happen concurrently, one thread might have already
+        // finished instantiating and started executing while the other is still instantiating.
+        // So we need to ensure that instantiation is synchronized or performed atomically,
+        // and does not overwrite already instantiated (and potentially executed) code state.
+        synchronized (module) {
+            if (multiContext && module.hasBeenInstantiated()) {
+                resolveInstantiatedCodeEntries(store, instance, module);
+                return;
             }
+
+            CodeEntry[] codeEntries = module.codeEntries();
+            if (codeEntries == null) {
+                // Reread the code section if the module is instantiated multiple times
+                codeEntries = BytecodeParser.readCodeEntries(module);
+            } else {
+                // Remove code entries from module to reduce memory footprint at runtime
+                module.setCodeEntries(null);
+            }
+            for (int entry = 0; entry != codeEntries.length; ++entry) {
+                CodeEntry codeEntry = codeEntries[entry];
+                var callTarget = instantiateCodeEntry(store, module, instance, codeEntry);
+                instance.setTarget(codeEntry.functionIndex(), callTarget);
+            }
+            // Now that the call targets of all the code entries are set, we can resolve all local
+            // direct call sites. Call sites that require linking do not need to be resolved.
+            for (int entry = 0; entry != codeEntries.length; ++entry) {
+                CodeEntry codeEntry = codeEntries[entry];
+                resolveCallNodes(instance, instance.target(codeEntry.functionIndex()));
+            }
+            module.setHasBeenInstantiated();
         }
-        // If the module has already been instantiated and the call targets are shared,
-        // there's no need to read and instantiate the code entries again.
-        // We only need to initialize the code entry call targets in the new instance.
-        resolveInstantiatedCodeEntries(store, instance, module);
     }
 
     /**
@@ -522,8 +503,6 @@ public class WasmInstantiator {
         final WasmFunctionRootNode rootNode = instantiateCodeEntryRootNode(store, module, codeEntry, function);
         var callTarget = rootNode.getCallTarget();
         if (store.language().isMultiContext()) {
-            // Ensure that the function's call target is set only once.
-            assert Thread.holdsLock(module);
             function.setTarget(callTarget);
         } else {
             rootNode.setBoundModuleInstance(instance);
