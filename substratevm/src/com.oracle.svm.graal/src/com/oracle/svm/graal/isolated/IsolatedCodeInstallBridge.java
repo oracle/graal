@@ -88,7 +88,12 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
 
     @Override
     public boolean isValid() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
+        ClientHandle<? extends SubstrateInstalledCode> handle = installedCodeHandle;
+        if (handle.notEqual(IsolatedHandles.nullHandle())) {
+            return isValid0(IsolatedCompileContext.get().getClient(), handle);
+        } else {
+            return false;
+        }
     }
 
     @Override
@@ -125,6 +130,11 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static long getStart0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle) {
         return IsolatedCompileClient.get().unhand(installedCodeHandle).getAddress();
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static boolean isValid0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle) {
+        return IsolatedCompileClient.get().unhand(installedCodeHandle).isValid();
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

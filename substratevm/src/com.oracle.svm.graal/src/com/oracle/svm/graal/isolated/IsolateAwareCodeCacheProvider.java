@@ -34,6 +34,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateCodeCacheProvider;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
@@ -68,8 +69,12 @@ public final class IsolateAwareCodeCacheProvider extends SubstrateCodeCacheProvi
             ImageHeapRef<SubstrateMethod> methodRef = ImageHeapObjects.ref((SubstrateMethod) method);
             installedCode = IsolatedRuntimeCodeInstaller.installInClientIsolate(methodRef, result, installedCodeFactoryHandle);
         }
-
         installBridge.setSubstrateInstalledCodeHandle(installedCode);
+        DebugContext debug = DebugContext.forCurrentThread();
+        if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+            assert debug.contextLookup(CompilationResult.class) != null : "can't dump installed code properly without CompilationResult";
+            debug.dump(DebugContext.BASIC_LEVEL, installBridge, "After code installation");
+        }
         return installBridge;
     }
 }
