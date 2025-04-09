@@ -46,6 +46,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -262,7 +263,8 @@ final class Target_java_util_concurrent_ForkJoinPool {
     Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
     }
 
-    @Alias
+    @Alias //
+    @TargetElement(onlyWith = JDKLatest.class)
     public static native ForkJoinPool asyncCommonPool();
 }
 
