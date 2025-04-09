@@ -131,8 +131,8 @@ public class DebugData {
      * Converts the underlying attribute value to an integer. Interprets byte and short encodings as
      * unsigned integer values.
      * 
-     * @return the integer value or {@link DebugUtil#DEFAULT_I32}, if the attribute does not exist
-     *         or the value does not fit into an integer.
+     * @return the integer value or the given default value, if the attribute does not exist or the
+     *         value does not fit into an integer.
      */
     public int asU32OrDefault(int attribute, int defaultValue) {
         final int index = attributeIndex(attribute);

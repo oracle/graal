@@ -139,21 +139,16 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
     }
 
     @ExportMessage
+    @ExportMessage(name = "isMemberModifiable")
     @TruffleBoundary
     boolean isMemberReadable(String member) {
-        return members.containsKey(member);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean isMemberModifiable(String member) {
         return members.containsKey(member);
     }
 
     @ExportMessage(limit = "5")
     @TruffleBoundary
     void writeMember(String member, Object value, @CachedLibrary("value") InteropLibrary lib) throws UnknownIdentifierException {
-        if (!isMemberModifiable(member)) {
+        if (!isMemberReadable(member)) {
             throw UnknownIdentifierException.create(member);
         }
         final DebugObject memberObject = members.get(member);

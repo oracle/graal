@@ -46,6 +46,7 @@ import java.math.BigInteger;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -97,7 +98,11 @@ public class DebugPrimitiveValue implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     public byte asByte() {
-        return Byte.parseByte(expression);
+        try {
+            return Byte.parseByte(expression);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     @TruffleBoundary
@@ -114,7 +119,11 @@ public class DebugPrimitiveValue implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     public short asShort() {
-        return Short.parseShort(expression);
+        try {
+            return Short.parseShort(expression);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     @TruffleBoundary
@@ -131,7 +140,11 @@ public class DebugPrimitiveValue implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     public int asInt() {
-        return Integer.parseInt(expression);
+        try {
+            return Integer.parseInt(expression);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     @TruffleBoundary
@@ -148,7 +161,11 @@ public class DebugPrimitiveValue implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     public long asLong() {
-        return Long.parseLong(expression);
+        try {
+            return Long.parseLong(expression);
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
     }
 
     @TruffleBoundary
@@ -165,7 +182,11 @@ public class DebugPrimitiveValue implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     public float asFloat() {
-        return Float.parseFloat(expression);
+        try {
+            return Float.parseFloat(expression);
+        } catch (NumberFormatException e) {
+            return 0f;
+        }
     }
 
     @TruffleBoundary
@@ -182,7 +203,11 @@ public class DebugPrimitiveValue implements TruffleObject {
     @TruffleBoundary
     @ExportMessage
     public double asDouble() {
-        return Double.parseDouble(expression);
+        try {
+            return Double.parseDouble(expression);
+        } catch (NumberFormatException e) {
+            return 0d;
+        }
     }
 
     @TruffleBoundary
@@ -193,8 +218,8 @@ public class DebugPrimitiveValue implements TruffleObject {
 
     @TruffleBoundary
     @ExportMessage
-    public BigInteger asBigInteger() {
-        throw new UnsupportedOperationException();
+    public BigInteger asBigInteger() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     @TruffleBoundary

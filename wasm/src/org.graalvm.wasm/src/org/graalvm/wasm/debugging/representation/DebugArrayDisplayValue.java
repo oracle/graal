@@ -108,6 +108,7 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     }
 
     @ExportMessage
+    @ExportMessage(name = "isArrayElementModifiable")
     @TruffleBoundary
     public boolean isArrayElementReadable(long index) {
         // TODO Limit the number of displayed values to 255 until GR-62691 is implemented
@@ -131,12 +132,6 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
 
     @ExportMessage
     @TruffleBoundary
-    public boolean isArrayElementModifiable(long index) {
-        return isArrayElementReadable(index);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
     public boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
         return false;
     }
@@ -144,7 +139,7 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     @ExportMessage(limit = "5")
     @TruffleBoundary
     public void writeArrayElement(long index, Object value, @CachedLibrary("value") InteropLibrary lib) throws InvalidArrayIndexException {
-        if (!isArrayElementModifiable(index)) {
+        if (!isArrayElementReadable(index)) {
             throw InvalidArrayIndexException.create(index);
         }
         final int offset = indexOffset + (int) index;

@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Intermediate node to support instrumentation. Due to caching, instrumented nodes cannot replace
- * themselves at {@link WasmFixedMemoryImplFunctionNode}. Therefore, this intermediate not is
+ * themselves at {@link WasmFixedMemoryImplFunctionNode}. Therefore, this intermediate node is
  * needed.
  */
 public final class WasmFunctionBaseNode extends Node {
