@@ -146,7 +146,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
-            Iterable<OptionDescriptors> loader = OptionsContainer.load(OptionDescriptors.class.getClassLoader());
+            Iterable<OptionDescriptors> loader = OptionsContainer.getDiscoverableOptions(OptionDescriptors.class.getClassLoader());
             OptionsParser.parseOptions(optionSettings, values, loader);
         }
         if (!values.containsKey(HighTier.Options.Inline)) {
