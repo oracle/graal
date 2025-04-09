@@ -100,11 +100,6 @@ public final class Target_java_lang_VirtualThread {
     @TargetElement(onlyWith = JDK21OrEarlier.class) //
     private static ScheduledExecutorService UNPARKER;
 
-    @Alias //
-    @InjectAccessors(DelayedTaskSchedulersAccessor.class) //
-    @TargetElement(onlyWith = JDKLatest.class) //
-    private static ScheduledExecutorService[] DELAYED_TASK_SCHEDULERS;
-
     /** Go through {@link #nondefaultScheduler}. */
     @Alias //
     @InjectAccessors(SchedulerAccessor.class) //
@@ -133,10 +128,6 @@ public final class Target_java_lang_VirtualThread {
     @Alias
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static native ScheduledExecutorService createDelayedTaskScheduler();
-
-    @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
-    private static native ScheduledExecutorService[] createDelayedTaskSchedulers();
 
     @SuppressWarnings("unused")
     private static final class AlwaysFalseAccessor {
@@ -187,28 +178,6 @@ public final class Target_java_lang_VirtualThread {
             if (result == null) {
                 result = createDelayedTaskScheduler();
                 delayedTaskScheduler = result;
-            }
-            return result;
-        }
-    }
-
-    private static final class DelayedTaskSchedulersAccessor {
-        private static volatile ScheduledExecutorService[] delayedTaskSchedulers;
-
-        @SuppressWarnings("unused")
-        public static ScheduledExecutorService[] get() {
-            ScheduledExecutorService[] result = delayedTaskSchedulers;
-            if (result == null) {
-                result = initializeDelayedTaskScheduler();
-            }
-            return result;
-        }
-
-        private static synchronized ScheduledExecutorService[] initializeDelayedTaskScheduler() {
-            ScheduledExecutorService[] result = delayedTaskSchedulers;
-            if (result == null) {
-                result = createDelayedTaskSchedulers();
-                delayedTaskSchedulers = result;
             }
             return result;
         }
