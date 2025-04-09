@@ -34,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.Isolates;
-import jdk.graal.compiler.graph.Edges;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -44,7 +42,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -74,6 +74,7 @@ import jdk.graal.compiler.debug.KeyRegistry;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
+import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.phases.LIRPhase;
@@ -232,7 +233,10 @@ final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
      * {@code jdk.graal.compiler.management.JMXServiceProvider}.
      */
     @Substitute
-    public static void dumpHeap(String outputFile, boolean live) throws IOException {
+    public static void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {
+        if (!VMInspectionOptions.hasHeapDumpSupport()) {
+            throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
+        }
         VMRuntime.dumpHeap(outputFile, live);
     }
 }
