@@ -30,9 +30,7 @@ import java.util.Optional;
 /**
  * OneShotMetric indicates the time required to run a program once.
  *
- * To reduce variance, we run the program multiple times, each in a different fork.
- *
- * See ci_common/benchmark-forks.json
+ * To reduce variance, the program should be run multiple times, each in a different fork.
  */
 final class OneShotMetric extends Metric {
     long startTime;
