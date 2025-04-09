@@ -395,6 +395,27 @@ def truffle_unittest_task(extra_build_args=None):
         # GR-44492
         native_unittest(['jdk.graal.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
 
+    logfile = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    logfile.close()
+    success = False
+    try:
+        native_unittest(['com.oracle.truffle.sl.test.SLFactorialTest'] + truffle_args(extra_build_args) +[
+                    '-Dpolyglot.engine.CompileImmediately=true',
+                    '-Dpolyglot.engine.BackgroundCompilation=false',
+                    f'-Dpolyglot.log.file={logfile.name}',
+                    '-Djdk.graal.PrintCompilation=true'
+        ])
+        compilation_pattern = re.compile(r"^SubstrateCompilation-.*root_eval.*allocated start=0x([0-9a-f]*)$")
+        with open(logfile.name) as f:
+            for line in f:
+                match = compilation_pattern.match(line)
+                if match and int(match.group(1), 16) != 0:
+                    success = True
+                    break
+    finally:
+        if success:
+            os.unlink(logfile.name)
+
 
 def truffle_context_pre_init_unittest_task(extra_build_args):
     native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args(extra_build_args))
