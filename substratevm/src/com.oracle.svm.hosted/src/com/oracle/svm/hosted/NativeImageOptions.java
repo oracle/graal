@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.collections.EconomicMap;
@@ -46,7 +47,6 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
-import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
@@ -202,7 +202,7 @@ public class NativeImageOptions {
     public static int getActualNumberOfThreads() {
         int commonThreadParallelism = ForkJoinPool.getCommonPoolParallelism();
         if (NumberOfThreads.getValue() == 1) {
-            if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            if (JavaVersionUtil.JAVA_SPEC <= 24) {
                 /* Overriding zero parallelism must ensure at least one worker. */
                 assert commonThreadParallelism == 1 : "The common pool with zero parallelism has one worker thread.";
             } else {
@@ -222,28 +222,28 @@ public class NativeImageOptions {
         return 1 + commonThreadParallelism;
     }
 
+    /**
+     * The --parallelism flag controls the number of threads used during native image builds.
+     * <p>
+     * There are two ways to apply this value to set the thread count in the common pool: using
+     * system properties (though this approach is strongly discouraged in recent JDK versions), and
+     * using the {@link ForkJoinPool#setParallelism} method.
+     * <p>
+     * By default, the common pool's parallelism level (without explicitly setting it via system
+     * properties or method) equals the number of available processors minus one.
+     * <p>
+     * If zero parallelism is desired, the flag should be set to {@code 1} (main thread only). While
+     * this value can be assigned to the common pool, note that when using
+     * {@link CompletableFuture}, the minimal effective parallelism becomes two due to its internal
+     * pool requirements (see {@link CompletableFuture#ASYNC_POOL}). Therefore, the actual thread
+     * count must be incremented by one.
+     */
     public static void setCommonPoolParallelism(OptionValues optionValues) {
-        /*
-         * The main thread always helps to process tasks submitted to the common pool (e.g., see
-         * ForkJoinPool#awaitTermination()), so subtract one from the number of threads. The common
-         * pool can be disabled "by setting the parallelism property to zero" (see ForkJoinPool's
-         * javadoc).
-         */
-        int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValueOrDefault(optionValues.getMap()) - 1;
-        String commonPoolParallelismProperty = "java.util.concurrent.ForkJoinPool.common.parallelism";
-        assert System.getProperty(commonPoolParallelismProperty) == null : commonPoolParallelismProperty + " already set";
-        System.setProperty(commonPoolParallelismProperty, "" + numberOfCommonPoolThreads);
-        int actualCommonPoolParallelism = ForkJoinPool.commonPool().getParallelism();
-        /*
-         * getParallelism() returns at least 1, even in single-threaded mode where common pool is
-         * disabled.
-         */
-        boolean isSingleThreadedMode = numberOfCommonPoolThreads == 0 && actualCommonPoolParallelism == 1;
-        if (!isSingleThreadedMode && actualCommonPoolParallelism != numberOfCommonPoolThreads) {
-            String warning = "Failed to set parallelism of common pool (actual parallelism is %s).".formatted(actualCommonPoolParallelism);
-            assert false : warning;
-            LogUtils.warning(warning);
+        int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValueOrDefault(optionValues.getMap());
+        if (numberOfCommonPoolThreads == 1) {
+            numberOfCommonPoolThreads += 1;
         }
+        ForkJoinPool.commonPool().setParallelism(numberOfCommonPoolThreads);
     }
 
     @Option(help = "Deprecated, option no longer has any effect", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
