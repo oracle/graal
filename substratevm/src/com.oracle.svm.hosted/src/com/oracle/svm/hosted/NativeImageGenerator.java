@@ -737,6 +737,7 @@ public class NativeImageGenerator {
             compileQueue.purge();
 
             int numCompilations = codeCache.getOrderedCompilations().size();
+            int imageDiskFileSize = -1;
 
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 loader.watchdog.recordActivity();
@@ -758,6 +759,12 @@ public class NativeImageGenerator {
 
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
+                try {
+                    // size changes during linking and afterConfig phase
+                    imageDiskFileSize = (int) inv.getOutputFile().toFile().length();
+                } catch (Exception e) {
+                    imageDiskFileSize = -1; // we can't read a disk file size
+                }
             }
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.ARCHIVE_LAYER)) {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
@@ -765,7 +772,8 @@ public class NativeImageGenerator {
                     HostedImageLayerBuildingSupport.singleton().archiveLayer(imageName);
                 }
             }
-            reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize());
+            reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize(),
+                            imageDiskFileSize);
         }
     }
 
