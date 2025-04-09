@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.object;
 /**
  * Helper methods for accessing property and object flags.
  */
-public final class Flags {
+final class Flags {
     static final int DEFAULT = 0;
 
     /** If set, {@code int} values can be implicitly cast to {@code long}. */
@@ -73,31 +73,31 @@ public final class Flags {
         return (flags & flagBit) != 0;
     }
 
-    public static boolean isImplicitCastIntToLong(int flags) {
+    static boolean isImplicitCastIntToLong(int flags) {
         return getFlag(flags, IMPLICIT_CAST_INT_TO_LONG);
     }
 
-    public static boolean isImplicitCastIntToDouble(int flags) {
+    static boolean isImplicitCastIntToDouble(int flags) {
         return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
     }
 
-    public static boolean isSetExisting(int flags) {
+    static boolean isSetExisting(int flags) {
         return getFlag(flags, IF_PRESENT);
     }
 
-    public static boolean isUpdateFlags(int flags) {
+    static boolean isUpdateFlags(int flags) {
         return getFlag(flags, UPDATE_FLAGS);
     }
 
-    public static boolean isConstant(int flags) {
+    static boolean isConstant(int flags) {
         return getFlag(flags, CONST);
     }
 
-    public static boolean isDeclaration(int flags) {
+    static boolean isDeclaration(int flags) {
         return getFlag(flags, DECLARE);
     }
 
-    public static boolean isSeparateShape(int flags) {
+    static boolean isSeparateShape(int flags) {
         return getFlag(flags, SEPARATE_SHAPE);
     }
 }

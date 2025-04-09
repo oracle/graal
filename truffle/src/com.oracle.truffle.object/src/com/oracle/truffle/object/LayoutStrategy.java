@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
-public abstract class LayoutStrategy {
+abstract class LayoutStrategy {
     /**
      * @since 0.17 or earlier
      */
@@ -76,10 +76,10 @@ public abstract class LayoutStrategy {
     protected abstract ShapeImpl ensureSpace(ShapeImpl shape, Location location);
 
     /** @since 0.17 or earlier */
-    public abstract BaseAllocator createAllocator(LayoutImpl shape);
+    protected abstract BaseAllocator createAllocator(LayoutImpl shape);
 
     /** @since 0.17 or earlier */
-    public abstract BaseAllocator createAllocator(ShapeImpl shape);
+    protected abstract BaseAllocator createAllocator(ShapeImpl shape);
 
     /** @since 0.17 or earlier */
     protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags) {
@@ -437,8 +437,7 @@ public abstract class LayoutStrategy {
 
     protected void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
         assert ((PropertyImpl) generalProperty).isSame(specificProperty) : generalProperty;
-        if (generalProperty.getLocation() != specificProperty.getLocation()) {
-            assert ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
-        }
+        assert generalProperty.getLocation() == specificProperty.getLocation() ||
+                        ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
     }
 }

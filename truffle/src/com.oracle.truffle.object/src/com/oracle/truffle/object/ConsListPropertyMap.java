@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,14 +79,17 @@ final class ConsListPropertyMap extends PropertyMap {
         return EMPTY;
     }
 
+    @Override
     public int size() {
         return size;
     }
 
+    @Override
     public boolean isEmpty() {
         return size() == 0;
     }
 
+    @Override
     public boolean containsKey(Object key) {
         for (Map.Entry<Object, Property> entry : reverseOrderEntrySet()) {
             if (entry.getKey().equals(key)) {
@@ -96,6 +99,7 @@ final class ConsListPropertyMap extends PropertyMap {
         return false;
     }
 
+    @Override
     public boolean containsValue(Object value) {
         for (Map.Entry<Object, Property> entry : reverseOrderEntrySet()) {
             if (entry.getValue().equals(value)) {
@@ -105,6 +109,7 @@ final class ConsListPropertyMap extends PropertyMap {
         return false;
     }
 
+    @Override
     public Property get(Object key) {
         if (key == null || isEmpty()) {
             return null;
@@ -137,6 +142,7 @@ final class ConsListPropertyMap extends PropertyMap {
         return null;
     }
 
+    @Override
     public Set<Object> keySet() {
         return new AbstractSet<>() {
             @Override
@@ -151,6 +157,7 @@ final class ConsListPropertyMap extends PropertyMap {
         };
     }
 
+    @Override
     public Collection<Property> values() {
         return new AbstractSet<>() {
             @Override
@@ -165,6 +172,7 @@ final class ConsListPropertyMap extends PropertyMap {
         };
     }
 
+    @Override
     public Set<Map.Entry<Object, Property>> entrySet() {
         return new AbstractSet<>() {
             @Override
@@ -192,6 +200,7 @@ final class ConsListPropertyMap extends PropertyMap {
                 return new Iterator<>() {
                     ConsListPropertyMap current = ConsListPropertyMap.this;
 
+                    @Override
                     public Entry<Object, Property> next() {
                         if (hasNext()) {
                             try {
@@ -204,10 +213,12 @@ final class ConsListPropertyMap extends PropertyMap {
                         }
                     }
 
+                    @Override
                     public boolean hasNext() {
                         return current != empty();
                     }
 
+                    @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
                     }
@@ -243,6 +254,7 @@ final class ConsListPropertyMap extends PropertyMap {
                 return new Iterator<>() {
                     ConsListPropertyMap current = ConsListPropertyMap.this;
 
+                    @Override
                     public Object next() {
                         if (hasNext()) {
                             try {
@@ -255,10 +267,12 @@ final class ConsListPropertyMap extends PropertyMap {
                         }
                     }
 
+                    @Override
                     public boolean hasNext() {
                         return current != empty();
                     }
 
+                    @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
                     }
@@ -294,6 +308,7 @@ final class ConsListPropertyMap extends PropertyMap {
                 return new Iterator<>() {
                     ConsListPropertyMap current = ConsListPropertyMap.this;
 
+                    @Override
                     public Property next() {
                         if (hasNext()) {
                             try {
@@ -306,10 +321,12 @@ final class ConsListPropertyMap extends PropertyMap {
                         }
                     }
 
+                    @Override
                     public boolean hasNext() {
                         return current != empty();
                     }
 
+                    @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
                     }
@@ -330,19 +347,23 @@ final class ConsListPropertyMap extends PropertyMap {
             this.backingProperty = backingProperty;
         }
 
+        @Override
         public Object getKey() {
             return backingProperty.getKey();
         }
 
+        @Override
         public Property getValue() {
             return backingProperty;
         }
 
+        @Override
         public Property setValue(Property value) {
             throw ImmutableMap.unmodifiableException();
         }
     }
 
+    @Override
     public PropertyMap copyAndPut(Object key, Property value) {
         if (!value.getKey().equals(key)) {
             throw new IllegalArgumentException("Key must equal extracted key of property.");
@@ -355,6 +376,7 @@ final class ConsListPropertyMap extends PropertyMap {
         return putCopy(value);
     }
 
+    @Override
     public ImmutableMap<Object, Property> copyAndRemove(Object key) {
         Deque<Property> shelve = new ArrayDeque<>();
         ConsListPropertyMap current = this;

@@ -503,7 +503,7 @@ abstract class DynamicObjectLibraryImpl {
         private static final Move[] EMPTY_ARRAY = new Move[0];
 
         Move(LocationImpl fromLoc, LocationImpl toLoc, int fromOrd, int toOrd) {
-            assert fromLoc == toLoc ? fromOrd == toOrd : fromOrd != toOrd;
+            assert (fromLoc == toLoc) == (fromOrd == toOrd);
             this.fromLoc = fromLoc;
             this.toLoc = toLoc;
             this.fromOrd = fromOrd;
@@ -1037,8 +1037,7 @@ abstract class DynamicObjectLibraryImpl {
         private static boolean hasDuplicateCacheKeys(KeyCacheEntry tail, Object key) {
             EconomicSet<Object> keySet = EconomicSet.create();
             for (KeyCacheEntry c = tail; c != null; c = c.next) {
-                if (c instanceof SpecificKey) {
-                    SpecificKey cacheEntry = (SpecificKey) c;
+                if (c instanceof SpecificKey cacheEntry) {
                     if (!keySet.add(cacheEntry.cachedKey)) {
                         return true;
                     }

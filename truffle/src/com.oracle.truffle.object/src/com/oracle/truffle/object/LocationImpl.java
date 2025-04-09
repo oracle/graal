@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,12 +47,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
-public abstract class LocationImpl extends Location {
+abstract class LocationImpl extends Location {
     /**
      * @since 0.17 or earlier
      */
@@ -60,16 +59,7 @@ public abstract class LocationImpl extends Location {
     }
 
     /** @since 0.17 or earlier */
-    public interface InternalLongLocation extends LongLocation {
-        /** @since 0.17 or earlier */
-        void setLongInternal(DynamicObject store, long value);
-
-        /** @since 0.17 or earlier */
-        String getWhereString();
-    }
-
-    /** @since 0.17 or earlier */
-    public interface LocationVisitor {
+    interface LocationVisitor {
         /** @since 0.17 or earlier */
         void visitObjectField(int index, int count);
 

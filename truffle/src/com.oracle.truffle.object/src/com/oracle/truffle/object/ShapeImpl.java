@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ import com.oracle.truffle.object.Transition.ShareShapeTransition;
  * @since 0.17 or earlier
  */
 @SuppressWarnings("deprecation")
-public abstract class ShapeImpl extends Shape {
+abstract class ShapeImpl extends Shape {
     /** Shape and object flags. */
     protected final int flags;
 
@@ -133,7 +133,7 @@ public abstract class ShapeImpl extends Shape {
      * </ol>
      *
      * @see #queryTransition(Transition)
-     * @see #addTransitionInternal(Transition, ShapeImpl)
+     * @see #addTransitionIfAbsentOrNull(Transition, ShapeImpl)
      */
     private volatile Object transitionMap;
 
@@ -1127,7 +1127,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    public abstract static class BaseAllocator implements LocationVisitor {
+    abstract static class BaseAllocator implements LocationVisitor {
         /** @since 0.17 or earlier */
         protected final LayoutImpl layout;
         /** @since 0.17 or earlier */
@@ -1163,27 +1163,21 @@ public abstract class ShapeImpl extends Shape {
         protected abstract Location moveLocation(Location oldLocation);
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected abstract Location newObjectLocation(boolean useFinal, boolean nonNull);
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected abstract Location newTypedObjectLocation(boolean useFinal, Class<?> type, boolean nonNull);
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected abstract Location newIntLocation(boolean useFinal);
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected abstract Location newDoubleLocation(boolean useFinal);
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected abstract Location newLongLocation(boolean useFinal);
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected abstract Location newBooleanLocation(boolean useFinal);
 
         /**
@@ -1193,7 +1187,6 @@ public abstract class ShapeImpl extends Shape {
          * @param value the constant value
          * @since 0.17 or earlier
          */
-        @Deprecated
         public Location constantLocation(Object value) {
             throw new UnsupportedOperationException();
         }
@@ -1205,7 +1198,6 @@ public abstract class ShapeImpl extends Shape {
          * @param value the default value
          * @since 0.17 or earlier
          */
-        @Deprecated
         public Location declaredLocation(Object value) {
             throw new UnsupportedOperationException();
         }
@@ -1218,7 +1210,6 @@ public abstract class ShapeImpl extends Shape {
          * @param nonNull non-null location
          * @since 0.17 or earlier
          */
-        @Deprecated
         protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
             throw new UnsupportedOperationException();
         }
@@ -1231,15 +1222,11 @@ public abstract class ShapeImpl extends Shape {
         }
 
         /** @since 0.17 or earlier */
-        @Deprecated
         protected Location locationForValueUpcast(Object value, Location oldLocation) {
             return locationForValueUpcast(value, oldLocation, 0);
         }
 
-        @SuppressWarnings("unused")
-        protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
-            throw new UnsupportedOperationException();
-        }
+        protected abstract Location locationForValueUpcast(Object value, Location oldLocation, int putFlags);
 
         /**
          * Create a new location for a fixed type. It can only be assigned to values of this type.
@@ -1262,8 +1249,7 @@ public abstract class ShapeImpl extends Shape {
 
         /** @since 0.17 or earlier */
         protected <T extends Location> T advance(T location0) {
-            if (location0 instanceof LocationImpl) {
-                LocationImpl location = (LocationImpl) location0;
+            if (location0 instanceof LocationImpl location) {
                 location.accept(this);
                 assert layout.hasPrimitiveExtensionArray() || primitiveArraySize == 0;
             }
@@ -1283,27 +1269,30 @@ public abstract class ShapeImpl extends Shape {
         }
 
         /** @since 0.17 or earlier */
+        @Override
         public void visitObjectField(int index, int count) {
             objectFieldSize = Math.max(objectFieldSize, index + count);
         }
 
         /** @since 0.17 or earlier */
+        @Override
         public void visitObjectArray(int index, int count) {
             objectArraySize = Math.max(objectArraySize, index + count);
         }
 
         /** @since 0.17 or earlier */
+        @Override
         public void visitPrimitiveArray(int index, int count) {
             primitiveArraySize = Math.max(primitiveArraySize, index + count);
         }
 
         /** @since 0.17 or earlier */
+        @Override
         public void visitPrimitiveField(int index, int count) {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
         }
 
         /** @since 0.17 or earlier */
-        @Deprecated
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;

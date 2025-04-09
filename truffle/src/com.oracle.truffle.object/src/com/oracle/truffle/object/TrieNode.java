@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -350,8 +350,7 @@ abstract class TrieNode<K, V, E extends Map.Entry<K, V>> {
         private Object collapseSingletonNode(TrieNode<K, V, E> node) {
             assert !node.isEmpty();
             // remove may return a single-entry node, collapse it into just the entry
-            if (node instanceof BitmapNode) {
-                BitmapNode<K, V, E> bitmapNode = (BitmapNode<K, V, E>) node;
+            if (node instanceof BitmapNode<K, V, E> bitmapNode) {
                 if (bitmapNode.entries.length == 1 && !(bitmapNode.entries[0] instanceof TrieNode)) {
                     return bitmapNode.entries[0];
                 }

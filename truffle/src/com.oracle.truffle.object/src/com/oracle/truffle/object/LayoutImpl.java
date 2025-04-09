@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.object.Shape;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
-public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
+abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     private static final int INT_TO_DOUBLE_FLAG = 1;
     private static final int INT_TO_LONG_FLAG = 2;
 
@@ -69,8 +69,6 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
         this.allowedImplicitCasts = implicitCastFlags;
     }
-
-    protected abstract boolean isLegacyLayout();
 
     /** @since 0.17 or earlier */
     @Override
@@ -157,34 +155,34 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         protected Support() {
         }
 
-        public final void setShapeWithStoreFence(DynamicObject object, Shape shape) {
+        protected final void setShapeWithStoreFence(DynamicObject object, Shape shape) {
             if (shape.isShared()) {
                 VarHandle.storeStoreFence();
             }
             super.setShape(object, shape);
         }
 
-        public final void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
+        protected final void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
             DynamicObjectSupport.grow(object, thisShape, otherShape);
         }
 
-        public final void resize(DynamicObject object, Shape thisShape, Shape otherShape) {
+        protected final void resize(DynamicObject object, Shape thisShape, Shape otherShape) {
             DynamicObjectSupport.resize(object, thisShape, otherShape);
         }
 
-        public final void invalidateAllPropertyAssumptions(Shape shape) {
+        protected final void invalidateAllPropertyAssumptions(Shape shape) {
             DynamicObjectSupport.invalidateAllPropertyAssumptions(shape);
         }
 
-        public final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
+        protected final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
             DynamicObjectSupport.trimToSize(object, thisShape, otherShape);
         }
 
-        public final Map<Object, Object> archive(DynamicObject object) {
+        protected final Map<Object, Object> archive(DynamicObject object) {
             return DynamicObjectSupport.archive(object);
         }
 
-        public final boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
+        protected final boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
             return DynamicObjectSupport.verifyValues(object, archive);
         }
 

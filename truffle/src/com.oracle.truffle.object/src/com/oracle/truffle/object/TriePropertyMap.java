@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,10 +96,9 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
 
         @Override
         public boolean equals(Object obj) {
-            if (!(obj instanceof LinkedPropertyEntry)) {
+            if (!(obj instanceof LinkedPropertyEntry other)) {
                 return false;
             }
-            LinkedPropertyEntry other = (LinkedPropertyEntry) obj;
             return this.value.equals(other.value) && Objects.equals(this.prevKey, other.prevKey) && Objects.equals(this.nextKey, other.nextKey);
         }
 

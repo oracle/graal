@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,7 @@ abstract class CoreLocations {
     }
 
     public interface ObjectLocation extends TypedLocation {
+        @Override
         Class<? extends Object> getType();
 
         /**
@@ -86,10 +87,12 @@ abstract class CoreLocations {
     }
 
     public interface IntLocation extends TypedLocation, com.oracle.truffle.api.object.IntLocation {
+        @Override
         int getInt(DynamicObject store, boolean guard);
 
         void setInt(DynamicObject store, int value, boolean guard, boolean init);
 
+        @Override
         default Class<Integer> getType() {
             return int.class;
         }
@@ -108,10 +111,12 @@ abstract class CoreLocations {
     }
 
     public interface LongLocation extends TypedLocation, com.oracle.truffle.api.object.LongLocation {
+        @Override
         long getLong(DynamicObject store, boolean guard);
 
         void setLong(DynamicObject store, long value, boolean guard, boolean init);
 
+        @Override
         default Class<Long> getType() {
             return long.class;
         }
@@ -132,10 +137,12 @@ abstract class CoreLocations {
     }
 
     public interface DoubleLocation extends TypedLocation, com.oracle.truffle.api.object.DoubleLocation {
+        @Override
         double getDouble(DynamicObject store, boolean guard);
 
         void setDouble(DynamicObject store, double value, boolean guard, boolean init);
 
+        @Override
         default Class<Double> getType() {
             return double.class;
         }
@@ -156,10 +163,12 @@ abstract class CoreLocations {
     }
 
     public interface BooleanLocation extends TypedLocation, com.oracle.truffle.api.object.BooleanLocation {
+        @Override
         boolean getBoolean(DynamicObject store, boolean guard);
 
         void setBoolean(DynamicObject store, boolean value, boolean guard, boolean init);
 
+        @Override
         default Class<Boolean> getType() {
             return boolean.class;
         }
@@ -382,6 +391,7 @@ abstract class CoreLocations {
             return Object.class;
         }
 
+        @Override
         public final boolean isNonNull() {
             return false;
         }
@@ -424,6 +434,7 @@ abstract class CoreLocations {
             return Object.class;
         }
 
+        @Override
         public boolean isNonNull() {
             return false;
         }

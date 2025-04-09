@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import java.util.Map;
  *
  * @since 0.17 or earlier
  */
-public interface ImmutableMap<K, V> extends Map<K, V> {
+interface ImmutableMap<K, V> extends Map<K, V> {
 
     /**
      * Creates an immutable copy of this map with the given entry put in the map.

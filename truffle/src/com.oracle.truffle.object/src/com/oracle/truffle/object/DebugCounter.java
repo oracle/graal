@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,24 +44,18 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** @since 0.17 or earlier */
-@SuppressWarnings("deprecation")
-public abstract class DebugCounter {
+abstract class DebugCounter {
     private DebugCounter() {
     }
 
-    /** @since 0.17 or earlier */
     public abstract long get();
 
-    /** @since 0.17 or earlier */
     public abstract void inc();
 
-    /** @since 0.17 or earlier */
     public static DebugCounter create(String name) {
         return ObjectStorageOptions.DebugCounters ? DebugCounterImpl.createImpl(name) : Dummy.INSTANCE;
     }
 
-    /** @since 0.17 or earlier */
     public static void dumpCounters() {
         if (ObjectStorageOptions.DebugCounters) {
             DebugCounterImpl.dumpCounters(System.out);

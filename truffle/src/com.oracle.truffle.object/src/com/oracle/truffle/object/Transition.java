@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 
 /** @since 0.17 or earlier */
-public abstract class Transition {
+abstract class Transition {
     /**
      * @since 0.17 or earlier
      */
@@ -83,19 +83,19 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public abstract static class PropertyTransition extends Transition {
+    abstract static class PropertyTransition extends Transition {
         protected final Property property;
         protected final Object key;
         protected final int flags;
 
         /** @since 0.17 or earlier */
-        protected PropertyTransition(Property property) {
+        PropertyTransition(Property property) {
             this.property = property;
             this.key = property.getKey();
             this.flags = property.getFlags();
         }
 
-        protected PropertyTransition(Object key, int flags) {
+        PropertyTransition(Object key, int flags) {
             this.property = null;
             this.key = key;
             this.flags = flags;
@@ -146,16 +146,16 @@ public abstract class Transition {
         }
     }
 
-    protected abstract static class TypedPropertyTransition extends PropertyTransition {
+    abstract static class TypedPropertyTransition extends PropertyTransition {
         /** A {@link Location} or the value's erased type. */
         private final Object locationOrType;
 
-        protected TypedPropertyTransition(Property property, Object locationOrType) {
+        TypedPropertyTransition(Property property, Object locationOrType) {
             super(property);
             this.locationOrType = locationOrType;
         }
 
-        protected TypedPropertyTransition(Object key, int flags, Object locationType) {
+        TypedPropertyTransition(Object key, int flags, Object locationType) {
             super(key, flags);
             this.locationOrType = locationType;
         }
@@ -190,13 +190,13 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class AddPropertyTransition extends TypedPropertyTransition {
+    static final class AddPropertyTransition extends TypedPropertyTransition {
         /** @since 0.17 or earlier */
-        public AddPropertyTransition(Property property, Object locationOrType) {
+        AddPropertyTransition(Property property, Object locationOrType) {
             super(property, locationOrType);
         }
 
-        public AddPropertyTransition(Object key, int flags, Object locationType) {
+        AddPropertyTransition(Object key, int flags, Object locationType) {
             super(key, flags, locationType);
         }
 
@@ -214,10 +214,10 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class RemovePropertyTransition extends TypedPropertyTransition {
+    static final class RemovePropertyTransition extends TypedPropertyTransition {
         private final boolean direct;
 
-        public RemovePropertyTransition(Property property, Object locationOrType, boolean direct) {
+        RemovePropertyTransition(Property property, Object locationOrType, boolean direct) {
             super(property, locationOrType);
             this.direct = direct;
         }
@@ -236,11 +236,11 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class ObjectTypeTransition extends Transition {
+    static final class ObjectTypeTransition extends Transition {
         private final Object objectType;
 
         /** @since 0.17 or earlier */
-        public ObjectTypeTransition(Object objectType) {
+        ObjectTypeTransition(Object objectType) {
             this.objectType = objectType;
         }
 
@@ -278,11 +278,11 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public abstract static class AbstractReplacePropertyTransition extends PropertyTransition {
+    abstract static class AbstractReplacePropertyTransition extends PropertyTransition {
         private final Property after;
 
         /** @since 0.17 or earlier */
-        public AbstractReplacePropertyTransition(Property before, Property after) {
+        AbstractReplacePropertyTransition(Property before, Property after) {
             super(before);
             this.after = after;
         }
@@ -336,9 +336,9 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class IndirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
+    static final class IndirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
         /** @since 0.17 or earlier */
-        public IndirectReplacePropertyTransition(Property before, Property after) {
+        IndirectReplacePropertyTransition(Property before, Property after) {
             super(before, after);
         }
 
@@ -350,9 +350,9 @@ public abstract class Transition {
     }
 
     /** @since 0.17 or earlier */
-    public static final class DirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
+    static final class DirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
         /** @since 0.17 or earlier */
-        public DirectReplacePropertyTransition(Property before, Property after) {
+        DirectReplacePropertyTransition(Property before, Property after) {
             super(before, after);
         }
 
@@ -364,9 +364,9 @@ public abstract class Transition {
     }
 
     /** @since 0.18 */
-    public static final class ShareShapeTransition extends Transition {
+    static final class ShareShapeTransition extends Transition {
         /** @since 0.18 */
-        public ShareShapeTransition() {
+        ShareShapeTransition() {
         }
 
         /** @since 0.18 */
