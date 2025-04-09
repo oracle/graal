@@ -48,7 +48,7 @@ import jdk.graal.compiler.options.OptionsParser;
  */
 public class TruffleCompilerOptions implements OptionsContainer {
     @Override
-    public boolean optionsAreServiceLoadable() {
+    public boolean optionsAreDiscoverable() {
         return false;
     }
 
@@ -332,7 +332,7 @@ public class TruffleCompilerOptions implements OptionsContainer {
     }
 
     private static TruffleCompilerOptionDescriptor createCompilerOptionDescriptor(OptionDescriptor d) {
-        return new TruffleCompilerOptionDescriptor(d.getName(), matchGraalOptionType(d), d.isDeprecated(), d.getHelp(), d.getDeprecationMessage());
+        return new TruffleCompilerOptionDescriptor(d.getName(), matchGraalOptionType(d), d.isDeprecated(), d.getHelp().getFirst(), d.getDeprecationMessage());
     }
 
     private static Type matchGraalOptionType(OptionDescriptor d) {

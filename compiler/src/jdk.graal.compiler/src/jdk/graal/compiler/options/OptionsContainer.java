@@ -33,15 +33,16 @@ import java.util.ServiceLoader;
 /**
  * Extra metadata about a class containing one or more static fields annotated by {@link Option}.
  * Such a class can implement this interface to {@linkplain #getNamePrefix() customize the name} of
- * the contained options or to {@link #optionsAreServiceLoadable prevent} them from being loaded by
- * {@link #load(ClassLoader)}.
+ * the contained options or to {@link #optionsAreDiscoverable prevent} them from being
+ * {@linkplain #getDiscoverableOptions(ClassLoader) discoverable}.
  */
 public interface OptionsContainer {
 
     /**
-     * Determines if this container's options are available via {@link #load(ClassLoader)}.
+     * Determines if this container's options are available via
+     * {@link #getDiscoverableOptions(ClassLoader)}.
      */
-    default boolean optionsAreServiceLoadable() {
+    default boolean optionsAreDiscoverable() {
         return true;
     }
 
@@ -75,21 +76,25 @@ public interface OptionsContainer {
     /**
      * Gets the class declaring the options.
      */
-    default Class<?> getDeclaringClass() {
+    default Class<?> declaringClass() {
         return getClass();
     }
 
     /**
-     * Finds all {@linkplain #optionsAreServiceLoadable() loadable} options available via service
-     * loading.
+     * Finds all {@linkplain #optionsAreDiscoverable() discoverable} options. Discoverable options
+     * are those whose {@linkplain OptionDescriptor#getContainer() container} returns true for
+     * {@link #optionsAreDiscoverable()}.
      *
      * @param loader the class loader used for {@link ServiceLoader#load(Class, ClassLoader)}
      */
     @LibGraalSupport.HostedOnly
-    static Iterable<OptionDescriptors> load(ClassLoader loader) {
+    static Iterable<OptionDescriptors> getDiscoverableOptions(ClassLoader loader) {
         List<OptionDescriptors> res = new ArrayList<>();
         for (OptionDescriptors d : ServiceLoader.load(OptionDescriptors.class, loader)) {
-            if (d.getContainer().optionsAreServiceLoadable()) {
+            if (OptionDescriptor.COMPRESSED_HELP != null) {
+                OptionDescriptor.COMPRESSED_HELP.register(d);
+            }
+            if (d.getContainer().optionsAreDiscoverable()) {
                 res.add(d);
             }
         }
@@ -109,16 +114,6 @@ public interface OptionsContainer {
     /**
      * The default metadata for an options declaring class.
      */
-    class Default implements OptionsContainer {
-        private final Class<?> declaringClass;
-
-        public Default(Class<?> declaringClass) {
-            this.declaringClass = declaringClass;
-        }
-
-        @Override
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
+    record Default(Class<?> declaringClass) implements OptionsContainer {
     }
 }

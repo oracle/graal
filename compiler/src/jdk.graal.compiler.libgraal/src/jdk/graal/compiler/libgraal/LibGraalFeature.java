@@ -232,7 +232,7 @@ public final class LibGraalFeature implements Feature {
             Map<String, String> modules = libgraalLoader.getClassModuleMap();
             for (OptionKey<?> option : options) {
                 OptionDescriptor descriptor = option.getDescriptor();
-                if (descriptor != null && descriptor.getContainer().optionsAreServiceLoadable()) {
+                if (descriptor != null && descriptor.getContainer().optionsAreDiscoverable()) {
                     GraalError.guarantee(access.isReachable(option.getClass()), "%s", option.getClass());
                     GraalError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
 
@@ -252,6 +252,7 @@ public final class LibGraalFeature implements Feature {
                     }
                 }
             }
+            OptionDescriptor.sealHelpStrings();
         }
     }
 
