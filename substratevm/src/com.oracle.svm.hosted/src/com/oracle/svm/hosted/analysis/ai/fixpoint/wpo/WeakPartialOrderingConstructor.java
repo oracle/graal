@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.wpo;
 
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.ArrayDeque;
@@ -19,7 +20,7 @@ import java.util.Set;
 public final class WeakPartialOrderingConstructor {
 
     /* List of all WpoNodes */
-    private final List<WpoNode> wpoNodes;
+    private final List<WpoVertex> wpoVertices;
 
     /* For each HIRBlock, the set of back predecessors */
     private final Map<HIRBlock, Set<HIRBlock>> backPredecessors;
@@ -39,8 +40,10 @@ public final class WeakPartialOrderingConstructor {
     /* List of non-back predecessors' depth-first numbers */
     private final Map<Integer, List<Integer>> nonBackPredecessorsDfn = new HashMap<>();
 
-    /* Maps a depth-first number to the corresponding index in the wpoNodes list */
+    /* Maps a depth-first number to the corresponding index in the wpoVertices list */
     private final Map<Integer, List<Edge>> crossForwardEdges = new HashMap<>();
+
+    private final GraphTraversalHelper graphTraversalHelper;
 
     private int nextDfn = 1;
     private int nextPostDfn = 1;
@@ -48,9 +51,11 @@ public final class WeakPartialOrderingConstructor {
     private final List<Integer> dfnToIndex = new ArrayList<>();
 
     public WeakPartialOrderingConstructor(HIRBlock startBlock,
-                                          List<WpoNode> wpoNodes,
-                                          Map<HIRBlock, Set<HIRBlock>> backPredecessors) {
-        this.wpoNodes = wpoNodes;
+                                          List<WpoVertex> wpoVertices,
+                                          Map<HIRBlock, Set<HIRBlock>> backPredecessors,
+                                          GraphTraversalHelper graphTraversalHelper) {
+        this.graphTraversalHelper = graphTraversalHelper;
+        this.wpoVertices = wpoVertices;
         this.backPredecessors = backPredecessors;
         constructAuxiliary(startBlock);
         constructWpo();
@@ -109,8 +114,8 @@ public final class WeakPartialOrderingConstructor {
                 /* This will be popped after all its successors are finished. */
                 stack.push(new Tuple(node, true, predDfn));
 
-                for (int i = node.getSuccessorCount() - 1; i >= 0; i--) {
-                    HIRBlock successor = node.getSuccessorAt(i);
+                for (int i = graphTraversalHelper.getSuccessorCount(node) - 1; i >= 0; i--) {
+                    HIRBlock successor = graphTraversalHelper.getSuccessorAt(node, i);
                     int successorDfn = nodeToDfn.getOrDefault(successor, 0);
                     if (successorDfn == 0) {
                         stack.push(new Tuple(successor, false, vertex));
@@ -195,7 +200,7 @@ public final class WeakPartialOrderingConstructor {
 
             if (!isSCC) {
                 size.put(h, 1);
-                addWpoNode(h, dfnToNode.get(h - 1), WpoNode.Kind.Plain, 1);
+                addWpoNode(h, dfnToNode.get(h - 1), WpoVertex.Kind.Plain, 1);
                 continue;
             }
 
@@ -206,8 +211,8 @@ public final class WeakPartialOrderingConstructor {
             size.put(h, sizeH);
 
             int xH = dfn++;
-            addWpoNode(xH, dfnToNode.get(h - 1), WpoNode.Kind.Exit, sizeH);
-            addWpoNode(h, dfnToNode.get(h - 1), WpoNode.Kind.Head, sizeH);
+            addWpoNode(xH, dfnToNode.get(h - 1), WpoVertex.Kind.Exit, sizeH);
+            addWpoNode(h, dfnToNode.get(h - 1), WpoVertex.Kind.Head, sizeH);
 
             if (backPredsH.isEmpty()) {
                 addSuccessor(h, xH, xH, false);
@@ -268,13 +273,13 @@ public final class WeakPartialOrderingConstructor {
         }
     }
 
-    private void addWpoNode(int dfn, HIRBlock node, WpoNode.Kind kind, int size) {
+    private void addWpoNode(int dfn, HIRBlock node, WpoVertex.Kind kind, int size) {
         dfnToIndex.set(dfn, nextIdx++);
-        wpoNodes.add(new WpoNode(node, kind, size, nodeToPostDfn.get(node)));
+        wpoVertices.add(new WpoVertex(node, kind, size, nodeToPostDfn.get(node)));
     }
 
-    private WpoNode dfnToWpoNode(int dfn) {
-        return wpoNodes.get(dfnToIndex.get(dfn));
+    private WpoVertex dfnToWpoNode(int dfn) {
+        return wpoVertices.get(dfnToIndex.get(dfn));
     }
 
     private int dfnToIndex(int dfn) {
@@ -288,8 +293,8 @@ public final class WeakPartialOrderingConstructor {
     }
 
     private void addSuccessor(int fromDfn, int toDfn, int exitDfn, boolean irreducible) {
-        WpoNode fromNode = dfnToWpoNode(fromDfn);
-        WpoNode toNode = dfnToWpoNode(toDfn);
+        WpoVertex fromNode = dfnToWpoNode(fromDfn);
+        WpoVertex toNode = dfnToWpoNode(toDfn);
         int toIdx = dfnToIndex(toDfn);
 
         if (fromNode.isSuccessor(toIdx)) {
@@ -329,7 +334,6 @@ public final class WeakPartialOrderingConstructor {
         }
 
         private int findSet(int x) {
-            /* This works for our use case, but it's not a proper disjoint set implementation */
             if (!parent.containsKey(x)) {
                 makeSet(x);
             }
@@ -341,8 +345,6 @@ public final class WeakPartialOrderingConstructor {
         }
 
         public void unionSet(int x, int y) {
-            System.out.println("Union set: " + x + " " + y);
-            System.out.println("Parent: " + parent);
             int rootX = findSet(x);
             int rootY = findSet(y);
 

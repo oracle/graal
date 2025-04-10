@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public final class WpoNode {
+public final class WpoVertex {
 
     public enum Kind {
         Plain, Head, Exit
@@ -36,7 +36,7 @@ public final class WpoNode {
 
     private final int size;
 
-    public WpoNode(HIRBlock node, Kind kind, int size, int postOrder) {
+    public WpoVertex(HIRBlock node, Kind kind, int size, int postOrder) {
         this.node = node;
         this.kind = kind;
         this.size = size;
@@ -157,18 +157,6 @@ public final class WpoNode {
 
     @Override
     public String toString() {
-        return "WpoNode{" +
-                "node=" + node +
-                ", kind=" + kind +
-                ", successors=" + successors +
-                ", predecessors=" + predecessors +
-                ", successorsLifted=" + successorsLifted +
-                ", headOrExit=" + headOrExit +
-                ", numPredecessors=" + numPredecessors +
-                ", numPredecessorsReducible=" + numPredecessorsReducible +
-                ", postOrder=" + postOrder +
-                ", irreducibles=" + irreducibles +
-                ", size=" + size +
-                '}';
+        return "WpoVertex{" + "HIRBlock: " + node + "}";
     }
 }

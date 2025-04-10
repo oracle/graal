@@ -5,7 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoNode;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
 import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
@@ -49,11 +49,11 @@ public final class ConcurrentWpoFixpointIterator<
         if (iteratorPayload.containsMethodWpo(method)) {
             this.weakPartialOrdering = iteratorPayload.getMethodWpoMap().get(method);
         } else {
-            this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
+            this.weakPartialOrdering = new WeakPartialOrdering(graphTraversalHelper);
             iteratorPayload.addToMethodWpoMap(method, weakPartialOrdering);
         }
 
-        this.entry = cfgGraph.getStartBlock();
+        this.entry = graphTraversalHelper.getEntryBlock();
     }
 
     @Override
@@ -69,7 +69,7 @@ public final class ConcurrentWpoFixpointIterator<
     private void buildWorkNodes() {
         logger.log("Building work nodes for WPO", LoggerVerbosity.DEBUG);
         for (int idx = 0; idx < weakPartialOrdering.size(); idx++) {
-            WpoNode.Kind kind = weakPartialOrdering.getKind(idx);
+            WpoVertex.Kind kind = weakPartialOrdering.getKind(idx);
             HIRBlock node = weakPartialOrdering.getNode(idx);
 
             WorkNode workNode = new WorkNode(kind, node, idx);
@@ -83,7 +83,7 @@ public final class ConcurrentWpoFixpointIterator<
                 workNode.addSuccessor(nodeToWork.get(weakPartialOrdering.getNode(successor)));
             }
 
-            if (workNode.kind == WpoNode.Kind.Exit) {
+            if (workNode.kind == WpoVertex.Kind.Exit) {
                 workNode.setHead(nodeToWork.get(weakPartialOrdering.getNode(weakPartialOrdering.getHeadOfExit(idx))));
             } else {
                 for (int i = 0; i < workNode.node.getPredecessorCount(); ++i) {
@@ -123,7 +123,7 @@ public final class ConcurrentWpoFixpointIterator<
 
     private class WorkNode {
 
-        private final WpoNode.Kind kind;
+        private final WpoVertex.Kind kind;
         private final HIRBlock node;
         private final int index;
         private final AtomicInteger refCount;
@@ -131,7 +131,7 @@ public final class ConcurrentWpoFixpointIterator<
         private final List<WorkNode> predecessors = new ArrayList<>();
         private WorkNode head;
 
-        WorkNode(WpoNode.Kind kind, HIRBlock node, int index) {
+        WorkNode(WpoVertex.Kind kind, HIRBlock node, int index) {
             this.kind = kind;
             this.node = node;
             this.index = index;
@@ -159,7 +159,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            transferFunction.analyzeBlock(node, abstractStateMap);
+            transferFunction.analyzeBlock(node, abstractStateMap, graphTraversalHelper);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
@@ -173,7 +173,7 @@ public final class ConcurrentWpoFixpointIterator<
                 }
             }
 
-            transferFunction.analyzeBlock(node, abstractStateMap);
+            transferFunction.analyzeBlock(node, abstractStateMap, graphTraversalHelper);
             return successors;
         }
 
@@ -190,7 +190,7 @@ public final class ConcurrentWpoFixpointIterator<
 
         boolean updateHeadBackEdge() {
             Domain oldPre = abstractStateMap.getPreCondition(node.getBeginNode()).copyOf();
-            transferFunction.collectInvariantsFromPredecessors(node.getBeginNode(), abstractStateMap);
+            transferFunction.collectInvariantsFromPredecessors(node.getBeginNode(), abstractStateMap, graphTraversalHelper);
             extrapolate(node.getBeginNode());
 
             if (oldPre.leq(abstractStateMap.getPreCondition(node.getBeginNode()))) {

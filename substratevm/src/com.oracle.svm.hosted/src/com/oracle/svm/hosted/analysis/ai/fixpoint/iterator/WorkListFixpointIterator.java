@@ -10,7 +10,6 @@ import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -25,15 +24,12 @@ import java.util.Set;
  */
 public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain>> extends FixpointIteratorBase<Domain> {
 
-    private final StructuredGraph graph;
-
     public WorkListFixpointIterator(AnalysisMethod method,
                                     DebugContext debug,
                                     Domain initialDomain,
                                     TransferFunction<Domain> transferFunction,
                                     IteratorPayload iteratorPayload) {
         super(method, debug, initialDomain, transferFunction, iteratorPayload);
-        this.graph = cfgGraph.graph;
     }
 
     @Override
@@ -46,10 +42,13 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
         Set<Node> inWorklist = new HashSet<>(); /* nodes that are in the worklist */
 
         /* Initialize the worklist with control flow nodes */
-        graph.getNodes().filter(FixedNode.class::isInstance).forEach(node -> {
-            worklist.add(node);
-            inWorklist.add(node);
-        });
+        Iterable<Node> nodes = graphTraversalHelper.getNodes();
+        for (Node node : nodes) {
+            if (node instanceof FixedNode) {
+                worklist.add(node);
+                inWorklist.add(node);
+            }
+        }
 
         while (!worklist.isEmpty()) {
             Node current = worklist.poll();
@@ -64,7 +63,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
             // Add successors to the worklist if their precondition changes
             for (Node successor : current.cfgSuccessors()) {
                 Domain oldPreCondition = abstractStateMap.getPreCondition(successor).copyOf();
-                transferFunction.collectInvariantsFromPredecessors(successor, abstractStateMap);
+                transferFunction.collectInvariantsFromPredecessors(successor, abstractStateMap, graphTraversalHelper);
 
                 if (!oldPreCondition.leq(abstractStateMap.getPreCondition(successor))) {
                     if (!inWorklist.contains(successor)) {
