@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.cds.ArchivedRegistryData;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
@@ -67,9 +68,9 @@ public abstract class ClassRegistry {
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
      * (hidden, anonymous or with a specified protection domain).
-     * 
+     *
      * Regular class definitions will use the {@link #EMPTY} instance.
-     * 
+     *
      * Hidden and Unsafe anonymous classes are handled by not registering them in the class loader
      * registry.
      */
@@ -295,15 +296,24 @@ public abstract class ClassRegistry {
         }
     }
 
-    protected ClassRegistry(long loaderID) {
+    protected ClassRegistry(long loaderID, ArchivedRegistryData archivedData) {
         this.loaderID = loaderID;
-        ReadWriteLock rwLock = new ReentrantReadWriteLock();
-        this.packages = new PackageTable(rwLock);
-        this.modules = new ModuleTable(rwLock);
+        if (archivedData != null) {
+            this.packages = archivedData.packageTable();
+            this.modules = archivedData.moduleTable();
+        } else {
+            ReadWriteLock rwLock = new ReentrantReadWriteLock();
+            this.packages = new PackageTable(rwLock);
+            this.modules = new ModuleTable(rwLock);
+        }
     }
 
-    public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
+    public void initUnnamedModule(StaticObject unnamedModule, ArchivedRegistryData archivedRegistryData) {
+        if (archivedRegistryData != null) {
+            this.unnamed = archivedRegistryData.unnamedModule();
+        } else {
+            this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
+        }
     }
 
     /**

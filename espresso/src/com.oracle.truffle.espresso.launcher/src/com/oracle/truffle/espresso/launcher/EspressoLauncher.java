@@ -272,10 +272,6 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-Xint":
                     espressoOptions.put("engine.Compilation", "false");
                     break;
-                case "-Xshare:auto":
-                case "-Xshare:off":
-                    // ignore
-                    break;
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
@@ -320,6 +316,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                         espressoOptions.put(AGENT_PATH + split[0], split[1]);
                     } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss") || arg.startsWith("-XX:MaxHeapSize=")) {
                         unrecognized.add("--vm." + arg.substring(1));
+                    } else if (arg.startsWith("-Xshare:")) {
+                        String value = arg.substring("-Xshare:".length());
+                        espressoOptions.put("java.CDS", value);
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
                     } else
@@ -428,6 +427,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private static final Set<String> knownPassThroughOptions = Set.of(
+                    "SharedArchiveFile",
                     "WhiteBoxAPI",
                     "EnableJVMCI");
 
@@ -642,6 +642,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 if (versionAction == VersionAction.PrintAndExit) {
                     throw exit(0);
                 }
+            }
+
+            boolean dumpSharedSpaces = "dump".equals(espressoOptions.get("java.CDS")); // -Xshare:dump
+            if (dumpSharedSpaces) {
+                context.initialize("java");
+                exit();
             }
 
             if (mainClassName == null) {

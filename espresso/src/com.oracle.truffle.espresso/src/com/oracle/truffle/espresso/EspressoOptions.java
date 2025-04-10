@@ -725,6 +725,25 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
 
+    public enum XShareOption {
+        auto,
+        on,
+        off,
+        dump
+    }
+
+    @Option(help = "Sets the class data sharing (CDS) mode.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "auto|on|off|dump") //
+    public static final OptionKey<XShareOption> CDS = new OptionKey<>(XShareOption.auto);
+
+    @Option(help = "Overrides the default path to the (static) CDS archive.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<path>") //
+    public static final OptionKey<Path> SharedArchiveFile = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
     /**
      * Property used to force liveness analysis to also be applied by the interpreter. For testing
      * purpose only. Use a host property rather than an option. An option would slow interpreter

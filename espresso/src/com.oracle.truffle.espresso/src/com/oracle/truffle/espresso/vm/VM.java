@@ -39,6 +39,7 @@ import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lan
 import static com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
 
 import java.io.File;
+import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -52,6 +53,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -85,6 +87,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
+import com.oracle.truffle.espresso.cds.CDSSupport;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
@@ -117,6 +120,7 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.BootClassRegistry;
+import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
@@ -3872,38 +3876,114 @@ public final class VM extends NativeEnv {
 
     // region archive
 
+    @TruffleBoundary
     @VmImpl(isJni = true)
-    @SuppressWarnings("unused")
-    public void JVM_InitializeFromArchive(@JavaType(Class.class) StaticObject cls) {
-        /*
-         * Used to reduce boot time of certain initializations through CDS (/ex: module
-         * initialization). Currently unsupported.
-         */
+    public static void JVM_DefineArchivedModules(@JavaType(ClassLoader.class) StaticObject platformLoader,
+                    @JavaType(ClassLoader.class) StaticObject systemLoader,
+                    @Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds == null || !cds.isUsingArchive()) {
+            return;
+        }
+
+        ClassRegistries registries = context.getRegistries();
+
+        ClassRegistry bootRegistry = registries.getBootClassRegistry();
+        ClassRegistry platformRegistry = registries.getClassRegistry(platformLoader);
+        ClassRegistry systemRegistry = registries.getClassRegistry(systemLoader);
+        for (ClassRegistry registry : List.of(bootRegistry, platformRegistry, systemRegistry)) {
+            cds.hydrateFromCache(registry.getUnnamedModule());
+            registry.modules().collectValues(cds::hydrateFromCache);
+        }
+
+        context.getRegistries().processFixupList(registries.getJavaBaseModule().module());
     }
 
+    @TruffleBoundary
     @VmImpl(isJni = true)
+    public static void JVM_InitializeFromArchive(@JavaType(Class.class) StaticObject clazz, @Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds == null) {
+            return;
+        }
+
+        Klass klass = clazz.getMirrorKlass();
+        cds.initializeFromArchive(klass);
+    }
+
+    @TruffleBoundary
+    @VmImpl
     public static boolean JVM_IsDumpingClassList() {
         return false;
     }
 
-    @VmImpl(isJni = true)
-    public static boolean JVM_IsCDSDumpingEnabled() {
-        return false;
-    }
-
-    @VmImpl(isJni = true)
-    public static int JVM_GetCDSConfigStatus() {
-        return 0;
-    }
-
-    @VmImpl(isJni = true)
-    public static boolean JVM_IsSharingEnabled() {
-        return false;
-    }
-
+    @TruffleBoundary
     @VmImpl
-    public static long JVM_GetRandomSeedForDumping() {
-        return 0L;
+    public static boolean JVM_IsCDSDumpingEnabled(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        return cds != null && cds.isDumpingStaticArchive();
+    }
+
+    @TruffleBoundary
+    @VmImpl
+    public static int JVM_GetCDSConfigStatus(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds != null) {
+            return cds.getCDSConfigStatus(context);
+        }
+        return 0; // nothing
+    }
+
+    @TruffleBoundary
+    @VmImpl
+    public static boolean JVM_IsSharingEnabled(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        return cds != null && cds.isUsingArchive();
+    }
+
+    @TruffleBoundary
+    @VmImpl
+    public static long JVM_GetRandomSeedForDumping(@Inject EspressoContext context) {
+        CDSSupport cds = context.getCDS();
+        if (cds != null && cds.isDumpingStaticArchive()) {
+            // HotSpot hashes internal VM data/versions here.
+            // Espresso is not tied to a specific Java version, so we keep it simple.
+            long seed = Objects.hashCode(EspressoLanguage.VM_VERSION);
+            if (seed == 0) { // don't let this ever be zero.
+                seed = 0x87654321;
+            }
+            CDSSupport.getLogger().fine("JVM_GetRandomSeedForDumping() = " + seed);
+            return seed;
+        } else {
+            return 0L;
+        }
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static void JVM_RegisterLambdaProxyClassForArchiving(
+                    @JavaType(Class.class) StaticObject caller,
+                    @JavaType(String.class) StaticObject interfaceMethodName,
+                    @JavaType(MethodType.class) StaticObject factoryType,
+                    @JavaType(MethodType.class) StaticObject interfaceMethodType,
+                    @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject implementationMember,
+                    @JavaType(MethodType.class) StaticObject dynamicMethodType,
+                    @JavaType(Class.class) StaticObject lambdaProxyClass) {
+        // Not supported by Espresso's CDS.
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    public static @JavaType(Class.class) StaticObject JVM_LookupLambdaProxyClassFromArchive(
+                    @JavaType(Class.class) StaticObject caller,
+                    @JavaType(String.class) StaticObject interfaceMethodName,
+                    @JavaType(MethodType.class) StaticObject factoryType,
+                    @JavaType(MethodType.class) StaticObject interfaceMethodType,
+                    @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject implementationMember,
+                    @JavaType(MethodType.class) StaticObject dynamicMethodType) {
+        return StaticObject.NULL; // Not supported by Espresso's CDS.
     }
 
     // endregion archive
