@@ -590,7 +590,7 @@ public abstract class TypeFlow<T> {
             return true;
         }
         if (this.isPrimitiveFlow != use.isPrimitiveFlow) {
-            if (this instanceof OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow) {
+            if (this instanceof OffsetStoreTypeFlow.UnsafeStoreTypeFlow) {
                 /*
                  * The links between unsafe store and its uses are the only place where the mix of
                  * primitive/object type states actually happens due to the fact that all unsafe

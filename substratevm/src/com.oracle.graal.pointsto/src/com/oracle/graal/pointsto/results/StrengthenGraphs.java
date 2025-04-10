@@ -190,7 +190,7 @@ public abstract class StrengthenGraphs {
     private final StrengthenGraphsCounters afterCounters;
 
     /** Used to avoid aggressive optimizations for open type world analysis. */
-    private final boolean isClosedTypeWorld;
+    protected final boolean isClosedTypeWorld;
 
     public StrengthenGraphs(BigBang bb, Universe converter) {
         this.bb = bb;
@@ -515,6 +515,8 @@ public abstract class StrengthenGraphs {
                     AnalysisError.guarantee(node != replacement, "The new stamp needs to be different from the old stamp");
                     node.replaceAndDelete(replacement);
                     tool.addToWorkList(replacement);
+                } else {
+                    maybeAssignInstanceOfProfiles(node);
                 }
 
             } else if (n instanceof ClassIsAssignableFromNode node) {
@@ -1174,6 +1176,11 @@ public abstract class StrengthenGraphs {
             }
             return newStamp;
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void maybeAssignInstanceOfProfiles(InstanceOfNode iof) {
+        // placeholder
     }
 
     private static String getQualifiedName(StructuredGraph graph) {

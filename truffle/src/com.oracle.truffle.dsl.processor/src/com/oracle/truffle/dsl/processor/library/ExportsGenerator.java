@@ -1145,6 +1145,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                         builder.string(constructorReceiverName + ".getClass()").end();
                     } else {
                         builder.string("(").cast(receiverType).string(constructorReceiverName + ").getClass()").end();
+                        GeneratorUtils.mergeSuppressWarnings(constructor, "cast");
                     }
                 }
                 acceptsBuilder.startStaticCall(types.CompilerDirectives, "isExact").string(receiverName).string("this.receiverClass_").end();

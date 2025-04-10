@@ -111,14 +111,13 @@ public class TestOptionKey {
             /*name*/ "MyDeprecatedOption",
             /*optionType*/ OptionType.User,
             /*optionValueType*/ String.class,
-            /*help*/ "Help for MyDeprecatedOption with",
-            /*extraHelp*/ new String[] {
-                 "some extra text on",
-                 "following lines.",
-            },
+            /*help*/ """
+                 Help for MyDeprecatedOption with
+                 some extra text on
+                 following lines.""",
             /*declaringClass*/ Options.class,
-            /*fieldName*/ "MyDeprecatedOption",
             /*option*/ MyDeprecatedOption,
+            /*fieldName*/ "MyDeprecatedOption",
             /*stability*/ OptionStability.EXPERIMENTAL,
             /*deprecated*/ true,
             /*deprecationMessage*/ "Some deprecation message"));
@@ -401,8 +400,9 @@ public class TestOptionKey {
         Assert.assertTrue(desc.isDeprecated());
         Assert.assertEquals(desc.getOptionType(), OptionType.User);
         Assert.assertEquals(desc.getDeprecationMessage(), "Some deprecation message");
-        Assert.assertEquals(desc.getHelp(), "Help for MyDeprecatedOption with");
-        Assert.assertEquals(desc.getExtraHelp(), List.of("some extra text on", "following lines."));
+        List<String> help = desc.getHelp();
+        Assert.assertEquals(help.getFirst(), "Help for MyDeprecatedOption with");
+        Assert.assertEquals(help.subList(1, help.size()), List.of("some extra text on", "following lines."));
         Assert.assertEquals(desc.getLocation(), Options.class.getName() + ".MyDeprecatedOption");
 
         EconomicMap<String, OptionDescriptor> map = EconomicMap.create();

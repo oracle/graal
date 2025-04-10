@@ -385,6 +385,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 throw InternalResourceCache.throwDuplicateOptionalResourceException(old, resource);
             }
         }
+        for (String optionalResourceId : reg.optionalResources()) {
+            if (!resources.containsKey(optionalResourceId)) {
+                resources.put(optionalResourceId, new InternalResourceCache(id, optionalResourceId, InternalResourceCache.nonExistingResource(id, optionalResourceId)));
+            }
+        }
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
                         servicesClassNames, reg.contextPolicy(), provider, reg.website(), sandboxPolicy, Collections.unmodifiableMap(resources)));

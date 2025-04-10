@@ -71,7 +71,6 @@ import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -471,9 +470,6 @@ public class PointsToStats {
             return "IndexedStore @ " + formatSource(flow);
         } else if (flow instanceof UnsafeStoreTypeFlow) {
             return "UnsafeStore @ " + formatSource(flow);
-        } else if (flow instanceof UnsafeWriteSinkTypeFlow) {
-            UnsafeWriteSinkTypeFlow sink = (UnsafeWriteSinkTypeFlow) flow;
-            return "UnsafeWriteSink(" + formatField(sink.getSource()) + ")";
         } else if (flow instanceof LoadIndexedTypeFlow) {
             return "IndexedLoad @ " + formatSource(flow);
         } else if (flow instanceof UnsafeLoadTypeFlow) {

@@ -1986,47 +1986,6 @@ class GraalVmLibrary(GraalVmNativeImage):
     def is_skipped(self):
         return _skip_libraries(self.native_image_config)
 
-class PolyglotIsolateLibrary(GraalVmLibrary):
-    """
-    A native image project dedicated to constructing a language polyglot isolate library.
-    Despite being built upon the component supertype, it operates independently of the component system
-    and native-image macros. Its configuration relies solely on the module path and META-INF/native-image
-    configuration files. Instances are instantiated by mx_truffle::register_polyglot_isolate_distributions
-    when a language dynamically registers a polyglot isolate distribution.
-    """
-    def __init__(self, target_suite, language, deps, build_args, **kw_args):
-        library_config = mx_sdk.LanguageLibraryConfig(
-            jar_distributions=deps,
-            build_args=[],
-            build_args_enterprise=build_args,
-            language=language,
-        )
-        super(PolyglotIsolateLibrary, self).__init__(None, f'{language}.isolate.image',
-                                                     list(deps), library_config, **kw_args)
-        self.suite = target_suite
-        self.dir = target_suite.dir
-
-
-    def getBuildTask(self, args):
-        svm_support = _get_svm_support()
-        assert svm_support.is_supported(), "Needs svm to build " + str(self)
-        if not self.is_skipped():
-            return PolyglotIsolateLibraryBuildTask(self, args, svm_support)
-        else:
-            return mx.NoOpTask(self, args)
-
-    def getArchivableResults(self, use_relpath=True, single=False):
-        for e in super(PolyglotIsolateLibrary, self).getArchivableResults(use_relpath=use_relpath, single=single):
-            yield e
-            if single:
-                return
-        output_dir = dirname(self.output_file())
-        resources_dir = join(output_dir, 'resources')
-        if exists(resources_dir):
-            yield resources_dir, 'resources'
-
-    def is_skipped(self):
-        return False
 
 class GraalVmMiscLauncher(GraalVmLauncher):  # pylint: disable=too-many-ancestors
     def __init__(self, component, native_image_config, stage1=False, **kw_args):
@@ -2479,33 +2438,6 @@ class GraalVmSVMLauncherBuildTask(GraalVmSVMNativeImageBuildTask):
 
 class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
     pass
-
-
-class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
-    """
-    A PolyglotIsolateLibrary build task building a language polyglot isolate library.
-    Despite being built upon the component supertype, it operates independently of the component system
-    and native-image macros. Its configuration relies solely on the module path and META-INF/native-image
-    configuration files.
-    """
-    def get_build_args(self):
-        project = self.subject
-        target = project.native_image_name[:-len(_lib_suffix)]
-        build_args = [
-            '-EJVMCI_VERSION_CHECK',  # Propagate this env var when running native image from mx
-            '--parallelism=' + str(self.parallelism),
-            '--shared',
-            '-o',
-            target,
-            '--features=com.oracle.svm.enterprise.truffle.PolyglotIsolateGuestFeature',
-            '-H:APIFunctionPrefix=truffle_isolate_',
-        ] + svm_experimental_options([
-            '-H:+IgnoreMaxHeapSizeWhileInVMOperation',
-            '-H:+CopyLanguageResources',
-            '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
-        ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
-        project.native_image_config.build_args + project.native_image_config.build_args_enterprise
-        return build_args
 
 
 class JmodModifier(mx.Project):

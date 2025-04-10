@@ -29,7 +29,6 @@ import java.util.Arrays;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -98,7 +97,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
 
     private static boolean isArray(ResolvedJavaField field) {
         JavaType fieldType = field.getType();
-        return fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray();
+        return fieldType instanceof ResolvedJavaType && fieldType.isArray();
     }
 
     @SuppressWarnings("unused")

@@ -32,7 +32,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import java.util.Map;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,7 +55,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -91,6 +90,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class StackOverflowCheckImpl implements StackOverflowCheck {
@@ -201,7 +201,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
              * a recurring callback in the yellow zone is dangerous because a stack overflow in the
              * recurring callback would then lead to a fatal error.
              */
-            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks are considered user code and must not run in yellow zone");
+            RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks are considered user code and must not run in yellow zone");
 
             stackBoundaryTL.set(stackBoundaryTL.get().subtract(Options.StackYellowZoneSize.getValue()));
         }
@@ -241,7 +241,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         VMError.guarantee(newState < oldState && newState >= STATE_YELLOW_ENABLED, "StackOverflowCheckImpl.onYellowZoneProtected: Illegal state");
 
         if (newState == STATE_YELLOW_ENABLED) {
-            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
+            RecurringCallbackSupport.resumeCallbackTimerAtNextSafepointCheck();
 
             stackBoundaryTL.set(stackBoundaryTL.get().add(Options.StackYellowZoneSize.getValue()));
         }

@@ -27,22 +27,24 @@ package com.oracle.svm.graal.substitutions;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.Isolates;
-import jdk.graal.compiler.graph.Edges;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -72,6 +74,7 @@ import jdk.graal.compiler.debug.KeyRegistry;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
+import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.phases.LIRPhase;
@@ -219,6 +222,22 @@ final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
     @Substitute
     public static long getIsolateID() {
         return Isolates.getIsolateId();
+    }
+}
+
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.GraalServices", onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
+
+    /**
+     * This substitution is required to bypass the HotSpot specific MXBean used in
+     * {@code jdk.graal.compiler.management.JMXServiceProvider}.
+     */
+    @Substitute
+    public static void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {
+        if (!VMInspectionOptions.hasHeapDumpSupport()) {
+            throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
+        }
+        VMRuntime.dumpHeap(outputFile, live);
     }
 }
 

@@ -5,7 +5,7 @@
 The Truffle language implementation framework (Truffle) is an open-source library for building programming language implementations as interpreters for self-modifying Abstract Syntax Trees.
 Together with the open-source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step forward in programming language implementation technology in the current era of dynamic languages.
 
-A growing body of shared implementation code and services reduces language implementation effort significantly, but leads to runtime performance that matches or exceeds the competition. 
+A growing body of shared implementation code and services reduces language implementation effort significantly, but leads to runtime performance that matches or exceeds the competition.
 The value of the platform is further increased by support for low-overhead language interoperability, as well as a general instrumentation framework that supports multilanguage debugging and other external developer tools.
 
 Truffle is developed and maintained by Oracle and the Institute for System Software of the Johannes Kepler University Linz.
@@ -16,7 +16,7 @@ If you are looking for documentation on how to use Truffle, please consult the d
 
 ## Hacking Truffle
 
-Truffle and the Graal compiler use the [MX build tool](https://github.com/graalvm/mx/), which needs to be installed before using this repository. 
+Truffle and the Graal compiler use the [MX build tool](https://github.com/graalvm/mx/), which needs to be installed before using this repository.
 To install it, run these commands in a clean directory:
 ```bash
 $ git clone https://github.com/graalvm/mx.git/
@@ -41,7 +41,7 @@ $ mx ideinit
 ```
 
 The necessary IDE metadata will be generated into _truffle/_ subdirectory
-and its directories. 
+and its directories.
 
 The `mx` tool supports Maven integration.
 To register prebuilt binaries into your local Maven repository, run:
@@ -55,12 +55,12 @@ Then it is possible to add Truffle artifacts as dependencies to the Maven config
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>24.0.0</version> <!-- or whether version got installed by mx maven-install -->
+    <version>24.2.0</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>24.0.0</version>
+    <version>24.2.0</version>
     <scope>provided</scope>
 </dependency>
 ```

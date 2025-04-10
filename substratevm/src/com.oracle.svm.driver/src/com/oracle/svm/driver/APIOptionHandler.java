@@ -118,7 +118,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             pathOptions = new HashMap<>();
             allOptionNames = new HashMap<>();
             ClassLoader cl = nativeImage.getClass().getClassLoader();
-            apiOptions = extractOptions(OptionsContainer.load(cl), groupInfos, pathOptions, allOptionNames);
+            apiOptions = extractOptions(OptionsContainer.getDiscoverableOptions(cl), groupInfos, pathOptions, allOptionNames);
         }
     }
 
@@ -225,7 +225,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 builderOption += "=";
             }
 
-            String helpText = optionDescriptor.getHelp();
+            String helpText = optionDescriptor.getHelp().getFirst();
             if (!apiAnnotation.customHelp().isEmpty()) {
                 helpText = apiAnnotation.customHelp();
             }
@@ -717,7 +717,7 @@ final class APIOptionFeature implements Feature {
         Map<String, GroupInfo> groupInfos = new HashMap<>();
         Map<String, APIOptionHandler.PathsOptionInfo> pathOptions = new HashMap<>();
         Map<String, HostedOptionInfo> allOptionNames = new HashMap<>();
-        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.load(accessImpl.getImageClassLoader().getClassLoader());
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(accessImpl.getImageClassLoader().getClassLoader());
         SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos, pathOptions, allOptionNames);
         ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options, pathOptions, allOptionNames));
     }

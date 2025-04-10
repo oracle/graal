@@ -41,10 +41,9 @@ import java.util.ServiceLoader;
 import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
-import jdk.vm.ci.code.Architecture;
-
 import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.misc.VM;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
@@ -489,6 +488,22 @@ public final class GraalServices {
             return null;
         }
         return jmx.getInputArguments();
+    }
+
+    /**
+     * Dumps the heap to {@code outputFile} in hprof format.
+     *
+     * @param live if true, performs a full GC first so that only live objects are dumped
+     * @throws IOException if an IO error occurred dyring dumping
+     * @throws UnsupportedOperationException if this operation is not supported.
+     */
+    public static void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraal.dumpHeap(outputFile, live);
+        } else if (jmx != null) {
+            jmx.dumpHeap(outputFile, live);
+        }
     }
 
     /**

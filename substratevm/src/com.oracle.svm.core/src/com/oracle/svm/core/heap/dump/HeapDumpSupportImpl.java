@@ -28,7 +28,6 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.io.IOException;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -55,6 +55,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
@@ -133,6 +134,10 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
+        if (!RawFileOperationSupport.isPresent()) {
+            throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
+        }
+
         FileCreationMode creationMode = overwrite ? FileCreationMode.CREATE_OR_REPLACE : FileCreationMode.CREATE;
         RawFileDescriptor fd = getFileSupport().create(filename, creationMode, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {

@@ -55,7 +55,7 @@ public enum GCOptionValue {
     public static synchronized Set<String> possibleValues() {
         if (supportedValues == null) {
             Set<String> values = new HashSet<>();
-            Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.load(GCOptionValue.class.getClassLoader());
+            Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(GCOptionValue.class.getClassLoader());
             SubstrateOptionsParser.collectOptions(optionDescriptors, optionDescriptor -> {
                 for (APIOption annotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
                     if (annotation.group().equals(SubstrateOptions.GCGroup.class)) {

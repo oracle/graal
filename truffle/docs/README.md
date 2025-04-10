@@ -10,7 +10,7 @@ The Truffle language implementation framework (Truffle) is an open source librar
 Together with the open source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step forward in programming language implementation technology in the current era of dynamic languages.
 
 The Truffle artifacts are uploaded to [Maven Central - Sonatype](https://central.sonatype.com/artifact/org.graalvm.truffle/truffle-api){:target="_blank"}.
-You can use them from your `pom.xml` file as: 
+You can use them from your `pom.xml` file as:
 
 ```xml
 <properties>
@@ -50,7 +50,7 @@ It simplifies language implementation by automatically deriving high-performance
 ### Getting Started
 
 We provide extensive [Truffle API documentation](http://graalvm.org/truffle/javadoc/).
-Start by looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which you should subclass to start developing a language. 
+Start by looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which you should subclass to start developing a language.
 Truffle comes with the Graal Compiler and several language implementations as part of GraalVM.
 
 A good way to start implementing your language with Truffle is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
@@ -91,5 +91,5 @@ The latest additions and changes can be seen in the [changelog](https://github.c
 
 ## Modifying Truffle
 
-To understand how to modify Truffle, check [this file](https://github.com/oracle/graal/blob/master/truffle/README.md). 
+To understand how to modify Truffle, check [this file](https://github.com/oracle/graal/blob/master/truffle/README.md).
 If you would like to contribute to Truffle, consult the [contribution documentation](https://github.com/oracle/graal/blob/master/truffle/CONTRIBUTING.md).

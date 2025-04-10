@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.hub.DynamicHub;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
@@ -31,15 +35,11 @@ import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.LoadHubOrNullNode;
-import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.hub.DynamicHub;
-
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 public class SubstrateIntrinsics {
 
-    protected interface Any {
+    public interface Any {
     }
 
     @NodeIntrinsic(LoadHubNode.class)

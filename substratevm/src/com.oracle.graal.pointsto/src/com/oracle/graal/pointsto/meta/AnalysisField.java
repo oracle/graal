@@ -344,13 +344,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
             registerAsWritten(reason);
 
-            if (isStatic()) {
-                /* Register the static field as unsafe accessed with the analysis universe. */
-                getUniverse().registerUnsafeAccessedStaticField(this);
+            if (getUniverse().analysisPolicy().useConservativeUnsafeAccess()) {
+                /*
+                 * With conservative unsafe access we don't need to track unsafe accessed fields.
+                 * Instead, fields marked as unsafe-accessed are injected all instantiated subtypes
+                 * of their declared type. Moreover, all unsafe loads are pre-saturated.
+                 */
+                injectDeclaredType();
             } else {
-                /* Register the instance field as unsafe accessed on the declaring type. */
-                AnalysisType declaringType = getDeclaringClass();
-                declaringType.registerUnsafeAccessedField(this);
+                if (isStatic()) {
+                    /* Register the static field as unsafe accessed with the analysis universe. */
+                    getUniverse().registerUnsafeAccessedStaticField(this);
+                } else {
+                    /* Register the instance field as unsafe accessed on the declaring type. */
+                    AnalysisType declaringType = getDeclaringClass();
+                    declaringType.registerUnsafeAccessedField(this);
+                }
             }
         });
     }
