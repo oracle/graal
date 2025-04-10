@@ -17,4 +17,3 @@ If you are mostly interested in a specific language runtime on GraalVM, see the 
 * [GraalWasm](wasm/README.md)
 * [LLVM Languages](llvm/README.md)
 * [TruffleRuby](https://github.com/oracle/truffleruby/blob/master/doc/user/README.md)
-* [FastR](https://github.com/oracle/fastr/blob/master/documentation/user/README.md)
