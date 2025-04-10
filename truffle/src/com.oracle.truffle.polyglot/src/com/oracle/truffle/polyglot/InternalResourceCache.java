@@ -380,6 +380,9 @@ final class InternalResourceCache {
     }
 
     private boolean copyResourcesForNativeImage(Path target) throws IOException {
+        if (isMissingOptionalResource()) {
+            return false;
+        }
         Path root = findStandaloneResourceRoot(target);
         unlink(root);
         Files.createDirectories(root);
@@ -392,6 +395,10 @@ final class InternalResourceCache {
         } else {
             return true;
         }
+    }
+
+    private boolean isMissingOptionalResource() {
+        return path == null && resourceFactory instanceof NonExistingResourceSupplier;
     }
 
     @SuppressWarnings("unused")
@@ -417,6 +424,9 @@ final class InternalResourceCache {
     }
 
     private void includeResourcesForNativeImageImpl(Path tempDir, BiConsumer<Module, Pair<String, byte[]>> resourceLocationConsumer) throws IOException, NoSuchAlgorithmException {
+        if (isMissingOptionalResource()) {
+            return;
+        }
         Path root = findStandaloneResourceRoot(tempDir);
         unlink(root);
         Files.createDirectories(root);
@@ -601,6 +611,20 @@ final class InternalResourceCache {
                 }
             }
             return res;
+        }
+    }
+
+    static Supplier<InternalResource> nonExistingResource(String component, String resource) {
+        return new NonExistingResourceSupplier(component, resource);
+    }
+
+    private record NonExistingResourceSupplier(String component, String resource) implements Supplier<InternalResource> {
+
+        @Override
+        public InternalResource get() {
+            throw new IllegalStateException(String.format("Optional resource '%s' for component '%s' is missing. " +
+                            "Use `-Dpolyglot.engine.resourcePath.%s.%s=<path>` to configure a path to the internal resource root or include resource jar file to the module-path.",
+                            resource, component, component, resource));
         }
     }
 }

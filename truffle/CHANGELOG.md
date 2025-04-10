@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57063 Bytecode-DSL: Added a `variadicStackLimit` parameter to `@GenerateBytecode` that allows to specify how many variable arguments are stored on the stack before they are collapsed into an object array. 
 * GR-50017 TruffleStringIterator.NextNode and TruffleStringIterator.PreviousNode now require the iterated string's encoding as a parameter for performance reasons.
 * GR-63075 Java host interop again inherits public method methods from non-public base classes if public access is enabled. This was originally changed in 24.1.
+* GR-63201 Added `TruffleLanguage.Registration.optionalResources` and `TruffleInstrument.Registration.optionalResources` attributes to support optional resources which implementations are not available at the runtime. Optional resources, if omitted at runtime, can still be used as long as their resource path is specified via the `polyglot.engine.resourcePath.<componentId>` system property.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
