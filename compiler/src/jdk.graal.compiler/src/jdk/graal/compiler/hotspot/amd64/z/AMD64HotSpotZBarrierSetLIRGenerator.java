@@ -131,8 +131,8 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      * Emit the full store barrier with a fast path, and an out of line medium path with a final
      * slow path call to the runtime.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L303-L320", sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L373-L417", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/9a3f9997b68a1f64e53b9711b878fb073c3c9b90/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L302-L319", sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/9a3f9997b68a1f64e53b9711b878fb073c3c9b90/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L372-L416", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
     public static void emitPreWriteBarrier(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     LIRInstruction op,
@@ -208,7 +208,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Try to perform any local store barrier fixups or dispatch to the slow path.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L453-L508", sha1 = "4b729acf92e6a297229b7f1e957601708c315f4f")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/9a3f9997b68a1f64e53b9711b878fb073c3c9b90/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L452-L507", sha1 = "4b729acf92e6a297229b7f1e957601708c315f4f")
     static void storeBarrierMedium(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     AMD64Address address,
@@ -273,7 +273,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     /**
      * Add a value to the store buffer.
      */
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L419-L451", sha1 = "638b10c65bb14fa4b254efa4d5bbb1751fdbb6bf")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/9a3f9997b68a1f64e53b9711b878fb073c3c9b90/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L418-L450", sha1 = "638b10c65bb14fa4b254efa4d5bbb1751fdbb6bf")
     static void storeBarrierBufferAdd(AMD64MacroAssembler masm,
                     AMD64Address address,
                     Register tmp1,
