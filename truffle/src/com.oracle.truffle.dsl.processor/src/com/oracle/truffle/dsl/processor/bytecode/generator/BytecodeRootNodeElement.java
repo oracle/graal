@@ -13967,6 +13967,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startIf();
                     if (tier.isUncached()) {
                         b.string(booleanValue);
+                        // no need to clear in uncached
                     } else {
                         b.startCall("profileBranch");
                         b.string("branchProfiles");
@@ -14307,7 +14308,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.end();
                         b.end();
                     }
-                    b.statement(clearFrame("frame", "sp - 1"));
                     b.statement("sp -= 1");
                     break;
                 case STORE_LOCAL_MATERIALIZED:
@@ -14800,6 +14800,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
             b.string(uncheckedGetFrameObject("sp - stackPopCount + i"));
             b.end();
+            b.statement(clearFrame("frame", "sp - stackPopCount + i"));
 
             b.end();
 
@@ -14814,6 +14815,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.typeLiteral(type(Object[].class));
                 b.end();
                 b.end();
+                b.statement(clearFrame("frame", "sp - mergeCount + i"));
 
                 b.declaration(type(int.class), "dynamicLength", "dynamicArray.length");
                 b.startStatement().startStaticCall(type(System.class), "arraycopy");
@@ -14964,6 +14966,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startStatement();
             b.string("result[offset + i] = ").string(uncheckedGetFrameObject("sp - count + i"));
             b.end();
+            b.statement(clearFrame("frame", "sp - count + i"));
             b.end(); // for
 
             if (model.hasVariadicReturn) {
@@ -14977,6 +14980,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.typeLiteral(type(Object[].class));
                 b.end();
                 b.end();
+                b.statement(clearFrame("frame", "sp - mergeCount + i"));
 
                 b.declaration(type(int.class), "dynamicLength", "dynamicArray.length");
                 b.startStatement().startStaticCall(type(System.class), "arraycopy");
@@ -15426,13 +15430,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             boolean isGeneric = ElementUtils.isObject(inputType);
 
-            if (!isGeneric) {
-                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
-                b.lineComment("Always clear in compiled code for liveness analysis");
+            if (isGeneric) {
                 b.statement(clearFrame("frame", "sp - 1"));
-                b.returnDefault();
-                b.end();
-
+            } else {
                 b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameTagsElement.get(inputType)).end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
@@ -15443,12 +15443,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end().end();
                 b.returnDefault();
                 b.end();
-            }
 
-            if (isGeneric) {
+                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                b.lineComment("Always clear in compiled code for liveness analysis");
                 b.statement(clearFrame("frame", "sp - 1"));
-            } else {
-                b.lineComment("No need to clear for primitives in the interpreter");
+                b.end();
             }
 
             doInstructionMethods.put(instr, method);
@@ -15555,14 +15554,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             TypeMirror inputType = instr.signature.getSpecializedType(0);
 
             b.startTryBlock();
-            b.startReturn();
+            b.startDeclaration(type(boolean.class), "result");
+
             if (ElementUtils.isObject(inputType)) {
                 b.string("(boolean) ");
             }
             startExpectFrameUnsafe(b, "frame", inputType);
             b.string("sp - 1");
             b.end();
-            b.end(); // statement
+            b.end(); // declaration
+
+            b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+            b.statement(clearFrame("frame", "sp - 1"));
+            b.end();
+
+            b.startReturn().string("result").end();
 
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
 
@@ -15643,6 +15649,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             emitQuickeningOperand(b, "$this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
             emitQuickening(b, "$this", "bc", "bci", null, "newInstruction");
+
+            b.lineComment("no need clear boolean locals in slow-path");
 
             b.startReturn().string("value").end();
 
@@ -15932,7 +15940,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             startSetFrame(b, returnType).string("frame").string("sp - 2").string("value").end();
             b.end();
 
-            if (!ElementUtils.isPrimitive(inputType)) {
+            if (ElementUtils.isPrimitive(inputType)) {
+                // we only need to clear in compiled code for liveness if primitive
+                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                b.statement(clearFrame("frame", "sp - 1"));
+                b.end();
+            } else {
+                // always clear for references for gc behavior.
                 b.statement(clearFrame("frame", "sp - 1"));
             }
 
@@ -16743,9 +16757,28 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(); // catch
             }
 
+            // When stackEffect is negative, values should be cleared from the top of the
+            // stack.
+            InstructionModel quickeningRoot = instr.getQuickeningRoot();
+            int operandIndex = 0;
             for (int i = stackEffect; i < 0; i++) {
-                // When stackEffect is negative, values should be cleared from the top of the stack.
-                b.statement(clearFrame("frame", "sp - " + -i));
+                TypeMirror genericType = quickeningRoot.signature.operandTypes.get(operandIndex);
+                if (ElementUtils.isPrimitive(genericType)) {
+                    /*
+                     * If the generic type is primitive we can omit clearing in the interpreter, as
+                     * the clear is only needed for liveness in the compiler. Currently, we can't do
+                     * that for specialized quickenings as we might miss quickeninging reference
+                     * types on the stack if executeAndSpecialize is called. In the future when we
+                     * keep all stack effects in this method we be able to do better and avoid
+                     * clearing also for quickenings.
+                     */
+                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                    b.statement(clearFrame("frame", "sp - " + -i));
+                    b.end();
+                } else {
+                    b.statement(clearFrame("frame", "sp - " + -i));
+                }
+                operandIndex++;
             }
 
             // In continueAt, call the helper and adjust sp.
