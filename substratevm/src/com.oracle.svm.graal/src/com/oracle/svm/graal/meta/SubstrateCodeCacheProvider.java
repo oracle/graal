@@ -63,7 +63,6 @@ public class SubstrateCodeCacheProvider extends SharedCodeCacheProvider {
         RuntimeCodeInstaller.install((SharedRuntimeMethod) method, compResult, substrateInstalledCode);
         DebugContext debug = DebugContext.forCurrentThread();
         if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            assert debug.contextLookup(CompilationResult.class) != null : "can't dump installed code properly without CompilationResult";
             debug.dump(DebugContext.BASIC_LEVEL, substrateInstalledCode, "After code installation");
         }
         return predefinedInstalledCode;

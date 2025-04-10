@@ -39,7 +39,6 @@ import jdk.vm.ci.code.InstalledCode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle
@@ -76,6 +75,10 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 
+    /**
+     * This method is used by the compiler debugging feature
+     * {@code jdk.graal.PrintCompilation=true}.
+     */
     @Override
     public long getStart() {
         ClientHandle<? extends SubstrateInstalledCode> handle = installedCodeHandle;
@@ -86,6 +89,10 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
         }
     }
 
+    /**
+     * This method is used by the compiler debugging feature {@code jdk.graal.Dump=CodeInstall} to
+     * dump a code at the point of code installation.
+     */
     @Override
     public boolean isValid() {
         ClientHandle<? extends SubstrateInstalledCode> handle = installedCodeHandle;
@@ -101,6 +108,10 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 
+    /**
+     * This method is used by the compiler debugging feature {@code jdk.graal.Dump=CodeInstall} to
+     * dump a code at the point of code installation.
+     */
     @Override
     public byte[] getCode() {
         ClientHandle<? extends SubstrateInstalledCode> handle = installedCodeHandle;
@@ -140,31 +151,31 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static CompilerHandle<byte[]> getCode0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle) {
         SubstrateInstalledCode installedCode = IsolatedCompileClient.get().unhand(installedCodeHandle);
-        CodeInfo codeInfo = lookupCodeInfo(installedCode);
-        if (codeInfo.isNull()) {
-            return IsolatedHandles.nullHandle();
-        }
-        CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-        int codeSize = (int) CodeInfoAccess.getCodeSize(codeInfo).rawValue();
-        return copyCode0(IsolatedCompileClient.get().getCompiler(), codeStart, codeSize);
+        return getCodeUninterruptible(Word.pointer(installedCode.getEntryPoint()));
     }
 
-    @Uninterruptible(reason = "Looks up code info.")
-    private static CodeInfo lookupCodeInfo(SubstrateInstalledCode installedCode) {
-        UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(Word.pointer(installedCode.getEntryPoint()));
+    @Uninterruptible(reason = "Accesses code info.")
+    private static CompilerHandle<byte[]> getCodeUninterruptible(CodePointer entryPointAddress) {
+        UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(entryPointAddress);
         if (untetheredCodeInfo.isNull()) {
-            return WordFactory.nullPointer();
+            return IsolatedHandles.nullHandle();
         }
         Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
         try {
-            return CodeInfoAccess.convert(untetheredCodeInfo, tether);
+            CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo, tether);
+            return copyCode0(codeInfo);
         } finally {
             CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
         }
     }
 
+    @Uninterruptible(reason = "Wrap the now safe call to code info.", calleeMustBe = false)
+    private static CompilerHandle<byte[]> copyCode0(CodeInfo codeInfo) {
+        return copyCodeInCompilerIsolate0(IsolatedCompileClient.get().getCompiler(), CodeInfoAccess.getCodeStart(codeInfo), (int) CodeInfoAccess.getCodeSize(codeInfo).rawValue());
+    }
+
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static CompilerHandle<byte[]> copyCode0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context, CodePointer codeStart, int codeSize) {
+    private static CompilerHandle<byte[]> copyCodeInCompilerIsolate0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context, CodePointer codeStart, int codeSize) {
         byte[] code = new byte[codeSize];
         CTypeConversion.asByteBuffer(codeStart, codeSize).get(code);
         return IsolatedCompileContext.get().hand(code);

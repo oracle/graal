@@ -72,7 +72,6 @@ public final class IsolateAwareCodeCacheProvider extends SubstrateCodeCacheProvi
         installBridge.setSubstrateInstalledCodeHandle(installedCode);
         DebugContext debug = DebugContext.forCurrentThread();
         if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            assert debug.contextLookup(CompilationResult.class) != null : "can't dump installed code properly without CompilationResult";
             debug.dump(DebugContext.BASIC_LEVEL, installBridge, "After code installation");
         }
         return installBridge;

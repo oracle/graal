@@ -412,6 +412,8 @@ def truffle_unittest_task(extra_build_args=None):
                 if match and int(match.group(1), 16) != 0:
                     success = True
                     break
+        if not success:
+            mx.abort(f"Failed to find expected PrintCompilation output in log file: {logfile.name}.")
     finally:
         if success:
             os.unlink(logfile.name)

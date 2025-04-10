@@ -44,7 +44,6 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 /**
  * Represents the installed code of a runtime compiled method. Note that Truffle uses its own
@@ -125,36 +124,48 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     public void setCompilationId(CompilationIdentifier id) {
     }
 
+    /**
+     * This method is used by the compiler debugging feature
+     * {@code jdk.graal.PrintCompilation=true}.
+     */
     @Override
     public long getStart() {
         return getAddress();
     }
 
+    /**
+     * This method is used by the compiler debugging feature {@code jdk.graal.Dump=CodeInstall} to
+     * dump a code at the point of code installation.
+     */
     @Override
     public byte[] getCode() {
-        CodeInfo codeInfo = lookupCodeInfo();
-        if (codeInfo.isNull()) {
-            return null;
-        }
-        CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-        int codeSize = (int) CodeInfoAccess.getCodeSize(codeInfo).rawValue();
-        byte[] code = new byte[codeSize];
-        CTypeConversion.asByteBuffer(codeStart, codeSize).get(code);
-        return code;
+        return getCode(Word.pointer(entryPoint));
     }
 
-    @Uninterruptible(reason = "Looks up code info.")
-    private CodeInfo lookupCodeInfo() {
-        UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(Word.pointer(entryPoint));
+    @Uninterruptible(reason = "Accesses code info.")
+    public static byte[] getCode(CodePointer entryPointAddress) {
+        UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(entryPointAddress);
         if (untetheredCodeInfo.isNull()) {
-            return WordFactory.nullPointer();
+            return null;
         }
         Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
         try {
-            return CodeInfoAccess.convert(untetheredCodeInfo, tether);
+            CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo, tether);
+            return copyCode0(codeInfo);
         } finally {
             CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
         }
+    }
+
+    @Uninterruptible(reason = "Wrap the now safe call to code info.", calleeMustBe = false)
+    private static byte[] copyCode0(CodeInfo codeInfo) {
+        return copyCode(CodeInfoAccess.getCodeStart(codeInfo), (int) CodeInfoAccess.getCodeSize(codeInfo).rawValue());
+    }
+
+    private static byte[] copyCode(CodePointer codeStart, int codeSize) {
+        byte[] code = new byte[codeSize];
+        CTypeConversion.asByteBuffer(codeStart, codeSize).get(code);
+        return code;
     }
 
     @Override
