@@ -55,6 +55,11 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 public class BranchTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
+    public BranchTest(TestRun run) {
+        super(run);
+    }
+
+
     @Test
     public void testBranchForward() {
         // goto lbl;

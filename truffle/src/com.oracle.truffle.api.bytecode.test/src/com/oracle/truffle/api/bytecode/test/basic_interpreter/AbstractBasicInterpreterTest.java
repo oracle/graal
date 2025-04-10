@@ -65,7 +65,6 @@ import org.junit.Assert;
 import org.junit.function.ThrowingRunnable;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -263,7 +262,11 @@ public abstract class AbstractBasicInterpreterTest {
         return result;
     }
 
-    @Parameter(0) public TestRun run;
+    public final TestRun run;
+
+    public AbstractBasicInterpreterTest(TestRun run) {
+        this.run = run;
+    }
 
     public <T extends BasicInterpreterBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
         BytecodeRootNode rootNode = parseNode(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
@@ -305,7 +308,11 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         for (BasicInterpreter interpreter : result.getNodes()) {
-            testIntrospectionInvariants(interpreter.getBytecodeNode());
+            try {
+                testIntrospectionInvariants(interpreter.getBytecodeNode());
+            } catch (Throwable e) {
+                throw new AssertionError("Invariant failure " + interpreter.dump(), e);
+            }
         }
 
         return result;
