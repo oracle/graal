@@ -762,6 +762,12 @@ public abstract class Accessor {
 
         public abstract String getFormatKind(LogRecord logRecord);
 
+        public abstract boolean isLogRecordCallerClassSet(LogRecord logRecord);
+
+        public abstract boolean isLogRecordCallerMethodSet(LogRecord logRecord);
+
+        public abstract void logFallback(String s);
+
         public abstract boolean isCurrentThreadPolyglotThread();
 
         public abstract Object getHostNull();

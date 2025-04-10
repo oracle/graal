@@ -2516,7 +2516,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     static void logFallback(String message) {
         PrintStream err = System.err;
-        err.println(message);
+        err.print(message);
     }
 
     private static class MessageTransportProxy implements MessageTransport {
