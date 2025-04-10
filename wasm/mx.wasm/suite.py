@@ -270,7 +270,7 @@ suite = {
         "artifactId": "wasm-community",
         "tag": ["default", "public"],
       },
-      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency pulls in GraalWasm dependencies and Truffle Community Edition.",
+      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle Community Edition.",
       "license": "UPL",
     },
 
