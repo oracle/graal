@@ -70,7 +70,6 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
@@ -112,9 +111,6 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                         new CodeVariableElement(context.getType(byte[].class), "$bc"),
                         new CodeVariableElement(context.getType(int.class), "$bci"),
                         new CodeVariableElement(context.getType(int.class), "$sp")));
-        if (instruction.hasImmediate(ImmediateKind.CONSTANT)) {
-            result.add(new CodeVariableElement(new ArrayCodeTypeMirror(context.getDeclaredType(Object.class)), "consts"));
-        }
         return result;
     }
 
@@ -141,7 +137,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(specializationIndex).type();
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(specializationIndex);
-            b.tree(readConstFastPath(readImmediate("$bc", "$bci", imm), constantOperandType));
+            b.tree(readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 
@@ -215,7 +211,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(constantOperandAfterIndex).type();
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + constantOperandAfterIndex);
-            b.tree(readConstFastPath(readImmediate("$bc", "$bci", imm), constantOperandType));
+            b.tree(readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 
