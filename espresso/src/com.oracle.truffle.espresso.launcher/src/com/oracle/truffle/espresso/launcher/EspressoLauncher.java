@@ -310,7 +310,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-agentpath:")) {
                         String[] split = splitEquals(arg.substring("-agentpath:".length()));
                         espressoOptions.put(AGENT_PATH + split[0], split[1]);
-                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
+                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss") || arg.startsWith("-XX:MaxHeapSize=")) {
                         unrecognized.add("--vm." + arg.substring(1));
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
