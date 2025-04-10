@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.diagnostic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -35,18 +34,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.options.Option;
-
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredFeature
 public class HostedHeapDumpFeature implements InternalFeature {
@@ -150,7 +150,7 @@ public class HostedHeapDumpFeature implements InternalFeature {
 
     private static Path getDumpLocation() {
         try {
-            Path folder = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "dumps").toAbsolutePath();
+            Path folder = SubstrateOptions.getImagePath(HostedOptionValues.singleton()).resolve("dumps").toAbsolutePath();
             return Files.createDirectories(folder);
         } catch (IOException e) {
             throw new Error("Cannot create heap dumps directory.", e);

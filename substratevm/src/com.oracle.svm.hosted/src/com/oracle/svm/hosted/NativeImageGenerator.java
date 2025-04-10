@@ -35,7 +35,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -1877,8 +1876,7 @@ public class NativeImageGenerator {
     }
 
     public static Path generatedFiles(OptionValues optionValues) {
-        String pathName = SubstrateOptions.Path.getValue(optionValues);
-        Path path = FileSystems.getDefault().getPath(pathName);
+        Path path = SubstrateOptions.getImagePath(optionValues);
         if (!Files.exists(path)) {
             try {
                 Files.createDirectories(path);
@@ -1887,7 +1885,7 @@ public class NativeImageGenerator {
             }
         }
         if (!Files.isDirectory(path)) {
-            throw VMError.shouldNotReachHere("Output path is not a directory: " + pathName);
+            throw VMError.shouldNotReachHere("Output path is not a directory: " + path);
         }
         return path.toAbsolutePath();
     }
