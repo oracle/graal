@@ -1,8 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy;
 
-public enum IterationStrategy {
+public enum IteratorDirection {
 
-    WTO,
-    WPO,
-    WORKLIST
+    FORWARD,
+    BACKWARD
 }

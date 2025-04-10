@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.interpreter;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
@@ -57,10 +58,10 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
      * @param destinationNode  the node to which the edge goes
      * @param abstractStateMap current state of the analysis
      */
-    public void collectInvariantsFromPredecessors(Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
+    public void collectInvariantsFromPredecessors(Node destinationNode, AbstractStateMap<Domain> abstractStateMap, GraphTraversalHelper graphTraversalHelper) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Collecting invariants from predecessors of: " + destinationNode, LoggerVerbosity.DEBUG);
-        for (Node predecessor : destinationNode.cfgPredecessors()) {
+        for (Node predecessor : graphTraversalHelper.getCfgPredecessors(destinationNode)) {
             analyzeEdge(predecessor, destinationNode, abstractStateMap);
         }
     }
@@ -86,11 +87,11 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
      * @param block            the block to analyze
      * @param abstractStateMap current state of the analysis
      */
-    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
+    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap, GraphTraversalHelper graphTraversalHelper) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing block: " + block, LoggerVerbosity.DEBUG);
         for (Node node : block.getNodes()) {
-            collectInvariantsFromPredecessors(node, abstractStateMap);
+            collectInvariantsFromPredecessors(node, abstractStateMap, graphTraversalHelper);
             analyzeNode(node, abstractStateMap);
         }
     }

@@ -1,8 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IterationStrategy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorStrategy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -19,7 +19,7 @@ import java.util.Map;
 public final class IteratorPayload {
 
     private final IteratorPolicy iteratorPolicy;
-    
+
     /* AnalysisMethod to the corresponding control flow graph mapping -> to avoid getting the cfg on every fixpoint creation */
     private final Map<AnalysisMethod, ControlFlowGraph> methodGraphMap = new HashMap<>();
 
@@ -96,7 +96,7 @@ public final class IteratorPayload {
         return iteratorPolicy.maxWidenIterations();
     }
 
-    public IterationStrategy getIterationStrategy() {
+    public IteratorStrategy getIterationStrategy() {
         return iteratorPolicy.strategy();
     }
 }

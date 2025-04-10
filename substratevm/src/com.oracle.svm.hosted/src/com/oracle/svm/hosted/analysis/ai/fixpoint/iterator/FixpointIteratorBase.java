@@ -31,12 +31,15 @@ public abstract class FixpointIteratorBase<
     protected final AbstractStateMap<Domain> abstractStateMap;
     protected final AbstractInterpretationLogger logger;
     protected final AnalysisMethod analysisMethod;
+    protected final GraphTraversalHelper graphTraversalHelper;
 
     protected FixpointIteratorBase(AnalysisMethod method,
                                    DebugContext debug,
                                    Domain initialDomain,
                                    TransferFunction<Domain> transferFunction,
                                    IteratorPayload iteratorPayload) {
+
+        this.logger = AbstractInterpretationLogger.getInstance();
         this.analysisMethod = method;
         this.initialDomain = initialDomain;
         this.transferFunction = transferFunction;
@@ -48,10 +51,7 @@ public abstract class FixpointIteratorBase<
             this.cfgGraph = GraphUtil.getGraph(method, debug);
             iteratorPayload.addToMethodGraphMap(method, cfgGraph);
         }
-        this.logger = AbstractInterpretationLogger.getInstance();
-        if (logger.isDebugEnabled()) {
-            GraphUtil.printGraph(method, cfgGraph);
-        }
+        graphTraversalHelper = new GraphTraversalHelper(cfgGraph, iteratorPayload.getIteratorPolicy().direction());
     }
 
     @Override

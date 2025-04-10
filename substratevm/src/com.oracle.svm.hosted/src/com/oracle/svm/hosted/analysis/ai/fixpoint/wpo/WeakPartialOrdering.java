@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.wpo;
 
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ import java.util.Set;
 public final class WeakPartialOrdering {
 
     /* List of all WpoNodes */
-    private final List<WpoNode> wpoNodes = new ArrayList<>();
+    private final List<WpoVertex> wpoVertices = new ArrayList<>();
 
     /* For each HIRBlock, the set of back predecessors */
     private final Map<HIRBlock, Set<HIRBlock>> backPredecessors = new HashMap<>();
@@ -23,93 +23,79 @@ public final class WeakPartialOrdering {
     /**
      * Constructs a weak partial ordering for the given control flow graph.
      *
-     * @param cfg the control flow graph
+     * @param graphTraversalHelper the graph traversal helper
      */
-    public WeakPartialOrdering(ControlFlowGraph cfg) {
-        HIRBlock root = cfg.getStartBlock();
+    public WeakPartialOrdering(GraphTraversalHelper graphTraversalHelper) {
+        HIRBlock root = graphTraversalHelper.getEntryBlock();
 
         /* Handle base case -> there is only one block in the graph */
-        if (cfg.getStartBlock().getSuccessorCount() == 0) {
-            wpoNodes.add(new WpoNode(root, WpoNode.Kind.Plain, 1, 1));
+        if (graphTraversalHelper.getSuccessorCount(root) == 0) {
+            wpoVertices.add(new WpoVertex(root, WpoVertex.Kind.Plain, 1, 1));
             return;
         }
 
-        new WeakPartialOrderingConstructor(cfg.getStartBlock(), wpoNodes, backPredecessors);
+        new WeakPartialOrderingConstructor(root, wpoVertices, backPredecessors, graphTraversalHelper);
     }
-
 
     public int size() {
-        return wpoNodes.size();
+        return wpoVertices.size();
     }
-
 
     public int getEntry() {
-        return wpoNodes.size() - 1;
+        return wpoVertices.size() - 1;
     }
-
 
     public List<Integer> getSuccessors(int idx) {
-        return wpoNodes.get(idx).getSuccessors();
+        return wpoVertices.get(idx).getSuccessors();
     }
-
 
     public List<Integer> getPredecessors(int idx) {
-        return wpoNodes.get(idx).getPredecessors();
+        return wpoVertices.get(idx).getPredecessors();
     }
 
-
     public int getNumPredecessors(int idx) {
-        return wpoNodes.get(idx).getNumPredecessors();
+        return wpoVertices.get(idx).getNumPredecessors();
     }
 
 
     public int getNumPredecessorsReducible(int idx) {
-        return wpoNodes.get(idx).getNumPredecessorsReducible();
+        return wpoVertices.get(idx).getNumPredecessorsReducible();
     }
-
 
     public int getPostOrder(int idx) {
-        return wpoNodes.get(idx).getPostOrder();
+        return wpoVertices.get(idx).getPostOrder();
     }
-
 
     public Map<Integer, Integer> getIrreducibles(int exit) {
-        return wpoNodes.get(exit).getIrreducibles();
+        return wpoVertices.get(exit).getIrreducibles();
     }
-
 
     public int getHeadOfExit(int exit) {
         return exit + 1;
     }
 
-
     public int getExitOfHead(int head) {
         return head - 1;
     }
 
-
     public HIRBlock getNode(int idx) {
-        return wpoNodes.get(idx).getNode();
+        return wpoVertices.get(idx).getNode();
     }
 
-
-    public WpoNode.Kind getKind(int idx) {
-        return wpoNodes.get(idx).getKind();
+    public WpoVertex.Kind getKind(int idx) {
+        return wpoVertices.get(idx).getKind();
     }
-
 
     public boolean isPlain(int idx) {
-        return wpoNodes.get(idx).isPlain();
+        return wpoVertices.get(idx).isPlain();
     }
-
 
     public boolean isHead(int idx) {
-        return wpoNodes.get(idx).isHead();
+        return wpoVertices.get(idx).isHead();
     }
 
-
     public boolean isExit(int idx) {
-        return wpoNodes.get(idx).isExit();
+        return wpoVertices.get(idx).isExit();
     }
 
     /**

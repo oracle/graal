@@ -39,7 +39,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
             this.weakTopologicalOrdering = iteratorPayload.getMethodWtoMap().get(method);
         } else {
             logger.log("Computing Weak Topological Ordering for " + method.getQualifiedName(), LoggerVerbosity.DEBUG);
-            this.weakTopologicalOrdering = new WeakTopologicalOrdering(cfgGraph);
+            this.weakTopologicalOrdering = new WeakTopologicalOrdering(graphTraversalHelper);
             iteratorPayload.addToMethodWtoMap(method, weakTopologicalOrdering);
         }
         logger.log("Weak Topological Ordering for " + method.getQualifiedName() + ": ", LoggerVerbosity.DEBUG);
@@ -69,21 +69,21 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
 
     private void analyzeVertex(WtoVertex vertex) {
         logger.log("Analyzing vertex: " + vertex.toString(), LoggerVerbosity.DEBUG);
-        Node node = vertex.block().getBeginNode();
-        if (node == cfgGraph.graph.start()) {
+        Node node = graphTraversalHelper.getBeginNode(vertex.block());
+        if (node == graphTraversalHelper.getGraphStart()) {
             abstractStateMap.setPreCondition(node, initialDomain);
         }
-        transferFunction.analyzeBlock(vertex.block(), abstractStateMap);
+        transferFunction.analyzeBlock(vertex.block(), abstractStateMap, graphTraversalHelper);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
         logger.log("Analyzing cycle: " + cycle.toString(), LoggerVerbosity.DEBUG);
-        Node head = cycle.block().getBeginNode();
+        Node head = graphTraversalHelper.getBeginNode(cycle.block());
         boolean iterate = true;
 
         while (iterate) {
             /* Analyze the nodes inside outermost block */
-            transferFunction.analyzeBlock(cycle.block(), abstractStateMap);
+            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, graphTraversalHelper);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
@@ -95,7 +95,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
              * we look at the head of the cycle by collecting invariants from predecessors
              * and checking if the pre-condition at the head of the cycle changed.
              */
-            transferFunction.collectInvariantsFromPredecessors(head, abstractStateMap);
+            transferFunction.collectInvariantsFromPredecessors(head, abstractStateMap, graphTraversalHelper);
             if (abstractStateMap.getPreCondition(head).leq(abstractStateMap.getPostCondition(head))) {
                 iterate = false;
             } else {
