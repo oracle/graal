@@ -127,9 +127,7 @@ class CompletableFutureFieldHolder {
 /* Note that this class is initialized at run time. */
 class CompletableFutureJDKLatestFieldHolder {
     /* The following is copied from CompletableFuture. */
-
     static final ForkJoinPool ASYNC_POOL = Target_java_util_concurrent_ForkJoinPool.asyncCommonPool();
-
 }
 
 @TargetClass(value = java.util.concurrent.CompletableFuture.class, innerClass = "ThreadPerTaskExecutor", onlyWith = JDK21OrEarlier.class)

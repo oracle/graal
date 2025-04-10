@@ -235,8 +235,8 @@ public class NativeImageOptions {
      * If zero parallelism is desired, the flag should be set to {@code 1} (main thread only). While
      * this value can be assigned to the common pool, note that when using
      * {@link CompletableFuture}, the minimal effective parallelism becomes two due to its internal
-     * pool requirements (see {@link CompletableFuture#ASYNC_POOL}). Therefore, the actual thread
-     * count must be incremented by one.
+     * pool requirements (see CompletableFuture#ASYNC_POOL). Therefore, the actual thread count must
+     * be incremented by one.
      */
     public static void setCommonPoolParallelism(OptionValues optionValues) {
         int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValueOrDefault(optionValues.getMap());
