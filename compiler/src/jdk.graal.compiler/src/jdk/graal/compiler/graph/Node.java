@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-
-import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -589,6 +587,9 @@ public abstract class Node implements Cloneable, Formattable {
         Node n = extraUsages[extraUsagesCount];
         extraUsages[destExtraIndex] = n;
         extraUsages[extraUsagesCount] = null;
+        if (extraUsagesCount == 0) {
+            extraUsages = EMPTY_ARRAY;
+        }
     }
 
     private void movUsageFromEndToIndexZero() {
@@ -602,6 +603,9 @@ public abstract class Node implements Cloneable, Formattable {
         } else {
             usage0 = null;
         }
+        if (extraUsagesCount == 0) {
+            extraUsages = EMPTY_ARRAY;
+        }
     }
 
     private void movUsageFromEndToIndexOne() {
@@ -612,6 +616,9 @@ public abstract class Node implements Cloneable, Formattable {
         } else {
             assert usage1 != null;
             usage1 = null;
+        }
+        if (extraUsagesCount == 0) {
+            extraUsages = EMPTY_ARRAY;
         }
     }
 
@@ -687,35 +694,6 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
         return removedUsages;
-    }
-
-    /**
-     * Removes all nodes in the provided set from {@code this} node's usages. This is significantly
-     * faster than repeated execution of {@link Node#removeUsage}.
-     */
-    public void removeUsages(EconomicSet<Node> toDelete) {
-        if (toDelete.size() == 0) {
-            return;
-        } else if (toDelete.size() == 1) {
-            removeUsage(toDelete.iterator().next());
-            return;
-        }
-
-        // requires iteration from back to front to check nodes prior to being moved to the front
-        for (int i = extraUsagesCount - 1; i >= 0; i--) {
-            if (toDelete.contains(extraUsages[i])) {
-                movUsageFromEndToExtraUsages(i);
-                incUsageModCount();
-            }
-        }
-        if (usage1 != null && toDelete.contains(usage1)) {
-            movUsageFromEndToIndexOne();
-            incUsageModCount();
-        }
-        if (usage0 != null && toDelete.contains(usage0)) {
-            movUsageFromEndToIndexZero();
-            incUsageModCount();
-        }
     }
 
     /**
