@@ -200,7 +200,7 @@ public class SVMImageLayerSnapshotUtil {
 
     private static boolean shouldScanClass(Class<?> clazz) {
         /* This class should not be scanned because it needs to be initialized after the analysis */
-        return !clazz.equals(sourceRoots) || !clazz.equals(completableFuture);
+        return !clazz.equals(sourceRoots) && !clazz.equals(completableFuture);
     }
 
     /**
