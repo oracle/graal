@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/oracle/graal/master/docs/reference-manual/native-image/assets/foreign-config-schema-v0.1.0.json",
+  "properties": {
+    "downcalls": {
+      "default": [],
+      "items": {
+        "properties": {
+          "returnType": {
+            "type": "string",
+            "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
+          },
+          "parameterTypes": {
+            "default": [],
+            "items": {
+              "type": "string",
+              "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
+            },
+            "type": "array",
+            "title": "List of the function descriptor's parameter types "
+          },
+          "options": {
+            "type": "object",
+            "title": "Linker options (see 'java.lang.foreign.Linker.Option')",
+            "properties": {
+              "captureCallState": {
+                "type": "boolean",
+                "title": "Specifies if a call state should be captured. Which states to capture is determined at run time. See also: 'java.lang.foreign.Linker.Option.captureCallState'"
+              },
+              "critical": {
+                "type": ["boolean", "object"],
+                "title": "see 'java.lang.foreign.Linker.Option.critical'",
+                "properties": {
+                  "allowHeapAccess": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "firstVariadicArg": {
+                "type": "integer",
+                "title": "see 'java.lang.foreign.Linker.Option.firstVariadicArg'"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "A function descriptor to be registered for a downcall"
+      },
+      "type": "array",
+      "title": "List of function descriptors that should be registered for downcalls"
+    },
+    "upcalls": {
+      "default": [],
+      "items": {
+        "properties": {
+          "returnType": {
+            "type": "string",
+            "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
+          },
+          "parameterTypes": {
+            "default": [],
+            "items": {
+              "type": "string",
+              "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
+            },
+            "type": "array",
+            "title": "List of the function descriptor's parameter types "
+          },
+          "options": {
+            "type": "object",
+            "title": "Linker options (see 'java.lang.foreign.Linker.Option')",
+            "description": "Currently, no linker options are allowed for upcalls. This may change in future.",
+            "properties": { },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "A function descriptor to be registered for an upcall"
+      },
+      "type": "array",
+      "title": "List of function descriptors that should be registered for upcalls"
+    },
+    "directUpcalls": {
+      "default": [],
+      "items": {
+        "properties": {
+          "class": {
+            "type": "string",
+            "title": "Full-qualified class name (e.g. 'org.package.OuterClass$InnerClass')"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method name"
+          },
+          "returnType": {
+            "type": "string",
+            "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
+          },
+          "parameterTypes": {
+            "default": [],
+            "items": {
+              "type": "string",
+              "title": "A memory layout definition (allows canonical layouts; see 'java.lang.foreign.Linker')"
+            },
+            "type": "array",
+            "title": "List of the function descriptor's parameter types "
+          },
+          "options": {
+            "type": "object",
+            "title": "Linker options (see 'java.lang.foreign.Linker.Option')",
+            "description": "Currently, no linker options are allowed for direct upcalls. This may change in future.",
+            "properties": { },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "A Java method and function descriptor to be registered for a direct upcall"
+      },
+      "type": "array",
+      "title": "List of Java methods and function descriptors that should be registered for direct upcalls"
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "title": "JSON schema for the FFM API configuration that GraalVM Native Image uses",
+  "description": "A description and examples for writing an FFM API configuration can be found at https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md"
+}
