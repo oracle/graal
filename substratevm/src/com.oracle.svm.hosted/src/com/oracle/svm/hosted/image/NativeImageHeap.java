@@ -912,6 +912,18 @@ public final class NativeImageHeap implements ImageHeap {
             return size;
         }
 
+        @Override
+        public Object getObjectOrHostedConstant() {
+            /*
+             * The info wraps an ImageHeapConstant, i.e., a build time representation of an object
+             * that is not backed by a raw hosted object. We set the partition limit to the actual
+             * constant. The constant reflection provider knows that this is a build time value, and
+             * it will not wrap it in a JavaConstant when reading it. This case is not different
+             * from normal objects referencing simulated objects.
+             */
+            return getConstant();
+        }
+
         public int getIdentityHashCode() {
             return identityHashCode;
         }
