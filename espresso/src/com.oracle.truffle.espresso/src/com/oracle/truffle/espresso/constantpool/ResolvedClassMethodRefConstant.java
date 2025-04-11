@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.constantpool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.Method;
 
-public class ResolvedClassMethodRefConstant extends ResolvedMethodRefConstant {
+class ResolvedClassMethodRefConstant extends ResolvedMethodRefConstant {
     ResolvedClassMethodRefConstant(Method resolved) {
         super(resolved);
     }

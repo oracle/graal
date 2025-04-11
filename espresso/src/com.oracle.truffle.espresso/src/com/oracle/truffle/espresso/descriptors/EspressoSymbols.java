@@ -118,6 +118,7 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_nio_file_Path = SYMBOLS.putType("Ljava/nio/file/Path;");
         public static final Symbol<Type> java_nio_file_Path_array = SYMBOLS.putType("[Ljava/nio/file/Path;");
         public static final Symbol<Type> java_nio_file_Paths = SYMBOLS.putType("Ljava/nio/file/Paths;");
+        public static final Symbol<Type> java_nio_file_FileSystems_DefaultFileSystemHolder = SYMBOLS.putType("Ljava/nio/file/FileSystems$DefaultFileSystemHolder;");
         public static final Symbol<Type> java_nio_file_FileAlreadyExistsException = SYMBOLS.putType("Ljava/nio/file/FileAlreadyExistsException;");
         public static final Symbol<Type> java_nio_file_DirectoryNotEmptyException = SYMBOLS.putType("Ljava/nio/file/DirectoryNotEmptyException;");
         public static final Symbol<Type> java_nio_file_AtomicMoveNotSupportedException = SYMBOLS.putType("Ljava/nio/file/AtomicMoveNotSupportedException;");
@@ -738,6 +739,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> theFileSystem = SYMBOLS.putName("theFileSystem");
         // sun.nio.fs.TrufflePath
         public static final Symbol<Name> HIDDEN_TRUFFLE_FILE = SYMBOLS.putName("0HIDDEN_TRUFFLE_FILE");
+        public static final Symbol<Name> instance = SYMBOLS.putName("instance");
         // java.util.zip
         public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
         // java.lang.invoke.*
@@ -1378,6 +1380,7 @@ public class EspressoSymbols {
                         /* isSymbolicLink */ Types._boolean,
                         /* isOther */ Types._boolean,
                         /* size */ Types._long);
+        public static final Symbol<Signature> sun_nio_fs_TruffleFileSystemProvider = SYMBOLS.putSignature(Types.sun_nio_fs_TruffleFileSystemProvider);
 
         public static final Symbol<Signature> FileChannel_FileDescriptor_String_boolean_boolean_boolean_Object = SYMBOLS.putSignature(Types.java_nio_channels_FileChannel,
                         Types.java_io_FileDescriptor, Types.java_lang_String, Types._boolean, Types._boolean, Types._boolean, Types.java_lang_Object);
