@@ -119,7 +119,7 @@ class CompletableFutureJDK21FieldHolder {
                 ASYNC_POOL = SubstrateUtil.cast(new Target_java_util_concurrent_CompletableFuture_ThreadPerTaskExecutor(), Executor.class);
             }
         } else {
-            throw VMError.shouldNotReachHere("This field holder should only be reachable on JDK 21 or earlier.");
+            ASYNC_POOL = null;
         }
     }
 }
