@@ -57,12 +57,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.random.RandomGeneratorFactory;
 
 /**
  * This phase detects usages of dynamic access calls that might require metadata in reached parts of
@@ -163,11 +160,6 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
         reflectionMethodSignatures.put(VarHandle.VarHandleDesc.class, Set.of(
                 new MethodSignature("resolveConstantDesc", MethodHandles.Lookup.class)
         ));
-        reflectionMethodSignatures.put(RandomGeneratorFactory.class, Set.of(
-                new MethodSignature("create"),
-                new MethodSignature("create", long.class),
-                new MethodSignature("create", byte[].class)
-        ));
         reflectionMethodSignatures.put(MethodHandleProxies.class, Set.of(
                 new MethodSignature("asInterfaceInstance", Class.class, MethodHandle.class)
         ));
@@ -183,7 +175,8 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                 new MethodSignature("readUnshared")
         ));
         reflectionMethodSignatures.put(ObjectStreamClass.class, Set.of(
-                new MethodSignature("lookup", Class.class)
+                new MethodSignature("lookup", Class.class),
+                new MethodSignature("lookup", Class.class, boolean.class)
         ));
 
         reflectionMethodSignatures.put(Proxy.class, Set.of(
