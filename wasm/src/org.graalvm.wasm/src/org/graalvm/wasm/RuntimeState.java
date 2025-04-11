@@ -108,7 +108,7 @@ public abstract class RuntimeState {
      */
     private final int droppedDataInstanceOffset;
 
-    @CompilationFinal private Linker.LinkState linkState;
+    @CompilationFinal private volatile Linker.LinkState linkState;
 
     @CompilationFinal private int startFunctionIndex;
 
@@ -185,6 +185,10 @@ public abstract class RuntimeState {
 
     public WasmContext context() {
         return store().context();
+    }
+
+    public Linker.LinkState linkState() {
+        return linkState;
     }
 
     public boolean isNonLinked() {
