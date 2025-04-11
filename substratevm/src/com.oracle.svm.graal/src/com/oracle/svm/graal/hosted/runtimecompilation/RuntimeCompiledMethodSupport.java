@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
@@ -377,6 +378,7 @@ public class RuntimeCompiledMethodSupport {
      */
     @SuppressWarnings("javadoc")
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
+        public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
         private final ImageHeapScanner heapScanner;
         /**
@@ -386,7 +388,7 @@ public class RuntimeCompiledMethodSupport {
         private final Map<ImageHeapConstant, LocationIdentity> locationIdentityCache;
 
         public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
-            super(architecture);
+            super(architecture, null, RUNTIME_NODE_CLASS_MAP);
             this.heapScanner = heapScanner;
             this.locationIdentityCache = new ConcurrentHashMap<>();
         }

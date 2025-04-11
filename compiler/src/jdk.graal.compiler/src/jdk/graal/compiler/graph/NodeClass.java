@@ -149,14 +149,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private final int leafId;
 
-    @LibGraalSupport.HostedOnly
-    public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
-        this(clazz, superNodeClass, null, 0);
-    }
-
     @SuppressWarnings("try")
     @LibGraalSupport.HostedOnly
-    private NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass, int[] presetIterableIds, int presetIterableId) {
+    public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
         super(clazz);
         DebugContext debug = DebugContext.forCurrentThread();
         this.superNodeClass = superNodeClass;
@@ -201,10 +196,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         GraalError.guarantee(!allowedUsageTypes.contains(InputType.Memory) || MemoryKillMarker.class.isAssignableFrom(clazz),
                         "Node of type %s with allowedUsageType of memory must inherit from MemoryKill", clazz);
 
-        if (presetIterableIds != null) {
-            this.iterableIds = presetIterableIds;
-            this.iterableId = presetIterableId;
-        } else if (IterableNodeType.class.isAssignableFrom(clazz)) {
+        if (IterableNodeType.class.isAssignableFrom(clazz)) {
             ITERABLE_NODE_TYPES.increment(debug);
             this.iterableId = nextIterableId.getAndIncrement();
 
@@ -330,6 +322,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public boolean valueNumberable() {
         return canGVN;
+    }
+
+    /**
+     * Determines if this node type is abstract.
+     */
+    public boolean isAbstract() {
+        return Modifier.isAbstract(this.getClazz().getModifiers());
     }
 
     /**
