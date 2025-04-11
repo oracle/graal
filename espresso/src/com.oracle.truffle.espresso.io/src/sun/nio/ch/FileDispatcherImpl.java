@@ -179,6 +179,14 @@ final class FileDispatcherImpl extends sun.nio.ch.FileDispatcher {
         return transferFrom0(src, dst, position, count, append);
     }
 
+    int available(FileDescriptor fd) throws IOException {
+        return available0(fd);
+    }
+
+    boolean isOther(FileDescriptor fd) throws IOException {
+        return isOther0(fd);
+    }
+
     // region native methods
 
     private static native long allocationGranularity0();
@@ -222,6 +230,10 @@ final class FileDispatcherImpl extends sun.nio.ch.FileDispatcher {
     private static native void dup0(FileDescriptor fd1, FileDescriptor fd2) throws IOException;
 
     private static native int setDirect0(FileDescriptor fd, String path) throws IOException;
+
+    private static native int available0(FileDescriptor fd) throws IOException;
+
+    private static native boolean isOther0(FileDescriptor fd) throws IOException;
 
     // endregion native methods
 }

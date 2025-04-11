@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
@@ -141,6 +142,14 @@ public final class Target_sun_nio_fs_TrufflePath {
         } catch (InvalidPathException e) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
+    }
+
+    @Substitution(hasReceiver = true)
+    @TruffleBoundary
+    public static @JavaType(String.class) StaticObject toURI0(
+                    @JavaType(internalName = TRUFFLE_PATH) StaticObject self,
+                    @Inject Meta meta, @Inject TruffleIO io) {
+        return meta.toGuestString(getTruffleFile(self, io).toUri().toString());
     }
 
     @Substitution(hasReceiver = true)

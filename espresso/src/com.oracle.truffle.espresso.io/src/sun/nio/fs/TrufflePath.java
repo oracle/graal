@@ -166,7 +166,7 @@ final class TrufflePath implements Path {
 
     @Override
     public URI toUri() {
-        throw new UnsupportedOperationException();
+        return URI.create(toURI0());
     }
 
     @Override
@@ -288,6 +288,8 @@ final class TrufflePath implements Path {
     private native String resolve0(String other);
 
     private native String relativize0(TrufflePath other);
+
+    private native String toURI0();
 
     private native String toAbsolutePath0();
 
