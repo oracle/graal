@@ -79,7 +79,7 @@ if not _external_bootstrap_graalvm:
         _external_bootstrap_graalvm = java_home
 if _external_bootstrap_graalvm:
     if mx.is_darwin():
-        if not _external_bootstrap_graalvm.endswith('/Contents/Home'):
+        if not exists(join(_external_bootstrap_graalvm, 'release')) and exists(join(_external_bootstrap_graalvm, 'Contents', 'Home')):
             _external_bootstrap_graalvm = join(_external_bootstrap_graalvm, 'Contents', 'Home')
     _external_bootstrap_graalvm_jdk = mx.JDKConfig(_external_bootstrap_graalvm)
     release_dict = mx_sdk_vm.parse_release_file(join(_external_bootstrap_graalvm, 'release'))
