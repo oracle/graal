@@ -38,7 +38,6 @@ import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -94,7 +93,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         InterpreterResolvedJavaMethod interpretedMethod = readInterpretedMethod(frameInfo, sp);
         int bci = readBCI(frameInfo, sp);
         InterpreterFrame interpreterFrame = readInterpreterFrame(frameInfo, sp);
-        Class<?> interpretedClass = ((InterpreterResolvedJavaType) interpretedMethod.getDeclaringClass()).getJavaClass();
+        Class<?> interpretedClass = interpretedMethod.getDeclaringClass().getJavaClass();
         String sourceMethodName = interpretedMethod.getName();
         LineNumberTable lineNumberTable = interpretedMethod.getLineNumberTable();
 
