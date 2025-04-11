@@ -32,8 +32,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.capnproto.ReaderOptions;
-import org.capnproto.Serialize;
+import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
+import com.oracle.svm.shaded.org.capnproto.Serialize;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
