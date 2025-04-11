@@ -68,6 +68,10 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
 
+    public LocalsTest(TestRun run) {
+        super(run);
+    }
+
     @Test
     public void testBasicLocals() {
         for (int i = 0; i < 100; i++) {
