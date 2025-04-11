@@ -120,7 +120,7 @@ public class SVMImageLayerSnapshotUtil {
     protected static final Set<Field> dynamicHubCompanionRelinkedFields = Set.of(classInitializationInfo, superHub, arrayHub);
 
     private static final Class<?> sourceRoots = ReflectionUtil.lookupClass("com.oracle.svm.hosted.image.sources.SourceCache$SourceRoots");
-    private static final Class<?> completableFuture = ReflectionUtil.lookupClass("java.util.concurrent.CompletableFuture");
+    private static final Class<?> completableFuture = ReflectionUtil.lookupClass("Target_java_util_concurrent_CompletableFuture");
 
     /**
      * This map stores the field indexes that should be relinked using the hosted value of a
