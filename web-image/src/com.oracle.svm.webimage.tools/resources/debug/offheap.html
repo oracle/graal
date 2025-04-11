@@ -1,0 +1,241 @@
+<!--
+Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+
+This code is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License version 2 only, as
+published by the Free Software Foundation.  Oracle designates this
+particular file as subject to the "Classpath" exception as provided
+by Oracle in the LICENSE file that accompanied this code.
+
+This code is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+version 2 for more details (a copy is included in the LICENSE file that
+accompanied this code).
+
+You should have received a copy of the GNU General Public License version
+2 along with this work; if not, write to the Free Software Foundation,
+Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+
+Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+or visit www.oracle.com if you need additional information or have any
+questions.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+        let topOffset = 0;
+
+        function runCode() {
+            const code = document.getElementById("heap-simulator-code").value;
+            const result = eval(code);
+            console.log("The specified program evaluated to the following value:");
+            console.log(result);
+            refreshUi();
+        }
+
+        function refreshUi() {
+            const rootBody = document.getElementById("root");
+            const heapCanvasDiv = document.getElementById("heap-canvas-div");
+            const maxHeight = rootBody.offsetHeight - heapCanvasDiv.offsetTop;
+            heapDebug.summarize(
+                "heap-size-bytes", "heap-size-pages", "heap-segments",
+                "heap-last-segment-size", "heap-segment-occupancy", "heap-occupancy",
+                "heap-internal-fragmentation", "heap-external-fragmentation",
+                "summary-message"
+            );
+            heapDebug.render("heap-canvas", topOffset, maxHeight);
+        }
+
+        function canvasScroll(e) {
+            topOffset -= e.deltaY;
+            topOffset = Math.min(0, topOffset);
+            refreshUi();
+        }
+
+        const scenarios = {
+            "segments": `
+const a = malloc(960);
+malloc(1810);
+malloc(2560);
+free(a);
+malloc(960);
+    `,
+            "fragments": `
+const a = malloc(11);
+malloc(123);
+malloc(45);
+const b = malloc(14);
+malloc(15);
+free(b);
+malloc(12);
+free(a);
+malloc(14);
+malloc(10);
+malloc(9);
+malloc(39);
+malloc(8);
+malloc(12);
+    `
+        };
+
+        function loadScenario() {
+            const combo = document.getElementById("test-case-combo");
+            const scenario = scenarios[combo.value];
+            if (scenario) {
+                document.getElementById("heap-simulator-code").value = scenario.trim();
+            }
+        }
+
+        function loadMemory() {
+            const file = document.getElementById("memory-file").files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsArrayBuffer(file);
+                reader.onload = e => {
+                    const buffer = e.target.result;
+                    heap._load(new DataView(buffer, 0, buffer.byteLength));
+                    refreshUi();
+                }
+                reader.onerror = e => {
+                    document.getElementById("memory-file-error-message").innerText = "Error reading file" + e;
+                }
+            }
+        }
+
+        let preciseAllocatedSize = 0;
+
+        let allocations = {};
+
+        const malloc = size => {
+            const address = heap._malloc(size);
+            if (address !== 0) {
+                preciseAllocatedSize += size;
+                allocations[address] = size;
+            }
+            return address;
+        };
+
+        const free = address => {
+            const size = allocations[address];
+            preciseAllocatedSize -= size;
+            delete allocations[address];
+            return heap._free(address);
+        };
+    </script>
+    <script src="../../../com.oracle.svm.hosted.webimage/src/com/oracle/svm/hosted/webimage/codegen/runtime/unmanaged-memory.js"></script>
+    <script src="/com/oracle/svm/hosted/webimage/codegen/runtime/unmanaged-memory.js"></script>
+    <script src="offheap.js"></script>
+    <title>wimalloc debug page</title>
+</head>
+<body id="root">
+<h1>Web Image Off-Heap Allocator (wimalloc)</h1>
+<p>
+    This page is used to simulate various malloc workloads,
+    and to render the resulting state of the wimalloc allocator.
+</p>
+<span>
+    Load memory state from a file (the file can be dumped e.g. by a failing memory-allocator test):
+</span>
+<input type="file" id="memory-file" value="Load memory dump" onchange="loadMemory()"/>
+<br/>
+<span id="memory-file-error-message"></span>
+
+<h3>Simulator <span style="font-size: small;">(enter code and press run)</span></h3>
+<textarea id="heap-simulator-code" rows="6" cols="80">
+// Please pick other examples from the list below.
+// Or directly write a program that uses malloc and free.
+</textarea>
+<br/>
+<span>Load a predefined scenario:</span>
+<select id="test-case-combo" onclick="loadScenario()">
+</select>
+&nbsp;
+<button onclick="runCode()">Run</button>
+
+<h3>Summary <span id="summary-message" style="font-size: small; color: red;"></span></h3>
+<table>
+    <tr>
+        <td>Size (B):</td>
+        <td id="heap-size-bytes"></td>
+    </tr>
+    <tr>
+        <td>Pages (#):</td>
+        <td id="heap-size-pages"></td>
+    </tr>
+    <tr>
+        <td>Segments (#):</td>
+        <td id="heap-segments"></td>
+    </tr>
+    <tr>
+        <td>Right sentinel size (B):</td>
+        <td id="heap-last-segment-size"></td>
+    </tr>
+    <tr>
+        <td>Segment occupancy (%):</td>
+        <td id="heap-segment-occupancy"></td>
+    </tr>
+    <tr>
+        <td>Occupancy (%):</td>
+        <td id="heap-occupancy"></td>
+    </tr>
+    <tr>
+        <td>Internal fragmentation (%):</td>
+        <td id="heap-internal-fragmentation"></td>
+    </tr>
+    <tr>
+        <td>External fragmentation (%):</td>
+        <td id="heap-external-fragmentation"></td>
+    </tr>
+</table>
+
+<h3>Heap Visualization <span style="font-size: small;">(scroll or drag)</span></h3>
+<div id="heap-canvas-div">
+    <canvas id="heap-canvas" width="640" onwheel="canvasScroll(event)"></canvas>
+</div>
+
+<script>
+    refreshUi();
+
+    for (let name in scenarios) {
+        const combo = document.getElementById("test-case-combo");
+        const option = document.createElement("option");
+        option.innerHTML = name.charAt(0).toUpperCase() + name.slice(1);
+        option.setAttribute("value", name);
+        combo.appendChild(option);
+        combo.value = null;
+    }
+
+    const canvas = document.getElementById("heap-canvas");
+    {
+        let x;
+        let y;
+        let down = false;
+        canvas.addEventListener("mousedown", event => {
+            x = event.pageX;
+            y = event.pageY;
+            down = true;
+        });
+        canvas.addEventListener("mouseup", event => {
+            down = false;
+        });
+        canvas.addEventListener("mouseleave", event => {
+            down = false;
+        });
+        canvas.addEventListener("mousemove", event => {
+            if (!down) {
+                return;
+            }
+            const diffY = event.pageY - y;
+            x = event.pageX;
+            y = event.pageY;
+            topOffset = Math.min(0, topOffset + diffY);
+            refreshUi();
+        });
+    }
+</script>
+</body>
+</html>
