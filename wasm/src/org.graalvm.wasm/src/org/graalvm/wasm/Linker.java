@@ -238,7 +238,9 @@ public class Linker {
     }
 
     private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
-        synchronized (module) {
+        var lock = module.getLock();
+        lock.lock();
+        try {
             if (module.isParsed()) {
                 return;
             }
@@ -253,6 +255,8 @@ public class Linker {
                 function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
             }
             module.setParsed();
+        } finally {
+            lock.unlock();
         }
     }
 

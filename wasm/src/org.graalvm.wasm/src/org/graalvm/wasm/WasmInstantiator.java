@@ -442,7 +442,9 @@ public class WasmInstantiator {
         // finished instantiating and started executing while the other is still instantiating.
         // So we need to ensure that instantiation is synchronized or performed atomically,
         // and does not overwrite already instantiated (and potentially executed) code state.
-        synchronized (module) {
+        var lock = module.getLock();
+        lock.lock();
+        try {
             if (multiContext && module.hasBeenInstantiated()) {
                 resolveInstantiatedCodeEntries(store, instance, module);
                 return;
@@ -468,6 +470,8 @@ public class WasmInstantiator {
                 resolveCallNodes(instance, instance.target(codeEntry.functionIndex()));
             }
             module.setHasBeenInstantiated();
+        } finally {
+            lock.unlock();
         }
     }
 
