@@ -116,6 +116,11 @@ public class Linker {
 
     private ResolutionDag resolutionDag;
 
+    /**
+     * Tries to link a module instance and other module instances in the store.
+     *
+     * @param instance the module instance that triggered the linking
+     */
     public void tryLink(WasmInstance instance) {
         // The first execution of a WebAssembly call target will trigger the linking of the modules
         // that are inside the current context (which will happen behind the call boundary).
@@ -125,22 +130,20 @@ public class Linker {
         // compilation, and this check will fold away.
         // If the code is compiled synchronously, then this check will persist in the compiled code.
         // We nevertheless invalidate the compiled code that reaches this point.
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, instance.isNonLinked() || instance.isLinkFailed())) {
-            // TODO: Once we support multi-threading, add adequate synchronization here.
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, !instance.isLinkCompleted())) {
             tryLinkOutsidePartialEvaluation(instance);
-        } else {
-            assert instance.isLinkCompleted() || instance.isLinkInProgress();
         }
     }
 
     /**
+     * Tries to link a module instantiated via the JS API, with imports supplied by an importObject.
+     *
+     * @see org.graalvm.wasm.api.WebAssembly#moduleInstantiate(WasmModule, Object)
      * @see #tryLinkOutsidePartialEvaluation(WasmInstance, ImportValueSupplier)
      */
     public void tryLink(WasmInstance instance, ImportValueSupplier imports) {
-        if (instance.isNonLinked() || instance.isLinkFailed()) {
+        if (!instance.isLinkCompleted()) {
             tryLinkOutsidePartialEvaluation(instance, imports);
-        } else {
-            assert instance.isLinkCompleted() || instance.isLinkInProgress();
         }
     }
 
@@ -151,7 +154,7 @@ public class Linker {
 
     @CompilerDirectives.TruffleBoundary
     private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance) {
-        tryLink(entryPointInstance, null);
+        tryLinkOutsidePartialEvaluation(entryPointInstance, null);
     }
 
     /**
@@ -166,25 +169,28 @@ public class Linker {
      */
     @CompilerDirectives.TruffleBoundary
     private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, ImportValueSupplier imports) {
-        if (entryPointInstance.isLinkFailed()) {
-            // If the linking of this module failed already, then throw.
-            throw linkFailedError(entryPointInstance);
-        }
-        // Some Truffle configurations allow that the code gets compiled before executing the code.
-        // We therefore check the link state again.
-        if (entryPointInstance.isNonLinked()) {
-            if (resolutionDag == null) {
-                resolutionDag = new ResolutionDag();
+        final WasmStore store = entryPointInstance.store();
+        synchronized (store) {
+            var linkState = entryPointInstance.linkState();
+            if (linkState == LinkState.failed) {
+                // If the linking of this module failed already, then throw.
+                throw linkFailedError(entryPointInstance);
             }
-            final WasmStore store = entryPointInstance.store();
-            Map<String, WasmInstance> instances = store.moduleInstances();
-            ArrayList<Throwable> failures = new ArrayList<>();
-            final int maxStartFunctionIndex = runLinkActions(store, instances, imports, failures);
-            linkTopologically(store, failures, maxStartFunctionIndex);
-            assignTypeEquivalenceClasses(store);
-            resolutionDag = null;
-            runStartFunctions(instances, failures);
-            checkFailures(failures);
+            // Some Truffle configurations allow the code to be compiled before executing the code.
+            // We therefore check the link state again.
+            if (linkState == LinkState.nonLinked) {
+                if (resolutionDag == null) {
+                    resolutionDag = new ResolutionDag();
+                }
+                Map<String, WasmInstance> instances = store.moduleInstances();
+                ArrayList<Throwable> failures = new ArrayList<>();
+                final int maxStartFunctionIndex = runLinkActions(store, instances, imports, failures);
+                linkTopologically(store, failures, maxStartFunctionIndex);
+                assignTypeEquivalenceClasses(store);
+                resolutionDag = null;
+                runStartFunctions(instances, failures);
+                checkFailures(failures);
+            }
         }
     }
 
