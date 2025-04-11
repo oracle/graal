@@ -45,4 +45,10 @@ public @interface NeverInlineTrivial {
      * Documents the reason why the annotated code must not be inlined.
      */
     String value();
+
+    /**
+     * Specifies the condition under which the annotated code is not inlined.
+     * If left at the default, the code is never inlined.
+     */
+    String onlyWith() default "";
 }

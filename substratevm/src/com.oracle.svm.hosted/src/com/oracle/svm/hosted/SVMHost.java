@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1087,7 +1088,13 @@ public class SVMHost extends HostVM {
     }
 
     public boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (!callee.canBeInlined() || AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+        if (!callee.canBeInlined()) {
+            return true;
+        }
+        if (AnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+            if (Objects.equals(AnnotationAccess.getAnnotation(callee, NeverInlineTrivial.class).onlyWith(), "TrackDynamicAccess")) {
+                return DynamicAccessDetectionFeature.Options.TrackDynamicAccess.hasBeenSet();
+            }
             return true;
         }
         for (var handler : neverInlineTrivialHandlers) {
