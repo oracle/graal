@@ -43,13 +43,17 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 @TargetClass(java.util.concurrent.CompletableFuture.class)
 final class Target_java_util_concurrent_CompletableFuture {
     // Checkstyle: stop
-    @Alias @InjectAccessors(CompletableFutureUseCommonPoolAccessor.class) //
+    @Alias @InjectAccessors(CompletableFutureUseCommonPoolJDK21Accessor.class) //
     @TargetElement(onlyWith = JDK21OrEarlier.class) //
     private static boolean USE_COMMON_POOL;
 
-    @Alias @InjectAccessors(CompletableFutureAsyncPoolAccessor.class) //
+    @Alias @InjectAccessors(CompletableFutureAsyncPoolJDK21Accessor.class) //
     @TargetElement(onlyWith = JDK21OrEarlier.class) //
     private static Executor ASYNC_POOL;
+
+    @Alias @InjectAccessors(CompletableFutureAsyncPoolAccessor.class) //
+    @TargetElement(name = "ASYNC_POOL", onlyWith = JDKLatest.class) //
+    private static ForkJoinPool ASYNC_POOL_JDK_LATEST;
     // Checkstyle: resume
 }
 
@@ -81,20 +85,26 @@ class DelaySchedulerNanoTimeOffsetHolder {
     }
 }
 
-class CompletableFutureUseCommonPoolAccessor {
+class CompletableFutureUseCommonPoolJDK21Accessor {
     static boolean get() {
-        return CompletableFutureFieldHolder.USE_COMMON_POOL;
+        return CompletableFutureJDK21FieldHolder.USE_COMMON_POOL;
+    }
+}
+
+class CompletableFutureAsyncPoolJDK21Accessor {
+    static Executor get() {
+        return CompletableFutureJDK21FieldHolder.ASYNC_POOL;
     }
 }
 
 class CompletableFutureAsyncPoolAccessor {
-    static Executor get() {
+    static ForkJoinPool get() {
         return CompletableFutureFieldHolder.ASYNC_POOL;
     }
 }
 
 /* Note that this class is initialized at run time. */
-class CompletableFutureFieldHolder {
+class CompletableFutureJDK21FieldHolder {
     /* The following is copied from CompletableFuture. */
 
     static final boolean USE_COMMON_POOL = ForkJoinPool.getCommonPoolParallelism() > 1;
@@ -114,6 +124,12 @@ class CompletableFutureFieldHolder {
     }
 }
 
+/* Note that this class is initialized at run time. */
+class CompletableFutureFieldHolder {
+    /* The following is copied from CompletableFuture. */
+    static final ForkJoinPool ASYNC_POOL = Target_java_util_concurrent_ForkJoinPool.asyncCommonPool();
+}
+
 @TargetClass(value = java.util.concurrent.CompletableFuture.class, innerClass = "ThreadPerTaskExecutor", onlyWith = JDK21OrEarlier.class)
 final class Target_java_util_concurrent_CompletableFuture_ThreadPerTaskExecutor {
 }
@@ -123,6 +139,7 @@ class CompletableFutureFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitialization.initializeAtRunTime(CompletableFutureFieldHolder.class);
+        RuntimeClassInitialization.initializeAtRunTime(CompletableFutureJDK21FieldHolder.class);
         RuntimeClassInitialization.initializeAtRunTime(DelaySchedulerNanoTimeOffsetHolder.class);
     }
 }

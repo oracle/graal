@@ -83,6 +83,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.graal.compiler.util.ObjectCopierInputStream;
 import jdk.graal.compiler.util.ObjectCopierOutputStream;
@@ -120,6 +121,8 @@ public class SVMImageLayerSnapshotUtil {
     protected static final Set<Field> dynamicHubCompanionRelinkedFields = Set.of(classInitializationInfo, superHub, arrayHub);
 
     private static final Class<?> sourceRoots = ReflectionUtil.lookupClass("com.oracle.svm.hosted.image.sources.SourceCache$SourceRoots");
+    private static final Class<?> completableFuture = JavaVersionUtil.JAVA_SPEC <= 21 ? ReflectionUtil.lookupClass("com.oracle.svm.core.jdk.CompletableFutureJDK21FieldHolder")
+                    : ReflectionUtil.lookupClass("com.oracle.svm.core.jdk.CompletableFutureFieldHolder");
 
     /**
      * This map stores the field indexes that should be relinked using the hosted value of a
@@ -199,7 +202,7 @@ public class SVMImageLayerSnapshotUtil {
 
     private static boolean shouldScanClass(Class<?> clazz) {
         /* This class should not be scanned because it needs to be initialized after the analysis */
-        return !clazz.equals(sourceRoots);
+        return !clazz.equals(sourceRoots) && !clazz.equals(completableFuture);
     }
 
     /**
