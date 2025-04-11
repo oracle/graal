@@ -210,9 +210,9 @@ public class NativeImageOptions {
                  * Overriding zero parallelism must ensure at least one worker, but due to other
                  * backward compatibility constraints, it ensures two.
                  */
-                assert commonThreadParallelism == 2 : "The common pool with zero parallelism has two worker thread.";
+                assert commonThreadParallelism == 2 : "The common pool with zero parallelism has two worker threads.";
             }
-            /* The common pool with zero parallelism has no actual treads. */
+            /* The common pool with zero parallelism has no actual threads. */
             commonThreadParallelism = 0;
         }
         /*
