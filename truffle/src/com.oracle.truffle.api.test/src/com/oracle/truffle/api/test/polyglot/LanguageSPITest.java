@@ -1564,6 +1564,42 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testGR63778() {
+        try (Context context = Context.create()) {
+            execute(context, TestGR63778Language.class);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class TestGR63778Language extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TruffleContext truffleContext = env.newInnerContextBuilder().build();) {
+                Source source = Source.newBuilder(TestUtils.getDefaultLanguageId(TestGR63778Internal.class), "", "source").build();
+                assertFails(() -> truffleContext.evalPublic(null, source),
+                                IllegalArgumentException.class,
+                                (ia) -> {
+                                    String message = ia.getMessage();
+                                    assertTrue(message.contains(" language with id '" + TestUtils.getDefaultLanguageId(TestGR63778Internal.class) + "' is not available."));
+                                    assertTrue(message.contains("A language with this id is installed, but only available internally."));
+                                });
+                return null;
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class TestGR63778Internal extends AbstractExecutableTestLanguage {
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+    }
+
+    @Test
     public void testInnerContextPermittedLanguages() {
         try (Context context = Context.create()) {
             execute(context, InnerContextPermittedLanguagesLanguage.class);
