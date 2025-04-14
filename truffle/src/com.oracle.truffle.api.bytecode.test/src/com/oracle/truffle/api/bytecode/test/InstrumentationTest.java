@@ -310,6 +310,32 @@ public class InstrumentationTest extends AbstractInstructionTest {
         assertEquals(0, node.getCallTarget().call());
     }
 
+    @Test
+    public void testCachedTagsPreservedInInstrumentation() {
+        InstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+
+            BytecodeLocal l = b.createLocal();
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(6);
+            b.endStoreLocal();
+
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentation1.class);
+            b.endEnableInstrumentation();
+
+            b.beginReturn();
+            b.emitLoadLocal(l);
+            b.endReturn();
+            b.endRoot();
+        });
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(6, node.getCallTarget().call());
+        assertEquals("load.local$Int", node.getBytecodeNode().getInstructionsAsList().get(4).getName());
+        assertEquals(6, node.getCallTarget().call());
+        assertEquals("load.local$Int", node.getBytecodeNode().getInstructionsAsList().get(4).getName());
+    }
+
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //

@@ -489,6 +489,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(createIsQuickening(boxingEliminatedType));
             }
             this.add(createUndoQuickening());
+            this.add(createCreateCachedTags());
+
         }
 
         if (model.isBytecodeUpdatable()) {
@@ -833,6 +835,18 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         bytecodeUpdater.createInitBuilder().startStaticCall(type(AtomicReferenceFieldUpdater.class), "newUpdater").typeLiteral(this.asType()).typeLiteral(
                         abstractBytecodeNode.asType()).doubleQuote("bytecode").end();
         return bytecodeUpdater;
+    }
+
+    private CodeExecutableElement createCreateCachedTags() {
+        CodeExecutableElement executable = new CodeExecutableElement(Set.of(PRIVATE, STATIC),
+                        type(byte[].class), "createCachedTags",
+                        new CodeVariableElement(type(int.class), "numLocals"));
+
+        CodeTreeBuilder b = executable.createBuilder();
+        b.statement("byte[] localTags = new byte[numLocals]");
+        b.statement("Arrays.fill(localTags, FrameSlotKind.Illegal.tag)");
+        b.statement("return localTags");
+        return executable;
     }
 
     private CodeExecutableElement createUndoQuickening() {
@@ -12913,8 +12927,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
                 b.end();
             }
+
             if (tier.isCached() && model.usesBoxingElimination()) {
-                b.string("this.localTags_.length");
+                b.string("createCachedTags(this.localTags_.length)");
             }
             b.end();
             b.end();
@@ -13000,7 +13015,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.string("this.", var.getSimpleName().toString());
                     }
                     if (model.usesBoxingElimination()) {
-                        b.string("numLocals");
+                        b.string("createCachedTags(numLocals)");
                     }
                     b.end();
                     b.end();
@@ -13099,7 +13114,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.string(e.getSimpleName().toString() + "__");
                 }
                 if (model.usesBoxingElimination()) {
-                    b.string("this.localTags_.length");
+                    b.string("this.localTags_");
                 }
                 b.end();
                 b.end();
@@ -13334,8 +13349,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeExecutableElement ex = GeneratorUtils.createConstructorUsingFields(Set.of(), this);
             if (model.usesBoxingElimination()) {
-                // The cached node needs numLocals to allocate the tags array (below).
-                ex.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
+                ex.addParameter(new CodeVariableElement(type(byte[].class), "cachedTags"));
             }
 
             TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
@@ -13414,9 +13428,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             if (model.usesBoxingElimination()) {
-                b.declaration(type(byte[].class), "localTags", "new byte[numLocals]");
-                b.statement("Arrays.fill(localTags, FrameSlotKind.Illegal.tag)");
-                b.startAssign("this.localTags_").string("localTags").end();
+                b.statement("this.localTags_ = cachedTags");
+
                 if (model.enableYield) {
                     b.startAssign("this.stableTagsAssumption_");
                     b.string("hasContinuations ? ");
