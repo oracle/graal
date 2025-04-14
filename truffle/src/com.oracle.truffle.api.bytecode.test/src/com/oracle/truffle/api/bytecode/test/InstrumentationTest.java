@@ -49,11 +49,13 @@ import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
@@ -76,6 +78,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 
 public class InstrumentationTest extends AbstractInstructionTest {
 
@@ -334,6 +337,41 @@ public class InstrumentationTest extends AbstractInstructionTest {
         assertEquals("load.local$Int", node.getBytecodeNode().getInstructionsAsList().get(4).getName());
         assertEquals(6, node.getCallTarget().call());
         assertEquals("load.local$Int", node.getBytecodeNode().getInstructionsAsList().get(4).getName());
+    }
+
+    @Test
+    public void testCachedTagsPreservedInInstrumentationWithSplitting() {
+        InstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+
+            BytecodeLocal l = b.createLocal();
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(6);
+            b.endStoreLocal();
+
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentation1.class);
+            b.endEnableInstrumentation();
+
+            b.beginReturn();
+            b.emitLoadLocal(l);
+            b.endReturn();
+            b.endRoot();
+        });
+        node.getBytecodeNode().setUncachedThreshold(0);
+        DirectCallNode cn = DirectCallNode.create(node.getCallTarget());
+
+        // cloning only supported in optimizing runtimes
+        Assume.assumeTrue(cn.cloneCallTarget());
+
+        RootCallTarget clone = (RootCallTarget) cn.getClonedCallTarget();
+        InstrumentationTestRootNode clonedNode = (InstrumentationTestRootNode) clone.getRootNode();
+        clonedNode.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(6, clone.call());
+        assertEquals("load.local$Int", clonedNode.getBytecodeNode().getInstructionsAsList().get(4).getName());
+        assertEquals(6, clone.call());
+        assertEquals("load.local$Int", clonedNode.getBytecodeNode().getInstructionsAsList().get(4).getName());
     }
 
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //

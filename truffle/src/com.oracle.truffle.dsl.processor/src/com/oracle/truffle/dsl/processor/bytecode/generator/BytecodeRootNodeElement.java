@@ -493,6 +493,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         }
 
+        if (cloneUninitializedNeedsUnquickenedBytecode()) {
+            this.add(createUnquickenBytecode());
+        }
+
         if (model.isBytecodeUpdatable()) {
             // we add this last so we do not pick up this field for constructors
             abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), arrayOf(type(byte.class)), "oldBytecodes"));
@@ -1460,38 +1464,36 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.startStatement();
         b.string("cloneReferences.forEach((clone) -> ").startBlock();
 
-        b.declaration(abstractBytecodeNode.asType(), "cloneOldBytecode");
-        b.declaration(abstractBytecodeNode.asType(), "cloneNewBytecode");
-        b.startDoBlock();
-        b.statement("cloneOldBytecode = clone.bytecode");
-        b.statement("cloneNewBytecode = clone.insert(this.bytecode.cloneUninitialized())");
+        b.startStatement();
 
-        b.startIf().string("bytecodes_ == null").end().startBlock();
-        b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
-        b.statement("cloneNewBytecode.adoptNodesAfterUpdate()");
-        b.end();
-        emitFence(b);
-        b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("clone").string("cloneOldBytecode").string("cloneNewBytecode").end().end();
-        b.newLine();
-        if (model.isBytecodeUpdatable()) {
-            b.startIf().string("bytecodes_ != null").end().startBlock();
-            b.startStatement().startCall("cloneOldBytecode.invalidate");
-            b.string("cloneNewBytecode");
-            b.string("reason");
-            b.end(2);
-            b.end();
-            if (model.enableYield) {
-                // We need to patch the BytecodeNodes for continuations.
-                b.startStatement().startCall("cloneOldBytecode.updateContinuationRootNodes");
-                b.string("cloneNewBytecode");
-                b.string("reason");
-                b.string("continuationLocations");
-                b.string("bytecodes_ != null");
-                b.end(2);
+        b.startCall("clone", "updateBytecode");
+        for (VariableElement var : ex.getParameters()) {
+            switch (var.getSimpleName().toString()) {
+                case "bytecodes_":
+                    b.startGroup();
+                    b.string("bytecodes_ != null ? ");
+                    b.startCall("unquickenBytecode");
+                    b.string(var.getSimpleName().toString());
+                    b.end();
+                    b.string(" : null");
+                    b.end();
+                    break;
+                case "tagRoot_":
+                    b.startGroup();
+                    b.string("tagRoot_ != null ? ");
+                    b.cast(tagRootNode.asType());
+                    b.string("tagRoot_.deepCopy() : null");
+                    b.end();
+                    break;
+                default:
+                    b.string(var.getSimpleName().toString());
+                    break;
             }
         }
 
         b.end();
+        b.end();
+
         b.end(); // block
         b.string(")");
         b.end(); // statement
@@ -1674,6 +1676,79 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn().string("tagMask").end();
         }
 
+        return ex;
+    }
+
+    private boolean cloneUninitializedNeedsUnquickenedBytecode() {
+        // If the node supports BE/quickening, cloneUninitialized should unquicken the bytecode.
+        // Uncached nodes don't rewrite bytecode, so we only need to unquicken if cached.
+        return (model.usesBoxingElimination() || model.enableQuickening);
+    }
+
+    private CodeExecutableElement createUnquickenBytecode() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(byte.class)), "unquickenBytecode");
+        ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "original"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+        b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
+
+        Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
+                        .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+
+        List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
+                        .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
+                        .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
+                        .toList();
+
+        List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
+                        .collect(deterministicGroupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
+                        .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> {
+                            InstructionKind kind = entry.getKey().kind;
+                            return kind == InstructionKind.CUSTOM || kind == InstructionKind.CUSTOM_SHORT_CIRCUIT;
+                        }).thenComparing(entry -> entry.getKey().getInstructionLength())) //
+                        .toList();
+
+        b.declaration(type(int.class), "bci", "0");
+
+        b.startWhile().string("bci < copy.length").end().startBlock();
+        b.startSwitch().tree(readInstruction("copy", "bci")).end().startBlock();
+
+        for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
+            InstructionModel quickeningRoot = quickenedGroup.getKey();
+            List<InstructionModel> instructions = quickenedGroup.getValue();
+            int instructionLength = instructions.get(0).getInstructionLength();
+            for (InstructionModel instruction : instructions) {
+                if (instruction.getInstructionLength() != instructionLength) {
+                    throw new AssertionError("quickened group has multiple different instruction lengths");
+                }
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+            }
+            b.startCaseBlock();
+
+            b.statement(writeInstruction("copy", "bci", createInstructionConstant(quickeningRoot)));
+            b.startStatement().string("bci += ").string(instructionLength).end();
+            b.statement("break");
+            b.end();
+        }
+
+        for (var regularGroup : regularGroupedByLength) {
+            int instructionLength = regularGroup.getKey();
+            List<InstructionModel> instructions = regularGroup.getValue();
+            for (InstructionModel instruction : instructions) {
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+            }
+            b.startCaseBlock();
+            b.startStatement().string("bci += ").string(instructionLength).end();
+            b.statement("break");
+            b.end();
+        }
+
+        b.end(); // switch
+        b.end(); // while
+
+        b.startReturn();
+        b.string("copy");
+        b.end();
         return ex;
     }
 
@@ -12168,9 +12243,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createToCached());
             this.add(createUpdate());
             this.add(createCloneUninitialized());
-            if (cloneUninitializedNeedsUnquickenedBytecode()) {
-                this.add(createUnquickenBytecode());
-            }
             this.add(createGetCachedNodes());
             this.add(createGetBranchProfiles());
             this.add(createFindBytecodeIndex1());
@@ -12899,12 +12971,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private boolean cloneUninitializedNeedsUnquickenedBytecode() {
-            // If the node supports BE/quickening, cloneUninitialized should unquicken the bytecode.
-            // Uncached nodes don't rewrite bytecode, so we only need to unquicken if cached.
-            return (model.usesBoxingElimination() || model.enableQuickening) && tier.isCached();
-        }
-
         private CodeExecutableElement createCloneUninitialized() {
             CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "cloneUninitialized");
             CodeTreeBuilder b = ex.createBuilder();
@@ -12915,7 +12981,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (var.getSimpleName().contentEquals("tagRoot")) {
                     b.string("tagRoot != null ? ").cast(tagRootNode.asType()).string("tagRoot.deepCopy() : null");
                 } else if (var.getSimpleName().contentEquals("bytecodes")) {
-                    if (cloneUninitializedNeedsUnquickenedBytecode()) {
+                    if (tier.isCached() && cloneUninitializedNeedsUnquickenedBytecode()) {
                         b.startCall("unquickenBytecode").string("this.bytecodes").end();
                     } else {
                         b.startStaticCall(type(Arrays.class), "copyOf");
@@ -12932,73 +12998,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("createCachedTags(this.localTags_.length)");
             }
             b.end();
-            b.end();
-            return ex;
-        }
-
-        private CodeExecutableElement createUnquickenBytecode() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(byte.class)), "unquickenBytecode");
-            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "original"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
-
-            Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                            .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
-
-            List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
-                            .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
-                            .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
-                            .toList();
-
-            List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
-                            .collect(deterministicGroupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
-                            .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> {
-                                InstructionKind kind = entry.getKey().kind;
-                                return kind == InstructionKind.CUSTOM || kind == InstructionKind.CUSTOM_SHORT_CIRCUIT;
-                            }).thenComparing(entry -> entry.getKey().getInstructionLength())) //
-                            .toList();
-
-            b.declaration(type(int.class), "bci", "0");
-
-            b.startWhile().string("bci < copy.length").end().startBlock();
-            b.startSwitch().tree(readInstruction("copy", "bci")).end().startBlock();
-
-            for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
-                InstructionModel quickeningRoot = quickenedGroup.getKey();
-                List<InstructionModel> instructions = quickenedGroup.getValue();
-                int instructionLength = instructions.get(0).getInstructionLength();
-                for (InstructionModel instruction : instructions) {
-                    if (instruction.getInstructionLength() != instructionLength) {
-                        throw new AssertionError("quickened group has multiple different instruction lengths");
-                    }
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                }
-                b.startCaseBlock();
-
-                b.statement(writeInstruction("copy", "bci", createInstructionConstant(quickeningRoot)));
-                b.startStatement().string("bci += ").string(instructionLength).end();
-                b.statement("break");
-                b.end();
-            }
-
-            for (var regularGroup : regularGroupedByLength) {
-                int instructionLength = regularGroup.getKey();
-                List<InstructionModel> instructions = regularGroup.getValue();
-                for (InstructionModel instruction : instructions) {
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                }
-                b.startCaseBlock();
-                b.startStatement().string("bci += ").string(instructionLength).end();
-                b.statement("break");
-                b.end();
-            }
-
-            b.end(); // switch
-            b.end(); // while
-
-            b.startReturn();
-            b.string("copy");
             b.end();
             return ex;
         }
