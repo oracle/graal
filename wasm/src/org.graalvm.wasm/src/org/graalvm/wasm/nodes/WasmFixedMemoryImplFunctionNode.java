@@ -136,4 +136,8 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     }
 
     public abstract void execute(VirtualFrame frame, WasmInstance instance);
+
+    final Node[] getCallNodes() {
+        return callNodes;
+    }
 }
