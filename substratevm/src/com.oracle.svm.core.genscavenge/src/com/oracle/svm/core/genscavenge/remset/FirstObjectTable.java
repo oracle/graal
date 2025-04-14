@@ -244,7 +244,7 @@ public final class FirstObjectTable {
         Pointer indexedMemoryStart = objectsStart.add(indexToMemoryOffset(index));
         // If the object starts before the memory for this index, skip over it.
         if (firstObject.belowThan(indexedMemoryStart)) {
-            Object crossingObject = firstObject.toObject();
+            Object crossingObject = firstObject.toObjectNonNull();
             result = LayoutEncoding.getObjectEndInGC(crossingObject);
         } else {
             assert firstObject.equal(indexedMemoryStart) : "preciseFirstPointer.equal(indexedMemoryStart)";

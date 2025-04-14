@@ -1259,7 +1259,17 @@ public class HeapDumpWriter {
 
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
-        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed);
+                pos = pos.add(referenceSize);
+            }
+        }
+
+        /** Derived references are not relevant for heap dumping, so we ignore innerOffset. */
+        private void visitObjectReference(Pointer objRef, boolean compressed) {
             assert markGCRoots;
 
             Object obj = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
@@ -1271,7 +1281,6 @@ public class HeapDumpWriter {
                 /* Position of the stack frame in the stack trace. */
                 writeInt(getWrittenFrames());
             }
-            return true;
         }
 
         private void visitFrame(FrameInfoQueryResult frame) {
@@ -1355,7 +1364,7 @@ public class HeapDumpWriter {
 
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
-        public boolean visitObject(Object obj) {
+        public void visitObject(Object obj) {
             if (!isFillerObject(obj)) {
                 if (isLarge(obj)) {
                     boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
@@ -1366,7 +1375,6 @@ public class HeapDumpWriter {
                     writeObject(obj);
                 }
             }
-            return true;
         }
 
         private static boolean isFillerObject(Object obj) {
@@ -1402,19 +1410,27 @@ public class HeapDumpWriter {
         }
 
         @Override
-        public boolean visitCode(CodeInfo info) {
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
+        public void visitCode(CodeInfo info) {
             RuntimeCodeInfoAccess.walkObjectFields(info, this);
-            return true;
         }
 
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
-        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed);
+                pos = pos.add(referenceSize);
+            }
+        }
+
+        private void visitObjectReference(Pointer objRef, boolean compressed) {
             Object obj = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (obj != null) {
                 markAsJniGlobalGCRoot(obj);
             }
-            return true;
         }
     }
 
@@ -1432,12 +1448,20 @@ public class HeapDumpWriter {
 
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
-        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed);
+                pos = pos.add(referenceSize);
+            }
+        }
+
+        private void visitObjectReference(Pointer objRef, boolean compressed) {
             Object obj = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (obj != null) {
                 markThreadLocalAsGCRoot(obj);
             }
-            return true;
         }
 
         private void markThreadLocalAsGCRoot(Object obj) {

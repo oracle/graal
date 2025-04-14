@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -32,7 +31,8 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Apply an ObjectVisitor to all the new Objects in a Space since a snapshot.
@@ -103,9 +103,7 @@ final class GreyObjectsWalker {
             AlignedHeapChunk.AlignedHeader lastChunk;
             do {
                 lastChunk = aChunk;
-                if (!AlignedHeapChunk.walkObjectsFromInline(aChunk, aStart, visitor)) {
-                    throw VMError.shouldNotReachHereAtRuntime();
-                }
+                AlignedHeapChunk.walkObjectsFromInline(aChunk, aStart, visitor);
                 aChunk = HeapChunk.getNext(aChunk);
                 aStart = (aChunk.isNonNull() ? AlignedHeapChunk.getObjectsStart(aChunk) : Word.nullPointer());
             } while (aChunk.isNonNull());
@@ -131,9 +129,7 @@ final class GreyObjectsWalker {
             UnalignedHeapChunk.UnalignedHeader lastChunk;
             do {
                 lastChunk = uChunk;
-                if (!UnalignedHeapChunk.walkObjectsInline(uChunk, visitor)) {
-                    throw VMError.shouldNotReachHereAtRuntime();
-                }
+                UnalignedHeapChunk.walkObjectsInline(uChunk, visitor);
                 uChunk = HeapChunk.getNext(uChunk);
             } while (uChunk.isNonNull());
 

@@ -301,28 +301,25 @@ public final class HeapChunk {
 
     @NeverInline("Not performance critical")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
-    public static boolean walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
-        return walkObjectsFromInline(that, start, visitor);
+    public static void walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
+        walkObjectsFromInline(that, start, visitor);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
-    public static boolean walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
+    public static void walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
         Pointer p = start;
         while (p.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
-            Object obj = p.toObject();
-            if (!callVisitor(visitor, obj)) {
-                return false;
-            }
+            Object obj = p.toObjectNonNull();
+            callVisitor(visitor, obj);
             p = p.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
         }
-        return true;
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectVisitor visitor, Object obj) {
-        return visitor.visitObjectInline(obj);
+    private static void callVisitor(ObjectVisitor visitor, Object obj) {
+        visitor.visitObject(obj);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

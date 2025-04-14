@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 
+/**
+ * Only the GC may have subclasses and only one subclass may be in an image at a time. Otherwise, we
+ * could end up with virtual calls in performance-critical code.
+ */
 public interface UninterruptibleObjectVisitor extends ObjectVisitor {
     @Override
     @Uninterruptible(reason = "Implementations require uninterruptible walk.", callerMustBe = true)
-    boolean visitObject(Object o);
-
-    @Override
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Implementations require uninterruptible walk.", callerMustBe = true)
-    boolean visitObjectInline(Object o);
+    void visitObject(Object o);
 }

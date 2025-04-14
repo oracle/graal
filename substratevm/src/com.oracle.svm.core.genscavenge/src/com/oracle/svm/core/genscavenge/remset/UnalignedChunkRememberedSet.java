@@ -66,7 +66,7 @@ final class UnalignedChunkRememberedSet {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
         // Unaligned chunks don't have a first object table.
 
-        Object obj = UnalignedHeapChunk.getObjectStart(chunk).toObject();
+        Object obj = UnalignedHeapChunk.getObjectStart(chunk).toObjectNonNull();
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
 
@@ -101,8 +101,8 @@ final class UnalignedChunkRememberedSet {
             }
 
             Pointer objectsStart = UnalignedHeapChunk.getObjectStart(chunk);
-            Object obj = objectsStart.toObject();
-            visitor.visitObjectInline(obj);
+            Object obj = objectsStart.toObjectNonNull();
+            visitor.visitObject(obj);
         }
     }
 

@@ -92,19 +92,19 @@ public abstract class Heap {
      * Walk all the objects in the heap. Must only be executed as part of a VM operation that causes
      * a safepoint.
      */
-    public abstract boolean walkObjects(ObjectVisitor visitor);
+    public abstract void walkObjects(ObjectVisitor visitor);
 
     /**
      * Walk all native image heap objects. Must only be executed as part of a VM operation that
      * causes a safepoint.
      */
-    public abstract boolean walkImageHeapObjects(ObjectVisitor visitor);
+    public abstract void walkImageHeapObjects(ObjectVisitor visitor);
 
     /**
      * Walk all heap objects except the native image heap objects. Must only be executed as part of
      * a VM operation that causes a safepoint.
      */
-    public abstract boolean walkCollectedHeapObjects(ObjectVisitor visitor);
+    public abstract void walkCollectedHeapObjects(ObjectVisitor visitor);
 
     /** Returns the number of classes in the heap (initialized as well as uninitialized). */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

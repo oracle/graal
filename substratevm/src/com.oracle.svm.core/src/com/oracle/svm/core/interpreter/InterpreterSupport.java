@@ -24,27 +24,27 @@
  */
 package com.oracle.svm.core.interpreter;
 
-import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.FrameSourceInfo;
-
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.UnsignedWord;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameSourceInfo;
+import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /* Enables unoptimized execution of AOT compiled methods with an interpreter. The SVM
  * constraints apply, e.g. this itself does not enable class loading. */
@@ -128,7 +128,7 @@ public abstract class InterpreterSupport {
             /* Constant offset due to "deopt slot" */
             int baseOffset = wordSize;
             Pointer objRef = sp.add(baseOffset + wordSize * referenceIndex);
-            callVisitor(visitor, objRef);
+            callVisitor(visitor, objRef, 1);
 
             referenceIndex++;
             gcReferenceMap >>= 1;
@@ -136,8 +136,8 @@ public abstract class InterpreterSupport {
     }
 
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer address) {
-        return visitor.visitObjectReference(address, false, null);
+    private static void callVisitor(ObjectReferenceVisitor visitor, Pointer firstObjRef, int count) {
+        visitor.visitObjectReferences(firstObjRef, false, FrameAccess.uncompressedReferenceSize(), null, count);
     }
 
     /**

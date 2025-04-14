@@ -41,13 +41,7 @@ abstract class Generation {
         this.name = name;
     }
 
-    /**
-     * Walk the Objects in this Space, passing each to a Visitor.
-     *
-     * @param visitor An ObjectVisitor.
-     * @return True if all visits returned true, false otherwise.
-     */
-    public abstract boolean walkObjects(ObjectVisitor visitor);
+    public abstract void walkObjects(ObjectVisitor visitor);
 
     public String getName() {
         return name;
