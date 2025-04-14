@@ -58,6 +58,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -1728,6 +1729,13 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    /**
+     * Note that this is not a stable identity. It's updated when a node is
+     * {@linkplain #markDeleted() deleted} or potentially when its graph is
+     * {@linkplain StructuredGraph#maybeCompress compressed}.
+     *
+     * @see NodeIdAccessor
+     */
     @Deprecated
     public int getId() {
         return id;
