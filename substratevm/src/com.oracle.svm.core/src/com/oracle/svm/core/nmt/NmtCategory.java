@@ -53,6 +53,8 @@ public enum NmtCategory {
     NMT("Native Memory Tracking"),
     /** Profile-guided optimizations. */
     PGO("PGO"),
+    /* Serviceability, e.g., attach API. */
+    Serviceability("Serviceability)"),
     /** Threading. */
     Threading("Threading"),
     /** Memory allocated via Unsafe. */
