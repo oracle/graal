@@ -563,7 +563,9 @@ public abstract class Node implements Cloneable, Formattable {
             if (length == 0) {
                 extraUsages = new Node[4];
             } else if (extraUsagesCount == length) {
-                Node[] newExtraUsages = new Node[length * 2 + 1];
+                int growth = length >> 1;
+                // Grow the usages array by 1.5x
+                Node[] newExtraUsages = new Node[length + growth];
                 System.arraycopy(extraUsages, 0, newExtraUsages, 0, length);
                 extraUsages = newExtraUsages;
             }
