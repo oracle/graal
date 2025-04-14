@@ -51,8 +51,8 @@ public class HostedMethodNameFactory implements InternalFeature {
     private Map<String, Integer> methodNameCount = new ConcurrentHashMap<>();
     private Set<String> uniqueShortNames = ConcurrentHashMap.newKeySet();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-    private Set<String> reservedUniqueShortNames = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().getReservedNames() : null;
     private final boolean logUniqueNameInconsistencies = Options.LogUniqueNameInconsistencies.getValue();
+    private Set<String> reservedUniqueShortNames;
 
     public record MethodNameInfo(String name, String uniqueShortName) {
     }
@@ -68,7 +68,7 @@ public class HostedMethodNameFactory implements InternalFeature {
     }
 
     MethodNameInfo createNames(NameGenerator generator, AnalysisMethod aMethod) {
-        MethodNameInfo result = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().loadMethodNameInfo(aMethod) : null;
+        MethodNameInfo result = buildingExtensionLayer ? HostedDynamicLayerInfo.loadMethodNameInfo(aMethod) : null;
         if (result != null) {
             assert reservedUniqueShortNames.contains(result.uniqueShortName()) : result;
             if (logUniqueNameInconsistencies) {
@@ -105,6 +105,11 @@ public class HostedMethodNameFactory implements InternalFeature {
         VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: %s", result.uniqueShortName());
 
         return result;
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        reservedUniqueShortNames = buildingExtensionLayer ? HostedDynamicLayerInfo.singleton().getReservedNames() : null;
     }
 
     @Override

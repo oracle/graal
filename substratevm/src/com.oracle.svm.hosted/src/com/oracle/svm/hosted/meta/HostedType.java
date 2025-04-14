@@ -45,6 +45,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
+    public static final int INVALID_TYPECHECK_ID = -1;
+
     public static final HostedType[] EMPTY_ARRAY = new HostedType[0];
 
     protected final HostedUniverse universe;
@@ -147,7 +149,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         this.storageKind = storageKind;
         this.superClass = superClass;
         this.interfaces = interfaces;
-        this.typeID = -1;
+        this.typeID = INVALID_TYPECHECK_ID;
     }
 
     public HostedType getStrengthenStampType() {
@@ -180,7 +182,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public int getTypeID() {
-        assert typeID != -1;
+        assert typeID != INVALID_TYPECHECK_ID;
         return typeID;
     }
 

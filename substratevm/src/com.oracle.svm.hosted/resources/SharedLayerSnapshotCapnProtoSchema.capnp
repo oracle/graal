@@ -8,6 +8,7 @@ using MethodId = Int32;
 using FieldId = Int32;
 using ConstantId = Int32;
 using SingletonObjId = Int32;
+using HostedMethodIndex = Int32;
 
 struct PersistedAnalysisType {
   id @0 :TypeId;
@@ -75,8 +76,8 @@ struct PersistedAnalysisMethod {
   argumentTypeIds @6 :List(TypeId);
   returnTypeId @7 :TypeId;
   modifiers @8 :Int32;
-  code @9 :Data;
-  codeSize @10 :Int32;
+  bytecode @9 :Data;
+  bytecodeSize @10 :Int32;
   isConstructor @11 :Bool;
   isSynthetic @12 :Bool;
   canBeStaticallyBound @13 :Bool;
@@ -92,32 +93,33 @@ struct PersistedAnalysisMethod {
   analysisGraphLocation @23 :Text;
   analysisGraphIsIntrinsic @24 :Bool;
   strengthenedGraphLocation @25 :Text;
+  hostedMethodIndex @26 :HostedMethodIndex;
   wrappedMethod :union {
-    none @26 :Void; # default
+    none @27 :Void; # default
     factoryMethod :group {
-      targetConstructorId @27 :MethodId;
-      throwAllocatedObject @28 :Bool;
-      instantiatedTypeId @29 :TypeId;
+      targetConstructorId @28 :MethodId;
+      throwAllocatedObject @29 :Bool;
+      instantiatedTypeId @30 :TypeId;
     }
     outlinedSB :group {
-      methodTypeReturn @30 :Text;
-      methodTypeParameters @31 :List(Text);
+      methodTypeReturn @31 :Text;
+      methodTypeParameters @32 :List(Text);
     }
     cEntryPointCallStub :group {
-      originalMethodId @32 :MethodId;
-      notPublished @33 :Bool;
+      originalMethodId @33 :MethodId;
+      notPublished @34 :Bool;
     }
     wrappedMember :group {
       union {
-        reflectionExpandSignature @34 :Void;
-        javaCallVariantWrapper @35 :Void;
+        reflectionExpandSignature @35 :Void;
+        javaCallVariantWrapper @36 :Void;
       }
-      name @36 :Text;
-      declaringClassName @37 :Text;
-      argumentTypeNames @38 :List(Text);
+      name @37 :Text;
+      declaringClassName @38 :Text;
+      argumentTypeNames @39 :List(Text);
     }
     polymorphicSignature :group {
-      callers @39 :List(MethodId);
+      callers @40 :List(MethodId);
     }
   }
 }
@@ -273,6 +275,8 @@ struct SharedLayerSnapshot {
   staticFinalFieldFoldingSingleton @15 :StaticFinalFieldFoldingSingleton;
   registeredJNILibraries @16 :List(Text);
   layeredRuntimeMetadataSingleton @17 :LayeredRuntimeMetadataSingleton;
+  dynamicHubInfos @18 :List(DynamicHubInfo);
+  hostedMethods @19 :List(PersistedHostedMethod);
 }
 
 struct StaticFinalFieldFoldingSingleton {
@@ -304,4 +308,34 @@ struct PrimitiveArray {
     j @6 :List(Int64);
     d @7 :List(Float64);
   }
+}
+
+struct DispatchSlotInfo {
+    declaredHostedMethodIndex @0 :HostedMethodIndex;
+    resolvedHostedMethodIndex @1 :HostedMethodIndex;
+    slotIndex @2 :Int32;
+    resolutionStatus @3 :Int32;
+    slotSymbolName @4 :Text;
+}
+
+struct PersistedHostedMethod {
+    index @0 :Int32;
+    methodId @1 :MethodId;
+    vTableIndex @2 :Int32;
+    installedOffset @3 :Int32;
+    isVirtualCallTarget @4 :Bool;
+    symbolName @5 :Text;
+    hostedMethodName @6 :Text;
+    hostedMethodUniqueName @7 :Text;
+}
+
+struct DynamicHubInfo {
+    typeId @0 :TypeId;
+    installed @1 :Bool;
+    typecheckId @2 :Int32;
+    numClassTypes @3 :Int32;
+    numInterfaceTypes @4 :Int32;
+    typecheckSlotValues @5 :List(Int32);
+    locallyDeclaredSlotsHostedMethodIndexes @6 :List(HostedMethodIndex);
+    dispatchTableSlotValues @7 :List(DispatchSlotInfo);
 }

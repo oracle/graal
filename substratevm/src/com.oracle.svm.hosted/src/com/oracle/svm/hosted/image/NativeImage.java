@@ -111,7 +111,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -545,7 +545,7 @@ public abstract class NativeImage extends AbstractImage {
                 HostedDynamicLayerInfo.singleton().defineSymbolsForPriorLayerMethods(objectFile);
             }
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                LayeredDispatchTableSupport.singleton().defineDispatchTableSlotSymbols(objectFile, textSection, codeCache, metaAccess);
+                LayeredDispatchTableFeature.singleton().defineDispatchTableSlotSymbols(objectFile, textSection, codeCache, metaAccess);
             }
 
             // Mark the sections with the relocations from the maps.
@@ -787,7 +787,7 @@ public abstract class NativeImage extends AbstractImage {
         if (sm instanceof HostedMethod hMethod) {
             if (hMethod.isCompiledInPriorLayer()) {
                 // ensure we use a consistent symbol name across layers
-                name = HostedDynamicLayerInfo.singleton().loadMethodNameInfo(hMethod.getWrapped()).uniqueShortName();
+                name = HostedDynamicLayerInfo.loadMethodNameInfo(hMethod.getWrapped()).uniqueShortName();
             } else {
                 name = hMethod.getUniqueShortName();
             }
