@@ -67,15 +67,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import com.oracle.svm.shaded.org.capnproto.ListBuilder;
-import com.oracle.svm.shaded.org.capnproto.MessageBuilder;
-import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
-import com.oracle.svm.shaded.org.capnproto.Serialize;
-import com.oracle.svm.shaded.org.capnproto.StructBuilder;
-import com.oracle.svm.shaded.org.capnproto.StructList;
-import com.oracle.svm.shaded.org.capnproto.Text;
-import com.oracle.svm.shaded.org.capnproto.TextList;
-import com.oracle.svm.shaded.org.capnproto.Void;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -104,6 +95,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -158,6 +150,15 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.hosted.substitute.PolymorphicSignatureWrapperMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.shaded.org.capnproto.ListBuilder;
+import com.oracle.svm.shaded.org.capnproto.MessageBuilder;
+import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
+import com.oracle.svm.shaded.org.capnproto.Serialize;
+import com.oracle.svm.shaded.org.capnproto.StructBuilder;
+import com.oracle.svm.shaded.org.capnproto.StructList;
+import com.oracle.svm.shaded.org.capnproto.Text;
+import com.oracle.svm.shaded.org.capnproto.TextList;
+import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.FileDumpingUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -867,7 +868,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
-        return ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
+        return !AnnotationAccess.isAnnotationPresent(field, Delete.class) &&
+                        ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                         field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers() && field.installableInLayer();
     }
 
