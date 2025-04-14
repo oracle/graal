@@ -66,6 +66,7 @@ public final class LocationStackFrame {
     private static String methodName(LocationStackFrame t) {
         return t != null && t.method != null ? t.method.name : null;
     }
+
     private static String methodHolderName(LocationStackFrame t) {
         if (t != null && t.method != null && t.method.holder != null) {
             return t.method.holder.name;
