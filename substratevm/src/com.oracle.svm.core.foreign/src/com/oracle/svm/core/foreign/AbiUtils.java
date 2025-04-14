@@ -521,7 +521,6 @@ public abstract class AbiUtils {
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L124")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
-    public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, Linker.Option... options) {
     public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // Linker.upcallStub implemented in AbstractLinker.upcallStub
         MethodType type = desc.toMethodType();
