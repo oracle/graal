@@ -45,6 +45,8 @@ import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.polyglot.Context;
@@ -52,6 +54,9 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.proxy.Proxy;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.exception.WasmException;
@@ -77,13 +82,13 @@ public class WasmPolyglotTestSuite {
     @Test
     public void test42() throws IOException {
         Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID,
                         ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
         try (Context context = contextBuilder.build()) {
-            context.eval(source);
-            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value mainFunction = context.eval(source).newInstance().getMember("main");
             Value result = mainFunction.execute();
             Assert.assertEquals("Should be equal: ", 42, result.asInt());
         }
@@ -100,13 +105,14 @@ public class WasmPolyglotTestSuite {
         contextBuilder.option("wasm.UseUnsafeMemory", "true");
         // Force use of UnsafeWasmMemory
         contextBuilder.option("wasm.DirectByteBufferMemoryAccess", "true");
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         Context context = contextBuilder.build();
         context.enter();
-        context.eval(source);
-        final Value mainModule = context.getBindings(WasmLanguage.ID).getMember("main");
-        mainModule.getMember("main").execute();
+
+        final Value mainInstance = context.eval(source).newInstance();
+        mainInstance.getMember("main").execute();
         final TruffleLanguage.Env env = WasmContext.get(null).environment();
-        final Value memoryValue = mainModule.getMember("memory");
+        final Value memoryValue = mainInstance.getMember("memory");
         final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(memoryValue);
         Assert.assertFalse("Memory should have been allocated.", WasmMemoryLibrary.getUncached().freed(memory));
         context.leave();
@@ -131,13 +137,13 @@ public class WasmPolyglotTestSuite {
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.option("wasm.UseUnsafeMemory", "true");
         contextBuilder.option("wasm.DirectByteBufferMemoryAccess", "false");
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         Context context = contextBuilder.build();
         context.enter();
-        context.eval(source);
-        final Value mainModule = context.getBindings(WasmLanguage.ID).getMember("main");
-        mainModule.getMember("main").execute();
+        final Value mainInstance = context.eval(source).newInstance();
+        mainInstance.getMember("main").execute();
         final TruffleLanguage.Env env = WasmContext.get(null).environment();
-        final Value memoryValue = mainModule.getMember("memory");
+        final Value memoryValue = mainInstance.getMember("memory");
         final NativeWasmMemory memory = (NativeWasmMemory) env.asGuestValue(memoryValue);
         Assert.assertFalse("Memory should have been allocated.", WasmMemoryLibrary.getUncached().freed(memory));
         context.leave();
@@ -156,11 +162,11 @@ public class WasmPolyglotTestSuite {
     public void overwriteElement() throws IOException, InterruptedException {
         final ByteSequence test = ByteSequence.create(compileWat("test", textOverwriteElement));
         Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, test, "main");
         Source source = sourceBuilder.build();
         try (Context context = contextBuilder.build()) {
-            context.eval(source);
-            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value mainFunction = context.eval(source).newInstance().getMember("main");
             Value result = mainFunction.execute();
             Assert.assertEquals("Should be equal: ", 11, result.asInt());
         }
@@ -171,9 +177,8 @@ public class WasmPolyglotTestSuite {
         String divisionByZeroWAT = "(module (func (export \"main\") (result i32) i32.const 1 i32.const 0 i32.div_s))";
         ByteSequence test = ByteSequence.create(compileWat("test", divisionByZeroWAT));
         Source source = Source.newBuilder(WasmLanguage.ID, test, "main").build();
-        try (Context context = Context.create(WasmLanguage.ID)) {
-            context.eval(source);
-            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            Value mainFunction = context.eval(source).newInstance().getMember("main");
 
             for (int iteration = 0; iteration < 20000; iteration++) {
                 try {
@@ -190,9 +195,8 @@ public class WasmPolyglotTestSuite {
     public void extractKeys() throws IOException {
         ByteSequence test = ByteSequence.create(binaryReturnConst);
         Source source = Source.newBuilder(WasmLanguage.ID, test, "main").build();
-        try (Context context = Context.create(WasmLanguage.ID)) {
-            context.eval(source);
-            Value instance = context.getBindings(WasmLanguage.ID).getMember("main");
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            Value instance = context.eval(source).newInstance();
             Set<String> keys = instance.getMemberKeys();
             Assert.assertTrue("Should contain function 'main'", keys.contains("main"));
             Assert.assertTrue("Should contain memory 'memory'", keys.contains("memory"));
@@ -213,9 +217,8 @@ public class WasmPolyglotTestSuite {
 
         ByteSequence bytes = ByteSequence.create(compileWat("test", wat));
         Source source = Source.newBuilder(WasmLanguage.ID, bytes, "main").build();
-        try (Context context = Context.create(WasmLanguage.ID)) {
-            context.eval(source);
-            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            Value mainFunction = context.eval(source).newInstance().getMember("main");
             Value result = mainFunction.execute();
             Assert.assertEquals("Should be equal: ", 42, result.asInt());
         }
@@ -265,4 +268,197 @@ public class WasmPolyglotTestSuite {
                       (elem (i32.const 3) $g)
                     )
                     """;
+
+    private static final String simpleTestModule = """
+                    (module
+                        (func (export "main") (result i32)
+                            i32.const 13
+                        )
+                    )
+                    """;
+
+    private static final String simpleImportModule = """
+                        (module
+                            (import "main" "main" (func $m (result i32)))
+                            (func (export "test") (result i32)
+                                call $m
+                            )
+                        )
+                    """;
+
+    @Test
+    public void instantiateModuleWithImportObject() throws IOException, InterruptedException {
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Proxy executable = (ProxyExecutable) args -> 42;
+            final Proxy function = ProxyObject.fromMap(Map.of("main", executable));
+            final Proxy importObject = ProxyObject.fromMap(Map.of("main", function));
+
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            final Value instance = simpleImportModule.newInstance(importObject);
+
+            final Value result = instance.getMember("test").execute();
+
+            Assert.assertEquals(42, result.asInt());
+        }
+    }
+
+    @Test
+    public void instantiateModuleWithMissingImportObject() throws IOException, InterruptedException {
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            try {
+                simpleImportModule.newInstance();
+                Assert.fail("Should have failed because of incorrect import");
+            } catch (PolyglotException e) {
+                Assert.assertFalse(e.isExit());
+                Assert.assertTrue(e.getMessage().contains("Module requires imports"));
+            }
+        }
+    }
+
+    @Test
+    public void instantiateModuleWithMissingFunction() throws IOException, InterruptedException {
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Proxy importObject = ProxyObject.fromMap(Map.of("main", ProxyObject.fromMap(Collections.emptyMap())));
+
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            try {
+                simpleImportModule.newInstance(importObject);
+                Assert.fail("Should have failed because of incorrect import");
+            } catch (PolyglotException e) {
+                Assert.assertFalse(e.isExit());
+                Assert.assertTrue(e.getMessage().contains("does not contain \"main\""));
+            }
+        }
+    }
+
+    @Test
+    public void instantiateModuleWithNonExecutableFunction() throws IOException, InterruptedException {
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Proxy importObject = ProxyObject.fromMap(Map.of("main", ProxyObject.fromMap(Map.of("main", 5))));
+
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            try {
+                simpleImportModule.newInstance(importObject);
+                Assert.fail("Should have failed because of incorrect import");
+            } catch (PolyglotException e) {
+                Assert.assertFalse(e.isExit());
+                Assert.assertTrue(e.getMessage().contains("is not callable"));
+            }
+        }
+    }
+
+    @Test
+    public void instantiateInSameStore() throws IOException, InterruptedException {
+        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("main", simpleTestModule));
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Value wasm = context.getBindings(WasmLanguage.ID);
+
+            final Value store = wasm.invokeMember("newStore");
+
+            final Value simpleTestModule = context.eval(simpleTestModuleSource);
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            store.invokeMember("newInstances", simpleTestModule, simpleImportModule);
+
+            final Value importInstance = store.getMember("test");
+            final Value result = importInstance.getMember("test").execute();
+
+            Assert.assertEquals(13, result.asInt());
+        }
+    }
+
+    @Test
+    public void lateInstantiateInSameStore() throws IOException, InterruptedException {
+        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("main", simpleTestModule));
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Value wasm = context.getBindings(WasmLanguage.ID);
+
+            final Value store = wasm.invokeMember("newStore");
+
+            final Value simpleTestModule = context.eval(simpleTestModuleSource);
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            store.invokeMember("newInstances", simpleTestModule);
+            store.invokeMember("newInstances", simpleImportModule);
+
+            final Value importInstance = store.getMember("test");
+            final Value result = importInstance.getMember("test").execute();
+
+            Assert.assertEquals(13, result.asInt());
+        }
+    }
+
+    @Test
+    public void consistentGetStore() throws IOException, InterruptedException {
+        final ByteSequence simpleTestModuleData = ByteSequence.create(compileWat("main", simpleTestModule));
+        final ByteSequence simpleImportModuleData = ByteSequence.create(compileWat("test", simpleImportModule));
+
+        final Source simpleTestModuleSource = Source.newBuilder(WasmLanguage.ID, simpleTestModuleData, "main").build();
+        final Source simpleImportModuleSource = Source.newBuilder(WasmLanguage.ID, simpleImportModuleData, "test").build();
+
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build()) {
+            final Value wasm = context.getBindings(WasmLanguage.ID);
+
+            final Value simpleTestModule = context.eval(simpleTestModuleSource);
+
+            final Value instance1 = simpleTestModule.newInstance();
+            final Value instance2 = simpleTestModule.newInstance();
+
+            final Value store1 = wasm.invokeMember("getStore", instance1);
+            final Value store2 = wasm.invokeMember("getStore", instance1);
+
+            Assert.assertEquals(store1, store2);
+
+            final Value store3 = wasm.invokeMember("getStore", instance1);
+            final Value store4 = wasm.invokeMember("getStore", instance2);
+
+            Assert.assertNotEquals(store3, store4);
+
+            final Value simpleImportModule = context.eval(simpleImportModuleSource);
+
+            final Value store5 = wasm.invokeMember("newStore");
+            store5.invokeMember("newInstances", simpleImportModule, simpleTestModule);
+
+            final Value instance3 = store5.getMember("main");
+            final Value instance4 = store5.getMember("test");
+
+            final Value store6 = wasm.invokeMember("getStore", instance3);
+            final Value store7 = wasm.invokeMember("getStore", instance4);
+
+            Assert.assertEquals(store5, store6);
+            Assert.assertEquals(store5, store7);
+            Assert.assertEquals(store6, store7);
+        }
+    }
 }

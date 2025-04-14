@@ -2521,16 +2521,18 @@ public class WasmJsApiSuite {
     public static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
-            context.eval(source);
-            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value mainInstance = context.eval(source).newInstance();
+            Value store = context.getBindings(WasmLanguage.ID).invokeMember("getStore", mainInstance);
+            Value main = mainInstance.getMember("main");
             main.execute();
-            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value run = store.getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             run.execute(new GuestCode(testCase));
         }
     }

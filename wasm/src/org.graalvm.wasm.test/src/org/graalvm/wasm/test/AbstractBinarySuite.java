@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,14 +60,14 @@ public abstract class AbstractBinarySuite {
     protected static void runRuntimeTest(byte[] binary, Consumer<Context.Builder> options, Consumer<Value> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.allowExperimentalOptions(true);
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binary), "main");
             Source source = sourceBuilder.build();
-            context.eval(source);
-            testCase.accept(context.getBindings(WasmLanguage.ID).getMember("main"));
+            testCase.accept(context.eval(source).newInstance());
         }
     }
 
@@ -77,6 +77,7 @@ public abstract class AbstractBinarySuite {
 
     protected static void runParserTest(byte[] binary, Consumer<Context.Builder> options, BiConsumer<Context, Source> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }

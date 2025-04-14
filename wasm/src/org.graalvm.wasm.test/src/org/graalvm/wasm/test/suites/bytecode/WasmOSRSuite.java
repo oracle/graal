@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,11 +90,12 @@ public class WasmOSRSuite {
         eb.option("wasm.Builtins", "wasi_snapshot_preview1");
         eb.option("engine.OSRCompilationThreshold", "100");
         eb.option("engine.BackgroundCompilation", "false");
+        eb.option("wasm.EvalReturnsModule", "true");
         try (Engine engine = eb.build()) {
             for (int i = 0; i < N_CONTEXTS; i++) {
                 try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
-                    Value mainMod = context.eval(sourceMain);
-                    Value mainFun = mainMod.getMember("_main");
+                    Value mainIns = context.eval(sourceMain).newInstance();
+                    Value mainFun = mainIns.getMember("_main");
                     Assert.assertEquals(0, mainFun.execute().asInt());
                 }
             }
