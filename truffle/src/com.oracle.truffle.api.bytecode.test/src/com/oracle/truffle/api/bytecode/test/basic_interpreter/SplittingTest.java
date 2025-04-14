@@ -64,6 +64,10 @@ import com.oracle.truffle.api.source.Source;
 
 public class SplittingTest extends AbstractBasicInterpreterTest {
 
+    public SplittingTest(TestRun run) {
+        super(run);
+    }
+
     Context context;
 
     @Before

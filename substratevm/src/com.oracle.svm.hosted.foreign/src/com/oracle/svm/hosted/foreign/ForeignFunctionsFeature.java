@@ -111,7 +111,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
                                     "jdk.internal.foreign.abi.aarch64.linux",
                                     "jdk.internal.foreign.abi.x64",
                                     "jdk.internal.foreign.abi.x64.sysv",
-                                    "jdk.internal.foreign.abi.x64.windows"});
+                                    "jdk.internal.foreign.abi.x64.windows",
+                                    "jdk.internal.foreign.layout"});
 
     private boolean sealed = false;
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
@@ -137,22 +138,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
     /**
      * Descriptor that represents both, up- and downcalls.
      */
-    private record SharedDesc(FunctionDescriptor fd, Linker.Option[] options) {
-        @Override
-        public boolean equals(Object o) {
-            if (this == o || !(o instanceof SharedDesc that)) {
-                return this == o;
-            }
-            return Objects.equals(fd, that.fd) && Arrays.equals(options, that.options);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(fd, Arrays.hashCode(options));
-        }
+    private record SharedDesc(FunctionDescriptor fd, LinkerOptions options) {
     }
 
-    private record DirectUpcallDesc(MethodHandle mh, DirectMethodHandleDesc mhDesc, FunctionDescriptor fd, Linker.Option[] options) {
+    private record DirectUpcallDesc(MethodHandle mh, DirectMethodHandleDesc mhDesc, FunctionDescriptor fd, LinkerOptions options) {
 
         public SharedDesc toSharedDesc() {
             return new SharedDesc(fd, options);
@@ -163,12 +152,12 @@ public class ForeignFunctionsFeature implements InternalFeature {
             if (this == o || !(o instanceof DirectUpcallDesc that)) {
                 return this == o;
             }
-            return Objects.equals(mhDesc, that.mhDesc) && Objects.equals(fd, that.fd) && Arrays.equals(options, that.options);
+            return Objects.equals(mhDesc, that.mhDesc) && Objects.equals(fd, that.fd) && Objects.equals(options, that.options);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(mhDesc, fd, Arrays.hashCode(options));
+            return Objects.hash(mhDesc, fd, options);
         }
     }
 
@@ -179,13 +168,23 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(new SharedDesc(desc, options)));
+            try {
+                LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
+                registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(new SharedDesc(desc, linkerOptions)));
+            } catch (IllegalArgumentException e) {
+                throw UserError.abort(e, "Could not register downcall");
+            }
         }
 
         @Override
         public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, (ignored) -> registeredUpcalls.add(new SharedDesc(desc, options)));
+            try {
+                LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
+                registerConditionalConfiguration(condition, (ignored) -> registeredUpcalls.add(new SharedDesc(desc, linkerOptions)));
+            } catch (IllegalArgumentException e) {
+                throw UserError.abort(e, "Could not register upcall");
+            }
         }
 
         @Override
@@ -203,10 +202,15 @@ public class ForeignFunctionsFeature implements InternalFeature {
              * exceptions.
              */
             Executable method = implLookup.revealDirect(Objects.requireNonNull(target)).reflectAs(Executable.class, implLookup);
-            registerConditionalConfiguration(condition, (ignored) -> {
-                RuntimeReflection.register(method);
-                registeredDirectUpcalls.add(new DirectUpcallDesc(target, directMethodHandleDesc, desc, options));
-            });
+            try {
+                LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
+                registerConditionalConfiguration(condition, (ignored) -> {
+                    RuntimeReflection.register(method);
+                    registeredDirectUpcalls.add(new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions));
+                });
+            } catch (IllegalArgumentException e) {
+                throw UserError.abort(e, "Could not register direct upcall");
+            }
         }
     }
 
@@ -233,7 +237,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
-        ImageSingletons.add(AbiUtils.class, AbiUtils.create());
+        AbiUtils abiUtils = AbiUtils.create();
+        ImageSingletons.add(AbiUtils.class, abiUtils);
         ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
@@ -350,7 +355,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+25/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L64-L112")
         @Override
         public DirectUpcall createKey(DirectUpcallDesc desc) {
-            LinkerOptions optionSet = LinkerOptions.forUpcall(desc.fd(), desc.options());
             /*
              * For each unique link request, 'AbstractLinker.upcallStub' calls
              * 'AbstractLinker.arrangeUpcall' which produces an upcall stub factory. This factory is
@@ -360,7 +364,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
              * equal to the one created in 'UpcallLinker.makeFactory'. This MH is then invoked from
              * the specialized upcall stub.
              */
-            AbstractLinker.UpcallStubFactory upcallStubFactory = ReflectionUtil.invokeMethod(arrangeUpcallMethod, LINKER, desc.fd().toMethodType(), desc.fd(), optionSet);
+            AbstractLinker.UpcallStubFactory upcallStubFactory = ReflectionUtil.invokeMethod(arrangeUpcallMethod, LINKER, desc.fd().toMethodType(), desc.fd(), desc.options());
             UnaryOperator<MethodHandle> doBindingsMaker = lookupAndReadUnaryOperatorField(upcallStubFactory);
             MethodHandle doBindings = doBindingsMaker.apply(desc.mh());
             doBindings = insertArguments(exactInvoker(doBindings.type()), 0, doBindings);
