@@ -48,6 +48,10 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.B
 
 public class BindingsTest extends AbstractBasicInterpreterTest {
 
+    public BindingsTest(TestRun run) {
+        super(run);
+    }
+
     @Test
     public void testExplicit() {
         BasicInterpreter node = parseNode("explicitBindings", b -> {

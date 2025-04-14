@@ -94,6 +94,11 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  */
 @RunWith(Parameterized.class)
 public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
+
+    public BasicInterpreterTest(TestRun run) {
+        super(run);
+    }
+
     private record ExpectedArgument(String name, Argument.Kind kind, Object value) {
     }
 

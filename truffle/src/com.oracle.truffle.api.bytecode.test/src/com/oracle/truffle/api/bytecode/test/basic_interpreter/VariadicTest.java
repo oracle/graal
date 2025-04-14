@@ -53,6 +53,11 @@ import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 
 public class VariadicTest extends AbstractBasicInterpreterTest {
+
+    public VariadicTest(TestRun run) {
+        super(run);
+    }
+
     @Test
     public void testVariadic0Arguments() {
         for (int i = 0; i < 32; i++) {

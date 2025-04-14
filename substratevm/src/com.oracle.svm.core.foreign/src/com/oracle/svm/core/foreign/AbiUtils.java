@@ -499,14 +499,13 @@ public abstract class AbiUtils {
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
-    public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
+    public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
         // From AbstractLinker.downcallHandle0
-        LinkerOptions optionSet = LinkerOptions.forDowncall(desc, options);
         MethodType type = desc.toMethodType();
 
         // makeCallingSequence calls platform specific code
-        var callingSequence = makeCallingSequence(type, desc, false, optionSet);
+        var callingSequence = makeCallingSequence(type, desc, false, linkerOptions);
 
         // From DowncallLinker.getBoundMethodHandle
         var argMoveBindings = ABIs.Downcalls.argMoveBindingsStream(callingSequence).toArray(Binding.VMStore[]::new);
@@ -517,18 +516,18 @@ public abstract class AbiUtils {
 
         // From NativeEntrypoint.make
         return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(),
-                        optionSet.allowsHeapAccess());
+                        linkerOptions.allowsHeapAccess());
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L124")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
     public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, Linker.Option... options) {
+    public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // Linker.upcallStub implemented in AbstractLinker.upcallStub
         MethodType type = desc.toMethodType();
-        LinkerOptions optionSet = LinkerOptions.forUpcall(desc, options);
 
         // From CallArranger.arrangeUpcall
-        var callingSequence = makeCallingSequence(type, desc, true, optionSet);
+        var callingSequence = makeCallingSequence(type, desc, true, linkerOptions);
 
         // From SharedUtil.arrangeUpcallHelper
         // From UpcallLinker.makeFactory
