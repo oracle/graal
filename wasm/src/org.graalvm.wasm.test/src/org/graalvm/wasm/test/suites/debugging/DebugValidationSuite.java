@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -784,12 +784,13 @@ public class DebugValidationSuite extends AbstractBinarySuite {
     private static void runTest(byte[] data) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), "test_main").build();
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         Context context = contextBuilder.build();
         Debugger debugger = Debugger.find(context.getEngine());
         DebuggerSession session = debugger.startSession(event -> {
         });
         try {
-            Value val = context.eval(source);
+            Value val = context.eval(source).newInstance();
             val.getMember("_main").execute();
             session.suspendNextExecution();
         } finally {

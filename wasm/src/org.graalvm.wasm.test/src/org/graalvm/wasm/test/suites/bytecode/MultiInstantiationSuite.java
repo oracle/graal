@@ -84,19 +84,24 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  * Tests that modules can be instantiated several times.
  */
 public class MultiInstantiationSuite {
-    private static void test(Function<WebAssembly, byte[]> sourceFun, Function<WebAssembly, Object> importFun, BiConsumer<WebAssembly, WasmInstance> check) throws IOException {
+    private static void test(byte[] testSource, Function<WebAssembly, Object> importFun, BiConsumer<WebAssembly, WasmInstance> check) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
-            context.eval(source);
-            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+
+            Value mainModule = context.eval(source);
+            Value store = context.getBindings(WasmLanguage.ID).invokeMember("newStore");
+            store.invokeMember("newInstances", mainModule);
+
+            Value main = store.getMember("main").getMember("main");
             main.execute();
-            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value run = store.getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             run.execute(new GuestCode(c -> {
                 WebAssembly wasm = new WebAssembly(c);
-                WasmModule module = wasm.moduleDecode(sourceFun.apply(wasm));
+                WasmModule module = wasm.moduleDecode(testSource);
                 WasmInstance instance1 = wasm.moduleInstantiate(module, importFun.apply(wasm));
                 Value v1 = Value.asValue(instance1);
                 // link module
@@ -183,7 +188,7 @@ public class MultiInstantiationSuite {
                         )
                         """);
         final Executable tableFun = new Executable(args -> 13);
-        test(wasm -> source, wasm -> {
+        test(source, wasm -> {
             final Dictionary imports = new Dictionary();
             final Dictionary a = new Dictionary();
 
@@ -246,7 +251,7 @@ public class MultiInstantiationSuite {
                            (global (export "g6") (mut funcref) (ref.func 0))
                         )
                         """);
-        test(wasm -> source, wasm -> {
+        test(source, wasm -> {
             WasmGlobal g = wasm.globalAlloc(ValueType.i32, false, 16);
             return Dictionary.create(new Object[]{"a", Dictionary.create(new Object[]{"g", g})});
         }, (wasm, i) -> {
@@ -318,7 +323,7 @@ public class MultiInstantiationSuite {
                            (elem (i32.const 0) func 0)
                         )
                         """);
-        test(wasm -> source, wasm -> null, (wasm, i) -> {
+        test(source, wasm -> null, (wasm, i) -> {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableRead = wasm.readMember("table_read");
@@ -350,7 +355,7 @@ public class MultiInstantiationSuite {
                            (data (i32.const 0) "\\01\\02\\03\\04")
                         )
                         """);
-        test(wasm -> source, wasm -> null, (wasm, i) -> {
+        test(source, wasm -> null, (wasm, i) -> {
             final Value m = Value.asValue(WebAssembly.instanceExport(i, "m"));
 
             final int b0 = m.getArrayElement(0).asByte();
@@ -387,7 +392,7 @@ public class MultiInstantiationSuite {
                            (data "\\08\\09\\0A\\0B")
                         )
                         """);
-        test(wasm -> source, wasm -> null, (wasm, i) -> {
+        test(source, wasm -> null, (wasm, i) -> {
             final Value m = Value.asValue(WebAssembly.instanceExport(i, "m"));
 
             final int b0 = m.getArrayElement(0).asByte();
@@ -457,7 +462,7 @@ public class MultiInstantiationSuite {
                            (elem func 0 1 2 3)
                         )
                         """);
-        test(wasm -> source, wasm -> null, (wasm, i) -> {
+        test(source, wasm -> null, (wasm, i) -> {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object tableRead = wasm.readMember("table_read");

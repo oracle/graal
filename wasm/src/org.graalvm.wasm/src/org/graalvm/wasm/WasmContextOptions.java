@@ -64,6 +64,7 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
     @CompilationFinal private boolean directByteBufferMemoryAccess;
+    @CompilationFinal private boolean evalReturnsModule;
     @CompilationFinal private boolean debugTestMode;
 
     private final OptionValues optionValues;
@@ -93,6 +94,7 @@ public final class WasmContextOptions {
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
+        this.evalReturnsModule = readBooleanOption(WasmOptions.EvalReturnsModule);
         this.debugTestMode = readBooleanOption(WasmOptions.DebugTestMode);
     }
 
@@ -169,6 +171,10 @@ public final class WasmContextOptions {
         return directByteBufferMemoryAccess;
     }
 
+    public boolean evalReturnsModule() {
+        return evalReturnsModule;
+    }
+
     public boolean debugTestMode() {
         return debugTestMode;
     }
@@ -189,6 +195,7 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
+        hash = 53 * hash + (this.evalReturnsModule ? 1 : 0);
         hash = 53 * hash + (this.debugTestMode ? 1 : 0);
         return hash;
     }
@@ -241,6 +248,9 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.directByteBufferMemoryAccess != other.directByteBufferMemoryAccess) {
+            return false;
+        }
+        if (this.evalReturnsModule != other.evalReturnsModule) {
             return false;
         }
         if (this.debugTestMode != other.debugTestMode) {

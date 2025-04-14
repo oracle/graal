@@ -44,20 +44,21 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"static-method"})
 public final class WasmScope implements TruffleObject {
+    private static final String GET_STORE = "getStore";
+    private static final String NEW_STORE = "newStore";
+    private static final int INVOKE_MEMBER_COUNT = 2;
+
     private final WasmStore store;
 
     public WasmScope(WasmStore store) {
@@ -105,8 +106,14 @@ public final class WasmScope implements TruffleObject {
     @CompilerDirectives.TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         var instances = instances();
-        String[] keys = instances.keySet().toArray(new String[instances.size()]);
-        return new InstanceNamesObject(keys);
+        final String[] keys = new String[instances.size() + INVOKE_MEMBER_COUNT];
+        int index = 0;
+        for (String key : instances.keySet()) {
+            keys[index++] = key;
+        }
+        keys[index++] = GET_STORE;
+        keys[index] = NEW_STORE;
+        return new WasmNamesObject(keys);
     }
 
     @ExportMessage
@@ -120,39 +127,31 @@ public final class WasmScope implements TruffleObject {
         return "wasm-global-scope" + instances().keySet();
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class InstanceNamesObject implements TruffleObject {
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        return GET_STORE.equals(member) || NEW_STORE.equals(member);
+    }
 
-        private final String[] names;
-
-        InstanceNamesObject(String[] names) {
-            this.names = names;
+    @ExportMessage
+    Object invokeMember(String member, Object... arguments) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        if (!isMemberInvocable(member)) {
+            throw UnknownIdentifierException.create(member);
         }
-
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < names.length;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return names.length;
-        }
-
-        @ExportMessage
-        Object readArrayElement(long index,
-                        @Bind Node node,
-                        @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
-            if (!isArrayElementReadable(index)) {
-                error.enter(node);
-                throw InvalidArrayIndexException.create(index);
+        if (GET_STORE.equals(member)) {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, 1, arguments.length);
             }
-            return names[(int) index];
+            if (arguments[0] instanceof WasmInstance instance) {
+                return instance.store();
+            } else {
+                throw UnsupportedTypeException.create(arguments, "First argument must be an instance");
+            }
+        } else {
+            assert NEW_STORE.equals(member);
+            if (arguments.length != 0) {
+                throw ArityException.create(0, 0, arguments.length);
+            }
+            return new WasmStore(store.context(), store.language());
         }
     }
 }

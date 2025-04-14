@@ -172,12 +172,17 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         @Override
         public Object execute(VirtualFrame frame) {
             if (frame.getArguments().length == 0) {
-                final WasmStore contextStore = WasmContext.get(this).contextStore();
-                WasmInstance instance = contextStore.lookupModuleInstance(module);
-                if (instance == null) {
-                    instance = contextStore.readInstance(module);
+                final WasmContext context = WasmContext.get(this);
+                if (context.getContextOptions().evalReturnsModule()) {
+                    return module;
+                } else {
+                    final WasmStore contextStore = context.contextStore();
+                    WasmInstance instance = contextStore.lookupModuleInstance(module);
+                    if (instance == null) {
+                        instance = contextStore.readInstance(module);
+                    }
+                    return instance;
                 }
-                return instance;
             } else {
                 if (frame.getArguments()[0] instanceof String mode) {
                     if (mode.equals(MODULE_DECODE)) {

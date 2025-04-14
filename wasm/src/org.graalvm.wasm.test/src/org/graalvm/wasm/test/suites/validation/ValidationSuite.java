@@ -1018,11 +1018,12 @@ public class ValidationSuite extends WasmFileSuite {
     public void test() throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.allowExperimentalOptions(true);
+        contextBuilder.option("wasm.EvalReturnsModule", "true");
         addContextOptions(contextBuilder);
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         final Context context = contextBuilder.build();
         try {
-            context.eval(source).getMember("_main").execute();
+            context.eval(source).newInstance().getMember("_main").execute();
         } catch (final PolyglotException e) {
             final Value actualFailureObject = e.getGuestObject();
 

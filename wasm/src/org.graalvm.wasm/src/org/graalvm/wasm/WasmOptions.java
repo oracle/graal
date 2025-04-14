@@ -123,6 +123,9 @@ public class WasmOptions {
     @Option(help = "Allows the embedder to access memories as direct byte buffers.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> DirectByteBufferMemoryAccess = new OptionKey<>(false);
 
+    @Option(help = "Makes Context#eval return a wasm module (symbol representation) instead of a wasm instance (runtime representation). The module can be instantiated via newInstance.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EvalReturnsModule = new OptionKey<>(false);
+
     @Option(help = "Support instrumentation for functions that do not have their source available. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> DebugTestMode = new OptionKey<>(false);
 }
