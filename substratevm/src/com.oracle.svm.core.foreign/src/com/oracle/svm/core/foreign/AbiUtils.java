@@ -497,8 +497,8 @@ public abstract class AbiUtils {
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
      * (i.e. the ABI low-level type) of a function from its descriptor.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
     public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
         // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
         // From AbstractLinker.downcallHandle0
@@ -520,8 +520,8 @@ public abstract class AbiUtils {
                         optionSet.allowsHeapAccess());
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L124")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L124")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
     public JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, Linker.Option... options) {
         // Linker.upcallStub implemented in AbstractLinker.upcallStub
         MethodType type = desc.toMethodType();
