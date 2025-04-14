@@ -46,7 +46,6 @@ import java.lang.annotation.Annotation;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
@@ -96,13 +95,13 @@ public abstract class Layout {
     }
 
     private static LayoutFactory loadLayoutFactory() {
-        LayoutFactory layoutFactory = Truffle.getRuntime().getCapability(LayoutFactory.class);
+        ModuleLayer moduleLayer = Layout.class.getModule().getLayer();
+        ServiceLoader<LayoutFactory> serviceLoader = moduleLayer != null
+                        ? ServiceLoader.load(moduleLayer, LayoutFactory.class)
+                        : ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
+        LayoutFactory layoutFactory = selectLayoutFactory(serviceLoader);
         if (layoutFactory == null) {
-            ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
-            layoutFactory = selectLayoutFactory(serviceLoader);
-            if (layoutFactory == null) {
-                throw shouldNotReachHere("LayoutFactory not found");
-            }
+            throw shouldNotReachHere("LayoutFactory not found");
         }
         return layoutFactory;
     }
