@@ -64,7 +64,7 @@ public final class Script {
     }
 
     public boolean hasWasmSource() {
-        return source.hasBytes() && source.getMimeType().equals("application/wasm");
+        return source.hasBytes() && "application/wasm".equals(source.getMimeType());
     }
 
     public CharSequence getCharacters() {

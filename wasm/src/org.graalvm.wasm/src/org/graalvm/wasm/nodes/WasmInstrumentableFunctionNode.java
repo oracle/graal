@@ -70,7 +70,6 @@ import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -163,7 +162,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
             } else {
                 final WasmContext context = WasmContext.get(this);
                 if (context != null) {
-                    return debugFunction.computeSourceSection(context.debugSourceLoader(), context.environment());
+                    return debugFunction.computeSourceSection(context.debugSourceLoader());
                 }
             }
         }
@@ -185,8 +184,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         if (debugFunction == null) {
                             return this;
                         }
-                        final Source source = debugFunction.computeSourceSection(context.debugSourceLoader(), context.environment()).getSource();
-                        if (source == null) {
+                        final SourceSection sourceSection = debugFunction.computeSourceSection(context.debugSourceLoader());
+                        if (sourceSection == null) {
                             return this;
                         }
                         final int functionStartOffset = module.functionSourceCodeStartOffset(functionIndex);
@@ -195,7 +194,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         }
                         final int functionEndOffset = module.functionSourceCodeEndOffset(functionIndex);
                         final DebugLineSection debugLineSection = debugFunction.lineMap().getLineIndexMap(functionStartOffset, functionEndOffset);
-                        final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugLineSection, source);
+                        final WasmInstrumentationSupportNode support = new WasmInstrumentationSupportNode(debugLineSection, sourceSection.getSource());
                         final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
                         final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugLineSection.offsetToLineIndexMap());
                         final WasmFunctionNode functionNodeDuplicate = new WasmFunctionNode(functionNode, bytecode, support::notifyLine);
@@ -233,7 +232,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         } else {
             final WasmContext wasmContext = WasmContext.get(this);
             if (wasmContext != null) {
-                sourceSection = debugFunction.computeSourceSection(wasmContext.debugSourceLoader(), wasmContext.environment());
+                sourceSection = debugFunction.computeSourceSection(wasmContext.debugSourceLoader());
             }
         }
 

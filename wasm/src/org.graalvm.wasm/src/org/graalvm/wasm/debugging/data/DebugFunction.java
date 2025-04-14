@@ -50,8 +50,8 @@ import org.graalvm.wasm.debugging.data.objects.DebugScopeValue;
 import org.graalvm.wasm.debugging.parser.DebugSourceLoader;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -140,7 +140,7 @@ public class DebugFunction extends DebugType {
 
     /**
      * @return Whether the source section of this function has already been computed.
-     * @see #computeSourceSection(DebugSourceLoader, TruffleLanguage.Env)
+     * @see #computeSourceSection(DebugSourceLoader)
      */
     public boolean hasSourceSection() {
         return sourceSection != null;
@@ -159,9 +159,12 @@ public class DebugFunction extends DebugType {
     /**
      * Computes the source section for the function.
      */
-    public SourceSection computeSourceSection(DebugSourceLoader sourceLoader, TruffleLanguage.Env environment) {
+    public SourceSection computeSourceSection(DebugSourceLoader sourceLoader) {
         if (sourceSection == null) {
-            sourceSection = sourceLoader.load(filePath, language, environment).createSection(startLine);
+            final Source source = sourceLoader.load(filePath, language);
+            if (source != null) {
+                sourceSection = source.createSection(startLine);
+            }
         }
         return sourceSection;
     }

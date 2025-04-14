@@ -41,13 +41,12 @@
 
 package org.graalvm.wasm.debugging.parser;
 
+import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -61,10 +60,9 @@ public class DebugSourceLoader {
      * 
      * @param path the path of the source
      * @param language the source language
-     * @param env Truffle environment used to access source files
      */
     @TruffleBoundary
-    public Source load(Path path, String language, TruffleLanguage.Env env) {
+    public Source load(Path path, String language) {
         if (path == null || language == null) {
             return null;
         }
@@ -75,8 +73,13 @@ public class DebugSourceLoader {
         if (cache.containsKey(path)) {
             return cache.get(path);
         }
-        final TruffleFile file = env.getInternalTruffleFile(path.toString());
-        final Source source = Source.newBuilder(language, file).content(Source.CONTENT_NONE).build();
+        final Source source;
+        try {
+            source = Source.newBuilder(language, path.toUri().toURL()).content(Source.CONTENT_NONE).build();
+        } catch (MalformedURLException | SecurityException e) {
+            // source not available or not accessible
+            return null;
+        }
         cache.put(path, source);
         return source;
     }

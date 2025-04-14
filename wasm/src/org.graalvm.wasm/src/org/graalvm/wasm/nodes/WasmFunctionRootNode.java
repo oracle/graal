@@ -318,7 +318,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                 } else {
                     final WasmContext context = WasmContext.get(this);
                     if (context != null) {
-                        sourceSection = debugFunction.computeSourceSection(context.debugSourceLoader(), context.environment());
+                        sourceSection = debugFunction.computeSourceSection(context.debugSourceLoader());
                     }
                 }
             } else {
@@ -330,5 +330,10 @@ public class WasmFunctionRootNode extends WasmRootNode {
 
     public final Node[] getCallNodes() {
         return functionNode.getCallNodes();
+    }
+
+    @Override
+    public boolean isInternal() {
+        return false;
     }
 }
