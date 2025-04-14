@@ -598,15 +598,16 @@ public abstract class Node implements Cloneable, Formattable {
         if (extraUsagesCount > 0) {
             this.extraUsagesCount--;
             usage0 = extraUsages[extraUsagesCount];
-            extraUsages[extraUsagesCount] = null;
+            if (extraUsagesCount == 0) {
+                extraUsages = EMPTY_ARRAY;
+            } else {
+                extraUsages[extraUsagesCount] = null;
+            }
         } else if (usage1 != null) {
             usage0 = usage1;
             usage1 = null;
         } else {
             usage0 = null;
-        }
-        if (extraUsagesCount == 0) {
-            extraUsages = EMPTY_ARRAY;
         }
     }
 
@@ -614,13 +615,14 @@ public abstract class Node implements Cloneable, Formattable {
         if (extraUsagesCount > 0) {
             this.extraUsagesCount--;
             usage1 = extraUsages[extraUsagesCount];
-            extraUsages[extraUsagesCount] = null;
+            if (extraUsagesCount == 0) {
+                extraUsages = EMPTY_ARRAY;
+            } else {
+                extraUsages[extraUsagesCount] = null;
+            }
         } else {
             assert usage1 != null;
             usage1 = null;
-        }
-        if (extraUsagesCount == 0) {
-            extraUsages = EMPTY_ARRAY;
         }
     }
 
