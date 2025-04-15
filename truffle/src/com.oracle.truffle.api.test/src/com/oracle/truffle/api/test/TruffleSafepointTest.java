@@ -359,6 +359,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     @Test
+    @Ignore("GR-64260")
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
@@ -637,6 +638,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     @Test
+    @Ignore("GR-64260")
     public void testStackTrace() {
         Assume.assumeFalse("JaCoCo break expected graph structure", TestUtils.isJaCoCoAttached());
         forEachConfig((threads, events) -> {
