@@ -29,10 +29,13 @@ import static jdk.graal.compiler.core.common.GraalOptions.RegisterPressure;
 import static jdk.graal.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static jdk.graal.compiler.util.CollectionsUtil.allMatch;
 
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.code.site.ExceptionHandler;
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -241,7 +244,7 @@ public abstract class Stub {
         CompilationResult compResult = new CompilationResult(compilationId, toString());
 
         // Stubs cannot be recompiled so they cannot be compiled with assumptions
-        assert graph.getAssumptions() == null;
+        GraalError.guarantee(graph.getAssumptions() == null, "%s has assumptions: %s", this, graph.getAssumptions());
 
         if (!(graph.start() instanceof StubStartNode)) {
             StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
@@ -254,7 +257,7 @@ public abstract class Stub {
             emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
             LIRSuites lirSuites = createLIRSuites();
             backend.emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), compResult, CompilationResultBuilderFactory.Default, null, getRegisterConfig(), lirSuites);
-            assert checkStubInvariants(compResult);
+            checkStubInvariants(compResult);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -268,18 +271,17 @@ public abstract class Stub {
     /**
      * Checks the conditions a compilation must satisfy to be installed as a RuntimeStub.
      */
-    private boolean checkStubInvariants(CompilationResult compResult) {
-        assert compResult.getExceptionHandlers().isEmpty() : this;
+    private void checkStubInvariants(CompilationResult compResult) {
+        List<ExceptionHandler> handlers = compResult.getExceptionHandlers();
+        GraalError.guarantee(handlers.isEmpty(), "%s has exception handlers: %s", this, handlers);
 
         // Stubs cannot be recompiled so they cannot be compiled with
         // assumptions and there is no point in recording evol_method dependencies
-        assert compResult.getAssumptions() == null : "stubs should not use assumptions: " + this;
+        GraalError.guarantee(compResult.getAssumptions() == null, "stubs should not use assumptions: %s", this);
 
         for (DataPatch data : compResult.getDataPatches()) {
-            if (data.reference instanceof ConstantReference) {
-                ConstantReference ref = (ConstantReference) data.reference;
-                if (ref.getConstant() instanceof HotSpotMetaspaceConstant) {
-                    HotSpotMetaspaceConstant c = (HotSpotMetaspaceConstant) ref.getConstant();
+            if (data.reference instanceof ConstantReference ref) {
+                if (ref.getConstant() instanceof HotSpotMetaspaceConstant c) {
                     if (c.asResolvedJavaType() != null && c.asResolvedJavaType().getName().equals("[I")) {
                         // special handling for NewArrayStub
                         // embedding the type '[I' is safe, since it is never unloaded
@@ -291,17 +293,17 @@ public abstract class Stub {
             checkSafeDataReference(data);
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
-            assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
+            GraalError.guarantee(infopoint instanceof Call, "%s cannot have non-call infopoint: %s", this, infopoint);
             Call call = (Call) infopoint;
-            assert call.target instanceof HotSpotForeignCallLinkage : this + " cannot have non runtime call: " + call.target;
+            GraalError.guarantee(call.target instanceof HotSpotForeignCallLinkage, "%s cannot have non runtime call: %s", this, call.target);
             HotSpotForeignCallLinkage callLinkage = (HotSpotForeignCallLinkage) call.target;
-            assert !callLinkage.isCompiledStub() || callLinkage.getDescriptor().equals(HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP) : this + " cannot call compiled stub " + callLinkage;
+            GraalError.guarantee(!callLinkage.isCompiledStub() || callLinkage.getDescriptor().equals(HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP),
+                            "%s cannot call compiled stub ", this, callLinkage);
         }
-        return true;
     }
 
     protected void checkSafeDataReference(DataPatch data) {
-        assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
+        GraalError.guarantee(!(data.reference instanceof ConstantReference), "%s cannot have embedded object or metadata constant: %s", this, data.reference);
     }
 
     private static final class EmptyHighTier extends BasePhase<HighTierContext> {
