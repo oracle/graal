@@ -62,6 +62,7 @@ web_image_builder_jars = [
     "web-image:SVM_WASM_API",
     "web-image:SVM_WASM_JIMFS",
     "web-image:SVM_WASM_GUAVA",
+    "web-image:WEBIMAGE_CLOSURE_SUPPORT",
     "web-image:WEBIMAGE_GOOGLE_CLOSURE",
 ]
 
@@ -75,6 +76,9 @@ class WebImageConfiguration:
     svm_wasm_component = svm_wasm_component
 
     builder_jars = web_image_builder_jars
+
+    additional_modules = []
+    """Additional modules that are added to --add-modules for the web-image launcher"""
 
     suite = None
     """Suite used to resolve the location of the web-image executable"""
@@ -94,6 +98,10 @@ class WebImageConfiguration:
     @classmethod
     def get_builder_jars(cls) -> List[str]:
         return cls.builder_jars
+
+    @classmethod
+    def get_additional_modules(cls) -> List[str]:
+        return cls.additional_modules
 
 
 # For Web Image SVM_WASM is part of the modules implicitly available on the module-path
@@ -704,8 +712,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 # The closure compiler is only an optional dependency and as such is not part of the
                 # module graph by default (even if it is on the module path), it has to be added
                 # explicitly using `--add-modules`.
+                "--add-modules=org.graalvm.extraimage.closurecompiler",
                 "--add-modules=org.graalvm.wrapped.google.closure",
-            ],
+            ]
+            + ["--add-modules=" + module for module in WebImageConfiguration.get_additional_modules()],
         )
     )
 

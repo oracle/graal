@@ -169,7 +169,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
     }
 
     protected String getClosureCompilerSupportClass() {
-        return "com.oracle.svm.hosted.webimage.codegen.ClosureCompilerSupportImpl";
+        return "com.oracle.svm.hosted.webimage.closurecompiler.ClosureCompilerSupportImpl";
     }
 
     private ClosureCompilerSupport getClosureCompilerSupport() {

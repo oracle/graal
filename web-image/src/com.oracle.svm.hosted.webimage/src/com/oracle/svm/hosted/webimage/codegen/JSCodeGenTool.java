@@ -80,7 +80,7 @@ public class JSCodeGenTool extends CodeGenTool {
             properties.add(p);
         }
 
-        Iterable<String> getProperties() {
+        public Iterable<String> getProperties() {
             return properties;
         }
 
