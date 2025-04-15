@@ -1,10 +1,11 @@
 package com.oracle.svm.hosted.analysis.ai.example.access.inter;
 
-import com.oracle.svm.hosted.analysis.ai.domain.EnvironmentDomain;
-import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathBase;
+import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathConstants;
+import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.access.ClassAccessPathBase;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.Invoke;
@@ -12,15 +13,15 @@ import jdk.graal.compiler.nodes.ValueNode;
 
 import java.util.List;
 
-public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntInterval>> {
-    private final EnvironmentDomain<IntInterval> preCondition;
-    private final EnvironmentDomain<IntInterval> postCondition;
+public class AccessPathIntervalSummary implements Summary<AccessPathMap<IntInterval>> {
+    private final AccessPathMap<IntInterval> preCondition;
+    private final AccessPathMap<IntInterval> postCondition;
     private final Invoke invoke;
 
-    public AccessPathIntervalSummary(EnvironmentDomain<IntInterval> preCondition, Invoke invoke) {
+    public AccessPathIntervalSummary(AccessPathMap<IntInterval> preCondition, Invoke invoke) {
         this.preCondition = preCondition;
         this.invoke = invoke;
-        this.postCondition = new EnvironmentDomain<>(new IntInterval());
+        this.postCondition = new AccessPathMap<>(new IntInterval());
     }
 
     @Override
@@ -29,17 +30,17 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
     }
 
     @Override
-    public EnvironmentDomain<IntInterval> getPreCondition() {
+    public AccessPathMap<IntInterval> getPreCondition() {
         return preCondition;
     }
 
     @Override
-    public EnvironmentDomain<IntInterval> getPostCondition() {
+    public AccessPathMap<IntInterval> getPostCondition() {
         return postCondition;
     }
 
     @Override
-    public boolean subsumesSummary(Summary<EnvironmentDomain<IntInterval>> other) {
+    public boolean subsumesSummary(Summary<AccessPathMap<IntInterval>> other) {
         if (!(other instanceof AccessPathIntervalSummary otherAccessPathIntervalSummary)) {
             return false;
         }
@@ -51,7 +52,18 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
     }
 
     @Override
-    public void finalizeSummary(EnvironmentDomain<IntInterval> calleePostCondition) {
+    public void finalizeSummary(AccessPathMap<IntInterval> calleePostCondition) {
+
+        if (calleePostCondition.isBot()) {
+            postCondition.setToBot();
+            return;
+        }
+
+        if (calleePostCondition.isTop()) {
+            postCondition.setToTop();
+            return;
+        }
+
         /*
           This method should prepare the abstract context to be propagated back to the caller.
           We need to remove all the parts that can't escape back to the caller.
@@ -70,7 +82,7 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
             }
 
             /* Get all access paths with the base provided as an argument */
-            List<AccessPath> accessPathsWithBase = calleePostCondition.getAccessPathsWithBasePrefix("param" + i);
+            List<AccessPath> accessPathsWithBase = calleePostCondition.getAccessPathsWithBasePrefix(AccessPathConstants.PARAM_PREFIX + i);
             for (AccessPath accessPath : accessPathsWithBase) {
                 IntInterval value = calleePostCondition.get(accessPath); /* Get the value that was computed in the method body */
                 this.postCondition.put(accessPath, value);
@@ -88,7 +100,7 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
 
         /* Ad 3. */
         if (invoke.getTargetMethod().getSignature().getReturnKind().isObject()) {
-            List<AccessPath> accessPaths = calleePostCondition.getAccessPathsWithBasePrefix("return#");
+            List<AccessPath> accessPaths = calleePostCondition.getAccessPathsWithBasePrefix(AccessPathConstants.RETURN_PREFIX);
             for (AccessPath accessPath : accessPaths) {
                 IntInterval value = calleePostCondition.get(accessPath);
                 this.postCondition.put(accessPath, value);
@@ -97,21 +109,30 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
 
         /* Ad 4. */
         if (invoke.getTargetMethod().getSignature().getReturnKind().isPrimitive()) {
-            this.postCondition.setExprValue(preCondition.getExprValue());
+            /* We retrieve the return# access paths -> we will have only one, retrieve its value */
+            List<AccessPath> accessPaths = calleePostCondition.getAccessPathsWithBasePrefix(AccessPathConstants.RETURN_PREFIX);
+            AccessPath path = accessPaths.getFirst();
+            this.postCondition.put(path, calleePostCondition.get(path));
         }
     }
 
     @Override
-    public EnvironmentDomain<IntInterval> applySummary(EnvironmentDomain<IntInterval> domain) {
+    public AccessPathMap<IntInterval> applySummary(AccessPathMap<IntInterval> domain) {
+        AccessPathMap<IntInterval> mergedEnv = new AccessPathMap<>(new IntInterval());
+        if (domain.isTop()) {
+            mergedEnv.setToTop();
+            return mergedEnv;
+        }
+
         /* We rename all the prefixes from access paths in the post-condition, since we will be returning them to the caller */
-        EnvironmentDomain<IntInterval> renamedEnv = new EnvironmentDomain<>(new IntInterval());
+        AccessPathMap<IntInterval> renamedEnv = new AccessPathMap<>(new IntInterval());
         for (AccessPath accessPath : this.postCondition.getValue().getMap().keySet()) {
             IntInterval value = this.postCondition.get(accessPath);
             AccessPathBase newBase;
-            if (accessPath.getBase().toString().startsWith("param")) {
-                newBase = accessPath.getBase().removePrefix("param\\d+");
-            } else if (accessPath.getBase().toString().startsWith("return#")) {
-                newBase = accessPath.getBase().removePrefix("return#");
+            if (accessPath.getBase().toString().startsWith(AccessPathConstants.PARAM_PREFIX)) {
+                newBase = accessPath.getBase().removePrefix(AccessPathConstants.PARAM_PREFIX + "\\d+");
+            } else if (accessPath.getBase().toString().startsWith(AccessPathConstants.RETURN_PREFIX)) {
+                newBase = accessPath.getBase().removePrefix(AccessPathConstants.RETURN_PREFIX);
             } else {
                 newBase = accessPath.getBase();
             }
@@ -119,34 +140,20 @@ public class AccessPathIntervalSummary implements Summary<EnvironmentDomain<IntI
             renamedEnv.put(newAccessPath, value);
         }
 
-        EnvironmentDomain<IntInterval> mergedEnv = new EnvironmentDomain<>(new IntInterval());
 
-        for (AccessPath path : domain.getValue().getMap().keySet()) {
-            if (renamedEnv.getValue().getMap().containsKey(path)) {
-                // Path exists in both - use the more precise value from the callee
+        for (AccessPath path : domain.getAccessPaths()) {
+            if (renamedEnv.containsAccessPath(path)) {
                 IntInterval renamedValue = renamedEnv.get(path);
                 mergedEnv.put(path, renamedValue);
             } else {
-                // Path only in caller - keep it
                 mergedEnv.put(path, domain.get(path));
             }
         }
 
         // Add paths that are only in renamedEnv
-        for (AccessPath path : renamedEnv.getValue().getMap().keySet()) {
+        for (AccessPath path : renamedEnv.getAccessPaths()) {
             if (!domain.getValue().getMap().containsKey(path)) {
                 mergedEnv.put(path, renamedEnv.get(path));
-            }
-        }
-
-        // If expression values exist in either, merge them
-        if (domain.hasExprValue() || renamedEnv.hasExprValue()) {
-            if (domain.hasExprValue() && renamedEnv.hasExprValue()) {
-                mergedEnv.setExprValue(domain.getExprValue().meet(renamedEnv.getExprValue()));
-            } else if (domain.hasExprValue()) {
-                mergedEnv.setExprValue(domain.getExprValue());
-            } else {
-                mergedEnv.setExprValue(renamedEnv.getExprValue());
             }
         }
 

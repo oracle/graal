@@ -1,12 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.example.access.inter;
 
-import com.oracle.svm.hosted.analysis.ai.domain.EnvironmentDomain;
-import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathBase;
+import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathConstants;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathElement;
+import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.access.ClassAccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.domain.access.PlaceHolderAccessPathBase;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -18,12 +19,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.util.List;
 
-public class AccessPathIntervalSummaryFactory implements SummaryFactory<EnvironmentDomain<IntInterval>> {
+public class AccessPathIntervalSummaryFactory implements SummaryFactory<AccessPathMap<IntInterval>> {
 
     @Override
-    public Summary<EnvironmentDomain<IntInterval>> createSummary(Invoke invoke,
-                                                                 EnvironmentDomain<IntInterval> callerPreCondition,
-                                                                 List<EnvironmentDomain<IntInterval>> domainArguments) {
+    public Summary<AccessPathMap<IntInterval>> createSummary(Invoke invoke,
+                                                             AccessPathMap<IntInterval> callerPreCondition,
+                                                             List<AccessPathMap<IntInterval>> domainArguments) {
         /**
          * Here we need to create a summary that takes a pre-condition and a list of actual arguments in the environment domain
          * and creates an initial callee environment domain. We should remove all access paths that will be accessible only in the caller environment,
@@ -33,7 +34,7 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
          *                   2. Object type arguments (We will pass all access paths that have this object as their base)
          *                   3. Fields inherited from the caller (We will pass them as-is since they're accessible)
          */
-        EnvironmentDomain<IntInterval> preCondition = new EnvironmentDomain<>(new IntInterval());
+        AccessPathMap<IntInterval> preCondition = new AccessPathMap<>(new IntInterval());
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
 
         for (int i = 0; i < args.size(); i++) {
@@ -41,27 +42,26 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
 
             /* Ad 1. */
             if (arg.getStackKind().isNumericInteger()) {
-                AccessPathBase base = new PlaceHolderAccessPathBase("param" + i);
+                AccessPathBase base = new PlaceHolderAccessPathBase(AccessPathConstants.PARAM_PREFIX + i);
                 AccessPath paramAccessPath = new AccessPath(base);
-                preCondition.put(paramAccessPath, domainArguments.get(i).getExprValue());
+                preCondition.put(paramAccessPath, domainArguments.get(i).getOnlyDataValue());
             }
             /* Ad 2. */
             else if (arg.getStackKind().isObject()) {
-                // TODO -> this access paths base retrieval is kinda chaotic
-                AccessPathBase objectBase = domainArguments.get(i).getValue().getMap().keySet().iterator().next().getBase();
+                AccessPathBase objectBase = domainArguments.get(i).getOnlyAccessPathBase();
                 List<AccessPath> accessPathsWithBase = callerPreCondition.getAccessPathsWithBase(objectBase);
                 accessPathsWithBase.add(new AccessPath(objectBase));
 
                 for (AccessPath accessPath : accessPathsWithBase) {
                     IntInterval value = callerPreCondition.get(accessPath);
-                    AccessPath prefixedPath = new AccessPath(accessPath.getBase().addPrefix("param" + i), accessPath.getElements());
+                    AccessPath prefixedPath = new AccessPath(accessPath.getBase().addPrefix(AccessPathConstants.PARAM_PREFIX + i), accessPath.getElements());
                     preCondition.put(prefixedPath, value);
                 }
             }
         }
 
         /* Ad 3. */
-        for (AccessPath path : callerPreCondition.getValue().getMap().keySet()) {
+        for (AccessPath path : callerPreCondition.getAccessPaths()) {
             if (!(path.getBase() instanceof ClassAccessPathBase)) {
                 continue;
             }
@@ -79,7 +79,7 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<Environm
     /**
      * Determines if a static field is accessible to a target method based on Java visibility rules.
      *
-     * @param path The access path to check (must have a ClassAccessPathBase)
+     * @param path         The access path to check (must have a ClassAccessPathBase)
      * @param targetMethod The method that will access the field
      * @return true if the field is accessible, false otherwise
      */

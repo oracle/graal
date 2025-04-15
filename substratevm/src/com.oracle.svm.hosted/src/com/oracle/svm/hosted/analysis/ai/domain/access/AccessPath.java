@@ -1,7 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.util.ArrayList;
@@ -25,6 +28,11 @@ public final class AccessPath {
     public AccessPath(AccessPathBase base, List<AccessPathElement> elements) {
         this.base = base;
         this.elements = elements;
+    }
+
+    public AccessPath(Node node) {
+        this.base = new PlaceHolderAccessPathBase(node.toString());
+        this.elements = new ArrayList<>();
     }
 
     public AccessPathBase getBase() {
@@ -60,6 +68,27 @@ public final class AccessPath {
         newPath.elements.addAll(this.elements);
         newPath.elements.addAll(accesses);
         return newPath;
+    }
+
+    public static AccessPath getAccessPathFromAccessFieldNode(AccessFieldNode accessFieldNode) {
+        ResolvedJavaField field = accessFieldNode.field();
+        if (field.isStatic()) {
+            /* For static fields, use the declaring class as the base variable */
+            AccessPathBase base = new ClassAccessPathBase(field.getDeclaringClass());
+            return new AccessPath(base).appendField(field.getName(), field.getModifiers());
+        }
+
+        if (accessFieldNode.object().getNodeSourcePosition() != null) {
+            ResolvedJavaType declaringClass = field.getDeclaringClass();
+            NodeSourcePosition nodeSourcePosition = accessFieldNode.object().getNodeSourcePosition();
+            AccessPathBase base = new ObjectAccessPathBase(declaringClass, nodeSourcePosition);
+            return new AccessPath(base).appendField(field.getName(), field.getModifiers());
+        }
+
+        /* Here, we don't know the source position of the object, this means that it has to be an actual parameter,
+         * we leave this case to the user implementations, because there is no possible way of knowing, how do their
+         * domains handle replacing formal parameters with actual parameters. */
+        return null;
     }
 
     public boolean isPrefixOf(AccessPath other) {
@@ -133,7 +162,7 @@ public final class AccessPath {
     /**
      * Create an AccessPath from an AllocatedObjectNode.
      *
-     * @param allocatedObject  AllocatedObjectNode
+     * @param allocatedObject AllocatedObjectNode
      * @return AccessPath representing the allocatedObject
      */
     public static AccessPath fromAllocatedObject(AllocatedObjectNode allocatedObject) {
