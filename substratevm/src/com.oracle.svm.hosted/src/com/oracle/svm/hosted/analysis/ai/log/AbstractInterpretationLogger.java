@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.util;
+package com.oracle.svm.hosted.analysis.ai.log;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import jdk.graal.compiler.debug.DebugContext;
