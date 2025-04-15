@@ -131,6 +131,8 @@ public class WebImageOptions {
         @Option(help = "Dump type control graph, a graph of dependencies between types, methods, and inspected objects.")//
         public static final OptionKey<Boolean> DumpTypeControlGraph = new OptionKey<>(false);
 
+        @Option(help = "Dump the expected value of the ProvidedHostedOptions property.")//
+        public static final HostedOptionKey<Boolean> DumpProvidedHostedOptionsAndExit = new HostedOptionKey<>(false);
     }
 
     @Option(help = "Report the code sizes of different parts of the generated JavaScript image. If the closure compiler is applied, this instruments the generated javascript code by injecting labels.")//

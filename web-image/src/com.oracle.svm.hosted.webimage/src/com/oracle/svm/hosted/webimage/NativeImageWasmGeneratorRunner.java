@@ -25,11 +25,14 @@
 package com.oracle.svm.hosted.webimage;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -39,6 +42,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
+import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
@@ -61,6 +65,7 @@ import com.oracle.svm.webimage.WebImageJavaMainSupport;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionValues;
 
 /**
@@ -125,9 +130,46 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         return CompilerBackend.JS;
     }
 
+    /**
+     * Gathers all available hosted options declared in Web Image code.
+     * <p>
+     * This is used to verify that the hardcoded {@code ProvidedHostedOptions} property in the
+     * {@code svm-wasm} tool macro contains all option names.
+     */
+    private static void dumpProvidedHostedOptions(HostedOptionParser optionParser) {
+        EconomicMap<String, OptionDescriptor> allHostedOptions = optionParser.getAllHostedOptions();
+
+        List<String> names = new ArrayList<>();
+
+        for (OptionDescriptor value : allHostedOptions.getValues()) {
+            if (!value.getDeclaringClass().getPackageName().contains("webimage") || WebImageOptions.DebugOptions.DumpProvidedHostedOptionsAndExit == value.getOptionKey()) {
+                continue;
+            }
+
+            String name = value.getName();
+
+            if (value.getOptionValueType().equals(Boolean.class)) {
+                names.add(name);
+            } else {
+                names.add(name + "=");
+            }
+        }
+
+        names.sort(Comparator.naturalOrder());
+
+        for (String name : names) {
+            System.out.println(name);
+        }
+    }
+
     @Override
     public int build(ImageClassLoader classLoader) {
         final HostedOptionParser optionProvider = classLoader.classLoaderSupport.getHostedOptionParser();
+
+        if (Boolean.TRUE.equals(optionProvider.getHostedValues().get(WebImageOptions.DebugOptions.DumpProvidedHostedOptionsAndExit))) {
+            dumpProvidedHostedOptions(optionProvider);
+            return ExitStatus.OK.getValue();
+        }
 
         optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
 

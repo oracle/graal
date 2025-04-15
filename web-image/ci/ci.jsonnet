@@ -14,7 +14,7 @@ local weekly = r.weekly;
 {
   // THE TASK CONFIGURATION
   task_dict:: {
-    'style-fullbuild': mxgate('style,fullbuild,webimagehelp') + t('30:00') + r.eclipse + r.jdt + r.spotbugs + r.prettier + platforms({
+    'style-fullbuild': mxgate('style,fullbuild,webimagehelp,webimageoptions') + t('30:00') + r.eclipse + r.jdt + r.spotbugs + r.prettier + platforms({
       'linux:amd64:jdk-latest': gate,
     }),
     'unittest': mxgate('webimagebuild,webimageunittest') + t('30:00') + r.node22 + platforms({
