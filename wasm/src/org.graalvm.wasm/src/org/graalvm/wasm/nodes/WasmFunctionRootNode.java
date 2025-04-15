@@ -312,18 +312,16 @@ public class WasmFunctionRootNode extends WasmRootNode {
     public final SourceSection getSourceSection() {
         if (sourceSection == null) {
             final DebugFunction debugFunction = debugFunction();
-            if (debugFunction != null) {
-                if (debugFunction.hasSourceSection()) {
-                    sourceSection = debugFunction.getSourceSection();
-                } else {
-                    final WasmContext context = WasmContext.get(this);
-                    if (context != null) {
-                        sourceSection = debugFunction.computeSourceSection(context.debugSourceLoader());
-                    }
-                }
-            } else {
+            if (debugFunction == null) {
                 sourceSection = module().source().createUnavailableSection();
+                return sourceSection;
             }
+            if (debugFunction.hasSourceSection()) {
+                sourceSection = debugFunction.getSourceSection();
+                return sourceSection;
+            }
+            WasmContext context = WasmContext.get(this);
+            sourceSection = debugFunction.loadSourceSection(context == null ? null : context.environment());
         }
         return sourceSection;
     }

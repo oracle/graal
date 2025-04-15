@@ -41,20 +41,16 @@
 
 package org.graalvm.wasm.debugging.parser;
 
-import java.net.MalformedURLException;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
 /**
  * Source loader for loading the source files of the debug information.
  */
 public class DebugSourceLoader {
-    private final Map<Path, Source> cache = new HashMap<>();
-
     /**
      * Loads the source at the given path.
      * 
@@ -62,25 +58,23 @@ public class DebugSourceLoader {
      * @param language the source language
      */
     @TruffleBoundary
-    public Source load(Path path, String language) {
+    public static Source load(Path path, String language, TruffleLanguage.Env env) {
         if (path == null || language == null) {
             return null;
         }
-        Path fileName = path.getFileName();
-        if (fileName == null) {
-            return null;
-        }
-        if (cache.containsKey(path)) {
-            return cache.get(path);
-        }
-        final Source source;
+        Source source = null;
         try {
-            source = Source.newBuilder(language, path.toUri().toURL()).content(Source.CONTENT_NONE).build();
-        } catch (MalformedURLException | SecurityException e) {
+            // we create a pseudo source that does not read the content of the actual file, since we
+            // are not allowed to perform any IO at this point.
+            // Source.CONTENT_NONE enforces this behavior. Instruments will replace the source with
+            // the actual content of the file based on the provided uri.
+            source = Source.newBuilder(language, "", path.toString()).uri(path.toUri()).content(Source.CONTENT_NONE).build();
+        } catch (SecurityException e) {
             // source not available or not accessible
-            return null;
+            if (env != null) {
+                env.getLogger("").warning("Debug source file could not be loaded or accessed: " + path);
+            }
         }
-        cache.put(path, source);
         return source;
     }
 }

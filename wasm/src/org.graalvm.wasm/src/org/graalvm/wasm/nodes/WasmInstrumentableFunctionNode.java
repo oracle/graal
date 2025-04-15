@@ -160,10 +160,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
             if (debugFunction.hasSourceSection()) {
                 return debugFunction.getSourceSection();
             } else {
-                final WasmContext context = WasmContext.get(this);
-                if (context != null) {
-                    return debugFunction.computeSourceSection(context.debugSourceLoader());
-                }
+                WasmContext context = WasmContext.get(this);
+                return debugFunction.loadSourceSection(context == null ? null : context.environment());
             }
         }
         return null;
@@ -184,8 +182,17 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         if (debugFunction == null) {
                             return this;
                         }
-                        final SourceSection sourceSection = debugFunction.computeSourceSection(context.debugSourceLoader());
+                        final SourceSection sourceSection = debugFunction.loadSourceSection(context.environment());
                         if (sourceSection == null) {
+                            return this;
+                        }
+                        // if the source does not point to an existing file, or we are not allowed
+                        // to access it, we do not replace this node
+                        try {
+                            if (!context.environment().getInternalTruffleFile(sourceSection.getSource().getURI()).exists()) {
+                                return this;
+                            }
+                        } catch (SecurityException | UnsupportedOperationException e) {
                             return this;
                         }
                         final int functionStartOffset = module.functionSourceCodeStartOffset(functionIndex);
@@ -217,7 +224,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @SuppressWarnings({"static-method", "unused"})
     @ExportMessage
     public final boolean hasScope(Frame frame) {
-        return debugFunction() != null;
+        return instrumentation != null && debugFunction() != null;
     }
 
     @ExportMessage
@@ -226,16 +233,13 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         assert debugFunction != null;
         final DebugContext context = new DebugContext(instrumentation.currentSourceLocation());
         final MaterializedFrame materializedFrame = frame.materialize();
-        SourceSection sourceSection = null;
+        final SourceSection sourceSection;
         if (debugFunction.hasSourceSection()) {
             sourceSection = debugFunction.getSourceSection();
         } else {
             final WasmContext wasmContext = WasmContext.get(this);
-            if (wasmContext != null) {
-                sourceSection = debugFunction.computeSourceSection(wasmContext.debugSourceLoader());
-            }
+            sourceSection = debugFunction.loadSourceSection(wasmContext == null ? null : wasmContext.environment());
         }
-
         return DebugScopeDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this, sourceSection);
     }
 
