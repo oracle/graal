@@ -131,6 +131,14 @@ public abstract class HostVM {
     }
 
     /**
+     * Run validation checks for reachable objects before registering them in the shadow heap.
+     *
+     * @param obj the object to validate
+     */
+    public void validateReachableObject(Object obj) {
+    }
+
+    /**
      * Register newly created type.
      * 
      * @param newValue the type to register
