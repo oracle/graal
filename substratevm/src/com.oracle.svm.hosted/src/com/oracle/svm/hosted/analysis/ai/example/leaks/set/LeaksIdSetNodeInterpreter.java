@@ -28,7 +28,6 @@ public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<Reso
         SetDomain<ResourceId> preCondition = abstractStateMap.getPreCondition(node);
         SetDomain<ResourceId> computedPost = preCondition.copyOf();
 
-        System.out.println("Executing node : " + node);
         switch (node) {
             case Invoke invoke -> {
                 if (InvokeUtil.opensResource(invoke)) {
@@ -69,7 +68,7 @@ public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<Reso
                 for (Node input : piNode.inputs()) {
                     abstractStateMap.getPreCondition(piNode).joinWith(abstractStateMap.getPostCondition(input));
                 }
-                
+
                 SetDomain<ResourceId> piPre = abstractStateMap.getPreCondition(piNode);
                 SetDomain<ResourceId> piPost = abstractStateMap.getPostCondition(piNode);
                 for (ResourceId id : piPost.getSet()) {
@@ -116,6 +115,7 @@ public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<Reso
             }
 
             default -> {
+                /* Leave the abstract context as-is */
             }
 
         }

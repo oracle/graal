@@ -18,10 +18,10 @@ public class LeaksPairDomainNodeInterpreter implements NodeInterpreter<PairDomai
 
     @Override
     public PairDomain<CountDomain, BooleanOrDomain> execEdge(Node source,
-                                                             Node destination,
+                                                             Node target,
                                                              AbstractStateMap<PairDomain<CountDomain, BooleanOrDomain>> abstractStateMap) {
-        abstractStateMap.getPreCondition(destination).joinWith(abstractStateMap.getPostCondition(source));
-        return abstractStateMap.getPreCondition(destination);
+        abstractStateMap.getPreCondition(target).joinWith(abstractStateMap.getPostCondition(source));
+        return abstractStateMap.getPreCondition(target);
     }
 
     @Override

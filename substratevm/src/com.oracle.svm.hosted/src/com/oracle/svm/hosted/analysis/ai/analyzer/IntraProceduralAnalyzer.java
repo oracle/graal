@@ -9,6 +9,7 @@ import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * An intra-procedural analyzer that performs an intra-procedural analysis on the given method.
+ *
  * @param <Domain> the type of the abstract domain used for the analysis.
  */
 public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {

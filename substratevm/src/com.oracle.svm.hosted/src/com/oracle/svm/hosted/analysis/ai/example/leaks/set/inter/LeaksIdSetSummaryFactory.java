@@ -1,0 +1,35 @@
+package com.oracle.svm.hosted.analysis.ai.example.leaks.set.inter;
+
+import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
+import com.oracle.svm.hosted.analysis.ai.summary.Summary;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.ValueNode;
+
+import java.util.List;
+
+public class LeaksIdSetSummaryFactory implements SummaryFactory<SetDomain<ResourceId>> {
+
+    @Override
+    public Summary<SetDomain<ResourceId>> createSummary(Invoke invoke,
+                                                        SetDomain<ResourceId> callerPreCondition,
+                                                        List<SetDomain<ResourceId>> arguments) {
+
+        SetDomain<ResourceId> summaryPre = new SetDomain<>();
+        NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+
+        // Prefix all resource args with "param" + the idx of the argument
+        for (int i = 0; i < args.size(); i++) {
+            ValueNode arg = args.get(i);
+
+            if (arg.getStackKind().isObject()) {
+                ResourceId paramId = new ResourceId("param" + i + arguments.get(i).getSet().iterator().next());
+                summaryPre.add(paramId);
+            }
+        }
+
+        return new LeaksIdSetSummary(invoke, summaryPre);
+    }
+}

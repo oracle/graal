@@ -16,10 +16,10 @@ public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<Count
 
     @Override
     public CountDomain execEdge(Node source,
-                                Node destination,
+                                Node target,
                                 AbstractStateMap<CountDomain> abstractStateMap) {
-        abstractStateMap.getPreCondition(destination).joinWith(abstractStateMap.getPostCondition(source));
-        return abstractStateMap.getPreCondition(destination);
+        abstractStateMap.getPreCondition(target).joinWith(abstractStateMap.getPostCondition(source));
+        return abstractStateMap.getPreCondition(target);
     }
 
     @Override
