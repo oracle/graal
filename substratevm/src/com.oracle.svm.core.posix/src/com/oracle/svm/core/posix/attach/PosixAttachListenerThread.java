@@ -40,11 +40,11 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 public final class PosixAttachListenerThread extends AttachListenerThread {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L82") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/aix/attachListener_aix.cpp#L82") //
     private static final String PROTOCOL_VERSION = "1";
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L269") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/aix/attachListener_aix.cpp#L269") //
     private static final int VERSION_SIZE = 8;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L85") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/aix/attachListener_aix.cpp#L85") //
     private static final int ATTACH_ERROR_BAD_VERSION = 101;
 
     /**
@@ -80,7 +80,7 @@ public final class PosixAttachListenerThread extends AttachListenerThread {
     }
 
     /** This method reads and processes a single request from the socket. */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L268-L359")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/aix/attachListener_aix.cpp#L268-L359")
     private static PosixAttachOperation readRequest(int socket) {
         int strCount = 0;
         int[] stringEnds = new int[EXPECTED_STRING_COUNT];
