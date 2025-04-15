@@ -9,8 +9,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
-import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -21,6 +21,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  * Implemented based on:
  * F. Bourdoncle. Efficient chaotic iteration strategies with widenings.
  * In Formal Methods in Programming and Their Applications, pp 128-141.
+ * <a href="https://doi.org/10.1007/BFb0039704"></a>
  *
  * @param <Domain> type of the derived AbstractDomain
  */
@@ -48,12 +49,12 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
-        logger.log("Starting sequential WTO fixpoint iteration", LoggerVerbosity.DEBUG);
+        logger.log("Starting WTO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
             analyzeComponent(component);
         }
 
-        logger.log("Sequential WTO fixpoint iteration finished", LoggerVerbosity.DEBUG);
+        logger.log("Finished WTO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
@@ -78,12 +79,11 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
 
     private void analyzeCycle(WtoCycle cycle) {
         logger.log("Analyzing cycle: " + cycle.toString(), LoggerVerbosity.DEBUG);
-        Node head = graphTraversalHelper.getBeginNode(cycle.block());
         boolean iterate = true;
 
         while (iterate) {
-            /* Analyze the nodes inside outermost block */
-            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, graphTraversalHelper);
+            /* Analyze the nodes inside outermost head */
+            transferFunction.analyzeBlock(cycle.head(), abstractStateMap, graphTraversalHelper);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
@@ -95,11 +95,12 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
              * we look at the head of the cycle by collecting invariants from predecessors
              * and checking if the pre-condition at the head of the cycle changed.
              */
-            transferFunction.collectInvariantsFromPredecessors(head, abstractStateMap, graphTraversalHelper);
-            if (abstractStateMap.getPreCondition(head).leq(abstractStateMap.getPostCondition(head))) {
+            transferFunction.collectInvariantsFromCfgPredecessors(cycle.head(), abstractStateMap, graphTraversalHelper);
+            Node headBegin = cycle.head().getBeginNode();
+            if (abstractStateMap.getPreCondition(headBegin).leq(abstractStateMap.getPostCondition(headBegin))) {
                 iterate = false;
             } else {
-                extrapolate(head);
+                extrapolate(headBegin);
             }
         }
     }

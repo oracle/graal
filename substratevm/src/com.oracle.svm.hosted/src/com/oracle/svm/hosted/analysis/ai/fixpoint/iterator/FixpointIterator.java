@@ -12,7 +12,6 @@ import jdk.graal.compiler.graph.Node;
  * repeatedly, propagating abstract states through the graph until further changes no longer occur.
  *
  * @param <Domain> abstract domain used in the abstract interpretation
- *
  */
 public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
 
@@ -23,8 +22,8 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
      * This is a good place to run checkers from {@link CheckerManager}, because
      * we know the abstract context at every point in the analysisMethod.
      * NOTE:
-     *      Currently, all implementations should call checkerManager.checkAll after the fixpoint is reached.
-     *      This is not optimal when we have recursive methods.
+     * Currently, all implementations should call checkerManager.checkAll after the fixpoint is reached.
+     * This is not optimal when we have recursive methods.
      *
      * @return mapping of every IR node to it's abstract state after the fixpoint is reached
      */

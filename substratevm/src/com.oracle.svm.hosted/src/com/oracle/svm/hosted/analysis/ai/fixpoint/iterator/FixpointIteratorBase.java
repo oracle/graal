@@ -7,9 +7,9 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
-import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -78,26 +78,25 @@ public abstract class FixpointIteratorBase<
     }
 
     /**
-     * This analysisMethod should be called on the head of a cycle in each iteration.
+     * This method is called on the head of a cycle in each iteration.
      * Performs widen/join of post and pre-condition of the {@code node} according to the {@link IteratorPolicy}.
      * Has to be performed in order for the analysis to converge.
      *
      * @param node to extrapolate
      */
     protected void extrapolate(Node node) {
-        logger.log("Extrapolating " + node + " with abstract state: " + abstractStateMap.getState(node), LoggerVerbosity.DEBUG);
         var state = abstractStateMap.getState(node);
         int visitedAmount = abstractStateMap.getState(node).getVisitedCount();
         if (visitedAmount < iteratorPayload.getMaxJoinIterations()) {
-            abstractStateMap.getPostCondition(node).joinWith(abstractStateMap.getPreCondition(node));
+            abstractStateMap.setPreCondition(node, abstractStateMap.getPostCondition(node).join(abstractStateMap.getPreCondition(node)));
         } else {
-            abstractStateMap.getPostCondition(node).widenWith(abstractStateMap.getPreCondition(node));
+            abstractStateMap.setPreCondition(node, abstractStateMap.getPostCondition(node).widen(abstractStateMap.getPreCondition(node)));
         }
-        logger.log("Extrapolating " + node + " finished with abstract state: " + abstractStateMap.getState(node), LoggerVerbosity.DEBUG);
 
+        abstractStateMap.getState(node).incrementVisitedCount();
         if (state.getVisitedCount() > iteratorPayload.getMaxWidenIterations() + iteratorPayload.getMaxJoinIterations()) {
-            throw AnalysisError.shouldNotReachHere("Exceeded maxWidenIterations!" +
-                    " Consider increasing the limit, or refactor your widening operator");
+            throw AnalysisError.shouldNotReachHere("Exceeded maximum amount of extrapolating iterations." +
+                    " Consider increasing the limit, or refactor your widening/join operator");
         }
     }
 }

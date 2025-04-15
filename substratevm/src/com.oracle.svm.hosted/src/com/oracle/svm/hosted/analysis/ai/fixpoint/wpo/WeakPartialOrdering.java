@@ -28,7 +28,7 @@ public final class WeakPartialOrdering {
     public WeakPartialOrdering(GraphTraversalHelper graphTraversalHelper) {
         HIRBlock root = graphTraversalHelper.getEntryBlock();
 
-        /* Handle base case -> there is only one block in the graph */
+        /* Handle base case -> there is only one head in the graph */
         if (graphTraversalHelper.getSuccessorCount(root) == 0) {
             wpoVertices.add(new WpoVertex(root, WpoVertex.Kind.Plain, 1, 1));
             return;

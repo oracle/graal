@@ -74,7 +74,7 @@ public final class WeakPartialOrderingConstructor {
     /**
      * Perform iterative DFS to create data structures needed for WPO constructions
      *
-     * @param startBlock the start block of the control flow graph
+     * @param startBlock the start head of the control flow graph
      */
     private void constructAuxiliary(HIRBlock startBlock) {
         Deque<Tuple> stack = new ArrayDeque<>();

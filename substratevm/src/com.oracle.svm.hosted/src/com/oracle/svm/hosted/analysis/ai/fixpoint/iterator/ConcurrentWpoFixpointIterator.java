@@ -7,8 +7,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
-import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Implemented based on:
  * Sung Kook Kim, Arnaud J. Venet, and Aditya V. Thakur.
  * Deterministic Parallel Fixpoint Computation.
- * https://dl.acm.org/ft_gateway.cfm?id=3371082
+ * <a href="https://dl.acm.org/ft_gateway.cfm?id=3371082"></a>
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
@@ -58,10 +58,10 @@ public final class ConcurrentWpoFixpointIterator<
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
-        logger.log("Starting concurrent WPO fixpoint iteration", LoggerVerbosity.DEBUG);
+        logger.log("Starting concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         buildWorkNodes();
         runAnalysis();
-        logger.log("Finished concurrent WPO fixpoint iteration", LoggerVerbosity.DEBUG);
+        logger.log("Finished concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
@@ -190,7 +190,7 @@ public final class ConcurrentWpoFixpointIterator<
 
         boolean updateHeadBackEdge() {
             Domain oldPre = abstractStateMap.getPreCondition(node.getBeginNode()).copyOf();
-            transferFunction.collectInvariantsFromPredecessors(node.getBeginNode(), abstractStateMap, graphTraversalHelper);
+            transferFunction.collectInvariantsFromCfgPredecessors(node, abstractStateMap, graphTraversalHelper);
             extrapolate(node.getBeginNode());
 
             if (oldPre.leq(abstractStateMap.getPreCondition(node.getBeginNode()))) {

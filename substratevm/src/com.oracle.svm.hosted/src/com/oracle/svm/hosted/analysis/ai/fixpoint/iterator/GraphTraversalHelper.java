@@ -37,6 +37,18 @@ public class GraphTraversalHelper {
                 : block.getPredecessorCount();
     }
 
+    public HIRBlock getPredecessorAt(HIRBlock block, int idx) {
+        return direction == IteratorDirection.FORWARD
+                ? block.getPredecessorAt(idx)
+                : block.getSuccessorAt(idx);
+    }
+
+    public int getPredecessorCount(HIRBlock block) {
+        return direction == IteratorDirection.FORWARD
+                ? block.getPredecessorCount()
+                : block.getSuccessorCount();
+    }
+
     public Iterable<Node> getNodes() {
         if (direction == IteratorDirection.FORWARD) {
             return cfgGraph.graph.getNodes();
@@ -54,21 +66,30 @@ public class GraphTraversalHelper {
                 : block.getEndNode();
     }
 
+    public Node getEndNode(HIRBlock block) {
+        return direction == IteratorDirection.FORWARD
+                ? block.getEndNode()
+                : block.getBeginNode();
+    }
+
     public Node getGraphStart() {
         return direction == IteratorDirection.FORWARD
                 ? cfgGraph.graph.start()
                 : cfgGraph.getBlocks()[cfgGraph.getBlocks().length - 1].getEndNode();
     }
 
-    public Iterable<? extends Node> getCfgSuccessors(Node node) {
+    /**
+     * When traversing a basic block, we know that each node has only one predecessor in that block ( except the head node )
+     */
+    public Node getNodePredecessor(Node node) {
         return direction == IteratorDirection.FORWARD
-                ? node.cfgSuccessors()
-                : node.cfgPredecessors();
+                ? node.predecessor()
+                : node.cfgSuccessors().iterator().next();
     }
 
-    public Iterable<? extends Node> getCfgPredecessors(Node node) {
+    public Iterable<? extends Node> getNodeCfgSuccessors(Node current) {
         return direction == IteratorDirection.FORWARD
-                ? node.cfgPredecessors()
-                : node.cfgSuccessors();
+                ? current.cfgSuccessors()
+                : current.cfgPredecessors();
     }
 }

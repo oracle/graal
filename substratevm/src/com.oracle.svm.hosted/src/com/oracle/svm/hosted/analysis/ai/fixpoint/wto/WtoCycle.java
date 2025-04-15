@@ -4,12 +4,12 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.List;
 
-public record WtoCycle(HIRBlock block, List<WtoComponent> components) implements WtoComponent {
+public record WtoCycle(HIRBlock head, List<WtoComponent> components) implements WtoComponent {
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("(").append(block);
+        sb.append("(").append(head);
         for (WtoComponent component : components) {
             sb.append(" ").append(component);
         }
@@ -19,6 +19,6 @@ public record WtoCycle(HIRBlock block, List<WtoComponent> components) implements
 
     @Override
     public HIRBlock getBlock() {
-        return block;
+        return head;
     }
 }

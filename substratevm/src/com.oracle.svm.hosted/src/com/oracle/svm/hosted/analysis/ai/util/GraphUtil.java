@@ -5,6 +5,8 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
@@ -69,10 +71,10 @@ public final class GraphUtil {
 
     public static void printInferredGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractStateMap<?> abstractStateMap) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Computed post conditions of method: " + analysisMethod, LoggerVerbosity.DEBUG);
+        logger.log("Computed post conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
         for (Node node : graph.getNodes()) {
             AbstractState<?> abstractState = abstractStateMap.getState(node);
-            logger.log(node + " -> " + abstractState.getPostCondition(), LoggerVerbosity.DEBUG);
+            logger.log(node + " -> " + abstractState.getPostCondition(), LoggerVerbosity.INFO);
         }
     }
 }
