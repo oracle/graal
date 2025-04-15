@@ -30,7 +30,6 @@ import java.io.IOException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
@@ -127,12 +126,6 @@ public final class Target_java_io_TruffleFileSystem {
     static @JavaType(String.class) StaticObject canonicalize0(@JavaType(String.class) StaticObject path, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         nullCheck(path, ctx);
         Meta meta = ctx.getMeta();
-        if (ctx.getNativeAccess() instanceof EspressoLibsNativeAccess libsAccess) {
-            if (libsAccess.isKnownBootLibrary(meta.toHostString(path))) {
-                // Spoof canonicalization for known boot library
-                return path;
-            }
-        }
         try {
             return meta.toGuestString(io.getPublicTruffleFileSafe(meta.toHostString(path)).getCanonicalFile().getPath());
         } catch (IOException e) {
@@ -146,11 +139,6 @@ public final class Target_java_io_TruffleFileSystem {
     static int getBooleanAttributes0(@JavaType(File.class) StaticObject f, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
         int res = 0;
-        if (ctx.getNativeAccess() instanceof EspressoLibsNativeAccess libsAccess) {
-            if (libsAccess.isKnownBootLibrary(path)) {
-                res |= io.fileSystemSync.BA_EXISTS;
-            }
-        }
         TruffleFile tf = io.getPublicTruffleFileSafe(path);
         if (tf.exists()) {
             res |= io.fileSystemSync.BA_EXISTS;

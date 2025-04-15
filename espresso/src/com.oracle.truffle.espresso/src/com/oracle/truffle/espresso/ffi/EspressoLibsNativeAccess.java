@@ -67,12 +67,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         Path libname = libraryPath.getFileName();
-
-        if (isKnownBootLibrary(libraryPath.toString())) {
+        if (libs.isKnown(libraryPath.toString())) {
             getLogger().fine(() -> "Loading espresso lib: " + libname);
             return libs.loadLibrary(getContext(), libname.toString());
-        }
 
+        }
         // Failed to find library in known libs:
         // try to find an actual library (can be null)
         getLogger().fine(() -> "Could not find espresso lib '" + libname + "', trying delegate Native Access...");
@@ -86,6 +85,12 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
             return libname;
         }
         return delegate.mapLibraryName(libname);
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean isBuiltIn(String libname) {
+        return libs.isKnown(libname);
     }
 
     @Override

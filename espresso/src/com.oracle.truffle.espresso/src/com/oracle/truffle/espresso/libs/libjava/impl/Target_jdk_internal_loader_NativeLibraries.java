@@ -54,8 +54,10 @@ public final class Target_jdk_internal_loader_NativeLibraries {
 
     @Substitution
     @SuppressWarnings("unused")
-    public static @JavaType(String.class) StaticObject findBuiltinLib(@JavaType(String.class) StaticObject name, @Inject EspressoContext ctx) {
-        // No support for built-in libs.
+    public static @JavaType(String.class) StaticObject findBuiltinLib(@JavaType(String.class) StaticObject name, @Inject EspressoContext ctx, @Inject Meta meta) {
+        if (ctx.getNativeAccess().isBuiltIn(meta.toHostString(name))) {
+            return name;
+        }
         return StaticObject.NULL;
     }
 
@@ -69,12 +71,12 @@ public final class Target_jdk_internal_loader_NativeLibraries {
         if (StaticObject.isNull(name)) {
             return false;
         }
-        if (isBuiltin) {
-            return false;
-        }
         Meta meta = ctx.getMeta();
         String hostName = meta.toHostString(name);
         VM vm = ctx.getVM();
+        if (isBuiltin && !ctx.getNativeAccess().isBuiltIn(hostName)) {
+            return false;
+        }
         // Load the library.
         TruffleObject handle = vm.JVM_LoadLibrary(hostName, throwExceptionIfFail);
         if (InteropLibrary.getUncached().isNull(handle)) {
