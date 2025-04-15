@@ -98,18 +98,19 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Get the abstract context of the {@link ReturnNode}
-     * NOTE: Graal IR has only one return node, therefore we can do this safely.
+     * Merge abstract contexts from different {@link ReturnNode}s into a single abstract context.
+     * This context the represents the over-approximation of all different return contexts,
+     * which is used to compute the final return value of the method.
      *
      * @return the abstract context of the {@link ReturnNode}
      */
-    public AbstractState<Domain> getReturnState() {
-        AbstractState<Domain> returnState = new AbstractState<>(initialDomain);
+    public Domain getReturnDomain() {
+        Domain returnDomain = initialDomain.copyOf();
         for (Node node : stateMap.keySet()) {
-            if (node instanceof ReturnNode) {
-                returnState.joinWith(getState(node));
+            if (node instanceof ReturnNode && !stateMap.get(node).isRestrictedFromExecution()) {
+                returnDomain.joinWith(getPostCondition(node));
             }
         }
-        return returnState;
+        return returnDomain;
     }
 }

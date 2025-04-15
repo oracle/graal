@@ -22,8 +22,8 @@ public interface CallHandler<Domain extends AbstractDomain<Domain>> {
      * In inter-procedural analysis, we try to fetch a summary for this analysisMethod, possibly computing it in the process,
      * and apply this summary to the abstract state at the call site ({@param invokeNode}).
      *
-     * @param invoke the representation of the call to be handled
-     * @param invokeNode the graph node corresponding to the call invocation
+     * @param invoke         the representation of the call to be handled
+     * @param invokeNode     the graph node corresponding to the call invocation
      * @param callerStateMap the abstract context of the caller at the point of the {@param invoke}
      * @return the outcome of the analysis of the call ( status, + summary if status is ok )
      */
@@ -35,7 +35,7 @@ public interface CallHandler<Domain extends AbstractDomain<Domain>> {
      * The starting point of the analysis.to md
      * We receive an {@link AnalysisMethod} and we start our abstract interpretation from this analysisMethod as the starting point.
      *
-     * @param root the root {@link AnalysisMethod} that the abstract interpretation starts from
+     * @param root  the root {@link AnalysisMethod} that the abstract interpretation starts from
      * @param debug the debug context for the analysis
      */
     void handleRootCall(AnalysisMethod root, DebugContext debug);

@@ -9,6 +9,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 
 /**
  * Base class for call handlers.
+ *
  * @param <Domain> the type of the abstract domain used for the analysis.
  */
 public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>> implements CallHandler<Domain> {

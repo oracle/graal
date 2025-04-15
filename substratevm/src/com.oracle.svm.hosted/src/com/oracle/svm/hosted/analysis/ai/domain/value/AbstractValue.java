@@ -1,11 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.domain.value;
 
 /**
- * Represents the structure of elements of an abstract domain.
- * (constant, interval, set, etc.)
- * This can be used for more complex abstract domains, to simplify the implementation.
+ * Represents the structure of abstract contexts inside from an abstract domain.
+ * This can be used for easier implementation of complex abstract domains.
  *
- * @param <Derived> the type of the derived value
+ * @param <Derived> the type of the derived {@link AbstractValue}
  */
 public interface AbstractValue<Derived extends AbstractValue<Derived>> {
 
@@ -71,6 +70,7 @@ public interface AbstractValue<Derived extends AbstractValue<Derived>> {
 
     /**
      * Creates a copy of this abstract value.
+     *
      * @return a copy of this abstract value
      */
     Derived copyOf();

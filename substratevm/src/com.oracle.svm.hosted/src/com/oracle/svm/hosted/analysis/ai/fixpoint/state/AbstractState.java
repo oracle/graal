@@ -9,7 +9,12 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  */
 public final class AbstractState<Domain extends AbstractDomain<Domain>> {
 
+    /* Number of times this state has been visited/iterated in fixpoint iteration  */
     private int visitedCount = 0;
+
+    /* Do we want to restrict the execution of this state in abstract interpretation */
+    private boolean restrictedFromExecution = false;
+
     private Domain preCondition;
     private Domain postCondition;
 
@@ -20,6 +25,10 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
 
     public int getVisitedCount() {
         return visitedCount;
+    }
+
+    public void incrementVisitedCount() {
+        ++visitedCount;
     }
 
     public Domain getPreCondition() {
@@ -38,52 +47,16 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
         this.postCondition = postCondition.copyOf();
     }
 
-    public void incrementVisitedCount() {
-        ++visitedCount;
-    }
-
-    public boolean isVisited() {
-        return visitedCount > 0;
-    }
-
-    public AbstractState<Domain> join(AbstractState<Domain> other) {
-        AbstractState<Domain> result = new AbstractState<>(preCondition.copyOf());
-        result.preCondition = preCondition.join(other.preCondition);
-        result.postCondition = postCondition.join(other.postCondition);
-        return result;
-    }
-
-    public void joinWith(AbstractState<Domain> other) {
-        preCondition.joinWith(other.preCondition);
-        postCondition.joinWith(other.postCondition);
-    }
-
-    public AbstractState<Domain> meet(AbstractState<Domain> other) {
-        AbstractState<Domain> result = new AbstractState<>(preCondition.copyOf());
-        result.preCondition = preCondition.meet(other.preCondition);
-        result.postCondition = postCondition.meet(other.postCondition);
-        return result;
-    }
-
-    public void meetWith(AbstractState<Domain> other) {
-        preCondition.meetWith(other.preCondition);
-        postCondition.meetWith(other.postCondition);
-    }
-
-    public AbstractState<Domain> widen(AbstractState<Domain> other) {
-        AbstractState<Domain> result = new AbstractState<>(preCondition.copyOf());
-        result.preCondition = preCondition.widen(other.preCondition);
-        result.postCondition = postCondition.widen(other.postCondition);
-        return result;
-    }
-
-    public void widenWith(AbstractState<Domain> other) {
-        preCondition.widenWith(other.preCondition);
-        postCondition.widenWith(other.postCondition);
-    }
-    
     public void resetCount() {
         visitedCount = 0;
+    }
+
+    public boolean isRestrictedFromExecution() {
+        return restrictedFromExecution;
+    }
+
+    public void markRestrictedFromExecution() {
+        restrictedFromExecution = true;
     }
 
     @Override

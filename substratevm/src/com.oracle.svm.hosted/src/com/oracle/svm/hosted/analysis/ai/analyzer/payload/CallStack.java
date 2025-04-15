@@ -4,6 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 import java.util.Deque;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Represents a call stack used to keep track and manage invoked methods during analysis.
@@ -50,8 +51,26 @@ public final class CallStack {
         return count;
     }
 
-    public boolean containsMethod(AnalysisMethod method) {
-        return callStack.contains(method);
+    public boolean hasMethodCallCycle(AnalysisMethod method) {
+        List<AnalysisMethod> compactedCallStack = new LinkedList<>();
+        for (AnalysisMethod callStackMethod : callStack) {
+            if (compactedCallStack.isEmpty() || !compactedCallStack.getLast().equals(callStackMethod)) {
+                compactedCallStack.add(callStackMethod);
+            }
+        }
+
+        /*
+         *  We don't want a trivial cycles like foo() -> foo(), which means simple recursion.
+         *  We are interested in cycles like foo() -> bar() -> foo() or foo() -> bar() -> baz() -> foo()
+         */
+        List<AnalysisMethod> methodList = compactedCallStack.reversed();
+        for (int i = 0; i < methodList.size() - 1; i++) {
+            if (methodList.get(i).equals(method)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public String formatCycleWithMethod(AnalysisMethod method) {
