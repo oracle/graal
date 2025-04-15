@@ -2601,7 +2601,13 @@ public final class JDWP {
                         case TagConstants.FLOAT -> input.readFloat();
                         case TagConstants.LONG -> input.readLong();
                         case TagConstants.DOUBLE -> input.readDouble();
-                        case TagConstants.ARRAY, TagConstants.STRING, TagConstants.OBJECT ->
+                        case TagConstants.ARRAY,
+                                        TagConstants.STRING,
+                                        TagConstants.CLASS_LOADER,
+                                        TagConstants.CLASS_OBJECT,
+                                        TagConstants.THREAD,
+                                        TagConstants.THREAD_GROUP,
+                                        TagConstants.OBJECT ->
                             context.getIds().fromId((int) input.readLong());
                         default -> throw new RuntimeException("should not reach here: " + tag);
                     };
