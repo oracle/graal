@@ -1,4 +1,4 @@
-package com.oracle.svm.graal.test.ai;
+package com.oracle.svm.graal.test.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;

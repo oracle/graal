@@ -1,9 +1,9 @@
-package com.oracle.svm.graal.test.ai;
+package com.oracle.svm.graal.test.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanAndDomain;
-import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.MapDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,7 +36,6 @@ public class MapDomainTest {
 
     @Test
     public void testDefaultConstructor() {
-        /* Default MapDomain is BOT */
         TestMapDomain<String, IntInterval> mapDomain = new TestMapDomain<>(new IntInterval());
         Assert.assertTrue(mapDomain.isBot());
         Assert.assertTrue(mapDomain.get("x").isTop());
@@ -57,6 +56,18 @@ public class MapDomainTest {
         mapDomain.setToBot();
         Assert.assertTrue(mapDomain.isBot());
         Assert.assertEquals(0, mapDomain.getSize());
+
+        TestMapDomain<String, IntInterval> mapDomain2 = new TestMapDomain<>(new IntInterval());
+        mapDomain2.setToTop();
+        mapDomain2.setToBot();
+        Assert.assertTrue(mapDomain2.isBot());
+    }
+
+    @Test
+    public void testSetToTop() {
+        TestMapDomain<String, IntInterval> mapDomain = new TestMapDomain<>(new IntInterval());
+        mapDomain.setToTop();
+        Assert.assertTrue(mapDomain.isTop());
     }
 
     @Test
@@ -82,6 +93,18 @@ public class MapDomainTest {
         mapDomain1.joinWith(mapDomain2);
         Assert.assertEquals(new IntInterval(1, 5), mapDomain1.get("x"));
         Assert.assertEquals(new IntInterval(3, 7), mapDomain1.get("y"));
+    }
+
+    @Test
+    public void testWidenWith() {
+        TestMapDomain<String, IntInterval> mapDomain1 = new TestMapDomain<>(new IntInterval());
+        TestMapDomain<String, IntInterval> mapDomain2 = new TestMapDomain<>(new IntInterval());
+        mapDomain1.put("x", new IntInterval(1, 5));
+        mapDomain2.put("x", new IntInterval(3, 7));
+        Assert.assertEquals(AbstractValueKind.VAL, mapDomain1.getKind());
+        Assert.assertEquals(AbstractValueKind.VAL, mapDomain2.getKind());
+        mapDomain1.widenWith(mapDomain2);
+        Assert.assertEquals(new IntInterval(1, IntInterval.MAX), mapDomain1.get("x"));
     }
 
     @Test
@@ -124,6 +147,11 @@ public class MapDomainTest {
         TestMapDomain<String, IntInterval> copy = mapDomain.copyOf();
         Assert.assertEquals(mapDomain, copy);
         Assert.assertNotSame(mapDomain, copy);
+
+        TestMapDomain<String, IntInterval> tmp = new TestMapDomain<>(new IntInterval());
+        tmp.setToTop();
+        TestMapDomain<String, IntInterval> copy2 = tmp.copyOf();
+        Assert.assertTrue(copy2.isTop());
     }
 
     @Test
@@ -173,7 +201,6 @@ public class MapDomainTest {
         map.put("key2", new BooleanAndDomain(false));
         TestMapDomain<String, BooleanAndDomain> mapDomain = new TestMapDomain<>(map, new BooleanAndDomain(false));
 
-        /* keep only the true values in the map */
         mapDomain.removeIf((entry) -> entry.getValue().getValue());
         Assert.assertTrue(mapDomain.get("key1").getValue());
         Assert.assertEquals(1, mapDomain.getSize());

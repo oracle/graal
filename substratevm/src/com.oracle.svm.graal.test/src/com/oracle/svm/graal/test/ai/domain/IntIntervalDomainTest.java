@@ -1,6 +1,6 @@
-package com.oracle.svm.graal.test.ai;
+package com.oracle.svm.graal.test.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -192,10 +192,20 @@ public class IntIntervalDomainTest {
     }
 
     @Test
-    public void testInverse() {
-        IntInterval interval = new IntInterval(IntInterval.MIN, 3);
-        interval.inverse();
-        Assert.assertEquals(4, interval.getLowerBound());
-        Assert.assertEquals(IntInterval.MAX, interval.getUpperBound());
+    public void testGetLowerInterval() {
+        IntInterval interval = new IntInterval(4, 6);
+        IntInterval result = IntInterval.getLowerInterval(interval);
+        Assert.assertEquals(IntInterval.MIN, result.getLowerBound());
+        Assert.assertEquals(3, result.getUpperBound());
     }
+
+    @Test
+    public void testGetHigherInterval() {
+        IntInterval interval = new IntInterval(4, 6);
+        IntInterval result = IntInterval.getHigherInterval(interval);
+        Assert.assertEquals(7, result.getLowerBound());
+        Assert.assertEquals(IntInterval.MAX, result.getUpperBound());
+    }
+
+
 }

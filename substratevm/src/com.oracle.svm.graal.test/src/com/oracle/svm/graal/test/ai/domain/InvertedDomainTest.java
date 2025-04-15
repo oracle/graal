@@ -1,7 +1,7 @@
-package com.oracle.svm.graal.test.ai;
+package com.oracle.svm.graal.test.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.InvertedDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import org.junit.Assert;
 import org.junit.Test;
 
