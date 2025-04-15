@@ -587,15 +587,25 @@ public abstract class ImageHeapScanner {
     }
 
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
-        imageHeap.addReachableObject(objectType, imageHeapConstant);
 
-        AnalysisType type = imageHeapConstant.getType();
-        Object object = bb.getSnippetReflectionProvider().asObject(Object.class, imageHeapConstant);
-        /* Simulated constants don't have a backing object and don't need to be processed. */
-        if (object != null) {
+        AnalysisType objectType = imageHeapConstant.getType();
+        if (imageHeapConstant.isBackedByHostedObject()) {
+            /* Simulated constants don't have a backing object and don't need to be processed. */
             try {
-                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
+                Object object = bb.getSnippetReflectionProvider().asObject(Object.class, imageHeapConstant);
+                /*
+                 * Before adding the object to ImageHeap.reachableObjects, where it could be read by
+                 * other threads, run validation checks, e.g., verify that the object's type can be
+                 * initialized at build time. Also run the validation before exposing the object to
+                 * other reachability hooks to avoid propagating an invalid object.
+                 */
+                hostVM.validateReachableObject(object);
+                /*
+                 * Note that reachability hooks can also reject objects based on specific validation
+                 * conditions, e.g., a started Thread should never be added to the image heap, but
+                 * the structure of the object is valid, as ensured by the validity check above.
+                 */
+                objectType.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();
@@ -603,6 +613,8 @@ public abstract class ImageHeapScanner {
                 throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace, e);
             }
         }
+
+        imageHeap.addReachableObject(objectType, imageHeapConstant);
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
