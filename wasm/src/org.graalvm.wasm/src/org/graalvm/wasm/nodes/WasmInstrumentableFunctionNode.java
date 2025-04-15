@@ -186,14 +186,16 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         if (sourceSection == null) {
                             return this;
                         }
-                        // if the source does not point to an existing file, or we are not allowed
-                        // to access it, we do not replace this node
-                        try {
-                            if (!context.environment().getInternalTruffleFile(sourceSection.getSource().getURI()).exists()) {
+                        if (!context.getContextOptions().debugTestMode()) {
+                            // if the source does not point to an existing file, or we are not
+                            // allowed to access it, we do not replace this node
+                            try {
+                                if (!context.environment().getInternalTruffleFile(sourceSection.getSource().getURI()).exists()) {
+                                    return this;
+                                }
+                            } catch (SecurityException | UnsupportedOperationException e) {
                                 return this;
                             }
-                        } catch (SecurityException | UnsupportedOperationException e) {
-                            return this;
                         }
                         final int functionStartOffset = module.functionSourceCodeStartOffset(functionIndex);
                         if (functionStartOffset == -1) {

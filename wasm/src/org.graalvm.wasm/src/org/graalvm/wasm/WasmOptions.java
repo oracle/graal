@@ -122,4 +122,7 @@ public class WasmOptions {
 
     @Option(help = "Allows the embedder to access memories as direct byte buffers.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> DirectByteBufferMemoryAccess = new OptionKey<>(false);
+
+    @Option(help = "Support instrumentation for functions that do not have their source available. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> DebugTestMode = new OptionKey<>(false);
 }
