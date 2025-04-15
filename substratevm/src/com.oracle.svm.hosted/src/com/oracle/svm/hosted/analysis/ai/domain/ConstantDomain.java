@@ -7,11 +7,11 @@ import java.util.Objects;
 /**
  * Abstract domain for flat lattice, also known as a 3 level lattice.
  * For domains that can be represented as a constant value and have infinite ascending and descending chains.
- *         ⊤
- *       / | \
+ * ⊤
+ * / | \
  * ... -1  0  1 ...
- *      \ | /
- *        ⊥
+ * \ | /
+ * ⊥
  *
  * @param <Value> the type of the constant value (e.g., Integer, Long, Float, Double)
  */

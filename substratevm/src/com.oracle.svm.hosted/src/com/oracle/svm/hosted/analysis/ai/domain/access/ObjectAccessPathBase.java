@@ -10,7 +10,7 @@ import java.util.Objects;
  */
 public final class ObjectAccessPathBase implements AccessPathBase {
 
-    private String prefix;
+    private final String prefix;
     private final ResolvedJavaType type;
     private final NodeSourcePosition position;
 
@@ -31,14 +31,10 @@ public final class ObjectAccessPathBase implements AccessPathBase {
         return type;
     }
 
-    @Override
-    public NodeSourcePosition getByteCodePosition() {
-        return position;
-    }
-
     /**
      * When passing object to a method as an argument, we do a renaming ( we add prefix ) to the object's access path
      * We don't want to create a placeHolder base because we would essentially lose information about type and position
+     *
      * @param prefix to add
      */
     @Override
@@ -49,6 +45,7 @@ public final class ObjectAccessPathBase implements AccessPathBase {
 
     /**
      * This is done in order to remove some prefix when joining this object back to the caller environment
+     *
      * @param regex to remove
      */
     @Override

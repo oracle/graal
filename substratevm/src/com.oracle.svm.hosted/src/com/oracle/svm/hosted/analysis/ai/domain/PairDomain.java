@@ -6,7 +6,7 @@ import java.util.Objects;
  * Represents a pair of two abstract domains.
  * Implemented using the cartesian product of the two abstract domains.
  *
- * @param <First> the type of the first abstract domain
+ * @param <First>  the type of the first abstract domain
  * @param <Second> the type of the second abstract domain
  */
 public final class PairDomain<

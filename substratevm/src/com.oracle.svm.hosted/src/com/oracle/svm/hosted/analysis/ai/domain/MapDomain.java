@@ -1,6 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.domain.value.MapValue;
 
 import java.util.Map;
@@ -28,16 +27,6 @@ public abstract class MapDomain<
         this.initialDomain = initialDomain;
     }
 
-    public MapDomain(AbstractValueKind kind, Domain initialDomain) {
-        super(kind, () -> new MapValue<>(initialDomain));
-        this.initialDomain = initialDomain;
-    }
-
-    public MapDomain(MapValue<Key, Domain> mapValue, Domain initialDomain) {
-        super(() -> mapValue);
-        this.initialDomain = initialDomain;
-    }
-
     @SuppressWarnings("this-escape")
     public MapDomain(Map<Key, Domain> map, Domain initialDomain) {
         super(() -> new MapValue<>(initialDomain));
@@ -46,7 +35,7 @@ public abstract class MapDomain<
     }
 
     public MapDomain(MapDomain<Key, Domain, Self> other) {
-        super(() -> new MapValue<>(other.getValue()));
+        super(other.getKind(), () -> new MapValue<>(other.getValue()));
         this.initialDomain = other.initialDomain.copyOf();
     }
 
@@ -76,6 +65,11 @@ public abstract class MapDomain<
 
     public void remove(Key key) {
         getValue().remove(key);
+        updateKind();
+    }
+
+    public void removeAllKeys() {
+        getValue().clear();
         updateKind();
     }
 

@@ -80,7 +80,10 @@ public final class MapValue<
 
     @Override
     public AbstractValueKind widenWith(MapValue<Key, Domain> other) {
-        return joinWith(other);
+        for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
+            map.merge(entry.getKey(), entry.getValue(), Domain::widen);
+        }
+        return getKind();
     }
 
     @Override

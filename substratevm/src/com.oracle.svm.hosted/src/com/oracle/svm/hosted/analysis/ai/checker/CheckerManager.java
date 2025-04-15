@@ -1,8 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.util.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;

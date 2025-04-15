@@ -18,22 +18,24 @@ public interface NodeInterpreter<Domain extends AbstractDomain<Domain>> {
     /**
      * Execute the edge between two nodes in a CFG of a single analysisMethod.
      * NOTE:
-     * This analysisMethod should update the pre-condition of the destination node according to the post-condition of the source.
+     * This method should update the pre-condition of the destination node according to the post-condition of the source.
      *
-     * @param source      the node from which the edge originates
-     * @param destination the node to which the edge goes
+     * @param source           the node from which the edge originates
+     * @param target           the node to which the edge goes
      * @param abstractStateMap of the analyzed method
-     * @return the updated abstract domain of the destination node
+     * @return the updated pre-condition of the target node
      */
-    Domain execEdge(Node source, Node destination, AbstractStateMap<Domain> abstractStateMap);
+    Domain execEdge(Node source, Node target, AbstractStateMap<Domain> abstractStateMap);
 
     /**
      * Execute the given node in the CFG of a single analysisMethod.
-     * NOTE: This analysisMethod should compute the post-condition of the node according to the given Graal IR {@link Node}.
-     * @param node to analyze
+     * NOTE:
+     * This method should update the pre-condition of the destination node according to the post-condition of the source.
+     *
+     * @param node             to analyze
      * @param abstractStateMap of the analyzed method
-     * @param invokeCallBack callback that can be used to analyze the summary of invokes
-     * @return the updated post-condition of the node
+     * @param invokeCallBack   callback that can be used to analyze the summary of invokes
+     * @return the updated post-condition of the target node
      */
     Domain execNode(Node node, AbstractStateMap<Domain> abstractStateMap, InvokeCallBack<Domain> invokeCallBack);
 }

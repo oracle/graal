@@ -16,7 +16,7 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
         super(SetValue::new);
     }
 
-    public SetDomain(AbstractValueKind kind) throws IllegalAccessException {
+    public SetDomain(AbstractValueKind kind) {
         super(kind, SetValue::new);
     }
 

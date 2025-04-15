@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.util;
+package com.oracle.svm.hosted.analysis.ai.log;
 
 public enum LoggerVerbosity {
     CHECKER, /* Log basic checker info -> amount of warnings and errors  */

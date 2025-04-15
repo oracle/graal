@@ -31,6 +31,7 @@ public class LatticeDomain<
 
     /**
      * Supply the value directly, and deduce the kind from the value
+     *
      * @param valueSupplier the supplier of the value
      */
     public LatticeDomain(Supplier<Value> valueSupplier) {
@@ -40,7 +41,8 @@ public class LatticeDomain<
 
     /**
      * Supply the kind and the value
-     * @param kind the kind of the domain
+     *
+     * @param kind          the kind of the domain
      * @param valueSupplier the supplier of the value
      */
     public LatticeDomain(AbstractValueKind kind, Supplier<Value> valueSupplier) {
@@ -100,19 +102,23 @@ public class LatticeDomain<
     }
 
     public void joinWith(Domain other) {
-        performJoinOperation(other, () -> kind = value.joinWith(other.getValue()));
+        performJoinLikeOperation(other, () -> kind = value.joinWith(other.getValue()));
     }
 
     public void widenWith(Domain other) {
-        performJoinOperation(other, () -> kind = value.widenWith(other.getValue()));
+        performJoinLikeOperation(other, () -> kind = value.widenWith(other.getValue()));
     }
 
     public void meetWith(Domain other) {
         performMeetOperation(other, () -> kind = value.meetWith(other.getValue()));
     }
 
-    protected void performJoinOperation(Domain other, Runnable operation) {
-        if (isTop() || other.isBot()) return;
+    /* Wrapper method for providing logic to handle join or widen operations */
+    protected void performJoinLikeOperation(Domain other, Runnable operation) {
+        if (isTop() || other.isBot()) {
+            return;
+        }
+
         if (other.isTop()) {
             setToTop();
             return;
@@ -127,7 +133,10 @@ public class LatticeDomain<
     }
 
     protected void performMeetOperation(Domain other, Runnable operation) {
-        if (isBot() || other.isTop()) return;
+        if (isBot() || other.isTop()) {
+            return;
+        }
+
         if (other.isBot()) {
             setToBot();
             return;

@@ -1,6 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
-import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.util.Objects;
@@ -23,24 +22,14 @@ public final class PlaceHolderAccessPathBase implements AccessPathBase {
     }
 
     @Override
-    public NodeSourcePosition getByteCodePosition() {
-        return null;
-    }
-
-    /**
-     * This base should always stay the same so this method does nothing
-     */
-    @Override
     public AccessPathBase addPrefix(String prefix) {
-        return this;
+        return new PlaceHolderAccessPathBase(prefix + name);
     }
 
-    /**
-     * This base should always stay the same so this method does nothing
-     */
     @Override
     public AccessPathBase removePrefix(String regex) {
-        return this;
+        String newPrefix = name.replaceFirst(regex, "");
+        return new PlaceHolderAccessPathBase(newPrefix);
     }
 
     @Override

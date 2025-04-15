@@ -1,4 +1,6 @@
-package com.oracle.svm.hosted.analysis.ai.domain;
+package com.oracle.svm.hosted.analysis.ai.domain.numerical;
+
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 import java.util.Objects;
 
@@ -240,6 +242,11 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         return false;
     }
 
+    /* We have leq, but we also need less than for {@link IntegerLessThanNode} */
+    public boolean isLessThan(IntInterval other) {
+        return this.upperBound < other.lowerBound;
+    }
+
     public IntInterval div(IntInterval other) {
         IntInterval result = new IntInterval(this);
         result.divWith(other);
@@ -263,39 +270,29 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         return result;
     }
 
-    /**
-     * Inverses the interval, modifying it in the process
-     * for [-inf, 3] returns [4, inf]
-     * for [5, inf] returns [-inf, 4]
-     * for [-inf, inf] returns [1, 0] (any bot is ok)
-     * NOTE: only works for interval that are unbounded from at least one side
-     */
-    public void inverse() {
-        if (isTop()) {
-            this.lowerBound = 1; // Set to "bot"
-            this.upperBound = 0;
-            return;
+    public static IntInterval getLowerInterval(IntInterval interval) {
+        if (interval.isTop()) {
+            AbstractDomain.createBot(interval);
         }
-        if (lowerBound == MIN) {
-            this.lowerBound = upperBound + 1;
-            this.upperBound = MAX;
-            return;
+
+        long lowerBound = interval.getLowerBound();
+        if (lowerBound != MIN) {
+            lowerBound--;
         }
-        if (upperBound == MAX) {
-            this.upperBound = lowerBound - 1;
-            this.lowerBound = MIN;
-        }
+
+        return new IntInterval(MIN, lowerBound);
     }
 
-    /**
-     * Static utility method to for creating an inverse interval
-     *
-     * @param interval The original interval.
-     * @return A new `IntInterval` that is the inverse.
-     */
-    public static IntInterval getInverseInterval(IntInterval interval) {
-        IntInterval result = new IntInterval(interval);
-        result.inverse();
-        return result;
+    public static IntInterval getHigherInterval(IntInterval interval) {
+        if (interval.isBot()) {
+            return AbstractDomain.createTop(interval);
+        }
+
+        long upperBound = interval.getUpperBound();
+        if (upperBound != MAX) {
+            upperBound++;
+        }
+
+        return new IntInterval(upperBound, MAX);
     }
 }
