@@ -620,6 +620,7 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
     excludes = []
     language_distribution.suite.visit_imports(_collect_excludes, excludes=excludes)
     svmbuild = mkdtemp()
+    success = False
     try:
         report_file = join(svmbuild, "language_permissions.log")
         options = mx.get_runtime_jvm_args(dists, exclude_names=['substratevm:SVM']) + [
@@ -647,8 +648,11 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
                 mx.abort(message)
             else:
                 return message
+        else:
+            success = True
     finally:
-        mx.rmtree(svmbuild)
+        if success:
+            mx.rmtree(svmbuild)
     return None
 
 
@@ -663,7 +667,7 @@ def gate_truffle_native_tck_smoke_test(tasks):
                 if not 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' in result:
                     mx.abort("Expected failure, log:\n" + result)
 
-                expected_methods = [
+                must_have_methods = [
                     'PrivilegedCallNode.callConstructorReflectively',
                     'PrivilegedCallNode.callMethodHandle',
                     'PrivilegedCallNode.callMethodReflectively',
@@ -674,11 +678,17 @@ def gate_truffle_native_tck_smoke_test(tasks):
                     'ServiceImpl.execute',
                     'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
                     'UnsafeCallNode.doUnsafeAccess',
+                    'DeniedURLNode.doURLOf'
                 ]
-                for expected_method in expected_methods:
-                    if expected_method not in result:
-                        mx.abort(f"Missing {expected_method} call in the log.\nLog content:\n" + result)
-
+                must_not_have_methods = [
+                    'AllowedURLNode.doURLOf'
+                ]
+                for method in must_have_methods:
+                    if method not in result:
+                        mx.abort(f"Missing {method} call in the log.\nLog content:\n" + result)
+                for method in must_not_have_methods:
+                    if method in result:
+                        mx.abort(f"Found {method} call in the log.\nLog content:\n" + result)
 
 def gate_truffle_native_tck_js(tasks):
     with Task('JavaScript Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_js]) as t:
