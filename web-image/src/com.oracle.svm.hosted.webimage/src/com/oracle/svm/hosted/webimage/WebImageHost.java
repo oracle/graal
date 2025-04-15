@@ -28,13 +28,13 @@ package com.oracle.svm.hosted.webimage;
 import java.util.Optional;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
+import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;

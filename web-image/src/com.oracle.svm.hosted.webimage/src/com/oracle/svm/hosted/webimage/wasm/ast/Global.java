@@ -25,8 +25,8 @@
 
 package com.oracle.svm.hosted.webimage.wasm.ast;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 public class Global extends ModuleField {
     private final WasmId.Global id;

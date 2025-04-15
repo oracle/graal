@@ -32,9 +32,9 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
 import com.oracle.svm.hosted.webimage.util.ReflectUtil;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.vm.ci.code.BytecodePosition;
 

@@ -32,9 +32,9 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.webimage.JSKeyword;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResource;
@@ -53,7 +53,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCCodeCache;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.visitors.WasmGCElementCreator;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter.ObjectData;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.JSKeyword;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;

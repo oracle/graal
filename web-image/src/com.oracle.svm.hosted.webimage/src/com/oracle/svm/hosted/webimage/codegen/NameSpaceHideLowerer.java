@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
+
+import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 
 /**
  * Wraps the Web Image namespace into its own scope so that definitions don't leak out.

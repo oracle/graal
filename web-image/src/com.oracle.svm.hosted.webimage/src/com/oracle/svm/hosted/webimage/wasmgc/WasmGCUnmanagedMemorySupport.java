@@ -30,9 +30,9 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 // GR-60261 Support unmanaged memory
 @AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)

@@ -27,12 +27,12 @@ package com.oracle.svm.hosted.webimage.codegen.compatibility;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.options.OptionValues;
-
-import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResources;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+
+import jdk.graal.compiler.hightiercodegen.CodeBuffer;
+import jdk.graal.compiler.options.OptionValues;
 
 /**
  * Class supports operations for measuring the time from a start to an end point and print the spent

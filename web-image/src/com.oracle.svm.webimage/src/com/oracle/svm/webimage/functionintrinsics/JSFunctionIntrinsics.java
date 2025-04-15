@@ -30,11 +30,11 @@ import java.util.Arrays;
 
 import org.graalvm.webimage.api.JS;
 
-import com.oracle.svm.webimage.ExitError;
-import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.webimage.ExitError;
+import com.oracle.svm.webimage.annotation.JSRawCall;
 
 /*
  * Checkstyle: stop method name check

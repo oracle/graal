@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.webimage.substitute.system;
 
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 @SuppressWarnings("unused")

@@ -29,9 +29,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 /**
  * Represents a WASM function definition.

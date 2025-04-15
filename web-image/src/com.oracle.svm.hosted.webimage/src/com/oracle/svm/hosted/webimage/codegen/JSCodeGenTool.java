@@ -31,21 +31,21 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.webimage.api.JSValue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.webimage.api.JSValue;
 
-import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.webimage.LowerableFile;
-import com.oracle.svm.webimage.annotation.WebImage;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.JSKeyword;
+import com.oracle.svm.webimage.LowerableFile;
+import com.oracle.svm.webimage.annotation.WebImage;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;

@@ -28,14 +28,13 @@ package com.oracle.svm.hosted.webimage.wasm.snippets;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class WebImageWasmNonSnippetLowerings extends NonSnippetLowerings {

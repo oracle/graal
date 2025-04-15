@@ -42,14 +42,14 @@ import java.util.stream.Stream;
 import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.webimage.object.ConstantIdentityMapping.IdentityNode;
-import com.oracle.svm.webimage.object.ObjectInspector.ObjectDefinition;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.webimage.object.ConstantIdentityMapping.IdentityNode;
+import com.oracle.svm.webimage.object.ObjectInspector.ObjectDefinition;
 
 import jdk.graal.compiler.debug.GraalError;
 

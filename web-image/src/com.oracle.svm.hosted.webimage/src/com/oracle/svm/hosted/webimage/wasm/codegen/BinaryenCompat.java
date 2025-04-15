@@ -27,9 +27,9 @@ package com.oracle.svm.hosted.webimage.wasm.codegen;
 
 import java.util.Objects;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.webimage.wasm.ast.visitors.WasmPrinter;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.code.site.Reference;

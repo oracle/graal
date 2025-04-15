@@ -28,7 +28,6 @@ package com.oracle.svm.hosted.webimage.wasmgc.ast.id;
 import java.util.EnumMap;
 import java.util.List;
 
-import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
@@ -38,6 +37,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCCloneSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCFunctionTemplates;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCJSBodyTemplates;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCUnsafeTemplates;
+import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
 import jdk.vm.ci.meta.JavaKind;
 

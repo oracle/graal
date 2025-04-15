@@ -30,12 +30,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.JavaFrame;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 import jdk.vm.ci.meta.SpeculationLog;
 

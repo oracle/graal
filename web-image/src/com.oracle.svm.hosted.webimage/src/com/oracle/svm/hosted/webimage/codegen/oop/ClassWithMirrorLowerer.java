@@ -30,13 +30,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import org.graalvm.webimage.api.JS;
-import org.graalvm.webimage.api.JSObject;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.webimage.api.JS;
+import org.graalvm.webimage.api.JSObject;
 
-import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.webimage.Labeler;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.meta.HostedClass;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
@@ -44,11 +47,8 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippet;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.meta.HostedClass;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.JSKeyword;
+import com.oracle.svm.webimage.Labeler;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;

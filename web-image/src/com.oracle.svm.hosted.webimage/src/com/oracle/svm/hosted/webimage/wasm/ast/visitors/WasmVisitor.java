@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted.webimage.wasm.ast.visitors;
 
-import com.oracle.svm.webimage.wasm.types.WasmStorageType;
 import com.oracle.svm.hosted.webimage.wasm.ast.Data;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.Function;
@@ -48,6 +47,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.RecursiveGroup;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.StructType;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.TypeDefinition;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.webimage.wasm.types.WasmStorageType;
 
 import jdk.graal.compiler.debug.GraalError;
 

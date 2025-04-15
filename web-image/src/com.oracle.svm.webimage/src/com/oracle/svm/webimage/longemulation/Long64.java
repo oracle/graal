@@ -30,8 +30,8 @@ package com.oracle.svm.webimage.longemulation;
  *  which is licensed under Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
  */
 
-import org.graalvm.webimage.api.JS;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.webimage.api.JS;
 
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;

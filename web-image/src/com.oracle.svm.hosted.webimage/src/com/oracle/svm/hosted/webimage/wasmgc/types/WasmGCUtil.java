@@ -28,9 +28,6 @@ package com.oracle.svm.hosted.webimage.wasmgc.types;
 import java.util.List;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.webimage.wasm.types.WasmStorageType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.webimage.wasm.ast.FunctionTypeDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
@@ -39,6 +36,9 @@ import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
+import com.oracle.svm.webimage.wasm.types.WasmStorageType;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;

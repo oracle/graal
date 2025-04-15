@@ -27,16 +27,16 @@ package com.oracle.svm.hosted.webimage.phases;
 import java.util.EnumMap;
 import java.util.Locale;
 
-import org.graalvm.webimage.api.JSResource;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.webimage.api.JSResource;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
-import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
+import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;

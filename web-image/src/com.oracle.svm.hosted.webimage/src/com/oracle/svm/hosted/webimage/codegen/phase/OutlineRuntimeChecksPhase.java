@@ -28,8 +28,8 @@ package com.oracle.svm.hosted.webimage.codegen.phase;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;

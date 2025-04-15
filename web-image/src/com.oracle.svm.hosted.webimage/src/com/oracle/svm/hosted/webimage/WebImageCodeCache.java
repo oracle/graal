@@ -36,7 +36,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.webimage.reflect.WebImageMetadataAccessor;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
@@ -48,13 +47,14 @@ import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.hosted.DeadlockWatchdog;
-import com.oracle.svm.hosted.webimage.codegen.WebImageCompilationResult;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.webimage.codegen.WebImageCompilationResult;
+import com.oracle.svm.webimage.reflect.WebImageMetadataAccessor;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;

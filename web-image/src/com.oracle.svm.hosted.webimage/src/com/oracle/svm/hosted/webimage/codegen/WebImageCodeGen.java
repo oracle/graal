@@ -39,12 +39,13 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.webimage.Labeler;
-import com.oracle.svm.webimage.NamingConvention;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.webimage.CodeSizeDiagnostics;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
@@ -60,9 +61,8 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions.CommentVerbosity;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.webimage.Labeler;
+import com.oracle.svm.webimage.NamingConvention;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.MetricKey;

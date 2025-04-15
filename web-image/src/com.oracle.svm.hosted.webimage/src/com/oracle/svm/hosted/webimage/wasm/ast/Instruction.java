@@ -38,12 +38,12 @@ import java.util.Objects;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;

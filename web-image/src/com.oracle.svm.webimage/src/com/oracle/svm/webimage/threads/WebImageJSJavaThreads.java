@@ -27,9 +27,9 @@ package com.oracle.svm.webimage.threads;
 
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.platform.WebImagePlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.webimage.platform.WebImagePlatform;
 
 /**
  * Manage threads in the JavaScript runtime.

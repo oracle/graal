@@ -34,10 +34,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.wasm.ast.ImportDescriptor;
@@ -45,6 +41,10 @@ import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.NodeView;

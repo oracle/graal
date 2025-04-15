@@ -47,14 +47,14 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.oracle.svm.webimage.Labeler;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.logging.LoggableMetric;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.Labeler;
 
 import jdk.graal.compiler.debug.MetricKey;
 

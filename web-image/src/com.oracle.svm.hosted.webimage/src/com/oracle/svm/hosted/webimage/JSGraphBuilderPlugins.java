@@ -31,9 +31,9 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.hosted.webimage.wasm.WasmLMGraphBuilderPlugins;
+import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;

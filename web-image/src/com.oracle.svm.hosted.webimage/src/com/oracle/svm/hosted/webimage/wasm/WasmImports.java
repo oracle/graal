@@ -29,10 +29,10 @@ import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.f32;
 import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.f64;
 import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.i32;
 
-import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.hosted.webimage.wasm.ast.ImportDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
+import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
 /**
  * Collection of functions imported from the embedder to perform external operations.

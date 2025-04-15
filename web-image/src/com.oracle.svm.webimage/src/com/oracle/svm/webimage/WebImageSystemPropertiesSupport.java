@@ -25,8 +25,8 @@
 
 package com.oracle.svm.webimage;
 
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 
 public class WebImageSystemPropertiesSupport extends SystemPropertiesSupport {
 

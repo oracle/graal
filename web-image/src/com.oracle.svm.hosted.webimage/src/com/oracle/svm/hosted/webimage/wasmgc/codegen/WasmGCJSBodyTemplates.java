@@ -27,9 +27,6 @@ package com.oracle.svm.hosted.webimage.wasmgc.codegen;
 
 import org.graalvm.webimage.api.JSValue;
 
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.hosted.webimage.wasm.ast.Function;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instructions;
@@ -39,6 +36,9 @@ import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmFunctionTemplate;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

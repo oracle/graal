@@ -28,11 +28,6 @@ package com.oracle.svm.hosted.webimage.wasm.ast.visitors;
 import java.io.IOException;
 import java.io.Writer;
 
-import com.oracle.svm.webimage.wasm.types.WasmPackedType;
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmStorageType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Data;
@@ -60,6 +55,11 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.RecursiveGroup;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.StructType;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.TypeDefinition;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.webimage.wasm.types.WasmPackedType;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmStorageType;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;

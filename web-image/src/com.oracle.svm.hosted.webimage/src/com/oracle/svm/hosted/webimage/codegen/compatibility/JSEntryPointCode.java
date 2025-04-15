@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.compatibility;
 
-import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
-import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.Array;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.Runtime;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.JSKeyword;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
+import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
 
 import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.hightiercodegen.Emitter;

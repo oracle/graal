@@ -30,7 +30,6 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -46,6 +45,7 @@ import com.oracle.svm.hosted.webimage.codegen.WebImageNoRegisterConfig;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmAssembler;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmLMBackend;
 import com.oracle.svm.hosted.webimage.wasm.phases.WebImageWasmLMSuitesCreatorProvider;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;

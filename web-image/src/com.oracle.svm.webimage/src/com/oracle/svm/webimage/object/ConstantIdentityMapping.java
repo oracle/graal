@@ -30,18 +30,18 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
+import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.webimage.JSNameGenerator;
 import com.oracle.svm.webimage.object.ObjectInspector.ClassFieldList;
 import com.oracle.svm.webimage.object.ObjectInspector.MethodPointerType;
 import com.oracle.svm.webimage.object.ObjectInspector.ObjectDefinition;
 import com.oracle.svm.webimage.object.ObjectInspector.StringType;
-import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

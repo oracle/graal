@@ -31,10 +31,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
-import com.oracle.svm.webimage.platform.WebImagePlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -42,6 +38,10 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.webimage.codegen.ClosureCompilerSupport;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
+import com.oracle.svm.webimage.platform.WebImagePlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;

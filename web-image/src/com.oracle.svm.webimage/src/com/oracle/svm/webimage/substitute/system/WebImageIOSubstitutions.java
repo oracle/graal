@@ -45,10 +45,6 @@ import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.webimage.fs.WebImageNIOFileSystemProvider;
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
-import com.oracle.svm.webimage.print.WebImageOutErrPrinters;
-import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -59,6 +55,10 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.webimage.fs.WebImageNIOFileSystemProvider;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import com.oracle.svm.webimage.print.WebImageOutErrPrinters;
+import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 
 /*
  * Checkstyle: stop method name check
