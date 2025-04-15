@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
@@ -42,6 +43,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
+
+import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
 
 import jdk.graal.compiler.graph.Node;
@@ -59,14 +62,22 @@ import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
-
+    private final Boolean trackDynamicAccess;
     private final Boolean trackJavaHomeAccess;
     private final Boolean trackJavaHomeAccessDetailed;
 
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
-        trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue(bb.getOptions());
-        trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue(bb.getOptions());
+        trackDynamicAccess = SubstrateOptions.TrackDynamicAccess.hasBeenSet();
+        trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue();
+        trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue();
+    }
+
+    @Override
+    protected void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
+        if (trackDynamicAccess) {
+            new DynamicAccessDetectionPhase().apply(graph, bb.getProviders(method));
+        }
     }
 
     @Override

@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -1413,4 +1414,12 @@ public class SubstrateOptions {
                      2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
                      3. All @TargetClass substitutions in classes loaded by the custom loader are processed.""")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
+
+    @Option(help = "Serialize all method calls requiring metadata for dynamic access in the reached parts of the project, limited to the provided comma-separated list of class path entries and module or package names.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackDynamicAccess = new HostedOptionKey<>(
+            AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @Option(help = "Output all method calls requiring metadata for dynamic access found by -H:TrackDynamicAccess to the console.")
+    public static final HostedOptionKey<Boolean> ReportDynamicAccessToConsole = new HostedOptionKey<>(
+            false);
 }
