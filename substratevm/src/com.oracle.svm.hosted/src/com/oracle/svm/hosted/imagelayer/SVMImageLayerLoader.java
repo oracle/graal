@@ -54,12 +54,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.shaded.org.capnproto.ListReader;
-import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
-import com.oracle.svm.shaded.org.capnproto.StructList;
-import com.oracle.svm.shaded.org.capnproto.StructReader;
-import com.oracle.svm.shaded.org.capnproto.Text;
-import com.oracle.svm.shaded.org.capnproto.TextList;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
@@ -87,6 +82,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -124,6 +120,12 @@ import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
+import com.oracle.svm.shaded.org.capnproto.ListReader;
+import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
+import com.oracle.svm.shaded.org.capnproto.StructList;
+import com.oracle.svm.shaded.org.capnproto.StructReader;
+import com.oracle.svm.shaded.org.capnproto.Text;
+import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -1536,7 +1538,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         } else if (relinking.isFieldConstant()) {
             var fieldConstant = relinking.getFieldConstant();
             AnalysisField analysisField = getAnalysisFieldForBaseLayerId(fieldConstant.getOriginFieldId());
-            if (!(analysisField.getWrapped() instanceof BaseLayerField)) {
+            if (!(analysisField.getWrapped() instanceof BaseLayerField) && !AnnotationAccess.isAnnotationPresent(analysisField, Delete.class)) {
                 VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Should not alter the initialization status for simulated constants.");
                 /*
                  * The declaring type of relinked fields was already initialized in the previous
