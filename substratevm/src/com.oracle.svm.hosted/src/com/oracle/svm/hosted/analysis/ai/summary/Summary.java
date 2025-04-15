@@ -17,6 +17,7 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Gets the invokeNode of the method that this summary represents.
+     *
      * @return the invokeNode of the method
      */
     Invoke getInvoke();
@@ -25,9 +26,9 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      * Returns the pre-condition of the summary.
      * Pre-condition of a summary is the abstract context before the method body is executed.
      * NOTE:
-     *      This doesn't have to be the same as the abstract context at the invocation point.
-     *      {@link SummaryFactory} implementations can choose only the relevant information from the abstract context
-     *      and create a summary pre-condition. This is done to reduce the size of the summary.
+     * This doesn't have to be the same as the abstract context at the invocation point.
+     * {@link SummaryFactory} implementations can choose only the relevant information from the abstract context
+     * and create a summary pre-condition. This is done to reduce the size of the summary.
      *
      * @return the pre-condition of the summary
      */
@@ -36,8 +37,9 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     /**
      * Returns the post-condition of the summary.
      * NOTE:
-     *      Same as in {@code getPreCondition}, this doesn't have to be the same as the abstract context at the return point.
-     *      We can remove information that won't be needed in applySummary (in the caller abstract context).
+     * Same as in {@code getPreCondition}, this doesn't have to be the same as the abstract context at the return point.
+     * We can remove information that won't be needed in applySummary (in the caller abstract context).
+     *
      * @return the post-condition of the summary
      */
     Domain getPostCondition();
@@ -58,8 +60,9 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     boolean subsumesSummary(Summary<Domain> other);
 
     /**
-     * This method is called by the framework after the fixpoint computation of the analysisMethod body.
+     * This method is called by the framework after the fixpoint computation of the method body.
      * It should finalize the summary by correctly modifying the post-condition of the summary.
+     * It needs to handle the case when the callee post-condition is {BOT or TOP}.
      *
      * @param calleePostCondition the post-condition of the analysisMethod body
      */

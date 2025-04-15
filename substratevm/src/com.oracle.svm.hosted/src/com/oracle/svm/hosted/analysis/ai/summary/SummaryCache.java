@@ -24,12 +24,12 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
     /**
      * Gets the summary of the {@param calleeName} with the given target name and summary precondition.
      * NOTE:
-     *      When there are multiple summaries that are subsuming {@param summaryPrecondition}, we should return the most general one.
-     *      However, there are many ways how to do this, we can choose the most precise summary,
-     *      or we can take all the subsuming summaries, perform some kind of merge
-     *      (would require meet operation in {@link Summary} api) and return the result.
+     * When there are multiple summaries that are subsuming {@param summaryPrecondition}, we should return the most general one.
+     * However, there are many ways how to do this, we can choose the most precise summary,
+     * or we can take all the subsuming summaries, perform some kind of merge
+     * (would require meet operation in {@link Summary} api) and return the result.
      *
-     * @param method the method we are searching summary for
+     * @param method              the method we are searching summary for
      * @param summaryPrecondition the precondition of the callee
      * @return the summary for targetName with given summaryPrecondition
      */
@@ -63,7 +63,7 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
     /**
      * Checks if the cache contains a summary for the given {@param method} and precondition.
      *
-     * @param method          the method we are searching summary for
+     * @param method              the method we are searching summary for
      * @param summaryPrecondition the precondition of the callee
      * @return true if the cache contains the summary, false otherwise
      */
@@ -85,8 +85,8 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
      * Puts a summary for a callee into the cache.
      * The summary must be complete, meaning {@code finalizeSummary} must be called before putting it into the cache.
      *
-     * @param method     the method we are putting the summary for
-     * @param summary    the summary to put
+     * @param method  the method we are putting the summary for
+     * @param summary the summary to put
      */
     public void put(ResolvedJavaMethod method, Summary<Domain> summary) {
         cache.computeIfAbsent(method, k -> new ArrayList<>()).add(summary);

@@ -8,9 +8,10 @@ import java.util.List;
 
 /**
  * Manages summaries for functions.
+ *
  * @param summaryFactory
  * @param summaryCache
- * @param <Domain> the type of derived {@link AbstractDomain} used in the analysis
+ * @param <Domain>       the type of derived {@link AbstractDomain} used in the analysis
  */
 public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFactory<Domain> summaryFactory,
                                                                     SummaryCache<Domain> summaryCache) {
@@ -28,7 +29,7 @@ public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFacto
     /**
      * Gets a summary from the summary cache.
      *
-     * @param calleeMethod the method we are searching summary for
+     * @param calleeMethod        the method we are searching summary for
      * @param summaryPrecondition the precondition of the callee
      * @return the summary for targetName with given summaryPrecondition
      */
@@ -39,7 +40,7 @@ public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFacto
     /**
      * Checks if the summary cache contains a summary for the given target name and precondition.
      *
-     * @param calleeMethod the method we are searching summary for
+     * @param calleeMethod        the method we are searching summary for
      * @param summaryPrecondition the precondition of the callee of the {@param calleeMethod}
      * @return true if the cache contains the summary, false otherwise
      */
@@ -51,7 +52,7 @@ public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFacto
      * Puts a summary into the summary cache.
      *
      * @param calleeMethod the method we are putting the summary for
-     * @param summary the summary to put
+     * @param summary      the summary to put
      */
     public void putSummary(ResolvedJavaMethod calleeMethod, Summary<Domain> summary) {
         summaryCache.put(calleeMethod, summary);
