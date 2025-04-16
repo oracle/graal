@@ -46,6 +46,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -142,13 +144,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         assert !sticky || source.getOptions().isBooleanMatch() || result == RegexResult.getNoMatchInstance() || RegexResult.RegexResultGetStartNode.getUncached().execute(result, 0) == fromIndex;
         assert validResult(input, fromIndex, maxIndex, regionFrom, regionTo, result);
         if (regressionTestMode) {
-            if (!(backtrackerProducesSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result) &&
-                            nfaProducesSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result) &&
-                            noSimpleCGLazyDFAProducesSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result) &&
-                            (source.getOptions().isBooleanMatch() || eagerAndLazyDFAProduceSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result)))) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new AssertionError("Inconsistent results between different matching modes");
-            }
+            runInternalRegressionTests(frame.materialize(), input, fromIndex, maxIndex, regionFrom, regionTo, result);
         }
 
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
@@ -206,7 +202,17 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return true;
     }
 
-    private RegexResult regressionTestRun(VirtualFrame frame, RunRegexSearchNode node, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo) {
+    @TruffleBoundary
+    private void runInternalRegressionTests(MaterializedFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
+        if (!(backtrackerProducesSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result) &&
+                        nfaProducesSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result) &&
+                        noSimpleCGLazyDFAProducesSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result) &&
+                        (source.getOptions().isBooleanMatch() || eagerAndLazyDFAProduceSameResult(frame, input, fromIndex, maxIndex, regionFrom, regionTo, result)))) {
+            throw new AssertionError("Inconsistent results between different matching modes");
+        }
+    }
+
+    private RegexResult regressionTestRun(MaterializedFrame frame, RunRegexSearchNode node, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo) {
         RunRegexSearchNode old = runnerNode;
         runnerNode = insert(node);
         RegexResult result = runnerNode.run(frame, input, fromIndex, maxIndex, regionFrom, regionTo);
@@ -214,7 +220,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return result;
     }
 
-    private boolean backtrackerProducesSameResult(VirtualFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
+    private boolean backtrackerProducesSameResult(MaterializedFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
         RegexResult btResult = regressionTestRun(frame, regressTestBacktrackingNode, input, fromIndex, maxIndex, regionFrom, regionTo);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
@@ -223,7 +229,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean nfaProducesSameResult(VirtualFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
+    private boolean nfaProducesSameResult(MaterializedFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
         if (lazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
@@ -236,7 +242,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean noSimpleCGLazyDFAProducesSameResult(VirtualFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
+    private boolean noSimpleCGLazyDFAProducesSameResult(MaterializedFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
         if (lazyDFANode == LAZY_DFA_BAILED_OUT || !lazyDFANode.isSimpleCG() || regressTestNoSimpleCGLazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
@@ -249,7 +255,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean eagerAndLazyDFAProduceSameResult(VirtualFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult resultOfCurrentSearchNode) {
+    private boolean eagerAndLazyDFAProduceSameResult(MaterializedFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult resultOfCurrentSearchNode) {
         if (lazyDFANode.captureGroupEntryNode == null || eagerDFANode == EAGER_DFA_BAILED_OUT) {
             return true;
         }
