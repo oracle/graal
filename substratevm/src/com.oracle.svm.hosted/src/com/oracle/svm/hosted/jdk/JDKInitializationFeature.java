@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 public class JDKInitializationFeature implements InternalFeature {
-    private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
+    static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -72,8 +72,10 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.text", JDK_CLASS_REASON);
+
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         rci.initializeAtRunTime("java.time.chrono.HijrahChronology", "Reads java.home in class initializer.");
+
         rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
         rci.initializeAtRunTime("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
@@ -83,7 +85,6 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("javax.naming", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
@@ -94,15 +95,6 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("jdk.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
-        rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
-        /*
-         * The XML classes have cyclic class initializer dependencies, and class initialization can
-         * deadlock/fail when initialization is started at the "wrong part" of the cycle.
-         * Force-initializing the correct class of the cycle here, in addition to the
-         * "whole package" initialization above, breaks the cycle because it triggers immediate
-         * initilalization here before the static analysis is started.
-         */
-        rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlUtils", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.invoke", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.launcher", JDK_CLASS_REASON);
@@ -145,11 +137,30 @@ public class JDKInitializationFeature implements InternalFeature {
 
         /* XML-related */
         if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
-            // GR-50683 should remove this part
-            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
-            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
-            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+            /*
+             * still initialization due to the security services that reach the XMLSecurityManager
+             */
+            rci.initializeAtBuildTime("javax.xml.catalog.CatalogImpl", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.CatalogResolver$NotFoundAction$1", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.CatalogResolver$NotFoundAction$2", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.CatalogResolver$NotFoundAction$3", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.SystemSuffix", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.SystemEntry", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.CatalogFeatures", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.BaseEntry$CatalogEntryType", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.CatalogFeatures$State", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
+            rci.initializeAtBuildTime("javax.xml.catalog.PublicEntry", "Security providers initialized at build time: jdk.xml.internal.XMLSecurityManager");
         } else {
+            rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
+            /*
+             * The XML classes have cyclic class initializer dependencies, and class initialization
+             * can deadlock/fail when initialization is started at the "wrong part" of the cycle.
+             * Force-initializing the correct class of the cycle here, in addition to the
+             * "whole package" initialization above, breaks the cycle because it triggers immediate
+             * initilalization here before the static analysis is started.
+             */
+            rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlUtils", JDK_CLASS_REASON);
+
             rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
@@ -228,8 +239,6 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtRunTime("jdk.internal.foreign.abi.fallback.FFIType", "Fails build-time initialization");
         rci.initializeAtRunTime("jdk.internal.foreign.abi.fallback.FFIABI", "Fails build-time initialization");
         rci.initializeAtRunTime("sun.reflect.misc.Trampoline", "Fails build-time initialization");
-
-        rci.initializeAtRunTime("com.sun.org.apache.xml.internal.serialize.HTMLdtd", "Fails build-time initialization");
 
         rci.initializeAtRunTime("sun.security.ssl.SSLContextImpl$DefaultSSLContextHolder", "Stores secure random");
         rci.initializeAtRunTime("sun.security.ssl.SSLSocketFactoryImpl", "Stores secure random");
