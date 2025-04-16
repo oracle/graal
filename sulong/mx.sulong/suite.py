@@ -1670,6 +1670,7 @@ suite = {
         "truffle.nfi.library": "../jvmlibs/<lib:trufflenfi>",
       },
       "liblang_relpath": "../lib/<lib:llvmvm>",
+      "defaultBuild": False,
     },
 
     "native_toolchain_wrapper": {
@@ -1683,6 +1684,7 @@ suite = {
       "relative_jre_path": "../../../../jvm",
       "relative_module_path": "../../../../modules",
       "liblang_relpath": "../lib/<lib:nativetoolchainwrappers>",
+      "defaultBuild": False,
     },
 
     "libllvmvm": {
@@ -1697,6 +1699,7 @@ suite = {
         "-Dorg.graalvm.launcher.class=com.oracle.truffle.llvm.launcher.LLVMLauncher",
       ],
       "dynamicBuildArgs": "libllvmvm_build_args",
+      "defaultBuild": False,
     },
 
     "libnativetoolchainwrappers": {
@@ -1711,6 +1714,7 @@ suite = {
         # Configure launcher
         "-Dorg.graalvm.launcher.class=com.oracle.truffle.llvm.toolchain.launchers.NativeToolchainWrapper",
       ],
+      "defaultBuild": False,
     },
   },
 
@@ -2016,6 +2020,7 @@ suite = {
       ],
       "dynamicDistDependencies": "sulong_standalone_deps",
       "maven": False,
+      "defaultBuild": False,
     },
 
     "SULONG_NATIVE_AND_LLVM_TOOLCHAIN_JVM_WRAPPERS": {
@@ -2079,6 +2084,7 @@ suite = {
         "lib/sulong/native/bin/<exe:strip>": "dependency:native_toolchain_wrapper",
         "lib/sulong/native/bin/<exe:llvm-strip>": "dependency:native_toolchain_wrapper",
       },
+      "defaultBuild": False,
     },
 
     "SULONG_NATIVE_AND_LLVM_TOOLCHAIN": {
@@ -2090,6 +2096,7 @@ suite = {
         "./": "dependency:SULONG_NATIVE_AND_LLVM_TOOLCHAIN_JVM_WRAPPERS/*",
         "lib/sulong/native/lib/": "dependency:libnativetoolchainwrappers",
       },
+      "defaultBuild": False,
     },
 
     "SULONG_STANDALONE_COMMON": {
@@ -2105,6 +2112,7 @@ suite = {
         "bin/<exe:lli>": "dependency:sulong_thin_launcher",
         "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
       },
+      "defaultBuild": False,
     },
 
     "SULONG_LIBLLVMVM": {
@@ -2117,6 +2125,7 @@ suite = {
           "dependency:libllvmvm",
         ],
       },
+      "defaultBuild": False,
     },
 
     "SULONG_NATIVE_STANDALONE": {
@@ -2130,6 +2139,7 @@ suite = {
           "dependency:SULONG_LIBLLVMVM/*",
         ],
       },
+      "defaultBuild": False,
     },
 
     "SULONG_JVM_STANDALONE": {
@@ -2165,6 +2175,7 @@ suite = {
           "classpath-dependencies:SULONG_STANDALONE_DEPENDENCIES",
         ],
       },
+      "defaultBuild": False,
     },
 
     "SULONG_NATIVE_STANDALONE_RELEASE_ARCHIVE": {
@@ -2173,6 +2184,7 @@ suite = {
         "standalone_dist": "SULONG_NATIVE_STANDALONE",
         "community_archive_name": "llvm-community",
         "enterprise_archive_name": "llvm", # should not be used as it lacks the managed toolchain
+        "defaultBuild": False,
     },
 
     "SULONG_JVM_STANDALONE_RELEASE_ARCHIVE": {
@@ -2181,6 +2193,7 @@ suite = {
         "standalone_dist": "SULONG_JVM_STANDALONE",
         "community_archive_name": "llvm-community-jvm",
         "enterprise_archive_name": "llvm-jvm", # should not be used as it lacks the managed toolchain
+        "defaultBuild": False,
     },
 
     "SULONG_NATIVE_BITCODE_RESOURCES" : {
