@@ -41,6 +41,7 @@
 package com.oracle.truffle.tck.tests.language;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -64,6 +65,8 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ServiceLoader;
@@ -88,7 +91,11 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             Thread thread = new Thread(() -> {
             });
             URL url = URI.create("http://localhost").toURL();
-            RootNode root = new RootNodeImpl(this, new PrivilegedCallNode(thread, url), new UnsafeCallNode());
+            RootNode root = new RootNodeImpl(this,
+                            new PrivilegedCallNode(thread, url),
+                            new UnsafeCallNode(),
+                            new AllowedURLNode(),
+                            new DeniedURLNode());
             return root.getCallTarget();
         } catch (MalformedURLException urlException) {
             throw new AssertionError(urlException);
@@ -268,6 +275,62 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             int i = 23;
             int result = UNSAFE.getInt(i, getFieldOffset(Integer.class, "value"));
             assert i == result;
+        }
+    }
+
+    private static final class AllowedURLNode extends BaseNode {
+
+        private final URI currentWorkingDirectory;
+
+        AllowedURLNode() {
+            this.currentWorkingDirectory = Path.of("").toAbsolutePath().toUri();
+        }
+
+        @Override
+        void execute(VirtualFrame frame) {
+            doURLOf();
+        }
+
+        @TruffleBoundary
+        private void doURLOf() {
+            try {
+                URL.of(currentWorkingDirectory, null);
+            } catch (MalformedURLException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    private static final class DeniedURLNode extends BaseNode {
+
+        private final URLStreamHandler handler;
+        private final URI currentWorkingDirectory;
+
+        DeniedURLNode() {
+            this.handler = new MockURLStreamHandler();
+            this.currentWorkingDirectory = Path.of("").toAbsolutePath().toUri();
+        }
+
+        @Override
+        void execute(VirtualFrame frame) {
+            doURLOf();
+        }
+
+        @TruffleBoundary
+        private void doURLOf() {
+            try {
+                URL.of(currentWorkingDirectory, handler);
+            } catch (MalformedURLException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        private static final class MockURLStreamHandler extends URLStreamHandler {
+
+            @Override
+            protected URLConnection openConnection(URL u) {
+                throw new UnsupportedOperationException();
+            }
         }
     }
 }
