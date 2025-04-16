@@ -100,9 +100,6 @@ inline int g_isnan(double f) { return isnan(f); }
 #error "missing platform-specific definition here"
 #endif
 
-#define CAN_USE_NAN_DEFINE 1
-
-
 // Checking for finiteness
 
 
