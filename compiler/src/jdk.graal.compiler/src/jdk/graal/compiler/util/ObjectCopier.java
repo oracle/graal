@@ -28,6 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -1007,6 +1011,23 @@ public class ObjectCopier {
         }
     }
 
+    /**
+     * Denotes a field that should not be treated as an external value.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface NotExternalValue {
+        /**
+         * Documents the reason why the annotated field is not an external value.
+         */
+        String reason();
+    }
+
+    /**
+     * Gets the set of static, final fields whose values are not serialized.
+     *
+     * @see NotExternalValue
+     */
     public static List<Field> getExternalValueFields() throws IOException {
         List<Field> externalValues = new ArrayList<>();
         addImmutableCollectionsFields(externalValues);
@@ -1051,10 +1072,14 @@ public class ObjectCopier {
         for (Field field : declaringClass.getDeclaredFields()) {
             int fieldModifiers = field.getModifiers();
             int fieldMask = Modifier.STATIC | Modifier.FINAL;
-            if ((fieldModifiers & fieldMask) != fieldMask) {
+            boolean isStaticAndFinal = (fieldModifiers & fieldMask) == fieldMask;
+            if (!isStaticAndFinal) {
                 continue;
             }
             if (field.getType().isPrimitive()) {
+                continue;
+            }
+            if (field.getAnnotation(NotExternalValue.class) != null) {
                 continue;
             }
             field.setAccessible(true);
