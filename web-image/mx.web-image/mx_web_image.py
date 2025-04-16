@@ -31,7 +31,6 @@ from argparse import ArgumentParser
 from os.path import join
 from pathlib import Path
 from typing import List, Optional, Union
-from xml.dom import minidom
 
 import mx
 import mx_gate
@@ -181,34 +180,6 @@ class WebImageConfiguration:
 
 # For Web Image SVM_WASM is part of the modules implicitly available on the module-path
 mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes.append(web_image_builder)
-
-
-def concatCP(old, new):
-    if old and new:
-        return old + ":" + new
-    elif old:
-        return old
-    elif new:
-        return new
-    else:
-        return ""
-
-
-def addCP(vmargs, cp):
-    cpIndex, cpValue = mx.find_classpath_arg(vmargs)
-
-    if cpIndex:
-        vmargs[cpIndex] = concatCP(cp, cpValue)
-    else:
-        vmargs += ["-cp", cp]
-
-    return vmargs
-
-
-def run_javac(args, out=None, err=None, cwd=None, nonZeroIsFatal=True):
-    jdk = mx.get_jdk(tag="jvmci")
-    cmd = [jdk.javac] + args
-    mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 
 def web_image_main_class():
@@ -552,16 +523,6 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
 mx_unittest.register_unittest_config(WebImageUnittestConfig())
 
 
-def pom_from_template(proj_dir):
-    # Create pom with correct version info from template
-    version = _suite.release_version(snapshotSuffix="SNAPSHOT")
-    dom = minidom.parse(os.path.join(proj_dir, "template-pom.xml"))
-    for element in dom.getElementsByTagName("webImageVersion"):
-        element.parentNode.replaceChild(dom.createTextNode(version), element)
-    with open(os.path.join(proj_dir, "pom.xml"), "w") as pom_file:
-        dom.writexml(pom_file)
-
-
 class WebImageMacroBuilder(mx.ArchivableProject):
     """
     Builds a ``native-image.properties`` file that contains the configuration needed to run the Web Image builder in the
@@ -860,17 +821,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             provided_hosted_options=WebImageConfiguration.get_hosted_options(),
         )
     )
-
-
-def assert_equals(msg, expected, actual):
-    if expected != actual:
-        mx.abort("Assertion failed: {} expected: {!r} but was: {!r}".format(msg, expected, actual))
-
-
-def graalvm_home():
-    capture = mx.OutputCapture()
-    mx.run_mx(["graalvm-home"], out=capture, quiet=True)
-    return capture.data.strip()
 
 
 # This callback is essential for mx to generate the manifest file so that the ServiceLoader can find
