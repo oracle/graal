@@ -32,6 +32,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLStreamHandler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -57,7 +60,9 @@ import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.util.LogUtils;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -244,7 +249,8 @@ public class PermissionsFeature implements Feature {
         contextFilters = new HashSet<>();
         Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
                         new SafeReflectionRecognizer(bb), new SafeSetThreadNameRecognizer(bb),
-                        new SafeLocaleServiceProvider(bb), new SafeSystemGetProperty(bb));
+                        new SafeLocaleServiceProvider(bb), new SafeSystemGetProperty(bb),
+                        new SafeURLOf(bb));
 
         /*
          * Ensure methods which are either deniedMethods or on the allow list are never inlined into
@@ -1066,6 +1072,61 @@ public class PermissionsFeature implements Feature {
         @Override
         public Collection<AnalysisMethod> getInspectedMethods() {
             return getProperty.stream().map(AnalysisMethodNode::getMethod).collect(Collectors.toSet());
+        }
+    }
+
+    /**
+     * A call to {@code URL.of(URI, URLStreamHandler)} is only considered safe when the specified
+     * {@link URLStreamHandler} is {@code null}.
+     */
+    private static final class SafeURLOf implements CallGraphFilter {
+
+        private final SVMHost hostVM;
+        private final AnalysisMethodNode of;
+
+        SafeURLOf(BigBang bigBang) {
+            this.hostVM = (SVMHost) bigBang.getHostVM();
+            Set<AnalysisMethodNode> methods = findMethods(bigBang, URL.class, (m) -> {
+                if (!"of".equals(m.getName())) {
+                    return false;
+                }
+                ResolvedJavaMethod.Parameter[] parameters = m.getParameters();
+                if (parameters.length != 2) {
+                    return false;
+                }
+                if (!bigBang.getMetaAccess().lookupJavaType(URI.class).getWrapped().equals(parameters[0].getType())) {
+                    return false;
+                }
+                return bigBang.getMetaAccess().lookupJavaType(URLStreamHandler.class).getWrapped().equals(parameters[1].getType());
+            });
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup URL.of(URI, URLStreamHandler).");
+            }
+            this.of = methods.iterator().next();
+        }
+
+        @Override
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
+            if (!of.equals(methodNode)) {
+                return false;
+            }
+            AnalysisMethod method = methodNode.getMethod();
+            AnalysisMethod caller = callerNode.getMethod();
+            StructuredGraph graph = hostVM.getAnalysisGraph(caller);
+            Boolean res = null;
+            for (Invoke invoke : graph.getInvokes()) {
+                if (method.equals(invoke.callTarget().targetMethod())) {
+                    NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+                    ValueNode arg1 = args.get(1);
+                    res = arg1 instanceof ConstantNode constantNode && constantNode.getValue() == JavaConstant.NULL_POINTER;
+                }
+            }
+            return res != null && res;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return List.of(of.getMethod());
         }
     }
 
