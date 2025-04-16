@@ -161,8 +161,9 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
             if (debugFunction.hasSourceSection()) {
                 return debugFunction.getSourceSection();
             } else {
+                // fallback solution, if the source was not loaded by the root node
                 WasmContext context = WasmContext.get(this);
-                return debugFunction.loadSourceSection(context == null ? null : context.environment());
+                return debugFunction.createSourceSection(context == null ? null : context.environment());
             }
         }
         return null;
@@ -183,20 +184,14 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
                         if (debugFunction == null) {
                             return this;
                         }
-                        final SourceSection sourceSection = debugFunction.loadSourceSection(context.environment());
+                        final SourceSection sourceSection;
+                        if (context.getContextOptions().debugTestMode()) {
+                            sourceSection = debugFunction.createSourceSection(context.environment());
+                        } else {
+                            sourceSection = debugFunction.loadSourceSection(context.environment());
+                        }
                         if (sourceSection == null) {
                             return this;
-                        }
-                        if (!context.getContextOptions().debugTestMode()) {
-                            // if the source does not point to an existing file, or we are not
-                            // allowed to access it, we do not replace this node
-                            try {
-                                if (!context.environment().getInternalTruffleFile(sourceSection.getSource().getURI()).exists()) {
-                                    return this;
-                                }
-                            } catch (SecurityException | UnsupportedOperationException e) {
-                                return this;
-                            }
                         }
                         final int functionStartOffset = module.functionSourceCodeStartOffset(functionIndex);
                         if (functionStartOffset == -1) {
@@ -242,7 +237,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         } else {
             CompilerDirectives.transferToInterpreter();
             final WasmContext wasmContext = WasmContext.get(this);
-            sourceSection = debugFunction.loadSourceSection(wasmContext == null ? null : wasmContext.environment());
+            sourceSection = debugFunction.createSourceSection(wasmContext == null ? null : wasmContext.environment());
         }
         return DebugScopeDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this, sourceSection);
     }

@@ -41,9 +41,11 @@
 
 package org.graalvm.wasm.debugging.parser;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
@@ -58,7 +60,7 @@ public class DebugSourceLoader {
      * @param language the source language
      */
     @TruffleBoundary
-    public static Source load(Path path, String language, TruffleLanguage.Env env) {
+    public static Source create(Path path, String language, TruffleLanguage.Env env) {
         if (path == null || language == null) {
             return null;
         }
@@ -66,14 +68,29 @@ public class DebugSourceLoader {
         try {
             // we create a pseudo source that does not read the content of the actual file, since we
             // are not allowed to perform any IO at this point.
-            // Source.CONTENT_NONE enforces this behavior. Instruments will replace the source with
-            // the actual content of the file based on the provided uri.
-            source = Source.newBuilder(language, "", path.toString()).uri(path.toUri()).content(Source.CONTENT_NONE).build();
+            // Source.CONTENT_NONE enforces this behavior.
+            source = Source.newBuilder(language, "", path.toString()).content(Source.CONTENT_NONE).build();
         } catch (SecurityException e) {
             // source not available or not accessible
             if (env != null) {
                 env.getLogger("").warning("Debug source file could not be loaded or accessed: " + path);
             }
+        }
+        return source;
+    }
+
+    @TruffleBoundary
+    public static Source load(Path path, String language, TruffleLanguage.Env env) {
+        if (path == null || language == null) {
+            return null;
+        }
+        Source source = null;
+        try {
+            final TruffleFile file = env.getInternalTruffleFile(path.toString());
+            source = Source.newBuilder(language, file).build();
+        } catch (IOException | SecurityException e) {
+            // source not available or not accessible
+            env.getLogger("").warning("Debug source file could not be loaded or accessed: " + path);
         }
         return source;
     }

@@ -142,6 +142,7 @@ public class DebugFunction extends DebugType {
 
     /**
      * @return Whether the source section of this function has already been computed.
+     * @see #createSourceSection(TruffleLanguage.Env)
      * @see #loadSourceSection(TruffleLanguage.Env)
      */
     public boolean hasSourceSection() {
@@ -159,17 +160,33 @@ public class DebugFunction extends DebugType {
     }
 
     /**
-     * Computes the source section for the function.
+     * Computes a pseudo source section for the function. Returns an existing source section, if
+     * present.
      */
     @TruffleBoundary
-    public SourceSection loadSourceSection(TruffleLanguage.Env env) {
+    public SourceSection createSourceSection(TruffleLanguage.Env env) {
         if (sourceSection == null) {
-            final Source source = DebugSourceLoader.load(filePath, language, env);
+            final Source source = DebugSourceLoader.create(filePath, language, env);
             if (source != null) {
                 sourceSection = source.createSection(startLine);
             }
         }
         return sourceSection;
+    }
+
+    /**
+     * Tries to load the source section for this function. Does not return an existing source
+     * section, if present.
+     */
+    @TruffleBoundary
+    public SourceSection loadSourceSection(TruffleLanguage.Env env) {
+        final Source source = DebugSourceLoader.load(filePath, language, env);
+        if (source != null) {
+            final SourceSection section = source.createSection(startLine);
+            sourceSection = section;
+            return section;
+        }
+        return null;
     }
 
     /**

@@ -53,6 +53,8 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
+import java.util.Set;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -308,6 +310,30 @@ public class WasmFunctionRootNode extends WasmRootNode {
     }
 
     @Override
+    protected void prepareForInstrumentation(Set<Class<?>> tags) {
+        if (sourceSection == null) {
+            final DebugFunction debugFunction = debugFunction();
+            if (debugFunction == null) {
+                sourceSection = module().source().createUnavailableSection();
+                return;
+            }
+            if (debugFunction.hasSourceSection()) {
+                sourceSection = debugFunction.getSourceSection();
+                return;
+            }
+            WasmContext context = WasmContext.get(this);
+            if (context != null) {
+                if (!context.getContextOptions().debugTestMode()) {
+                    sourceSection = debugFunction.loadSourceSection(context.environment());
+                }
+            }
+            if (sourceSection == null) {
+                sourceSection = debugFunction.createSourceSection(context == null ? null : context.environment());
+            }
+        }
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public final SourceSection getSourceSection() {
         if (sourceSection == null) {
@@ -321,7 +347,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                 return sourceSection;
             }
             WasmContext context = WasmContext.get(this);
-            sourceSection = debugFunction.loadSourceSection(context == null ? null : context.environment());
+            sourceSection = debugFunction.createSourceSection(context == null ? null : context.environment());
         }
         return sourceSection;
     }
