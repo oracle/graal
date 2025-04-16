@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
-import com.oracle.svm.hosted.analysis.ai.checker.custom.DivisionByZeroChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.example.DivisionByZeroChecker;
 
 /**
  * Factory for creating checkers.

@@ -12,7 +12,7 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     /* Number of times this state has been visited/iterated in fixpoint iteration  */
     private int visitedCount = 0;
 
-    /* Do we want to restrict the execution of this state in abstract interpretation */
+    /* Do we want to restrict the execution of this state in the current fixpoint iteration */
     private boolean restrictedFromExecution = false;
 
     private Domain preCondition;

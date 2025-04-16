@@ -92,6 +92,13 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
         cache.computeIfAbsent(method, k -> new ArrayList<>()).add(summary);
     }
 
+    public List<Summary<Domain>> getAllSummaries() {
+        return cache.entrySet()
+                .stream()
+                .flatMap(entry -> entry.getValue().stream())
+                .toList();
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

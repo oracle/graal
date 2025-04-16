@@ -1,4 +1,6 @@
-package com.oracle.svm.hosted.analysis.ai.domain;
+package com.oracle.svm.hosted.analysis.ai.domain.composite;
+
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 import java.util.ArrayList;
 import java.util.List;

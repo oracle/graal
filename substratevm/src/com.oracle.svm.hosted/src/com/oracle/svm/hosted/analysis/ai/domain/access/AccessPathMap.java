@@ -26,20 +26,6 @@ public final class AccessPathMap<Domain extends AbstractDomain<Domain>>
         super(other);
     }
 
-//    public Domain getValueAtPlaceHolderPrefix(String prefix, Domain defaultValue) {
-//        for (AccessPath accessPath : getValue().getMap().keySet()) {
-//            if (!(accessPath.getBase() instanceof PlaceHolderAccessPathBase placeHolderAccessPathBase)) {
-//                continue;
-//            }
-//
-//            if (placeHolderAccessPathBase.toString().startsWith(prefix)) {
-//                return get(accessPath);
-//            }
-//        }
-//
-//        return defaultValue;
-//    }
-
     public List<AccessPath> getAccessPathsWithBase(AccessPathBase base) {
         List<AccessPath> result = new ArrayList<>();
         for (AccessPath accessPath : getValue().getMap().keySet()) {

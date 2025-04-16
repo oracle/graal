@@ -134,6 +134,8 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
 
         checkerManager.runCheckers(root.wrapped, abstractStateMap);
         GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(root).graph, root, abstractStateMap);
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.logSummariesStats(summaryManager);
     }
 
     private List<Domain> convertActualArgs(Invoke invoke, AbstractStateMap<Domain> callerStateMap) {

@@ -69,4 +69,8 @@ public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFacto
     public int getCacheHits() {
         return summaryCache.getCacheHits();
     }
+
+    public String getCacheStats() {
+        return "Cache calls: " + getCacheCalls() + ", Cache hits: " + getCacheHits();
+    }
 }

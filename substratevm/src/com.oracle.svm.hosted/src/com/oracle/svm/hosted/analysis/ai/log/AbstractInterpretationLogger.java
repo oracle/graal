@@ -1,6 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai.log;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.summary.Summary;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.io.FileWriter;
@@ -126,6 +129,17 @@ public final class AbstractInterpretationLogger {
             case INFO -> logInfo(message);
             case DEBUG -> logDebug(message);
         }
+    }
+
+    public <Domain extends AbstractDomain<Domain>> void logSummariesStats(SummaryManager<Domain> summaryManager) {
+        log("Summary cache contents: ", LoggerVerbosity.SUMMARY);
+        for (Summary<Domain> summary : summaryManager.summaryCache().getAllSummaries()) {
+            log("Summary for method: " + summary.getInvoke(), LoggerVerbosity.SUMMARY);
+            log("Summary precondition: " + summary.getPreCondition(), LoggerVerbosity.SUMMARY);
+            log("Summary postcondition: " + summary.getPostCondition(), LoggerVerbosity.SUMMARY);
+        }
+
+        log(summaryManager.getCacheStats(), LoggerVerbosity.SUMMARY);
     }
 
     private static class ANSI {

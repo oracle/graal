@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker.custom;
+package com.oracle.svm.hosted.analysis.ai.checker.example;
 
 import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerResult;

@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
-import com.oracle.svm.hosted.analysis.ai.domain.PairDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.nodes.Invoke;
 

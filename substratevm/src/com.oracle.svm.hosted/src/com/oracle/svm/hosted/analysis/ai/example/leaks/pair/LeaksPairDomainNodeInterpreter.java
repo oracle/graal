@@ -5,7 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
-import com.oracle.svm.hosted.analysis.ai.domain.PairDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
