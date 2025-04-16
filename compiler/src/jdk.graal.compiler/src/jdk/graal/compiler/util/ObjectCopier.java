@@ -54,10 +54,12 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
 import org.graalvm.collections.Equivalence;
@@ -183,6 +185,32 @@ public class ObjectCopier {
                 case "void" -> void.class;
                 default -> decoder.loadClass(encoded);
             };
+        }
+    }
+
+    /**
+     * Builtin for handling boxed primitives.
+     */
+    static final class BoxBuiltin extends Builtin {
+
+        private static final Map<Class<?>, JavaKind> CONCRETE_CLASSES = //
+                        Stream.of(JavaKind.values())//
+                                        .filter(k -> k.isPrimitive() && k != JavaKind.Void)//
+                                        .collect(Collectors.toMap(JavaKind::toBoxedJavaClass, Function.identity()));
+
+        BoxBuiltin() {
+            super(Number.class, CONCRETE_CLASSES.keySet().toArray(Class<?>[]::new));
+        }
+
+        @Override
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            stream.writeUntypedValue(obj);
+        }
+
+        @Override
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            char typeCh = CONCRETE_CLASSES.get(concreteType).getTypeChar();
+            return stream.readUntypedValue(typeCh);
         }
     }
 
@@ -432,6 +460,7 @@ public class ObjectCopier {
 
     public ObjectCopier() {
         addBuiltin(new ClassBuiltin());
+        addBuiltin(new BoxBuiltin());
         addBuiltin(new EconomicMapBuiltin());
         addBuiltin(new EnumBuiltin());
 
