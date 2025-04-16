@@ -57,6 +57,7 @@ import org.graalvm.wasm.debugging.representation.DebugScopeDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -239,6 +240,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         if (debugFunction.hasSourceSection()) {
             sourceSection = debugFunction.getSourceSection();
         } else {
+            CompilerDirectives.transferToInterpreter();
             final WasmContext wasmContext = WasmContext.get(this);
             sourceSection = debugFunction.loadSourceSection(wasmContext == null ? null : wasmContext.environment());
         }
