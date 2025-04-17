@@ -941,7 +941,7 @@ else:
 
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
-    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, **kw_args):
+    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
         enterprise_archive_name = _require(kw_args, 'enterprise_archive_name', suite, name)
@@ -966,7 +966,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         }
         self.standalone_dir_dist = standalone_dir_dist
         maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
-        super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven)
+        super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
 
     def resolveDeps(self):
