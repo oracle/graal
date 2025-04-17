@@ -114,7 +114,7 @@ public class BinaryReaderMockTest extends NbTestCase {
         obj = b.group.getProperties().get("location");
         assertTrue("It is node: " + obj, obj instanceof LocationStackFrame);
         LocationStackFrame elem = (LocationStackFrame) obj;
-        assertEquals("null.mockMethod(unknown:97) [bci:97]", elem.toString());
+        assertEquals("org.graalvm.visualizer.data.serialization.lazy.BinaryReaderMockTest$MockMethod.mockMethod(unknown:97) [bci:97]", elem.toString());
     }
 
     public void testNodeEncodingInVersion60WithMethods() throws Exception {
@@ -153,7 +153,7 @@ public class BinaryReaderMockTest extends NbTestCase {
         obj = b.group.getProperties().get("location");
         assertTrue("It is node: " + obj, obj instanceof LocationStackFrame);
         LocationStackFrame elem = (LocationStackFrame) obj;
-        assertEquals("null.mockMethod(unknown:97) [bci:97]", elem.toString());
+        assertEquals("org.graalvm.visualizer.data.serialization.lazy.BinaryReaderMockTest$MockMethod.mockMethod(unknown:97) [bci:97]", elem.toString());
     }
 
     public void testNodeEncodingInVersion60WithMethodsAndStrata() throws Exception {
@@ -192,7 +192,7 @@ public class BinaryReaderMockTest extends NbTestCase {
         obj = b.group.getProperties().get("location");
         assertTrue("It is node: " + obj, obj instanceof LocationStackFrame);
         LocationStackFrame elem = (LocationStackFrame) obj;
-        assertEquals("null.mockMethod(wellknown:3)(wellknown:3)(wellknown:3) [bci:3]", elem.toString());
+        assertEquals("org.graalvm.visualizer.data.serialization.lazy.BinaryReaderMockTest$MockMethod.mockMethod(wellknown:3)(wellknown:3)(wellknown:3) [bci:3]", elem.toString());
     }
 
     public void testMixingTwoOutputsInOneStream() throws Exception {
@@ -397,7 +397,7 @@ public class BinaryReaderMockTest extends NbTestCase {
 
         @Override
         public Object methodDeclaringClass(MockMethod method) {
-            return null;
+            return method.getClass();
         }
 
         @Override

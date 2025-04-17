@@ -2024,6 +2024,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isLogRecordCallerClassSet(LogRecord logRecord) {
+            return PolyglotLoggers.isCallerClassSet(logRecord);
+        }
+
+        @Override
+        public boolean isLogRecordCallerMethodSet(LogRecord logRecord) {
+            return PolyglotLoggers.isCallerMethodSet(logRecord);
+        }
+
+        @Override
+        public void logFallback(String s) {
+            PolyglotEngineImpl.logFallback(s);
+        }
+
+        @Override
         public boolean isCurrentThreadPolyglotThread() {
             PolyglotThreadInfo info = PolyglotFastThreadLocals.getCurrentThread(null);
             return info != null && info.isPolyglotThread();

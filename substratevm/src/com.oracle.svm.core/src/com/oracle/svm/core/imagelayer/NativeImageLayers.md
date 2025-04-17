@@ -63,11 +63,11 @@ base-layer.so                    # initial layer (includes VM/JDK code)
 
 To create and use layers `native-image` accepts two options: `--layer-create` and `--layer-use`.
 
-First, `--layer-create` builds an image layer archive from code available on the class or module path:
+### Option `--layer-create` builds an image layer archive from code available on the class or module path:
 
 ```
---layer-create=[layer-file.nil][,module=<module-name>][,package=<package-name>]
-              builds an image layer file from the modules and packages specified by "module" and "package".
+--layer-create=[layer-file.nil][,module=<module-name>][,package=<package-name>][,path=<classpath-entry>]
+              builds an image layer file from the modules and packages specified by "module" and "package" or "path".
               The file name, if specified, must be a simple file name, i.e., not contain any path separators, 
               and have the *.nil extension. Otherwise, the layer-file name is derived from the image name.
               This will generate a Native Image Layer archive file containing metadata required to build
@@ -78,7 +78,58 @@ First, `--layer-create` builds an image layer archive from code available on the
 
 A layer archive file has a _.nil_ extension, acronym for **N**ative **I**mage **L**ayer.
 
-Second, `--layer-use` consumes a shared layer, and can extend it or create a final executable:
+#### `--layer-create` suboptions
+
+The **module** and **package** and **path** suboptions of `--layer-create` are used to specify the classes and resources that should be included in the layer.
+Within a `--layer-create` option argument, these suboption arguments can be specified multiple times, for example:
+```
+--layer-create=base-layer.nil,package=ch.qos.logback.core.hook,package=ch.qos.logback.core.html,...
+```
+
+##### `--layer-create` suboption `module=<module-name>`
+
+With this suboption, layer creation is instructed to make all packages and all resources that are part of the given module included in the layer.
+In the future we will eventually provide a solution to refine the resource inclusion for the module suboption to allow fine-grained control over the included resources.
+
+##### `--layer-create` suboption `package=<package-name>`
+
+Suboption `package` allows the inclusion of individual Java packages. For this kind of inclusion it does not matter if the specified package is from a classpath-entry or part of a module, both are supported.
+Contrary to the `module` suboption, resources are not also automatically included. If resource inclusion is needed, the usual ways can be used (`resource-config.json`, `reachability-metadata.json` or resource related Feature API).
+
+##### `--layer-create` suboption `path=<classpath entry>`
+
+This is a convenience suboption that requires a `classpath entry`.
+If the provided entry is not also specified in the classpath of the given `native-image` invocation, an error message is shown.
+All classes and all resources from the given classpath entry are included in the layer. Note that using this suboption might lead to larger than necessary layers. Only use this suboption for uses-cases where this is not an issue.
+
+#### `--layer-create` option argument file
+
+For complex use-cases, the `--layer-create` option argument can become very large.
+To make this more manageable it is possible to have the `--layer-create` option argument specified via a separate file where each line corresponds to an entry of the option argument.
+
+This currently only works if the `--layer-create` option is specified from a `native-image.properties` file in a `META-INF/native-image` subdirectory.
+If this requirement is met, the following can be used:
+```properties
+Args = --layer-create=@layer-create.args
+```
+The `layer-create.args` file-path is relative to the directory that contains the `native-image.properties` file and might look like this:
+```
+base-layer.nil
+module=java.base
+# micronaut and dependencies
+package=io.micronaut.*
+package=io.netty.*
+package=jakarta.*
+package=com.fasterxml.jackson.*
+package=org.slf4j.*
+# io.projectreactor:reactor-core and dependencies
+package=reactor.*
+package=org.reactivestreams.*
+```
+Each line corresponds to one entry in the list of comma-separated entries that can usually be found in a regular `--layer-create` argument.
+Lines starting with `#` are ignored and can therefore be used to provide comments in such an option argument file.
+
+### Option `--layer-use` consumes a shared layer, and can extend it or create a final executable:
 
 ```
 --layer-use=layer-file.nil
