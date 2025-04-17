@@ -119,11 +119,6 @@ public final class UnimplementedGraalIntrinsics {
                             // scalar operations
                             "jdk/internal/vm/vector/Float16Math.fma(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/Float16Math$TernaryOperator;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/Float16Math.sqrt(Ljava/lang/Class;Ljava/lang/Object;Ljava/util/function/UnaryOperator;)Ljava/lang/Object;");
-            // C2 categorized the following as implemented. Remove when JDK-8351034 is integrated
-            if (arch instanceof AMD64) {
-                add(toBeInvestigated,
-                                "sun/security/provider/SHA3Parallel.doubleKeccak([J[J)I");
-            }
         }
 
         add(ignore,
