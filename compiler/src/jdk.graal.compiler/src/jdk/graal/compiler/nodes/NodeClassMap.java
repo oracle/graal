@@ -58,18 +58,34 @@ public final class NodeClassMap implements Iterable<NodeClass<?>> {
     }
 
     /**
+     * An object that is a proxy for this {@link NodeClassMap} in a cache. Using a proxy prevents a
+     * reference from a {@link NodeClass} to all other entries in a {@link NodeClassMap}. This is
+     * important in the context of Native Image as some {@link NodeClassMap}s can contain
+     * hosted-only node classes.
+     */
+    private final Object cacheToken = new Object();
+
+    /**
      * Gets an id for {@code nc}, creating it first if necessary.
      */
-    public synchronized int getId(NodeClass<?> nc) {
-        Integer id = valueToId.get(nc);
+    public int getId(NodeClass<?> nc) {
+        // Using a cache entry in `nc` mostly avoids going
+        // into the synchronized block below.
+        Integer id = nc.getCachedId(cacheToken);
         if (id == null) {
-            if (size == values.length) {
-                int growth = (size + 1) >> 1;
-                values = Arrays.copyOf(values, size + growth);
+            synchronized (this) {
+                id = valueToId.get(nc);
+                if (id == null) {
+                    if (size == values.length) {
+                        int growth = (size + 1) >> 1;
+                        values = Arrays.copyOf(values, size + growth);
+                    }
+                    id = size++;
+                    valueToId.put(nc, id);
+                    values[id] = nc;
+                }
             }
-            id = size++;
-            valueToId.put(nc, id);
-            values[id] = nc;
+            nc.setCachedId(cacheToken, id);
         }
         return id;
     }

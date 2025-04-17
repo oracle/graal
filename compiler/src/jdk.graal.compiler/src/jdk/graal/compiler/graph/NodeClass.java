@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -1486,5 +1487,38 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             }
         }
         list.clearWithoutUpdate();
+    }
+
+    /**
+     * The cached id for a {@link NodeClass} object in a specific {@link NodeClassMap}.
+     *
+     * @param map an object whose identity uniquely identifies a {@link NodeClassMap}
+     */
+    record CachedId(Object map, Integer id) {
+    }
+
+    private CachedId cachedId;
+
+    /**
+     * Sets the cache for this object's {@code id} in {@code map}.
+     *
+     * @param map an object whose identity uniquely identifies a {@link NodeClassMap}
+     */
+    public void setCachedId(Object map, Integer id) {
+        cachedId = new CachedId(map, id);
+    }
+
+    /**
+     * Gets the cache for this object's id in {@code map}.
+     *
+     * @param map an object whose identity uniquely identifies a {@link NodeClassMap}
+     * @return null if no cached id for this object in {@code map} is available
+     */
+    public Integer getCachedId(Object map) {
+        var c = cachedId;
+        if (c != null && c.map == map) {
+            return c.id;
+        }
+        return null;
     }
 }
