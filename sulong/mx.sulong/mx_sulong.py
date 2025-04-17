@@ -110,11 +110,11 @@ def has_suite(name):
     return mx.suite(name, fatalIfMissing=False)
 
 def is_ee():
-    return has_suite('graal-enterprise')
+    return has_suite('sulong-managed')
 
 def sulong_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()
-    if has_suite('sulong-managed'):
+    if is_ee():
         deps += [
             'sulong-managed:SULONG_ENTERPRISE',
             'sulong-managed:SULONG_MANAGED',
