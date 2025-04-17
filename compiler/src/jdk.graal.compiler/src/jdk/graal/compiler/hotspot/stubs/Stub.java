@@ -34,8 +34,6 @@ import java.util.ListIterator;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.vm.ci.code.site.ExceptionHandler;
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -48,6 +46,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotHostBackend;
@@ -77,9 +76,9 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
@@ -280,17 +279,7 @@ public abstract class Stub {
         GraalError.guarantee(compResult.getAssumptions() == null, "stubs should not use assumptions: %s", this);
 
         for (DataPatch data : compResult.getDataPatches()) {
-            if (data.reference instanceof ConstantReference ref) {
-                if (ref.getConstant() instanceof HotSpotMetaspaceConstant c) {
-                    if (c.asResolvedJavaType() != null && c.asResolvedJavaType().getName().equals("[I")) {
-                        // special handling for NewArrayStub
-                        // embedding the type '[I' is safe, since it is never unloaded
-                        continue;
-                    }
-                }
-            }
-
-            checkSafeDataReference(data);
+            GraalError.guarantee(!(data.reference instanceof ConstantReference), "%s cannot have embedded object or metadata constant: %s", this, data.reference);
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
             GraalError.guarantee(infopoint instanceof Call, "%s cannot have non-call infopoint: %s", this, infopoint);
@@ -300,10 +289,6 @@ public abstract class Stub {
             GraalError.guarantee(!callLinkage.isCompiledStub() || callLinkage.getDescriptor().equals(HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP),
                             "%s cannot call compiled stub ", this, callLinkage);
         }
-    }
-
-    protected void checkSafeDataReference(DataPatch data) {
-        GraalError.guarantee(!(data.reference instanceof ConstantReference), "%s cannot have embedded object or metadata constant: %s", this, data.reference);
     }
 
     private static final class EmptyHighTier extends BasePhase<HighTierContext> {
