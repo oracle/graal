@@ -29,63 +29,29 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Arrays;
 
-import org.graalvm.launcher.AbstractLanguageLauncher;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.polyglot.Context.Builder;
+public final class NativeToolchainWrapper extends AbstractToolchainWrapper {
 
-public final class NativeToolchainWrapper extends AbstractLanguageLauncher {
-
-    @Override
-    protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
-        /*
-         * We do everything here and not in launch() to avoid making more of
-         * AbstractLanguageLauncher/Truffle reachable, such as
-         * com.oracle.truffle.polyglot.PolyglotLanguageDispatch.
-         */
-
-        String[] args = arguments.toArray(new String[0]);
-
-        String toolName = AbstractBinUtil.getProcessName();
-        if (toolName == null) {
-            System.err.println("Error: Could not figure out process name");
-            System.exit(1);
-        }
-
-        if (toolName.startsWith("graalvm-native-")) {
-            toolName = toolName.substring("graalvm-native-".length());
-        } else if (toolName.startsWith("graalvm-")) {
-            toolName = toolName.substring("graalvm-".length());
-        }
-
-        switch (toolName) {
-            case "clang", "cc", "gcc" -> Clang.main(args);
-            case "clang++", "c++", "g++" -> ClangXX.main(args);
-            case "clang-cl", "cl" -> ClangCL.main(args);
-            case "ld", "ld.lld", "lld", "lld-link", "ld64" -> Linker.main(args);
-            case "flang-new", "flang" -> Flang.main(args);
-            default -> BinUtil.main(args);
-        }
-
-        System.exit(0);
-        throw new Error("unreachable");
+    public static void main(String[] args) {
+        new NativeToolchainWrapper().run(args);
     }
 
     @Override
-    protected void launch(Builder contextBuilder) {
-        throw new UnsupportedOperationException();
+    protected Iterable<String> getStrippedPrefixes() {
+        return Arrays.asList("graalvm-native-", "graalvm-");
     }
 
     @Override
-    protected String getLanguageId() {
-        return "";
-    }
-
-    @Override
-    protected void printHelp(OptionCategory maxCategory) {
-        throw new UnsupportedOperationException();
+    protected Tool getTool(String toolName) {
+        return switch (toolName) {
+            case "clang", "cc", "gcc" -> Clang::main;
+            case "clang++", "c++", "g++" -> ClangXX::main;
+            case "clang-cl", "cl" -> ClangCL::main;
+            case "ld", "ld.lld", "lld", "lld-link", "ld64" -> Linker::main;
+            case "flang-new", "flang" -> Flang::main;
+            default -> BinUtil::main;
+        };
     }
 
 }
