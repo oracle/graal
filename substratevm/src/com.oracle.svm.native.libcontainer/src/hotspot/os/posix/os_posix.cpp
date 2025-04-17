@@ -530,14 +530,6 @@ char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_des
   return aligned_base;
 }
 
-} // namespace svm_container
-
-#endif // !NATIVE_IMAGE
-
-#ifndef NATIVE_IMAGE
-
-namespace svm_container {
-
 int os::get_fileno(FILE* fp) {
   return NOT_AIX(::)fileno(fp);
 }
@@ -1035,9 +1027,19 @@ char* os::realpath(const char* filename, char* outbuf, size_t outbuflen) {
   return result;
 }
 
+
+} // namespace svm_container
+
+#endif // !NATIVE_IMAGE
+
+
+namespace svm_container {
+
 int os::stat(const char *path, struct stat *sbuf) {
   return ::stat(path, sbuf);
 }
+
+#ifndef NATIVE_IMAGE
 
 char * os::native_path(char *path) {
   return path;
@@ -2203,7 +2205,7 @@ const void* os::get_saved_assert_context(const void** sigInfo) {
   *sigInfo = nullptr;
   return nullptr;
 }
+#endif // !NATIVE_IMAGE
 
 } // namespace svm_container
 
-#endif // !NATIVE_IMAGE
