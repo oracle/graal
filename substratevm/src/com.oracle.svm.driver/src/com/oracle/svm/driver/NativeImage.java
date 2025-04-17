@@ -267,7 +267,7 @@ public class NativeImage {
     final String oHModule = oH(SubstrateOptions.Module);
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
-    final String oHPath = oH(SubstrateOptions.Path);
+    final String oHPath = oH(SubstrateOptions.ConcealedOptions.Path);
     final String oHUseLibC = oH(SubstrateOptions.UseLibC);
     final String oHEnableStaticExecutable = oHEnabled(SubstrateOptions.StaticExecutable);
     final String oHEnableSharedLibraryFlagPrefix = oHEnabled + SubstrateOptions.SharedLibrary.getName();

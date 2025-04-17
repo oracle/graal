@@ -40,7 +40,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -150,7 +149,7 @@ public class HostedHeapDumpFeature implements InternalFeature {
 
     private static Path getDumpLocation() {
         try {
-            Path folder = SubstrateOptions.getImagePath(HostedOptionValues.singleton()).resolve("dumps").toAbsolutePath();
+            Path folder = SubstrateOptions.getImagePath().resolve("dumps").toAbsolutePath();
             return Files.createDirectories(folder);
         } catch (IOException e) {
             throw new Error("Cannot create heap dumps directory.", e);
