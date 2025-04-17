@@ -37,6 +37,7 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationListener;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -128,15 +129,16 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         loadedClasses.allocate(numberOfLoadedClasses());
         processors.allocate(getAvailableProcessors());
 
-        tempDir.allocate(getSystemProperty("java.io.tmpdir"));
-        javaVersion.allocate(getSystemProperty("java.version"));
-        vmName.allocate(getSystemProperty("java.vm.name"));
-        vmVendor.allocate(getSystemProperty("java.vm.vendor"));
-        vmVersion.allocate(getSystemProperty("java.vm.version"));
-        osArch.allocate(getSystemProperty("os.arch"));
-        osName.allocate(getSystemProperty("os.name"));
-        userDir.allocate(getSystemProperty("user.dir"));
-        userName.allocate(getSystemProperty("user.name"));
+        SystemPropertiesSupport properties = SystemPropertiesSupport.singleton();
+        tempDir.allocate(properties.getInitialProperty("java.io.tmpdir"));
+        javaVersion.allocate(properties.getInitialProperty("java.version"));
+        vmName.allocate(properties.getInitialProperty("java.vm.name"));
+        vmVendor.allocate(properties.getInitialProperty("java.vm.vendor"));
+        vmVersion.allocate(properties.getInitialProperty("java.vm.version"));
+        osArch.allocate(properties.getInitialProperty("os.arch"));
+        osName.allocate(properties.getInitialProperty("os.name"));
+        userDir.allocate(properties.getInitialProperty("user.dir"));
+        userName.allocate(properties.getInitialProperty("user.name"));
         jvmCapabilities.allocate(getJvmCapabilities());
 
         gcInProgress.allocate();
@@ -149,15 +151,6 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         processCPUTimeCounter.allocate();
 
         initDoneTime.allocate(Isolates.getInitDoneTimeMillis());
-    }
-
-    private static String getSystemProperty(String s) {
-        /* Certain system properties (e.g., "user.dir"), may throw an exception. */
-        try {
-            return System.getProperty(s);
-        } catch (Throwable e) {
-            return "";
-        }
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/runtimeService.cpp#L68-L77") //
