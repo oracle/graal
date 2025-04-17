@@ -58,9 +58,9 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     run+: [
       ["mx", "build", "--dependencies", "SULONG_TEST"],
       ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_BOOTSTRAP_TOOLCHAIN", "ToolchainAPITest"],
-      ["mx", "--env", "toolchain-only", "build"],
-      ["set-export", "SULONG_BOOTSTRAP_GRAALVM", ["mx", "--quiet", "--no-warning", "--env", "toolchain-only", "graalvm-home"]],
-      ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=GRAALVM_TOOLCHAIN_ONLY", "ToolchainAPITest"],
+      ["mx", "--env", "ce-llvm-standalones", "build", "--dependencies", "SULONG_JVM_STANDALONE"],
+      ["set-export", "SULONG_BOOTSTRAP_STANDALONE", ["mx", "--quiet", "--no-warning", "--env", "ce-llvm-standalones", "path", "--output", "SULONG_JVM_STANDALONE"]],
+      ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_JVM_STANDALONE", "ToolchainAPITest"],
     ],
   },
 

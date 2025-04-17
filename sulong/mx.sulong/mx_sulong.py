@@ -420,13 +420,9 @@ mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
 
 def create_toolchain_root_provider(name, dist):
     def provider():
-        bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
-        if bootstrap_graalvm:
-            ret = os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
-            if os.path.exists(ret): # jdk8 based graalvm
-                return ret
-            else: # jdk11+ based graalvm
-                return os.path.join(bootstrap_graalvm, 'languages', 'llvm', name)
+        bootstrap_standalone = mx.get_env('SULONG_BOOTSTRAP_STANDALONE')
+        if bootstrap_standalone:
+            return os.path.join(bootstrap_standalone, 'lib', 'sulong', name)
         return mx.distribution(dist).get_output()
     return provider
 
