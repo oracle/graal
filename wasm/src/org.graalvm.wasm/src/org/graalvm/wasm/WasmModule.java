@@ -44,6 +44,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.data.DebugFunction;
@@ -73,6 +74,8 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
     @CompilationFinal private boolean isParsed;
     private volatile boolean hasBeenInstantiated;
+
+    private final ReentrantLock lock = new ReentrantLock();
 
     @CompilationFinal private int debugInfoOffset;
     @CompilationFinal private EconomicMap<Integer, DebugFunction> debugFunctions;
@@ -136,6 +139,13 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     public void setHasBeenInstantiated() {
         this.hasBeenInstantiated = true;
+    }
+
+    /**
+     * Private lock used for instantiation and linking.
+     */
+    public ReentrantLock getLock() {
+        return lock;
     }
 
     public ModuleLimits limits() {

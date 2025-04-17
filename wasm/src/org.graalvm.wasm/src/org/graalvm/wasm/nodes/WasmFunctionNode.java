@@ -1719,31 +1719,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
         Node callNode = callNodes[callNodeIndex];
+        assert assertDirectCall(instance, function, callNode);
         Object result;
         if (imported) {
             WasmIndirectCallNode indirectCallNode = (WasmIndirectCallNode) callNode;
             WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
             WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
-            assert functionInstance.context() == WasmContext.get(null);
             result = indirectCallNode.execute(instance.target(function.index()), args);
         } else {
             WasmDirectCallNode directCallNode = (WasmDirectCallNode) callNode;
             WasmArguments.setModuleInstance(args, instance);
-            assert assertDirectCall(instance, function, directCallNode.getTarget());
             result = directCallNode.execute(args);
         }
         return pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
     }
 
-    private boolean assertDirectCall(WasmInstance instance, WasmFunction function, CallTarget target) {
+    private static boolean assertDirectCall(WasmInstance instance, WasmFunction function, Node callNode) {
         WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
         // functionInstance may be null for calls between functions of the same module.
         if (functionInstance == null) {
             assert !function.isImported();
             return true;
         }
-        assert functionInstance.target() == target;
-        assert function.isImported() || functionInstance.context() == WasmContext.get(this);
+        if (callNode instanceof WasmDirectCallNode directCallNode) {
+            assert functionInstance.target() == directCallNode.target();
+        } else {
+            assert callNode instanceof WasmIndirectCallNode : callNode;
+        }
+        assert functionInstance.context() == WasmContext.get(null);
         return true;
     }
 

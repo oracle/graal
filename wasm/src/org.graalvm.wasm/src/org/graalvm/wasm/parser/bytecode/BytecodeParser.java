@@ -307,13 +307,13 @@ public abstract class BytecodeParser {
     /**
      * Rereads the code entries in a module that had already been parsed and linked.
      */
-    public static void readCodeEntries(WasmModule module) {
+    public static CodeEntry[] readCodeEntries(WasmModule module) {
         final byte[] bytecode = module.bytecode();
         CodeEntry[] codeEntries = new CodeEntry[module.codeEntryCount()];
         for (int i = 0; i < module.codeEntryCount(); i++) {
             codeEntries[i] = readCodeEntry(module, bytecode, i);
         }
-        module.setCodeEntries(codeEntries);
+        return codeEntries;
     }
 
     /**
