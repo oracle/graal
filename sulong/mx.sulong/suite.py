@@ -2016,7 +2016,7 @@ suite = {
 
     "SULONG_NATIVE_AND_LLVM_TOOLCHAIN": {
       "description": "Layout for Sulong native toolchain and llvm-toolchain",
-      "type": "dir",
+      "type": "tar",
       "platformDependent": True,
       "platforms": "local",
       "layout": {
@@ -2082,13 +2082,18 @@ suite = {
 
     "SULONG_STANDALONE_COMMON": {
       "description": "Common layout for Native and JVM standalones",
-      "type": "dir",
+      "type": "tar",
       "platformDependent": True,
       "platforms": "local",
       "layout": {
         "./": [
           "dependency:sulong_licenses/*",
-          "dependency:SULONG_NATIVE_AND_LLVM_TOOLCHAIN/*",
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "SULONG_NATIVE_AND_LLVM_TOOLCHAIN",
+            "path": "*",
+            "dereference": "never",
+          },
         ],
         "bin/<exe:lli>": "dependency:sulong_thin_launcher",
         "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
@@ -2116,8 +2121,13 @@ suite = {
       "platforms": "local",
       "layout": {
         "./": [
-          "dependency:SULONG_STANDALONE_COMMON/*",
           "dependency:SULONG_LIBLLVMVM/*",
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "SULONG_STANDALONE_COMMON",
+            "path": "*",
+            "dereference": "never",
+          },
         ],
       },
       "defaultBuild": False,
@@ -2130,7 +2140,12 @@ suite = {
       "platforms": "local",
       "layout": {
         "./": [
-          "dependency:SULONG_STANDALONE_COMMON/*",
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "SULONG_STANDALONE_COMMON",
+            "path": "*",
+            "dereference": "never",
+          },
         ],
         "jvm/": {
           "source_type": "dependency",
