@@ -34,7 +34,6 @@ import static jdk.graal.compiler.options.OptionType.User;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -44,6 +43,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.c.libc.LibCBase;
@@ -64,6 +64,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -493,9 +494,19 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @OptionMigrationMessage("Use the '-o' option instead.")//
-    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
-    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
+    @Platforms(HOSTED_ONLY.class)
+    public static Path getImagePath(OptionValues optionValues) {
+        VMError.guarantee(optionValues != null);
+        if (!ConcealedOptions.Path.hasBeenSet(optionValues)) {
+            VMError.shouldNotReachHere("Image builder requires %s", SubstrateOptionsParser.commandArgument(ConcealedOptions.Path, "<builder output directory>"));
+        }
+        return Path.of(ConcealedOptions.Path.getValue(optionValues));
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public static Path getImagePath() {
+        return getImagePath(HostedOptionValues.singleton());
+    }
 
     public static final class GCGroup implements APIOptionGroup {
         @Override
@@ -1025,9 +1036,10 @@ public class SubstrateOptions {
     @Option(help = "Temporary option to disable checking of image builder module dependencies or increasing its verbosity", type = OptionType.Debug)//
     public static final HostedOptionKey<Integer> CheckBootModuleDependencies = new HostedOptionKey<>(ModuleSupport.modulePathBuild ? 1 : 0);
 
+    @Platforms(HOSTED_ONLY.class)
     public static Path getDebugInfoSourceCacheRoot() {
         try {
-            return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
+            return SubstrateOptions.getImagePath().resolve(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
             throw UserError.invalidOptionValue(DebugInfoSourceCacheRoot, DebugInfoSourceCacheRoot.getValue(), "The path is invalid");
         }
@@ -1144,6 +1156,10 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#codeAlignment()} instead. */
         @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
         public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);
+
+        @OptionMigrationMessage("Use the '-o' option instead.")//
+        @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
+        public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
     }
 
     @Fold
@@ -1205,12 +1221,13 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/FlightRecorderOptionsHelp.txt")//
     public static final RuntimeOptionKey<String> FlightRecorderOptions = new RuntimeOptionKey<>("", Immutable);
 
+    @Platforms(HOSTED_ONLY.class)
     public static String reportsPath() {
         Path reportsPath = ImageSingletons.lookup(ReportingSupport.class).reportsPath;
         if (reportsPath.isAbsolute()) {
             return reportsPath.toString();
         }
-        return Paths.get(Path.getValue()).resolve(reportsPath).toString();
+        return getImagePath().resolve(reportsPath).toString();
     }
 
     public static class ReportingSupport {

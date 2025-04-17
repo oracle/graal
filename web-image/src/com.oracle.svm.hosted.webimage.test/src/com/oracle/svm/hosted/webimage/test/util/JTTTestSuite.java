@@ -271,7 +271,7 @@ public abstract class JTTTestSuite {
         List<Map.Entry<OptionKey<?>, Object>> hostedOptions = new ArrayList<>();
         hostedOptions.add(Map.entry(SubstrateOptions.UnlockExperimentalVMOptions, true));
         hostedOptions.add(Map.entry(SubstrateOptions.Name, VM_IMAGE_NAME));
-        hostedOptions.add(Map.entry(SubstrateOptions.Path, getTestDir()));
+        hostedOptions.add(Map.entry(SubstrateOptions.ConcealedOptions.Path, getTestDir()));
         hostedOptions.add(Map.entry(WebImageOptions.SILENT_COMPILE, true));
         hostedOptions.add(Map.entry(WebImageOptions.ClosureCompiler, WebImageTestOptions.USE_CLOSURE_COMPILER));
         hostedOptions.add(Map.entry(WebImageOptions.DumpPreClosure, true));
