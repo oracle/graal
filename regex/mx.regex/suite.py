@@ -215,5 +215,16 @@ suite = {
         "native-image.properties" : "file:mx.regex/dummylang-native-image.properties",
       },
     },
+
+    "TREGEX_GRAALVM_LICENSES": {
+      "native": True,
+      "platformDependent": True,
+      "fileListPurpose": 'native-image-resources',
+      "description": "GraalVM TRegex support distribution for the GraalVM license files",
+      "layout": {
+        "LICENSE_REGEX.md": "file:LICENSE.md",
+      },
+      "maven": False,
+    },
   }
 }
