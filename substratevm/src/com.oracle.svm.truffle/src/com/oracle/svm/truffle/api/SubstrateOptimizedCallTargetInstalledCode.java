@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import java.lang.ref.WeakReference;
 
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -250,14 +251,22 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
 
     private static final String NOT_CALLED_IN_SUBSTRATE_VM = "No implementation in Substrate VM";
 
+    /**
+     * This method is used by the compiler debugging feature
+     * {@code jdk.graal.PrintCompilation=true}.
+     */
     @Override
     public long getStart() {
-        throw VMError.shouldNotReachHere(NOT_CALLED_IN_SUBSTRATE_VM);
+        return getAddress();
     }
 
+    /**
+     * This method is used by the compiler debugging feature {@code jdk.graal.Dump=CodeInstall} to
+     * dump a code at the point of code installation.
+     */
     @Override
     public byte[] getCode() {
-        throw VMError.shouldNotReachHere(NOT_CALLED_IN_SUBSTRATE_VM);
+        return SubstrateInstalledCodeImpl.getCode(Word.pointer(entryPoint));
     }
 
     @Override
