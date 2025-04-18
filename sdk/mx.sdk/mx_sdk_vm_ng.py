@@ -962,7 +962,12 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
             dist_name = 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
 
         layout = {
-            f'{dir_name}/': f'dependency:{standalone_dir_dist}/*'
+            f'{dir_name}/': {
+                "source_type": "dependency",
+                "dependency": standalone_dir_dist,
+                "path": "*",
+                "dereference": "never",
+            }
         }
         self.standalone_dir_dist = standalone_dir_dist
         maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
