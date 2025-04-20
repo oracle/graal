@@ -40,7 +40,6 @@ import org.graalvm.jniutils.JNICalls;
 import org.graalvm.jniutils.JNICalls.JNIMethod;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativebridge.BinaryInput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
 
