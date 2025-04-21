@@ -271,7 +271,7 @@
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
 
-    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
+    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
 
     "daily-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
     "daily-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
@@ -302,13 +302,13 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": t("1:30:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": t("1:30:00"),
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
 
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": {},
   },
 
   # This map defines overrides and field extensions for monthly builds.
