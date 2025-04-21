@@ -49,6 +49,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -341,17 +342,22 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     private Object forName0(String className, ClassLoader classLoader) {
-        var conditional = knownClasses.get(className);
-        Object result = conditional == null ? null : conditional.getValue();
         if (className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
-            result = NEGATIVE_QUERY;
+            return new ClassNotFoundException(className);
         }
+        var conditional = knownClasses.get(className);
+        Object result = conditional == null ? null : conditional.getValue();
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
         if (result == null && !ClassNameSupport.isValidReflectionName(className)) {
-            result = NEGATIVE_QUERY;
+            /* Invalid class names always throw, no need for reflection data */
+            return new ClassNotFoundException(className);
+        }
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+            // NB: the early returns above ensure we do not trace calls with bad type args.
+            MetadataTracer.singleton().traceReflectionType(className);
         }
         return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
@@ -445,7 +451,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
                 break;
             }
         }
-        return conditionSet != null && conditionSet.satisfied();
+        if (conditionSet != null) {
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                MetadataTracer.singleton().traceReflectionType(clazz.getName()).setUnsafeAllocated();
+            }
+            return conditionSet.satisfied();
+        }
+        return false;
     }
 
     @Override

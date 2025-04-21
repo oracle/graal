@@ -33,9 +33,12 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -79,6 +82,22 @@ public final class MetadataTracer {
         return config != null;
     }
 
+    public ConfigurationType traceReflectionType(String className) {
+        return traceReflectionTypeImpl(new NamedConfigurationTypeDescriptor(className));
+    }
+
+    /**
+     * Marks the given proxy type as reachable from reflection.
+     */
+    public void traceProxyType(List<String> interfaceNames) {
+        traceReflectionTypeImpl(new ProxyConfigurationTypeDescriptor(interfaceNames));
+    }
+
+    private ConfigurationType traceReflectionTypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
+        assert enabled();
+        return config.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor(className));
+    }
+
     public void traceResource(String resourceName, String moduleName) {
         assert enabled();
         config.getResourceConfiguration().addGlobPattern(UnresolvedConfigurationCondition.alwaysTrue(), resourceName, moduleName);
@@ -91,7 +110,7 @@ public final class MetadataTracer {
 
     public void traceSerializationType(String className) {
         assert enabled();
-        config.getReflectionConfiguration().getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), new NamedConfigurationTypeDescriptor(className)).setSerializable();
+        traceReflectionType(className).setSerializable();
     }
 
     private static void initialize() {
