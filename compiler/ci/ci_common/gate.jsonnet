@@ -298,7 +298,8 @@
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("3:00:00"),
+    "weekly-compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("6:00:00"),
+    "weekly-compiler-benchmarktest-labsjdk-latestDebug-darwin-aarch64": t("6:00:00"),
 
     "weekly-compiler-coverage*": {},
 
@@ -502,9 +503,13 @@
   }],
 
   # Builds run on only on linux-amd64-jdk-latestDebug
-  local linux_amd64_jdk_latestDebug_builds = [self.make_build("LatestDebug", "linux-amd64", task).build
+  local jdk_latestDebug_builds = [self.make_build("LatestDebug", os_arch, task).build
     for task in [
-      "benchmarktest",
+      "benchmarktest"
+    ]
+    for os_arch in [
+      "linux-amd64",
+      "darwin-aarch64"
     ]
   ],
 
@@ -517,7 +522,7 @@
     style_builds +
     jdk_21_version_check_builds +
     linux_amd64_jdk_latest_builds +
-    linux_amd64_jdk_latestDebug_builds,
+    jdk_latestDebug_builds,
 
   local _builds = if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&
