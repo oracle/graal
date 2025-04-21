@@ -36,7 +36,6 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativebridge.BinaryInput;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
