@@ -272,6 +272,7 @@ struct SharedLayerSnapshot {
   nextLayerNumber @14 :Int32;
   staticFinalFieldFoldingSingleton @15 :StaticFinalFieldFoldingSingleton;
   registeredJNILibraries @16 :List(Text);
+  layeredRuntimeMetadataSingleton @17 :LayeredRuntimeMetadataSingleton;
 }
 
 struct StaticFinalFieldFoldingSingleton {
@@ -280,6 +281,11 @@ struct StaticFinalFieldFoldingSingleton {
   fieldInitializationStatusList @2 :List(Bool);
   bytecodeParsedFoldedFieldValues @3 :List(ConstantReference);
   afterParsingHooksDoneFoldedFieldValues @4 :List(ConstantReference);
+}
+
+struct LayeredRuntimeMetadataSingleton {
+  methods @0 :List(MethodId);
+  fields @1 :List(FieldId);
 }
 
 struct PrimitiveValue {

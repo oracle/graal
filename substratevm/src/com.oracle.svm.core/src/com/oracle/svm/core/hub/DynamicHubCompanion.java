@@ -116,6 +116,10 @@ public final class DynamicHubCompanion {
      */
     @Stable ClassInitializationInfo classInitializationInfo;
 
+    /**
+     * Metadata for querying the reflection data. When using layered images this field is always
+     * null and should not be queried. Instead, use {@link LayeredReflectionMetadataSingleton}.
+     */
     @UnknownObjectField(canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable DynamicHub.ReflectionMetadata reflectionMetadata;
 

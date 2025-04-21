@@ -367,7 +367,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         initInts(snapshotBuilder::initConstantsToRelink, constantsToRelink.stream().mapToInt(i -> i).sorted());
     }
 
-    private static void initInts(IntFunction<PrimitiveList.Int.Builder> builderSupplier, IntStream ids) {
+    public static void initInts(IntFunction<PrimitiveList.Int.Builder> builderSupplier, IntStream ids) {
         int[] values = ids.toArray();
         PrimitiveList.Int.Builder builder = builderSupplier.apply(values.length);
         for (int i = 0; i < values.length; i++) {
