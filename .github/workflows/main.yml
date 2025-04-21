@@ -92,7 +92,7 @@ permissions:
 jobs:
   build-graalvm-linux:
     name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
-    runs-on: ${{ matrix.os || 'ubuntu-20.04' }}
+    runs-on: ${{ matrix.os || 'ubuntu-22.04' }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
