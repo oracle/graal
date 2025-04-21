@@ -47,6 +47,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -330,6 +331,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
 
     private Object forName0(String className, ClassLoader classLoader) {
         var conditional = knownClasses.get(className);
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && conditional != null && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceReflectionType(className);
+        }
         Object result = conditional == null ? null : conditional.getValue();
         if (className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
@@ -444,7 +448,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
                 break;
             }
         }
-        return conditionSet != null && conditionSet.satisfied();
+        if (conditionSet != null) {
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                MetadataTracer.singleton().traceReflectionType(clazz.getName()).setUnsafeAllocated();
+            }
+            return conditionSet.satisfied();
+        }
+        return false;
     }
 
     @Override
