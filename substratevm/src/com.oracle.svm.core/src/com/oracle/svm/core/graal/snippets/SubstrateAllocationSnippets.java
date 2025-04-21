@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
@@ -59,6 +60,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -127,8 +129,11 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class,
                     "slowPathHubOrUnsafeInstantiationError", NO_SIDE_EFFECT);
+
+    private static final SubstrateForeignCallDescriptor TRACE_ARRAY_HUB = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "traceArrayHubStub", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, ARRAY_HUB_ERROR};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, TRACE_ARRAY_HUB,
+                    ARRAY_HUB_ERROR};
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);
@@ -396,6 +401,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
                 DynamicHub nonNullArrayHub = (DynamicHub) PiNode.piCastNonNull(arrayHub, SnippetAnchorNode.anchor());
                 if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullArrayHub.isInstantiated())) {
+                    if (MetadataTracer.Options.MetadataTracingSupport.getValue()) {
+                        callTraceArrayHubStub(TRACE_ARRAY_HUB, DynamicHub.toClass(elementType));
+                    }
                     return nonNullArrayHub;
                 }
             }
@@ -403,6 +411,18 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         callArrayHubErrorStub(ARRAY_HUB_ERROR, DynamicHub.toClass(elementType));
         throw UnreachableNode.unreachable();
+    }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callTraceArrayHubStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
+
+    /** Foreign call: {@link #TRACE_ARRAY_HUB}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void traceArrayHubStub(DynamicHub elementType) {
+        assert MetadataTracer.Options.MetadataTracingSupport.getValue();
+        if (probability(SLOW_PATH_PROBABILITY, MetadataTracer.singleton().enabled())) {
+            MetadataTracer.singleton().traceReflectionType(elementType.getName());
+        }
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
