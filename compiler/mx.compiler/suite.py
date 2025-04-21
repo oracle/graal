@@ -488,8 +488,7 @@ suite = {
         "GRAAL",
         "GRAAL_MANAGEMENT",
         "sdk:NATIVEIMAGE_LIBGRAAL",
-        "sdk:JNIUTILS",
-        "sdk:NATIVEBRIDGE"
+        "sdk:JNIUTILS"
       ],
       "requiresConcealed" : {
         "java.base" : [
