@@ -53,7 +53,7 @@ public interface DynamicLinkBehaviour {
      * Add a linker path to the list of libraries on which this dynamic object is declared to
      * depend.
      * 
-     * @param linkPath the directory which is to be added to the run-time libary search path.
+     * @param linkPath the directory which is to be added to the run-time library search path.
      */
     void addRuntimeLinkPath(String linkPath);
 }

@@ -71,7 +71,7 @@ import com.oracle.truffle.espresso.vm.VM;
  * to simplify the profiling in the caller (for example, {@code BytecodeNode#allocateMultiArray()}).
  * <p>
  * <p>
- * Methods in this class wil exploit as much as possible the constant-ness of arguments, exploding
+ * Methods in this class will exploit as much as possible the constant-ness of arguments, exploding
  * initialization loops whenever possible. Note that performance will be impacted if {@code this} is
  * not PE constant.
  */
@@ -163,7 +163,7 @@ public final class GuestAllocator implements LanguageAccess {
         if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
             klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
         }
-        // Will be overriden if necessary, but should be initialized to non-host null.
+        // Will be overridden if necessary, but should be initialized to non-host null.
         klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
         klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);

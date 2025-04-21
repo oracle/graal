@@ -50,7 +50,7 @@ final class BreakpointDisposeListener implements Consumer<Breakpoint> {
 
     static void register(boolean[] notified, Debugger debugger, Breakpoint globalBreakpoint) {
         Consumer<Breakpoint> disposeBPListener = new BreakpointDisposeListener(notified, globalBreakpoint);
-        debugger.addBreakpointAddedListener((breakpoint) -> Assert.fail("No new breakpoint is excpected to be added. Breakpoint = " + breakpoint));
+        debugger.addBreakpointAddedListener((breakpoint) -> Assert.fail("No new breakpoint is expected to be added. Breakpoint = " + breakpoint));
         debugger.addBreakpointRemovedListener(disposeBPListener);
     }
 
