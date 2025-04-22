@@ -603,6 +603,9 @@ public class EspressoSymbols {
         public static final Symbol<Name> classRedefinedCount = SYMBOLS.putName("classRedefinedCount");
         public static final Symbol<Name> componentType = SYMBOLS.putName("componentType");
         public static final Symbol<Name> protectionDomain = SYMBOLS.putName("protectionDomain");
+        public static final Symbol<Name> modifiers = SYMBOLS.putName("modifiers");
+        public static final Symbol<Name> primitive = SYMBOLS.putName("primitive");
+        public static final Symbol<Name> signers = SYMBOLS.putName("signers");
         // j.l.ClassLoader
         public static final Symbol<Name> addClass = SYMBOLS.putName("addClass");
         public static final Symbol<Name> findNative = SYMBOLS.putName("findNative");

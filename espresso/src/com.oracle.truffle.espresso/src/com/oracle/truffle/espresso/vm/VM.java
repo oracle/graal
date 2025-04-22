@@ -943,6 +943,7 @@ public final class VM extends NativeEnv {
         if (klass.isPrimitive()) {
             return StaticObject.NULL;
         }
+        assert getMeta().HIDDEN_SIGNERS != null;
         StaticObject signersArray = (StaticObject) getMeta().HIDDEN_SIGNERS.getHiddenObject(self);
         if (signersArray == null || StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
@@ -954,6 +955,7 @@ public final class VM extends NativeEnv {
     public void JVM_SetClassSigners(@JavaType(Class.class) StaticObject self, @JavaType(Object[].class) StaticObject signers) {
         Klass klass = self.getMirrorKlass(getMeta());
         if (!klass.isPrimitive() && !klass.isArray()) {
+            assert getMeta().HIDDEN_SIGNERS != null;
             getMeta().HIDDEN_SIGNERS.setHiddenObject(self, signers);
         }
     }

@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_24_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_25_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
@@ -112,6 +113,12 @@ public final class Meta extends ContextAccessImpl
         java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Names.classRedefinedCount, Types._int);
         java_lang_Class_name = java_lang_Class.requireDeclaredField(Names.name, Types.java_lang_String);
         java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Names.classLoader, Types.java_lang_ClassLoader);
+        java_lang_Class_modifiers = diff() //
+                        .field(VERSION_25_OR_HIGHER, Names.modifiers, Types._char) //
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_primitive = diff() //
+                        .field(VERSION_25_OR_HIGHER, Names.primitive, Types._boolean) //
+                        .notRequiredField(java_lang_Class);
         java_lang_Class_componentType = diff() //
                         .field(VERSION_9_OR_HIGHER, Names.componentType, Types.java_lang_Class)//
                         .notRequiredField(java_lang_Class);
@@ -119,7 +126,9 @@ public final class Meta extends ContextAccessImpl
                         .field(higher(15), Names.classData, Types.java_lang_Object)//
                         .notRequiredField(java_lang_Class);
         HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Names.HIDDEN_MIRROR_KLASS);
-        HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Names.HIDDEN_SIGNERS);
+        HIDDEN_SIGNERS = diff() //
+                        .field(VERSION_24_OR_LOWER, Names.HIDDEN_SIGNERS, Types.java_lang_Object_array) //
+                        .maybeHiddenfield(java_lang_Class);
         HIDDEN_PROTECTION_DOMAIN = diff() //
                         .field(lower(24), Names.HIDDEN_PROTECTION_DOMAIN, Types.java_security_ProtectionDomain) //
                         .field(VERSION_25_OR_HIGHER, Names.protectionDomain, Types.java_security_ProtectionDomain) //
@@ -1459,6 +1468,8 @@ public final class Meta extends ContextAccessImpl
     public final Field HIDDEN_SIGNERS;
     public final Field java_lang_Class_module;
     public final Field java_lang_Class_classLoader;
+    public final Field java_lang_Class_modifiers;
+    public final Field java_lang_Class_primitive;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
     public final Method java_lang_Class_getName;
