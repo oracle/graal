@@ -95,6 +95,10 @@ public abstract class DebugInfoBase {
 
     private final List<PrimitiveTypeEntry> primitiveTypes = new ArrayList<>();
 
+    private final List<PointerToTypeEntry> pointerTypes = new ArrayList<>();
+
+    private final List<ForeignStructTypeEntry> foreignStructTypes = new ArrayList<>();
+
     private final List<ArrayTypeEntry> arrayTypes = new ArrayList<>();
     /**
      * Handle on type entry for header structure.
@@ -159,6 +163,11 @@ public abstract class DebugInfoBase {
     private String cachePath;
 
     /**
+     * A type entry for storing compilations of foreign methods.
+     */
+    private ClassEntry foreignMethodListClassEntry;
+
+    /**
      * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
      * address translation.
      */
@@ -174,6 +183,7 @@ public abstract class DebugInfoBase {
      * bits.
      */
     public static final String HUB_TYPE_NAME = "java.lang.Class";
+    public static final String FOREIGN_METHOD_LIST_TYPE = "Foreign$Method$List";
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
@@ -258,16 +268,18 @@ public abstract class DebugInfoBase {
             switch (typeEntry) {
                 case ArrayTypeEntry arrayTypeEntry -> arrayTypes.add(arrayTypeEntry);
                 case PrimitiveTypeEntry primitiveTypeEntry -> primitiveTypes.add(primitiveTypeEntry);
+                case PointerToTypeEntry pointerToTypeEntry -> pointerTypes.add(pointerToTypeEntry);
+                case ForeignStructTypeEntry foreignStructTypeEntry -> foreignStructTypes.add(foreignStructTypeEntry);
                 case HeaderTypeEntry headerTypeEntry -> headerType = headerTypeEntry;
                 case ClassEntry classEntry -> {
                     instanceClasses.add(classEntry);
                     if (classEntry.hasCompiledMethods()) {
                         instanceClassesWithCompilation.add(classEntry);
                     }
-                    if (classEntry.getTypeName().equals("java.lang.Object")) {
-                        objectClass = classEntry;
-                    } else if (classEntry.getTypeName().equals("java.lang.Class")) {
-                        classClass = classEntry;
+                    switch (classEntry.getTypeName()) {
+                        case "java.lang.Object" -> objectClass = classEntry;
+                        case "java.lang.Class" -> classClass = classEntry;
+                        case FOREIGN_METHOD_LIST_TYPE -> foreignMethodListClassEntry = classEntry;
                     }
                 }
                 default -> {
@@ -316,6 +328,14 @@ public abstract class DebugInfoBase {
 
     public List<PrimitiveTypeEntry> getPrimitiveTypes() {
         return primitiveTypes;
+    }
+
+    public List<PointerToTypeEntry> getPointerTypes() {
+        return pointerTypes;
+    }
+
+    public List<ForeignStructTypeEntry> getForeignStructTypes() {
+        return foreignStructTypes;
     }
 
     public List<ClassEntry> getInstanceClasses() {
@@ -414,5 +434,9 @@ public abstract class DebugInfoBase {
 
     public String getCachePath() {
         return cachePath;
+    }
+
+    public ClassEntry getForeignMethodListClassEntry() {
+        return foreignMethodListClassEntry;
     }
 }

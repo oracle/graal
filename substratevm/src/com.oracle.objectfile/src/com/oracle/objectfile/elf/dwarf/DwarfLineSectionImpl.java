@@ -543,7 +543,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         classEntry.compiledMethods().forEach(compiledMethod -> {
             int pos = cursor.get();
             String methodName = compiledMethod.primary().getFullMethodNameWithParams();
-            String fileName = compiledMethod.classEntry().getFullFileName();
+            String fileName = compiledMethod.ownerType().getFullFileName();
             log(context, "  [0x%08x] %s %s", pos, methodName, fileName);
             pos = writeCompiledMethodLineInfo(context, classEntry, compiledMethod, buffer, pos);
             cursor.set(pos);

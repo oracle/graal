@@ -35,8 +35,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -54,21 +52,22 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.EnumClassEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.ForeignPointerTypeEntry;
 import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
-import com.oracle.objectfile.debugentry.ForeignTypeEntry;
-import com.oracle.objectfile.debugentry.ForeignWordTypeEntry;
 import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.LoaderEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.UniqueShortNameProvider;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.debug.BFDNameProvider;
 import com.oracle.svm.core.debug.SharedDebugInfoProvider;
+import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -77,6 +76,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.PropertyInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
@@ -101,6 +101,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -118,11 +119,6 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     protected final int primitiveStartOffset;
     protected final int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
-
-    /**
-     * An index map that holds all unique native primitive type entries.
-     */
-    private final ConcurrentHashMap<PointerToInfo, TypeEntry> nativePrimitiveTypeIndex = new ConcurrentHashMap<>();
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
                     RuntimeConfiguration runtimeConfiguration) {
@@ -143,13 +139,6 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
-    }
-
-    @Override
-    public SortedSet<TypeEntry> typeEntries() {
-        SortedSet<TypeEntry> typeEntries = super.typeEntries();
-        typeEntries.addAll(nativePrimitiveTypeIndex.values());
-        return typeEntries;
     }
 
     @SuppressWarnings("unused")
@@ -421,11 +410,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         assert type instanceof HostedType;
         HostedType hostedType = (HostedType) type;
 
-        if (typeEntry instanceof StructureTypeEntry structureTypeEntry) {
+        if (typeEntry instanceof PointerToTypeEntry pointerToTypeEntry) {
+            processPointerToType(type, pointerToTypeEntry);
+        } else if (typeEntry instanceof StructureTypeEntry structureTypeEntry) {
             if (typeEntry instanceof ArrayTypeEntry arrayTypeEntry) {
                 processArrayFields(hostedType, arrayTypeEntry);
-            } else if (typeEntry instanceof ForeignTypeEntry foreignTypeEntry) {
-                processForeignTypeFields(hostedType, foreignTypeEntry);
+            } else if (typeEntry instanceof ForeignStructTypeEntry foreignStructTypeEntry) {
+                processForeignTypeFields(hostedType, foreignStructTypeEntry);
             } else {
                 processFieldEntries(hostedType, structureTypeEntry);
             }
@@ -434,6 +425,15 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 processInterfaces(hostedType, classEntry);
                 processMethods(hostedType, classEntry);
             }
+        }
+    }
+
+    private void processPointerToType(SharedType type, PointerToTypeEntry pointerToTypeEntry) {
+        TypeEntry pointerToType = pointerToTypeEntry.getPointerTo();
+        if (pointerToType == null) {
+            // fix-up void pointers
+            pointerToType = lookupTypeEntry(voidType);
+            pointerToTypeEntry.setPointerTo(pointerToType);
         }
     }
 
@@ -537,11 +537,6 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             if (entry instanceof InterfaceClassEntry interfaceClassEntry) {
                 debug.log("typename %s adding interface %s%n", classEntry.getTypeName(), interfaceType.toJavaName());
                 interfaceClassEntry.addImplementor(classEntry);
-            } else {
-                // don't model the interface relationship when the Java interface actually
-                // identifies a
-                // foreign type
-                assert entry instanceof ForeignTypeEntry && classEntry instanceof ForeignTypeEntry;
             }
         }
     }
@@ -567,9 +562,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * ordered by offset and added as {@link FieldEntry field entries} to the foreign type entry.
      * 
      * @param type the given type
-     * @param foreignTypeEntry the {@code ForeignTypeEntry} of the type
+     * @param foreignStructTypeEntry the {@code ForeignTypeEntry} of the type
      */
-    private void processForeignTypeFields(HostedType type, ForeignTypeEntry foreignTypeEntry) {
+    private void processForeignTypeFields(HostedType type, ForeignStructTypeEntry foreignStructTypeEntry) {
         ElementInfo elementInfo = nativeLibs.findElementInfo(type);
         if (elementInfo instanceof StructInfo) {
             elementInfo.getChildren().stream().filter(NativeImageDebugInfoProvider::isTypedField)
@@ -577,9 +572,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                             .sorted(Comparator.comparingInt(field -> field.getOffsetInfo().getProperty()))
                             .forEach(field -> {
                                 HostedType fieldType = getFieldType(field);
-                                FieldEntry fieldEntry = createFieldEntry(foreignTypeEntry.getFileEntry(), field.getName(), foreignTypeEntry, fieldType, field.getOffsetInfo().getProperty(),
+                                FieldEntry fieldEntry = createFieldEntry(null, field.getName(), foreignStructTypeEntry, fieldType, field.getOffsetInfo().getProperty(),
                                                 field.getSizeInBytes(), fieldTypeIsEmbedded(field), 0);
-                                foreignTypeEntry.addField(fieldEntry);
+                                foreignStructTypeEntry.addField(fieldEntry);
                             });
         }
     }
@@ -685,90 +680,12 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 FileEntry fileEntry = lookupFileEntry(hostedType);
                 if (isForeignWordType(hostedType)) {
                     /*
-                     * A foreign type is either a generic word type, struct type, integer type,
-                     * float type, or a pointer.
+                     * A foreign type is either a generic word type, struct type, or a pointer.
                      */
                     if (debug.isLogEnabled()) {
                         logForeignTypeInfo(hostedType);
                     }
-
-                    ElementInfo elementInfo = nativeLibs.findElementInfo(hostedType);
-                    SizableInfo.ElementKind elementKind = elementInfo instanceof SizableInfo ? ((SizableInfo) elementInfo).getKind() : null;
-                    size = elementSize(elementInfo);
-
-                    switch (elementInfo) {
-                        case PointerToInfo pointerToInfo -> {
-                            /*
-                             * This must be a pointer. If the target type is known use it to declare
-                             * the pointer type, otherwise default to 'void *'
-                             */
-                            TypeEntry pointerToEntry = null;
-                            if (elementKind == SizableInfo.ElementKind.POINTER) {
-                                /*
-                                 * any target type for the pointer will be defined by a CPointerTo
-                                 * or RawPointerTo annotation
-                                 */
-                                CPointerTo cPointerTo = type.getAnnotation(CPointerTo.class);
-                                if (cPointerTo != null) {
-                                    HostedType pointerTo = heap.hMetaAccess.lookupJavaType(cPointerTo.value());
-                                    pointerToEntry = lookupTypeEntry(pointerTo);
-                                }
-                                RawPointerTo rawPointerTo = type.getAnnotation(RawPointerTo.class);
-                                if (rawPointerTo != null) {
-                                    HostedType pointerTo = heap.hMetaAccess.lookupJavaType(rawPointerTo.value());
-                                    pointerToEntry = lookupTypeEntry(pointerTo);
-                                }
-
-                                if (pointerToEntry != null) {
-                                    debug.log("foreign type %s referent %s ", typeName, pointerToEntry.getTypeName());
-                                } else {
-                                    debug.log("foreign type %s", typeName);
-                                }
-                            } else if (elementKind == SizableInfo.ElementKind.INTEGER || elementKind == SizableInfo.ElementKind.FLOAT) {
-                                pointerToEntry = lookupNativePrimitiveType(pointerToInfo);
-                            }
-
-                        if (pointerToEntry == null) {
-                            pointerToEntry = lookupTypeEntry(voidType);
-                        }
-                            if (pointerToEntry == null) {
-                                pointerToEntry = lookupTypeEntry(voidType);
-                            }
-
-                            /*
-                             * Setting the layout type to the type we point to reuses an available
-                             * type unit, so we do not have to write are separate type unit.
-                             */
-                            layoutTypeSignature = pointerToEntry.getTypeSignature();
-
-                        return new ForeignPointerTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loaderEntry, pointerToEntry);
-                            return new ForeignPointerTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loaderEntry, pointerToEntry);
-                        }
-                        case StructInfo structInfo -> {
-                            String typedefName = typedefName(structInfo);
-                            ForeignStructTypeEntry parentEntry = null;
-                            for (HostedInterface hostedInterface : hostedType.getInterfaces()) {
-                                ElementInfo otherInfo = nativeLibs.findElementInfo(hostedInterface);
-                                if (otherInfo instanceof StructInfo) {
-                                    parentEntry = (ForeignStructTypeEntry) lookupTypeEntry(hostedInterface);
-                                }
-                            }
-                            return new ForeignStructTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loaderEntry, typedefName, parentEntry);
-                        }
-                        case null, default -> {
-                            if (isForeignPointerType(hostedType)) {
-                                // unknown pointer type maps to void*
-                                TypeEntry pointerToEntry = lookupTypeEntry(voidType);
-                                layoutTypeSignature = pointerToEntry.getTypeSignature();
-                                return new ForeignPointerTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loaderEntry, pointerToEntry);
-                            } else {
-                                // if not a pointer type, this must be a word type
-                                boolean isSigned = nativeLibs.isSigned(hostedType);
-                                return new ForeignWordTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature,
-                                                superClass, fileEntry, loaderEntry, isSigned);
-                            }
-                        }
-                    }
+                    return SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
                 } else if (hostedType.isEnum()) {
                     return new EnumClassEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
                                     layoutTypeSignature, superClass, fileEntry, loaderEntry);
@@ -785,25 +702,128 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
-    private TypeEntry lookupNativePrimitiveType(PointerToInfo pointerToInfo) {
-        return nativePrimitiveTypeIndex.computeIfAbsent(pointerToInfo, p -> {
-            try (DebugContext.Scope s = debug.scope("DebugInfoType")) {
-                assert p.getKind() == SizableInfo.ElementKind.INTEGER || p.getKind() == SizableInfo.ElementKind.FLOAT;
-                String typeName = p.getName();
-                int classOffset = -1;
-                long typeSignature = getTypeSignature(FOREIGN_PREFIX + typeName);
-                int size = p.getSizeInBytes();
-                int bitCount = size * 8;
-                boolean isNumericInteger = p.getKind() == SizableInfo.ElementKind.INTEGER;
-                boolean isNumericFloat = p.getKind() == SizableInfo.ElementKind.FLOAT;
-                boolean isUnsigned = p.isUnsigned();
+    public static TypeEntry processElementInfo(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ResolvedJavaType type) {
+        assert nativeLibs.isWordBase(type);
 
-                debug.log("typename %s (%d bits)%n", typeName, bitCount);
-                return new PrimitiveTypeEntry(typeName, size, classOffset, typeSignature, bitCount, isNumericInteger, isNumericFloat, isUnsigned);
-            } catch (Throwable e) {
-                throw debug.handle(e);
+        ElementInfo elementInfo = nativeLibs.findElementInfo(type);
+        assert elementInfo == null || elementInfo.getAnnotatedElement() instanceof ResolvedJavaType;
+
+        SizableInfo.ElementKind elementKind = elementInfo instanceof SizableInfo ? ((SizableInfo) elementInfo).getKind() : null;
+
+        switch (elementInfo) {
+            case PointerToInfo pointerToInfo -> {
+                /*
+                 * This must be a pointer. If the target type is known use it to declare the pointer
+                 * type, otherwise default to 'void *'
+                 */
+                TypeEntry pointerToEntry = null;
+                if (elementKind == SizableInfo.ElementKind.POINTER) {
+                    /*
+                     * any target type for the pointer will be defined by a CPointerTo or
+                     * RawPointerTo annotation
+                     */
+                    ResolvedJavaType pointerTo = null;
+                    CPointerTo cPointerTo = type.getAnnotation(CPointerTo.class);
+                    if (cPointerTo != null) {
+                        pointerTo = metaAccess.lookupJavaType(cPointerTo.value());
+                    }
+                    RawPointerTo rawPointerTo = type.getAnnotation(RawPointerTo.class);
+                    if (rawPointerTo != null) {
+                        pointerTo = metaAccess.lookupJavaType(rawPointerTo.value());
+                    }
+
+                    pointerToEntry = processElementInfo(nativeLibs, metaAccess, pointerTo);
+                } else if (elementKind == SizableInfo.ElementKind.INTEGER || elementKind == SizableInfo.ElementKind.FLOAT) {
+                    pointerToEntry = createNativePrimitiveType(pointerToInfo);
+                }
+
+                if (pointerToEntry != null) {
+                    // store pointer to entry in an image singleton
+                    SubstrateDebugTypeEntrySupport.singleton().addTypeEntry(pointerToEntry);
+                }
+
+                String typeName = type.toJavaName();
+                int size = elementSize(elementInfo);
+                long typeSignature = getTypeSignature(typeName);
+                // pointer to entry may be null, e.g. if no element info was found for the pointed
+                // to type
+                // we create the type entry from the corresponding hosted type later
+                return new PointerToTypeEntry(typeName, size, -1, typeSignature, pointerToEntry);
             }
-        });
+            case StructInfo structInfo -> {
+                String typeName = type.toJavaName();
+                int size = elementSize(elementInfo);
+                long classOffset = -1;
+                String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getClass().getClassLoader());
+                long typeSignature = getTypeSignature(typeName + loaderName);
+                long layoutTypeSignature = getTypeSignature(LAYOUT_PREFIX + typeName + loaderName);
+                ForeignStructTypeEntry parentEntry = null;
+                for (ResolvedJavaType interfaceType : type.getInterfaces()) {
+                    ElementInfo otherInfo = nativeLibs.findElementInfo(interfaceType);
+                    if (otherInfo instanceof StructInfo) {
+                        TypeEntry otherTypeEntry = processElementInfo(nativeLibs, metaAccess, interfaceType);
+                        assert otherTypeEntry instanceof ForeignStructTypeEntry;
+                        parentEntry = (ForeignStructTypeEntry) otherTypeEntry;
+                        // store parent entry in an image singleton
+                        SubstrateDebugTypeEntrySupport.singleton().addTypeEntry(parentEntry);
+                    }
+                }
+
+                String typedefName = typedefName(structInfo);
+                if (typedefName == null) {
+                    typedefName = "_" + typeName;
+                    // debug.log("Using synthetic typedef name: %s", typedefName);
+                }
+                if (typedefName.startsWith("struct ")) {
+                    // log this before correcting it, so we have some hope of clearing it up
+                    // debug.log("TypedefName includes redundant keyword struct: %s", typedefName);
+                    typedefName = typedefName.substring("struct ".length());
+                }
+
+                // typedefName is the name of the c struct the Java type annotates
+                // no field processing here, this is handled later
+                return new ForeignStructTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature, typedefName, parentEntry);
+            }
+            case EnumInfo enumInfo -> {
+                // skip for now -> just create a void pointer
+                String typeName = type.toJavaName();
+                int size = ConfigurationValues.getTarget().wordSize;
+                long typeSignature = getTypeSignature(typeName);
+                // just create a pointer to entry that points to void
+                return new PointerToTypeEntry(typeName, size, -1, typeSignature, null);
+            }
+            case null, default -> {
+                if (nativeLibs.isPointerBase(type)) {
+                    String typeName = type.toJavaName();
+                    int size = ConfigurationValues.getTarget().wordSize;
+                    long typeSignature = getTypeSignature(typeName);
+                    // just create a pointer to entry that points to void
+                    return new PointerToTypeEntry(typeName, size, -1, typeSignature, null);
+                } else {
+                    // just create a primitive type for use as word type
+                    String typeName = type.toJavaName();
+                    int size = ConfigurationValues.getTarget().wordSize;
+                    long typeSignature = getTypeSignature(typeName);
+                    boolean isInteger = nativeLibs.isIntegerType(type);
+                    boolean isUnsigned = !nativeLibs.isSigned(type);
+                    return new PrimitiveTypeEntry(typeName, size, -1, typeSignature, size * 8, isInteger, !isInteger, isUnsigned);
+                }
+            }
+        }
+    }
+
+    private static TypeEntry createNativePrimitiveType(PointerToInfo pointerToInfo) {
+        assert pointerToInfo.getKind() == SizableInfo.ElementKind.INTEGER || pointerToInfo.getKind() == SizableInfo.ElementKind.FLOAT;
+        String typeName = pointerToInfo.getName();
+        int classOffset = -1;
+        long typeSignature = getTypeSignature(FOREIGN_PREFIX + typeName);
+        int size = pointerToInfo.getSizeInBytes();
+        int bitCount = size * 8;
+        boolean isNumericInteger = pointerToInfo.getKind() == SizableInfo.ElementKind.INTEGER;
+        boolean isNumericFloat = pointerToInfo.getKind() == SizableInfo.ElementKind.FLOAT;
+        boolean isUnsigned = pointerToInfo.isUnsigned();
+
+        return new PrimitiveTypeEntry(typeName, size, classOffset, typeSignature, bitCount, isNumericInteger, isNumericFloat, isUnsigned);
     }
 
     /* The following methods provide some logging for foreign type entries. */

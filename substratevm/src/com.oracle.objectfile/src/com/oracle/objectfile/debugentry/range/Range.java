@@ -203,7 +203,7 @@ public abstract class Range implements Comparable<Range> {
         return false;
     }
 
-    public String getClassName() {
+    public String getTypeName() {
         return methodEntry.getOwnerType().getTypeName();
     }
 
@@ -257,8 +257,8 @@ public abstract class Range implements Comparable<Range> {
 
     private String getExtendedMethodName(boolean includeParams) {
         StringBuilder builder = new StringBuilder();
-        if (getClassName() != null) {
-            builder.append(getClassName());
+        if (getTypeName() != null) {
+            builder.append(getTypeName());
             builder.append(".");
         }
         builder.append(getMethodName());

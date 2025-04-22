@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.lang.reflect.Modifier;
+
 /**
  * An abstract class providing modelling a generic class member which includes behaviour and data
  * shared by both field and method entries.
@@ -64,7 +66,7 @@ public abstract class MemberEntry {
         if (fileEntry != null) {
             return fileEntry.getFullName();
         } else {
-            return null;
+            return "";
         }
     }
 
@@ -116,12 +118,45 @@ public abstract class MemberEntry {
         return modifiers;
     }
 
+    public static String memberModifiers(int modifiers) {
+        StringBuilder builder = new StringBuilder();
+        if (Modifier.isPublic(modifiers)) {
+            builder.append("public ");
+        } else if (Modifier.isProtected(modifiers)) {
+            builder.append("protected ");
+        } else if (Modifier.isPrivate(modifiers)) {
+            builder.append("private ");
+        }
+        if (Modifier.isFinal(modifiers)) {
+            builder.append("final ");
+        }
+        if (Modifier.isAbstract(modifiers)) {
+            builder.append("abstract ");
+        } else if (Modifier.isVolatile(modifiers)) {
+            builder.append("volatile ");
+        } else if (Modifier.isTransient(modifiers)) {
+            builder.append("transient ");
+        } else if (Modifier.isSynchronized(modifiers)) {
+            builder.append("synchronized ");
+        }
+        if (Modifier.isNative(modifiers)) {
+            builder.append("native ");
+        }
+        if (Modifier.isStatic(modifiers)) {
+            builder.append("static");
+        } else {
+            builder.append("instance");
+        }
+
+        return builder.toString();
+    }
+
     public String getModifiersString() {
-        return ownerType.memberModifiers(modifiers);
+        return memberModifiers(modifiers);
     }
 
     @Override
     public String toString() {
-        return String.format("Member(%s %s %s owner=%s %s:%d)", getModifiersString(), valueType.getTypeName(), memberName, ownerType.getTypeName(), fileEntry.getFullName(), line);
+        return String.format("Member(%s %s %s owner=%s %s:%d)", getModifiersString(), valueType.getTypeName(), memberName, ownerType.getTypeName(), getFullFileName(), line);
     }
 }

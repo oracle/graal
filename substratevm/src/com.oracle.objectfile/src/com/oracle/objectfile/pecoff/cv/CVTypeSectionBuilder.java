@@ -140,7 +140,9 @@ class CVTypeSectionBuilder {
      * @return type record for this function (may return existing matching record)
      */
     CVTypeRecord buildFunction(CompiledMethodEntry entry) {
-        return buildMemberFunction(entry.classEntry(), entry.primary().getMethodEntry());
+        ClassEntry ownerType = entry.ownerType();
+        assert ownerType != null;
+        return buildMemberFunction(ownerType, entry.primary().getMethodEntry());
     }
 
     static class FieldListBuilder {

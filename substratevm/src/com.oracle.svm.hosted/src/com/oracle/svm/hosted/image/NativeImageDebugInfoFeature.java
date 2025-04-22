@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -37,10 +38,15 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
+import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.svm.core.ReservedRegisters;
@@ -53,6 +59,7 @@ import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.debug.BFDNameProvider;
 import com.oracle.svm.core.debug.GdbJitInterface;
+import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -61,6 +68,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,6 +82,9 @@ import jdk.vm.ci.code.Architecture;
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class NativeImageDebugInfoFeature implements InternalFeature {
+
+    public NativeLibraries nativeLibs;
+    public static final Set<Class<?>> foreignTypeEntryClasses = Set.of(PrimitiveTypeEntry.class, PointerToTypeEntry.class, ForeignStructTypeEntry.class);
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -111,6 +122,8 @@ class NativeImageDebugInfoFeature implements InternalFeature {
 
                 BFDNameProvider bfdNameProvider = new BFDNameProvider(ignored);
                 ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
+                SubstrateDebugTypeEntrySupport typeEntrySupport = new SubstrateDebugTypeEntrySupport();
+                ImageSingletons.add(SubstrateDebugTypeEntrySupport.class, typeEntrySupport);
             }
         }
     }
@@ -121,6 +134,12 @@ class NativeImageDebugInfoFeature implements InternalFeature {
          * Ensure ClassLoader.nameAndId is available at runtime for type lookup from GDB.
          */
         access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
+
+        var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        nativeLibs = accessImpl.getNativeLibraries();
+        for (Class<?> foreignTypeEntryClass : foreignTypeEntryClasses) {
+            accessImpl.registerAsInHeap(foreignTypeEntryClass);
+        }
 
         /*
          * Provide some global symbol for the gdb-debughelpers script.
@@ -170,6 +189,24 @@ class NativeImageDebugInfoFeature implements InternalFeature {
 
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createBytes(buffer::array, "__jit_debug_descriptor"));
         }
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        var accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+
+        for (AnalysisType t : accessImpl.getUniverse().getTypes()) {
+            var metaAccess = accessImpl.getMetaAccess();
+            if (nativeLibs.isWordBase(t)) {
+                TypeEntry typeEntry = NativeImageDebugInfoProvider.processElementInfo(nativeLibs, metaAccess, t);
+                // we will always create a type entry here
+                // e.g. if no element info is found or we can't find the pointed to type we create a
+                // pointerToVoid/primitive type
+                SubstrateDebugTypeEntrySupport.singleton().addTypeEntry(typeEntry);
+            }
+        }
+        // the map is complete now -> create a more efficient view of the map
+        SubstrateDebugTypeEntrySupport.singleton().trim();
     }
 
     @Override

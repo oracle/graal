@@ -89,6 +89,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         FIELD_DECLARATION_2,
         FIELD_DECLARATION_3,
         FIELD_DECLARATION_4,
+        FIELD_DECLARATION_REL_TYPE,
         STRUCT_FIELD_SIG,
         STRUCT_FIELD,
         ARRAY_DATA_TYPE_1,
