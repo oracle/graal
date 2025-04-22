@@ -40,6 +40,7 @@ import com.oracle.objectfile.debugentry.LoaderEntry;
 import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -244,6 +245,9 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 // try to get an already generated version of this type
                 TypeEntry typeEntry = SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
 
+                // avoid optimizing ForeignStructTypeEntry
+                blackHole(new ForeignStructTypeEntry("dummy", -1, -1, -1, -1, "struct dummy", null));
+
                 if (typeEntry != null) {
                     if (typeEntry instanceof PointerToTypeEntry pointerToTypeEntry && pointerToTypeEntry.getPointerTo() == null) {
                         // fix-up void pointers
@@ -256,6 +260,10 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 }
             }
         }
+    }
+
+    @NeverInline("Prevent instance getting optimized away")
+    void blackHole(Object o) {
     }
 
     /**
