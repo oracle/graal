@@ -36,12 +36,12 @@ import com.oracle.objectfile.debugentry.range.Range;
  * Tracks debug info associated with a top level compiled method.
  *
  * @param primary The primary range detailed by this object.
- * @param classEntry Details of the class owning this range.
+ * @param ownerType Details of the class owning this range.
  * @param frameSizeInfos Details of compiled method frame size changes.
  * @param frameSize Size of compiled method frame.
  */
 public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntry> frameSizeInfos, int frameSize,
-                ClassEntry classEntry) {
+                ClassEntry ownerType) {
 
     /**
      * Returns a stream that traverses all the callees of the method associated with this entry. The

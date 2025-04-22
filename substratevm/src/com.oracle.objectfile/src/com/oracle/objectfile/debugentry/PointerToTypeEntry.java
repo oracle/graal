@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,23 +25,24 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class ForeignStructTypeEntry extends StructureTypeEntry {
+public class PointerToTypeEntry extends TypeEntry {
+    private TypeEntry pointerTo;
 
-    private final String typedefName;
-    private final ForeignStructTypeEntry parent;
-
-    public ForeignStructTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                    long layoutTypeSignature, String typedefName, ForeignStructTypeEntry parent) {
-        super(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature);
-        this.typedefName = typedefName;
-        this.parent = parent;
+    public PointerToTypeEntry(String typeName, int size, long classOffset, long typeSignature, TypeEntry pointerTo) {
+        super(typeName, size, classOffset, typeSignature, typeSignature);
+        this.pointerTo = pointerTo;
     }
 
-    public String getTypedefName() {
-        return typedefName;
+    @Override
+    public boolean isForeign() {
+        return true;
     }
 
-    public ForeignStructTypeEntry getParent() {
-        return parent;
+    public TypeEntry getPointerTo() {
+        return pointerTo;
+    }
+
+    public void setPointerTo(TypeEntry pointerTo) {
+        this.pointerTo = pointerTo;
     }
 }

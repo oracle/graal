@@ -1321,6 +1321,28 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeFieldDeclarationRelTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(AbbrevCode.FIELD_DECLARATION_REL_TYPE, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_member, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
+        /* Instance fields have a member offset relocated relative to the heap base register. */
+        pos = writeAttrType(DwarfAttribute.DW_AT_data_member_location, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_accessibility, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
     private int writeClassConstantAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
         pos = writeAbbrevCode(AbbrevCode.CLASS_CONSTANT, buffer, pos);

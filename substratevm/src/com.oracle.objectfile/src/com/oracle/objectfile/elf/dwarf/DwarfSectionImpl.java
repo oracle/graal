@@ -40,9 +40,11 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
@@ -763,6 +765,24 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      */
     protected Stream<PrimitiveTypeEntry> primitiveTypeStream() {
         return dwarfSections.getPrimitiveTypes().stream();
+    }
+
+    /**
+     * Retrieve a stream of all pointer types notified via the DebugTypeInfo API.
+     *
+     * @return a stream of all pointer types notified via the DebugTypeInfo API.
+     */
+    protected Stream<PointerToTypeEntry> pointerTypeStream() {
+        return dwarfSections.getPointerTypes().stream();
+    }
+
+    /**
+     * Retrieve a stream of all pointer types notified via the DebugTypeInfo API.
+     *
+     * @return a stream of all pointer types notified via the DebugTypeInfo API.
+     */
+    protected Stream<ForeignStructTypeEntry> foreignStructTypeStream() {
+        return dwarfSections.getForeignStructTypes().stream();
     }
 
     /**

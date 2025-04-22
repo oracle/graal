@@ -51,14 +51,16 @@ import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.EnumClassEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.ForeignTypeEntry;
+import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.LoaderEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.LocalValueEntry;
+import com.oracle.objectfile.debugentry.MemberEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.RegisterValueEntry;
 import com.oracle.objectfile.debugentry.StackValueEntry;
@@ -140,12 +142,13 @@ import jdk.vm.ci.meta.Signature;
  * there exists one {@code TypeEntry} per type in the hosted universe. Type entries are divided into
  * following categories:
  * <ul>
- * <li>{@link PrimitiveTypeEntry}: Represents a primitive java type.</li>
+ * <li>{@link PrimitiveTypeEntry}: Represents a primitive java type or any other word type.</li>
  * <li>{@link HeaderTypeEntry}: A special {@code TypeEntry} that represents the object header
  * information in the native image heap, as sort of a super type to {@link Object}.</li>
  * <li>{@link ArrayTypeEntry}: Represents an array type.</li>
- * <li>{@link ForeignTypeEntry}: Represents a type that is not a java class, e.g.
+ * <li>{@link ForeignStructTypeEntry}: Represents a structured type that is not a java class, e.g.
  * {@link org.graalvm.nativeimage.c.struct.CStruct CStruct},
+ * <li>{@link PointerToTypeEntry}: Represents a pointer type, e.g.
  * {@link org.graalvm.nativeimage.c.struct.CPointerTo CPointerTo}, ... .</li>
  * <li>{@link EnumClassEntry}: Represents an {@link Enum} class.</li>
  * <li>{@link InterfaceClassEntry}: Represents an interface, and stores references to all
@@ -235,6 +238,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     private final ConcurrentHashMap<CompilationIdentifier, CompiledMethodEntry> compiledMethodIndex = new ConcurrentHashMap<>();
 
     /**
+     * A class entry that holds all compilations for function pointers.
+     */
+    private final ClassEntry foreignMethodListClassEntry = new ClassEntry(FOREIGN_METHOD_LIST_TYPE, -1, -1, -1, -1, -1, null, null, null);
+
+    /**
      * The header type entry which is used as a super class of {@link Object} in the debug info. It
      * describes the object header of an object in the native image.
      */
@@ -257,6 +265,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * type signatures for foreign primitive type units.
      */
     public static final String FOREIGN_PREFIX = "_foreign_.";
+
+    public static final String FOREIGN_METHOD_LIST_TYPE = "Foreign$Method$List";
 
     static final Path EMPTY_PATH = Paths.get("");
 
@@ -366,7 +376,18 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
          * type index and have to add it manually.
          */
         typeEntries.add(headerTypeEntry);
-        typeEntries.addAll(typeIndex.values());
+        typeEntries.add(foreignMethodListClassEntry);
+
+        for (TypeEntry typeEntry : typeIndex.values()) {
+            typeEntries.add(typeEntry);
+
+            // types processed after analysis might be missed otherwise
+            if (typeEntry instanceof PointerToTypeEntry pointerToTypeEntry) {
+                typeEntries.add(pointerToTypeEntry.getPointerTo());
+            } else if (typeEntry instanceof ForeignStructTypeEntry foreignStructTypeEntry && foreignStructTypeEntry.getParent() != null) {
+                typeEntries.add(foreignStructTypeEntry.getParent());
+            }
+        }
 
         return typeEntries;
     }
@@ -385,7 +406,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     @Override
     public SortedSet<CompiledMethodEntry> compiledMethodEntries() {
         SortedSet<CompiledMethodEntry> compiledMethodEntries = new TreeSet<>(
-                        Comparator.comparing(CompiledMethodEntry::primary).thenComparingLong(compiledMethodEntry -> compiledMethodEntry.classEntry().getTypeSignature()));
+                        Comparator.comparing(CompiledMethodEntry::primary).thenComparingLong(compiledMethodEntry -> compiledMethodEntry.ownerType().getTypeSignature()));
 
         compiledMethodEntries.addAll(compiledMethodIndex.values());
 
@@ -644,8 +665,14 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             int line = lineNumberTable == null ? 0 : lineNumberTable.getLineNumber(0);
 
             String methodName = getMethodName(method);
-            StructureTypeEntry ownerType = (StructureTypeEntry) lookupTypeEntry((SharedType) method.getDeclaringClass());
-            assert ownerType instanceof ClassEntry;
+            TypeEntry t = lookupTypeEntry((SharedType) method.getDeclaringClass());
+            if (!(t instanceof StructureTypeEntry)) {
+                // we can only install a foreign function pointer for a structured type
+                // use a dummy type to process function pointers
+                assert t instanceof PointerToTypeEntry;
+                t = foreignMethodListClassEntry;
+            }
+            StructureTypeEntry ownerType = (StructureTypeEntry) t;
             TypeEntry valueType = lookupTypeEntry((SharedType) method.getSignature().getReturnType(null));
             int modifiers = method.getModifiers();
 
@@ -771,7 +798,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     protected FieldEntry createFieldEntry(FileEntry fileEntry, String name, StructureTypeEntry ownerType, SharedType type, int offset, int size, boolean isEmbedded, int modifier) {
         TypeEntry typeEntry = lookupTypeEntry(type);
         debug.log("typename %s adding %s field %s type %s%s size %d at offset 0x%x%n",
-                        ownerType.getTypeName(), ownerType.getModifiersString(modifier), name, typeEntry.getTypeName(), (isEmbedded ? "(embedded)" : ""), size, offset);
+                        ownerType.getTypeName(), MemberEntry.memberModifiers(modifier), name, typeEntry.getTypeName(), (isEmbedded ? "(embedded)" : ""), size, offset);
         return new FieldEntry(fileEntry, name, ownerType, typeEntry, size, offset, isEmbedded, modifier);
     }
 
@@ -781,7 +808,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      * @param typeName name of a type
      * @return the signature for the type name
      */
-    protected long getTypeSignature(String typeName) {
+    public static long getTypeSignature(String typeName) {
         return Digest.digestAsUUID(typeName).getLeastSignificantBits();
     }
 

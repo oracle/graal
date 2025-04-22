@@ -60,7 +60,7 @@ public class MethodEntry extends MemberEntry {
         this.vtableOffset = vtableOffset;
         this.lastParamSlot = lastParamSlot;
 
-        this.locals = new ConcurrentSkipListSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparing(le -> le.type().getTypeName()));
+        this.locals = new ConcurrentSkipListSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparingLong(le -> le.type().getTypeSignature()));
         /*
          * Sort by line and add all locals, such that the methods locals only contain the lowest
          * line number.

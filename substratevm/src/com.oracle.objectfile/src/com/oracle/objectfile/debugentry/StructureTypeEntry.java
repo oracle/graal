@@ -26,7 +26,6 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -66,42 +65,5 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     public List<FieldEntry> getFields() {
         return List.copyOf(fields);
-    }
-
-    String memberModifiers(int modifiers) {
-        StringBuilder builder = new StringBuilder();
-        if (Modifier.isPublic(modifiers)) {
-            builder.append("public ");
-        } else if (Modifier.isProtected(modifiers)) {
-            builder.append("protected ");
-        } else if (Modifier.isPrivate(modifiers)) {
-            builder.append("private ");
-        }
-        if (Modifier.isFinal(modifiers)) {
-            builder.append("final ");
-        }
-        if (Modifier.isAbstract(modifiers)) {
-            builder.append("abstract ");
-        } else if (Modifier.isVolatile(modifiers)) {
-            builder.append("volatile ");
-        } else if (Modifier.isTransient(modifiers)) {
-            builder.append("transient ");
-        } else if (Modifier.isSynchronized(modifiers)) {
-            builder.append("synchronized ");
-        }
-        if (Modifier.isNative(modifiers)) {
-            builder.append("native ");
-        }
-        if (Modifier.isStatic(modifiers)) {
-            builder.append("static");
-        } else {
-            builder.append("instance");
-        }
-
-        return builder.toString();
-    }
-
-    public String getModifiersString(int modifiers) {
-        return memberModifiers(modifiers);
     }
 }

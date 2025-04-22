@@ -35,7 +35,9 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.LoaderEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.core.SubstrateUtil;
@@ -239,10 +241,15 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 // otherwise this is a class entry
                 ClassEntry superClass = type.getSuperclass() == null ? null : (ClassEntry) lookupTypeEntry((SharedType) type.getSuperclass());
                 FileEntry fileEntry = lookupFileEntry(type);
-                if (isForeignWordType(type)) {
-                    // we just need the correct type signatures here
-                    return new ClassEntry(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature,
-                                    superClass, fileEntry, loaderEntry);
+                // try to get an already generated version of this type
+                TypeEntry typeEntry = SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
+
+                if (typeEntry != null) {
+                    if (typeEntry instanceof PointerToTypeEntry pointerToTypeEntry && pointerToTypeEntry.getPointerTo() == null) {
+                        // fix-up void pointers
+                        pointerToTypeEntry.setPointerTo(lookupTypeEntry(voidType));
+                    }
+                    return typeEntry;
                 } else {
                     return new ClassEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
                                     layoutTypeSignature, superClass, fileEntry, loaderEntry);
