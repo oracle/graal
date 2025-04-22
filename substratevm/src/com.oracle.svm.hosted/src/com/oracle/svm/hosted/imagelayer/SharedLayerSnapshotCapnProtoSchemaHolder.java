@@ -4585,7 +4585,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)9);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)10);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4773,6 +4773,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.TextList.Builder initRegisteredJNILibraries(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.TextList.factory, 8, size);
       }
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.Builder getLayeredRuntimeMetadataSingleton() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.factory, 9, null, 0);
+      }
+      public final void setLayeredRuntimeMetadataSingleton(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.Reader value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.factory,9, value);
+      }
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.Builder initLayeredRuntimeMetadataSingleton() {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.factory,9, 0);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -4873,6 +4882,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.TextList.Reader getRegisteredJNILibraries() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.TextList.factory, 8, null, 0);
+      }
+
+      public boolean hasLayeredRuntimeMetadataSingleton() {
+        return !_pointerFieldIsNull(9);
+      }
+      public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.Reader getLayeredRuntimeMetadataSingleton() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.LayeredRuntimeMetadataSingleton.factory,9,null, 0);
       }
 
     }
@@ -5008,6 +5024,84 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader> getAfterParsingHooksDoneFoldedFieldValues() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 4, null, 0);
+      }
+
+    }
+
+  }
+
+
+  public static class LayeredRuntimeMetadataSingleton {
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)0,(short)2);
+    public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+        return LayeredRuntimeMetadataSingleton.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+      Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final boolean hasMethods() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder getMethods() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
+      }
+      public final void setMethods(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 0, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initMethods(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 0, size);
+      }
+      public final boolean hasFields() {
+        return !_pointerFieldIsNull(1);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder getFields() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, null, 0);
+      }
+      public final void setFields(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, value);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initFields(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, size);
+      }
+    }
+
+    public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+      Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final boolean hasMethods() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getMethods() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
+      }
+
+      public final boolean hasFields() {
+        return !_pointerFieldIsNull(1);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getFields() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 1, null, 0);
       }
 
     }
