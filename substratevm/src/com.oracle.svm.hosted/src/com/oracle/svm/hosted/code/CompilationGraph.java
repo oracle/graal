@@ -120,8 +120,8 @@ public final class CompilationGraph {
         return new CompilationGraph(
                         GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE),
                         graph.getNodeCount(),
-                        invokeInfos, // todo is there an empty global singleton we could use?
-                        allocationInfos);
+                        invokeInfos.isEmpty() ? EconomicSet.emptySet() : invokeInfos,
+                        allocationInfos.isEmpty() ? EconomicSet.emptySet() : allocationInfos);
     }
 
     public EncodedGraph getEncodedGraph() {
