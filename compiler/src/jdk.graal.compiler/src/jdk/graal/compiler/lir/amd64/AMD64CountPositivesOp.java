@@ -55,8 +55,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/250eb743c112fbcc45bf2b3ded1c644b19893577/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L4020-L4263",
-          sha1 = "42324f1b52b9bd5c316ebd916af9277f50d91f5b")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/9eeb86d972ac4cc38d923b2b868b426bbd27a4e8/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L4018-L4261",
+          sha1 = "1aa453c52215c1fc8d467460a93fa590f9edab15")
 // @formatter:on
 @Opcode("AMD64_COUNT_POSITIVES")
 public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
