@@ -24,20 +24,18 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import java.util.function.Supplier;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
-
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.vm.ci.code.Architecture;
-
-import java.util.function.Supplier;
 
 /**
  * Central place to register Truffle related compiler phases and plugins for host Java compilation
@@ -63,7 +61,6 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
 
     public static void installCommunityHighTier(OptionValues options, HighTier defaultHighTier) {
         HostInliningPhase.install(defaultHighTier, options);
-        InjectImmutableFrameFieldsPhase.install(defaultHighTier, options);
     }
 
     @Override
