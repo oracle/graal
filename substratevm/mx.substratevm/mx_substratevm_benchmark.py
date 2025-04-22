@@ -31,12 +31,12 @@ import zipfile
 import re
 from glob import glob
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import mx
 import mx_benchmark
 import mx_sdk_benchmark
-from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, Layer, StageName
 
 _suite = mx.suite("substratevm")
 
@@ -262,7 +262,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmark
 mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
 
 
-class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin, mx_sdk_benchmark.NativeImageBundleBasedBenchmarkMixin):
+class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin, mx_sdk_benchmark.LayeredNativeImageBundleBasedBenchmarkMixin):
     """Native Image variant of the Barista benchmark suite implementation. A collection of microservice workloads running in native execution mode on the Barista harness.
 
     The run arguments are passed to the Barista harness.
@@ -294,16 +294,21 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             exclude.append("ktor-hello-world")
         return [b for b in self.completeBenchmarkList(bmSuiteArgs) if b not in exclude]
 
-    def stages(self, bm_suite_args: List[str]) -> List[mx_sdk_benchmark.Stage]:
-        stages = super().stages(bm_suite_args)
-        if self.context.benchmark == "micronaut-pegasus" and mx_sdk_benchmark.Stage.AGENT in stages:
+    def default_stages(self) -> List[str]:
+        if self.benchmarkName() == "micronaut-pegasus":
             # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM (GR-59793)
-            stages.remove(mx_sdk_benchmark.Stage.AGENT)
-            mx.warn(f"Skipping the 'agent' stage as it is not supported for the 'micronaut-pegasus' benchmark. The stages that will be executed are: {[stage.value for stage in stages]}")
-        return stages
+            return ["instrument-image", "instrument-run", "image", "run"]
+        return super().default_stages()
 
-    def application_nib(self):
-        if self.benchmarkName() not in self._application_nibs:
+    def layers(self, bm_suite_args: List[str]) -> List[Layer]:
+        if self.benchmarkName() == "micronaut-pegasus":
+            return [Layer(0, True), Layer(1, False)]
+        # Currently, "micronaut-pegasus" is the only benchmark that supports running with layers
+        # Support for other benchmarks, or even suites? (GR-64772)
+        mx.abort(f"The '{self.benchmarkName()}' benchmark does not support layered native images!")
+
+    def get_bundle_path_for_benchmark_standalone(self, benchmark) -> str:
+        if benchmark not in self._application_nibs:
             # Run subprocess retrieving the application nib from the Barista 'build' script
             out = mx.OutputCapture()
             mx.run([self.baristaBuilderPath(), "--get-nib", self.baristaHarnessBenchmarkName()], out=out)
@@ -313,21 +318,32 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             if not nib_match:
                 raise ValueError(f"Could not extract the nib file path from the command output! Expected to match pattern {repr(nib_pattern)}.")
             # Cache for future access
-            self._application_nibs[self.benchmarkName()] = nib_match.group(1)
+            self._application_nibs[benchmark] = nib_match.group(1)
             # Try to capture the fixed image name from the Barista 'build' script output
             fixed_image_name_pattern = r"fixed image name is: ([^\n]+)\n"
             fixed_image_name_match = re.search(fixed_image_name_pattern, out.data)
             # Cache fixed image name, if present
             if fixed_image_name_match:
-                self._application_fixed_image_names[self.benchmarkName()] = fixed_image_name_match.group(1)
-        return self._application_nibs[self.benchmarkName()]
+                self._application_fixed_image_names[benchmark] = fixed_image_name_match.group(1)
+        return self._application_nibs[benchmark]
+
+    def get_bundle_path_for_benchmark_layer(self, benchmark, layer_info) -> str:
+        standalone_nib = Path(self.get_bundle_path_for_benchmark_standalone(benchmark))
+        return (standalone_nib.parent / f"layer{layer_info.index}-{standalone_nib.name}").absolute()
+
+    def get_latest_layer(self) -> Optional[Layer]:
+        latest_image_stage = self.context.vm.stages_info.get_latest_image_stage()
+        if latest_image_stage is None or not latest_image_stage.is_layered():
+            return None
+        return latest_image_stage.layer_info
 
     def application_fixed_image_name(self):
-        self.application_nib()
-        return self._application_fixed_image_names.get(self.benchmarkName(), None)
+        benchmark = self.benchmarkName()
+        self.get_bundle_path_for_benchmark_standalone(benchmark)
+        return self._application_fixed_image_names.get(benchmark, None)
 
     def applicationDist(self):
-        return Path(self.application_nib()).parent
+        return Path(self.get_bundle_path_for_benchmark_standalone(self.benchmarkName())).parent
 
     def uses_bundles(self):
         return True
@@ -362,14 +378,14 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def ensure_image_is_at_desired_location(self, bmSuiteArgs):
-        if self.stages_info.requested_stage.is_image() and self.application_fixed_image_name() is not None:
+        if self.stages_info.current_stage.is_image() and self.application_fixed_image_name() is not None:
             # Because of an issue in handling image build args in the intended order [GR-58214]
             # we need to move the image from the path that is set inside the nib to the path expected by our vm.
             # This code has no effect if the image is already at the desired location.
             vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
-            if vm.stages_info.should_produce_datapoints(mx_sdk_benchmark.Stage.INSTRUMENT_IMAGE):
+            if vm.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
                 desired_image_path = vm.config.instrumented_image_path
-            elif vm.stages_info.should_produce_datapoints(mx_sdk_benchmark.Stage.IMAGE):
+            elif vm.stages_info.should_produce_datapoints(StageName.IMAGE):
                 desired_image_path = vm.config.image_path
             else:
                 return
@@ -407,7 +423,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             In the case of `run`, retrieves the image built during `image`.
             """
             vm = suite.context.vm
-            if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
+            if stage.stage_name == StageName.INSTRUMENT_RUN:
                 return vm.config.instrumented_image_path
             else:
                 return vm.config.image_path
@@ -434,8 +450,8 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             if not isinstance(suite, BaristaNativeImageBenchmarkSuite):
                 raise TypeError(f"Expected an instance of {BaristaNativeImageBenchmarkSuite.__name__}, instead got an instance of {suite.__class__.__name__}")
 
-            stage = suite.stages_info.requested_stage
-            if stage == mx_sdk_benchmark.Stage.AGENT:
+            stage = suite.stages_info.current_stage
+            if stage.is_agent():
                 # BaristaCommand works for agent stage, since it's a JVM stage
                 cmd = self.produce_JVM_harness_command(cmd, suite)
                 # Make agent run short
@@ -466,7 +482,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 ni_barista_cmd.append(f"--config={barista_workload}")
             ni_barista_cmd += suite.runArgs(suite.context.bmSuiteArgs) + suite._extra_run_options
             ni_barista_cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.context.bmSuiteArgs)
-            if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
+            if stage.stage_name == StageName.INSTRUMENT_RUN:
                 # Make instrument run short
                 ni_barista_cmd += self._short_load_testing_phases()
                 if suite.context.benchmark == "play-scala-hello-world":
