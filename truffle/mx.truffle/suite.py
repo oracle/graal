@@ -318,7 +318,7 @@ suite = {
           "jdk.internal.access",
         ],
       },
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "TRUFFLE_LIBGRAAL_PROCESSOR"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
@@ -1367,18 +1367,6 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
-    "com.oracle.truffle.libgraal.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "requires" : [
-        "java.compiler",
-        "jdk.management"
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "jacoco" : "exclude",
-      "javaCompliance" : "17+",
-    },
-
     "org.graalvm.shadowed.org.json" : {
       # shaded org.json/json
       "subDir" : "src",
@@ -2073,17 +2061,6 @@ suite = {
           "tag": ["default", "public"],
       },
       "graalCompilerSourceEdition": "ignore",
-    },
-
-    "TRUFFLE_LIBGRAAL_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.libgraal.processor"],
-      "distDependencies" : [],
-      "description" : "The Truffle libgraal processor is shared across Truffle and the compiler to generate code for the compiler bridge.",
-      "allowsJavadocWarnings": True,
-      "maven": {
-          "tag": ["default", "public"],
-      },
     },
 
     "TRUFFLE_SL" : {
