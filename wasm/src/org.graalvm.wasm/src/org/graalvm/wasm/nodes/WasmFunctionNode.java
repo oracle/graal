@@ -170,7 +170,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.memoryLibs = memoryLibs;
     }
 
-    public WasmFunctionNode(WasmFunctionNode node, byte[] bytecode, WasmNotifyFunction notifyFunction) {
+    /**
+     * Copies a function node with instrumentation enabled in the <code>bytecode</code>. This should
+     * only be called by {@link WasmInstrumentableFunctionNode} when an instrument attaches and the
+     * bytecode needs to be rewritten to include instrumentation instructions.
+     * 
+     * @param node The existing {@link WasmFunctionNode} used for copying most information
+     * @param bytecode The instrumented bytecode
+     * @param notifyFunction The callback used by {@link Bytecode#NOTIFY} instructions to inform
+     *            instruments about statements in the bytecode
+     */
+    WasmFunctionNode(WasmFunctionNode node, byte[] bytecode, WasmNotifyFunction notifyFunction) {
         this.module = node.module;
         this.codeEntry = node.codeEntry;
         this.bytecodeStartOffset = 0;
