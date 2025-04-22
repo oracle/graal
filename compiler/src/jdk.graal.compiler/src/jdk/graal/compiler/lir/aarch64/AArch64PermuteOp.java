@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,9 +139,10 @@ public enum AArch64PermuteOp {
             // indices v * 2, v * 2 + 1 until we reach the element width equal to Byte.SIZE
             if (eKind.getSizeInBytes() == AArch64Kind.QWORD.getSizeInBytes()) {
                 masm.neon.shlVVI(vSize, ElementSize.DoubleWord, xtmp1Reg, currentIdxReg, 1);
-                masm.neon.shlVVI(vSize, ElementSize.DoubleWord, xtmp2Reg, xtmp1Reg, Integer.SIZE);
+                masm.neon.moveVV(vSize, xtmp2Reg, xtmp1Reg);
+                masm.neon.orrVI(vSize, ElementSize.Word, xtmp2Reg, 1);
+                masm.neon.shlVVI(vSize, ElementSize.DoubleWord, xtmp2Reg, xtmp2Reg, Integer.SIZE);
                 masm.neon.orrVVV(vSize, xtmp1Reg, xtmp1Reg, xtmp2Reg);
-                masm.neon.orrVI(vSize, ElementSize.DoubleWord, xtmp1Reg, 1L << Integer.SIZE);
                 currentIdxReg = xtmp1Reg;
                 eKind = AArch64Kind.DWORD;
             }
