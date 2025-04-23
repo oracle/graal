@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.core.common.util.Util;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -554,7 +554,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
      * Copy of {@code InstalledCode.MAX_NAME_LENGTH} initialized by reflection that can be removed
      * once JDK 21 support is removed.
      */
-    private static final int MAX_NAME_LENGTH;
+    public static final int MAX_NAME_LENGTH;
     static {
         int len = 2048;
         try {
@@ -567,25 +567,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     /**
      * Transforms {@code name} to be usable as an {@linkplain InstalledCode#getName() installed code
-     * name}. The value is truncated if too long. The truncation replaces the middle section of the
-     * string with {@code "<truncated(" + L + ", " + H + ")>"} where {@code L} is the length of the
-     * cut-out part of the string and H is its hash code in lowercase hex.
+     * name}. The value is {@linkplain Util#truncateString(String, int) truncated} if its length is
+     * greater than {@link #MAX_NAME_LENGTH}.
      */
     public static String asInstalledCodeName(String name) {
-        String truncationFormat = "<truncated(%d, %x)>";
-        int truncationReserved = (truncationFormat.formatted(Integer.MAX_VALUE, String.valueOf(Integer.MAX_VALUE).hashCode())).length();
-        if (name.length() > MAX_NAME_LENGTH) {
-            int len = MAX_NAME_LENGTH - truncationReserved;
-            int prefixEnd = len / 2;
-            int suffixStart = (name.length() - len / 2) - 1;
-            String prefix = name.substring(0, prefixEnd);
-            String middle = name.substring(prefixEnd, suffixStart);
-            middle = truncationFormat.formatted(middle.length(), middle.hashCode());
-            GraalError.guarantee(truncationReserved >= middle.length(), "%d < %d", truncationReserved, middle.length());
-            String suffix = name.substring(suffixStart);
-            return "%s%s%s".formatted(prefix, middle, suffix);
-        }
-        return name;
+        return Util.truncateString(name, MAX_NAME_LENGTH);
     }
 
     @SuppressWarnings("try")
