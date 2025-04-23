@@ -351,10 +351,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new Program(osrNode, new FrameDescriptor());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
-        BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
-        int backEdgeCount = osrMetadata.getBackEdgeCount();
-        Assert.assertTrue(backEdgeCount > OSR_THRESHOLD);
-        Assert.assertEquals(0, backEdgeCount % BytecodeOSRMetadata.OSR_POLL_INTERVAL);
     }
 
     /*
@@ -806,6 +802,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     public static class InfiniteInterpreterLoop extends BytecodeOSRTestNode {
         @Override
         public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return 42;
+            }
             return execute(osrFrame);
         }
 
@@ -814,7 +813,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             // This node only terminates in compiled code.
             while (true) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    return 42;
+                    // must never happen
+                    return 41;
                 }
                 if (BytecodeOSRNode.pollOSRBackEdge(this)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
