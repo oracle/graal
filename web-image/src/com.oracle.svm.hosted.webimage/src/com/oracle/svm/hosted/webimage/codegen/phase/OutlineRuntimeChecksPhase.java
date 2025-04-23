@@ -28,8 +28,8 @@ package com.oracle.svm.hosted.webimage.codegen.phase;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
@@ -203,6 +203,16 @@ public class OutlineRuntimeChecksPhase extends BasePhase<CoreProviders> {
          */
         @Override
         void replace(CoreProviders providers) {
+            if (ifNode.isDeleted()) {
+                /*
+                 * This case can happen when both branches of an if node throw a bytecode exception;
+                 * e.g. if (array == null) where the true successor throws a NullPointerException,
+                 * and the other throws an ArrayIndexOutOfBoundsException, which is then replaced
+                 * with checkNullPointer(array) followed by ThrowBytecodeException(OUT_OF_BOUNDS).
+                 */
+                return;
+            }
+
             StructuredGraph graph = ifNode.graph();
 
             /*
