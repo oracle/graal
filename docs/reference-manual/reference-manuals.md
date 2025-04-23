@@ -20,6 +20,6 @@ If you are mostly interested in a specific language runtime on GraalVM, see the 
 * [Espresso](java-on-truffle/README.md)
 * [GraalJS](https://github.com/oracle/graaljs/blob/master/docs/user/README.md)
 * [GraalPy](https://github.com/oracle/graalpython/blob/master/docs/user/README.md)
-* [GraalWasm](wasm/README.md)
+* [GraalWasm](https://www.graalvm.org/webassembly/docs/)
 * [LLVM Languages](llvm/README.md)
 * [TruffleRuby](https://github.com/oracle/truffleruby/blob/master/doc/user/README.md)
