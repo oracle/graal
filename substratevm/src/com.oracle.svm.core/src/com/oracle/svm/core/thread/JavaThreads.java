@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -220,8 +222,9 @@ public final class JavaThreads {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
-    private static Target_java_lang_VirtualThread toVirtualTarget(Thread thread) {
+    public static Target_java_lang_VirtualThread toVirtualTarget(Thread thread) {
         return Target_java_lang_VirtualThread.class.cast(thread);
     }
 
