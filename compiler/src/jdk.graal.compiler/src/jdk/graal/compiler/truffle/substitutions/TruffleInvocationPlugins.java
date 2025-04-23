@@ -56,8 +56,8 @@ import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -99,7 +99,7 @@ public class TruffleInvocationPlugins {
     private static void registerFramePlugins(InvocationPlugins plugins, Replacements replacements) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/impl/FrameWithoutBoxing;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.impl.FrameWithoutBoxing", replacements);
-        r.register(new RequiredInvocationPlugin("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
                             ValueNode isExactType) {
@@ -147,24 +147,14 @@ public class TruffleInvocationPlugins {
                     }
                 }
 
-                ValueNode loadNode = makeReadImmutable(b, object);
+                ValueNode loadNode = isTrustedImmutable(b, object);
                 b.addPush(JavaKind.Object, PiNode.create(loadNode, piStamp, valueAnchorNode));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
-            @Override
-            public boolean isOptional() {
                 return true;
             }
         });
     }
 
-    private static ValueNode makeReadImmutable(GraphBuilderContext b, ValueNode object) {
+    private static ValueNode isTrustedImmutable(GraphBuilderContext b, ValueNode object) {
         ValueNode loadNode = object;
         if (loadNode instanceof LoadFieldNode cast && canBeImmutable(cast.field())) {
             loadNode = b.add(LoadFieldNode.createOverrideImmutable(cast));
@@ -191,7 +181,7 @@ public class TruffleInvocationPlugins {
     private static void registerBytecodePlugins(InvocationPlugins plugins, Replacements replacements) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/bytecode/BytecodeDSLUncheckedAccess;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.bytecode.BytecodeDSLUncheckedAccess", replacements);
-        r.register(new InvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
+        r.register(new OptionalInlineOnlyInvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode object, ValueNode clazz) {
@@ -208,18 +198,8 @@ public class TruffleInvocationPlugins {
 
                 TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
                 Stamp piStamp = StampFactory.object(type, true);
-                b.addPush(JavaKind.Object, PiNode.create(makeReadImmutable(b, object), piStamp, null));
+                b.addPush(JavaKind.Object, PiNode.create(isTrustedImmutable(b, object), piStamp, null));
 
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
-            @Override
-            public boolean isOptional() {
                 return true;
             }
         });
