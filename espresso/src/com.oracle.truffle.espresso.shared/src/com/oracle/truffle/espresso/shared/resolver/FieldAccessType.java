@@ -20,8 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.shared.resolver;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 
 public enum FieldAccessType {
     GetStatic(true, false),
@@ -35,6 +37,21 @@ public enum FieldAccessType {
     FieldAccessType(boolean isStatic, boolean isPut) {
         this.isStatic = isStatic;
         this.isPut = isPut;
+    }
+
+    public static FieldAccessType fromOpCode(int opcode) {
+        return switch (opcode) {
+            case Bytecodes.GETSTATIC -> GetStatic;
+            case Bytecodes.PUTSTATIC -> PutStatic;
+            case Bytecodes.GETFIELD -> GetInstance;
+            case Bytecodes.PUTFIELD -> PutInstance;
+            default -> throw new IllegalArgumentException(unexpectedBytecodeError(opcode));
+        };
+    }
+
+    @TruffleBoundary
+    private static String unexpectedBytecodeError(int opcode) {
+        return "Unexpected bytecode " + Bytecodes.nameOf(opcode);
     }
 
     public boolean isStatic() {

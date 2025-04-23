@@ -46,7 +46,6 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -136,6 +135,10 @@ public abstract class DebugInfoBase {
      */
     private ClassEntry objectClass;
     /**
+     * The type entry for java.lang.Class.
+     */
+    private ClassEntry classClass;
+    /**
      * List of all top level compiled methods found in debug info. These ought to arrive via the
      * debug info API in ascending address range order.
      */
@@ -171,11 +174,11 @@ public abstract class DebugInfoBase {
     /**
      * Bit mask used for tagging oops.
      */
-    private int reservedBitsMask;
+    private int reservedHubBitsMask;
     /**
      * Number of low order bits used for tagging oops.
      */
-    private int numReservedBits;
+    private int numReservedHubBits;
     /**
      * Number of bytes used to store an oop reference.
      */
@@ -202,23 +205,17 @@ public abstract class DebugInfoBase {
      */
     private int compiledCodeMax;
 
-    /**
-     * The type entry for java.lang.Class.
-     */
-    private ClassEntry hubClassEntry;
-
     @SuppressWarnings("this-escape")
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
-        this.reservedBitsMask = 0;
-        this.numReservedBits = 0;
+        this.reservedHubBitsMask = 0;
+        this.numReservedHubBits = 0;
         this.compressionShift = 0;
         this.referenceSize = 0;
         this.pointerSize = 0;
         this.objectAlignment = 0;
         this.numAlignmentBits = 0;
-        this.hubClassEntry = null;
         this.compiledCodeMax = 0;
         // create and index an empty dir with index 0.
         ensureDirEntry(EMPTY_PATH);
@@ -250,12 +247,12 @@ public abstract class DebugInfoBase {
         /*
          * Save count of low order tag bits that may appear in references.
          */
-        reservedBitsMask = debugInfoProvider.reservedBitsMask();
+        reservedHubBitsMask = debugInfoProvider.reservedHubBitsMask();
 
         /* Mask must be contiguous from bit 0. */
-        assert ((reservedBitsMask + 1) & reservedBitsMask) == 0;
+        assert ((reservedHubBitsMask + 1) & reservedHubBitsMask) == 0;
 
-        numReservedBits = Integer.bitCount(reservedBitsMask);
+        numReservedHubBits = Integer.bitCount(reservedHubBitsMask);
 
         /* Save amount we need to shift references by when loading from an object field. */
         compressionShift = debugInfoProvider.compressionShift();
@@ -372,9 +369,6 @@ public abstract class DebugInfoBase {
             case INSTANCE: {
                 FileEntry fileEntry = addFileEntry(fileName, filePath);
                 typeEntry = new ClassEntry(typeName, fileEntry, size);
-                if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
-                    hubClassEntry = (ClassEntry) typeEntry;
-                }
                 break;
             }
             case INTERFACE: {
@@ -422,6 +416,9 @@ public abstract class DebugInfoBase {
             // track object type and header struct
             if (idType == null) {
                 headerType = (HeaderTypeEntry) typeEntry;
+            }
+            if (typeName.equals("java.lang.Class")) {
+                classClass = (ClassEntry) typeEntry;
             }
             if (typeName.equals("java.lang.Object")) {
                 objectClass = (ClassEntry) typeEntry;
@@ -477,6 +474,12 @@ public abstract class DebugInfoBase {
         // this should only be looked up after all types have been notified
         assert objectClass != null;
         return objectClass;
+    }
+
+    public ClassEntry lookupClassClass() {
+        // this should only be looked up after all types have been notified
+        assert classClass != null;
+        return classClass;
     }
 
     private void addPrimaryRange(PrimaryRange primaryRange, DebugCodeInfo debugCodeInfo, ClassEntry classEntry) {
@@ -705,12 +708,12 @@ public abstract class DebugInfoBase {
         return useHeapBase;
     }
 
-    public int reservedBitsMask() {
-        return reservedBitsMask;
+    public int reservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
-    public int numReservedBits() {
-        return numReservedBits;
+    public int numReservedHubBits() {
+        return numReservedHubBits;
     }
 
     public int compressionShift() {
@@ -735,14 +738,6 @@ public abstract class DebugInfoBase {
 
     public String getCachePath() {
         return cachePath;
-    }
-
-    public boolean isHubClassEntry(StructureTypeEntry typeEntry) {
-        return typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
-    }
-
-    public ClassEntry getHubClassEntry() {
-        return hubClassEntry;
     }
 
     private static void collectFilesAndDirs(ClassEntry classEntry) {

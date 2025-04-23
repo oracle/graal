@@ -38,7 +38,6 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -128,6 +127,7 @@ public class ClassInitializationFeature implements InternalFeature {
 
         initializationSupport.initializeAtBuildTime("org.graalvm.collections", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("jdk.graal.compiler", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage.libgraal", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.word", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativebridge", NATIVE_IMAGE_CLASS_REASON);
@@ -141,11 +141,10 @@ public class ClassInitializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        access.registerObjectReachableCallback(Object.class, this::checkImageHeapInstance);
     }
 
     @SuppressWarnings("unused")
-    private void checkImageHeapInstance(DuringAnalysisAccess access, Object obj, ObjectScanner.ScanReason reason) {
+    public void checkImageHeapInstance(Object obj) {
         /*
          * Note that initializeAtBuildTime also memoizes the class as InitKind.BUILD_TIME, which
          * means that the user cannot later manually register it as RERUN or RUN_TIME.

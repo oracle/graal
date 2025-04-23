@@ -84,7 +84,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport.VetoException;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Assumption;
@@ -259,6 +260,8 @@ public abstract class Accessor {
         public abstract void setURL(SourceBuilder builder, URL url);
 
         public abstract void setPath(SourceBuilder builder, String path);
+
+        public abstract Map<String, String> getSourceOptions(Source source);
     }
 
     public abstract static class InteropSupport extends Support {
@@ -664,6 +667,8 @@ public abstract class Accessor {
 
         public abstract OptionValues getInstrumentContextOptions(Object polyglotInstrument, Object polyglotContext);
 
+        public abstract OptionValues getInstrumentSourceOptions(Object polyglotInstrument, Source source);
+
         public abstract boolean isContextClosed(Object polyglotContext);
 
         public abstract boolean isContextCancelling(Object polyglotContext);
@@ -757,6 +762,12 @@ public abstract class Accessor {
 
         public abstract String getFormatKind(LogRecord logRecord);
 
+        public abstract boolean isLogRecordCallerClassSet(LogRecord logRecord);
+
+        public abstract boolean isLogRecordCallerMethodSet(LogRecord logRecord);
+
+        public abstract void logFallback(String s);
+
         public abstract boolean isCurrentThreadPolyglotThread();
 
         public abstract Object getHostNull();
@@ -802,6 +813,20 @@ public abstract class Accessor {
         public abstract ModulesAccessor getModulesAccessor();
 
         public abstract Node getUncachedLocation(Object polyglotContext);
+
+        public abstract OptionValues parseLanguageSourceOptions(Object polyglotLanguageContext, Source source);
+
+        public abstract ExecutableNode parseInlineForLanguage(Object languageContext, Source source, Node node, MaterializedFrame frame);
+
+        public abstract Object getInstrumentEngine(Object polyglotInstrument);
+
+        public abstract MessageEndpoint startEngineServer(Object engine, URI uri, MessageEndpoint server) throws IOException, VetoException;
+
+        public abstract DispatchOutputStream getEngineErr(Object engine);
+
+        public abstract DispatchOutputStream getEngineOut(Object engine);
+
+        public abstract InputStream getEngineIn(Object engine);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -826,8 +851,6 @@ public abstract class Accessor {
 
         public abstract void postInitEnv(Env env);
 
-        public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
-
         public abstract void dispose(Env env);
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage.Env env);
@@ -836,9 +859,9 @@ public abstract class Accessor {
 
         public abstract Object getPolyglotLanguageInstance(TruffleLanguage<?> language);
 
-        public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
+        public abstract CallTarget parse(Env env, Source code, OptionValues optionValues, Node context, String... argumentNames);
 
-        public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
+        public abstract ExecutableNode parseInline(Env env, Source code, OptionValues optionValues, Node context, MaterializedFrame frame);
 
         public abstract boolean isVisible(Env env, Object value);
 
@@ -855,6 +878,8 @@ public abstract class Accessor {
         public abstract boolean isContextInitialized(Env env);
 
         public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
+
+        public abstract OptionDescriptors describeSourceOptions(TruffleLanguage<?> language, String requiredGroup);
 
         public abstract void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
@@ -963,8 +988,7 @@ public abstract class Accessor {
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object polyglotInstrument, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor,
-                        boolean strongReferences);
+        public abstract Object createInstrumentationHandler(Object polyglotEngine, boolean strongReferences);
 
         public abstract void collectEnvServices(Set<Object> collectTo, Object polyglotLanguageContext, TruffleLanguage<?> language);
 
@@ -993,6 +1017,8 @@ public abstract class Accessor {
         public abstract OptionDescriptors describeEngineOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
         public abstract OptionDescriptors describeContextOptions(Object instrumentationHandler, Object key, String requiredGroup);
+
+        public abstract OptionDescriptors describeSourceOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
@@ -1029,10 +1055,6 @@ public abstract class Accessor {
         public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
 
         public abstract Object createPolyglotSourceSection(Object instrumentEnv, Object polyglotSource, SourceSection ss);
-
-        public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
-
-        public abstract void finalizeStoreInstrumentationHandler(Object instrumentationHandler);
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
@@ -1462,7 +1484,7 @@ public abstract class Accessor {
 
 // A separate class to break the cycle such that Accessor can fully initialize
 // before ...Accessor classes static initializers run, which call methods from Accessor.
-    private static class Constants {
+    private static final class Constants {
 
         private static final Accessor.LanguageSupport LANGUAGE;
         private static final Accessor.NodeSupport NODES;

@@ -159,7 +159,7 @@ public class LibGraalCompilationDriver {
      * Implemented by
      * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints#compileMethod}.
      */
-    public static native long compileMethodInLibgraal(long isolateThread,
+    public static native long compileMethodInLibgraal(long isolateThreadAddress,
                     long methodHandle,
                     boolean useProfilingInfo,
                     boolean installAsDefault,
@@ -574,7 +574,11 @@ public class LibGraalCompilationDriver {
                 failedCompilations.getAndAdd(1);
                 return null;
             }
-            return new CompilationResult(installedCode, memTimeBuffer.readTimeElapsed(), memTimeBuffer.readBytesAllocated());
+            long memoryUsed = memTimeBuffer.readBytesAllocated();
+            long compileTime = memTimeBuffer.readTimeElapsed();
+            GraalError.guarantee(compileTime != 0L, "Compilation time cannot be 0");
+            GraalError.guarantee(memoryUsed != 0L, "Compilation memory used cannot be 0");
+            return new CompilationResult(installedCode, compileTime, memoryUsed);
         }
     }
 

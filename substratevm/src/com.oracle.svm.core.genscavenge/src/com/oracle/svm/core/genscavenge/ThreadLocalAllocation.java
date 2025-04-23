@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSupport;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
@@ -63,8 +64,6 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -211,27 +210,17 @@ public final class ThreadLocalAllocation {
         GCImpl.getPolicy().updateSizeParameters();
     }
 
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewInstance(Word objectHeader) {
-        /*
-         * Avoid stack overflow errors while producing memory chunks, because that could leave the
-         * heap in an inconsistent state.
-         */
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+    public static Object slowPathNewInstance(Word objectHeader) {
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
-            UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
-            Object result = allocateInstanceInCurrentTlab(hub, size);
-            if (result == null) {
-                result = slowPathNewInstanceWithoutAllocating(hub, size);
-                runSlowPathHooks();
-                sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
-            }
-            return result;
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
+        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
+        Object result = allocateInstanceInCurrentTlab(hub, size);
+        if (result == null) {
+            result = slowPathNewInstanceWithoutAllocating(hub, size);
+            runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
         }
+        return result;
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
@@ -250,59 +239,30 @@ public final class ThreadLocalAllocation {
         }
     }
 
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewArray(Word objectHeader, int length) {
-        return slowPathNewArrayLikeObject(objectHeader, length, null);
-    }
-
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewStoredContinuation(Word objectHeader, int length) {
-        return slowPathNewArrayLikeObject(objectHeader, length, null);
-    }
-
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewPodInstance(Word objectHeader, int arrayLength, byte[] referenceMap) {
-        return slowPathNewArrayLikeObject(objectHeader, arrayLength, referenceMap);
-    }
-
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object newDynamicHub(int vTableSlots) {
-        return HeapImpl.allocateDynamicHub(vTableSlots);
-    }
-
-    private static Object slowPathNewArrayLikeObject(Word objectHeader, int length, byte[] podReferenceMap) {
-        /*
-         * Avoid stack overflow errors while producing memory chunks, because that could leave the
-         * heap in an inconsistent state.
-         */
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            if (length < 0) { // must be done before allocation-restricted code
-                throw new NegativeArraySizeException();
-            }
-
-            DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-            UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
-            /*
-             * Check if the array is too big. This is an optimistic check because the heap probably
-             * has other objects in it, and the next collection could throw an OutOfMemoryError if
-             * this object is allocated and survives.
-             */
-            GCImpl.getPolicy().ensureSizeParametersInitialized();
-            if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize()) && !GCImpl.shouldIgnoreOutOfMemory()) {
-                OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
-                throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
-            }
-
-            Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
-
-            runSlowPathHooks();
-            sampleSlowPathAllocation(result, size, length);
-
-            return result;
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
+    public static Object slowPathNewArrayLikeObject(Word objectHeader, int length, byte[] podReferenceMap) {
+        if (length < 0) { // must be done before allocation-restricted code
+            throw new NegativeArraySizeException();
         }
+
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
+        /*
+         * Check if the array is too big. This is an optimistic check because the heap probably has
+         * other objects in it, and the next collection could throw an OutOfMemoryError if this
+         * object is allocated and survives.
+         */
+        GCImpl.getPolicy().ensureSizeParametersInitialized();
+        if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize()) && !GCImpl.shouldIgnoreOutOfMemory()) {
+            OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
+            throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
+        }
+
+        Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
+
+        runSlowPathHooks();
+        sampleSlowPathAllocation(result, size, length);
+
+        return result;
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
@@ -314,7 +274,7 @@ public final class ThreadLocalAllocation {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
-            if (size.aboveOrEqual(HeapParameters.getLargeArrayThreshold())) {
+            if (!GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(size)) {
                 /* Large arrays go into their own unaligned chunk. */
                 boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
@@ -455,7 +415,7 @@ public final class ThreadLocalAllocation {
     }
 
     static void disableAndFlushForAllThreads() {
-        VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableAndFlushForAllThreads");
+        VMOperation.guaranteeInProgressAtSafepoint("ThreadLocalAllocation.disableAndFlushForAllThreads");
 
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             disableAndFlushForThread(vmThread);

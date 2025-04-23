@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r13;
@@ -37,6 +36,7 @@ import static jdk.vm.ci.aarch64.AArch64.r20;
 import static jdk.vm.ci.aarch64.AArch64.r21;
 import static jdk.vm.ci.aarch64.AArch64.r22;
 import static jdk.vm.ci.aarch64.AArch64.r23;
+import static jdk.vm.ci.aarch64.AArch64.r24;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag.MI;
@@ -57,11 +57,11 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4664-L4701",
-          sha1 = "b25c503126c37eeb5224202eae09833032d9d8db")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3726-L3735",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/03105fc92505e9e367354e763b99cbe02bf473d6/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L5873-L5911",
+          sha1 = "232bbf6f1aa4cf95182f546679b4fa7f9cfba70c")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3725-L3734",
           sha1 = "376de6fbb2caccaac53c4aa934ce96f8f0dc7f18")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3923-L4233",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3922-L4232",
           sha1 = "48559bd1d7e871f8cb8c352efc801364d88558cf")
 // @formatter:on
 public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstruction {
@@ -94,7 +94,6 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
         this.zlenValue = zlenValue;
 
         this.temps = new Value[]{
-                        r10.asValue(),
                         r11.asValue(),
                         r12.asValue(),
                         r13.asValue(),
@@ -107,6 +106,7 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
                         r21.asValue(),
                         r22.asValue(),
                         r23.asValue(),
+                        r24.asValue(),
         };
     }
 
@@ -127,8 +127,8 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
         Register zlen = asRegister(zlenValue);
 
         multiplyToLen(masm, x, xlen, y, ylen, z, zlen,
-                        r10, r11, r12, r13, r14, r15, r16, r17,
-                        r19, r20, r21, r22, r23);
+                        r11, r12, r13, r14, r15, r16, r17, r19,
+                        r20, r21, r22, r23, r24);
     }
 
     private static void add2WithCarry(AArch64MacroAssembler masm,

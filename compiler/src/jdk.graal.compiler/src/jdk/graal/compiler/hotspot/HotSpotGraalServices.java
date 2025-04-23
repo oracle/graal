@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.util.BitSet;
 import java.util.Objects;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -38,7 +39,6 @@ import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
@@ -121,7 +121,7 @@ public class HotSpotGraalServices {
      * This exists so that the HotSpot VM can be exited from within libgraal.
      */
     public static void exit(int status, HotSpotJVMCIRuntime runtime) {
-        if (ImageInfo.inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             runtime.exitHotSpot(status);
         } else {
             System.exit(status);

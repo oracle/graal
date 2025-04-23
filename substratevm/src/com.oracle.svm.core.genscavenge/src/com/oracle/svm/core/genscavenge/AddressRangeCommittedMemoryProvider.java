@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,9 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static jdk.graal.compiler.word.Word.unsigned;
 import static jdk.graal.compiler.word.Word.nullPointer;
+import static jdk.graal.compiler.word.Word.unsigned;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -74,6 +73,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Reserves a fixed-size address range and provides memory from it by committing and uncommitting
@@ -144,16 +144,12 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
-        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
+        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
         if (reserved.equal(0)) {
-            /*
-             * By default, always reserve at least 32 GB of address space. If a large maximum heap
-             * size was specified, then reserve 2x of that maximum heap size (assuming that the max.
-             * address space size is large enough for that).
-             */
-            UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize))).multiply(2);
-            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), addressSpaceSize);
+            /* Reserve a 32 GB address space, except if a larger heap size was specified. */
+            UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize)));
+            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), maxAddressSpaceSize);
         }
 
         UnsignedWord alignment = unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
@@ -788,6 +784,11 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
             alloc = alloc.getAllocNext();
         }
         return false;
+    }
+
+    @Override
+    public UnsignedWord getReservedAddressSpaceSize() {
+        return reservedSpaceSize;
     }
 
     /** Keeps track of unused memory. */

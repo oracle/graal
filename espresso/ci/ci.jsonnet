@@ -8,7 +8,20 @@
   nativeimage_guard_includes: [],
   vm_guard_includes: [],
 
+  local espresso_compiler_stub_gate = common.eclipse + common.jdt + common.predicates(true, false, false) +
+   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-compiler-stub-style-jdk21-linux-amd64') + {
+    setup+: [
+      ['cd', "../espresso-compiler-stub"],
+    ],
+    guard+: {
+      includes+: [
+        "<graal>/espresso-compiler-stub/**",
+      ],
+    },
+  },
+
   local _builds = common.builds + [
+    common.jdk21_gate_linux_amd64 + espresso_compiler_stub_gate,
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21-linux-amd64'},
@@ -23,16 +36,6 @@
     // AWFY interpreter benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_interpreter_benchmark('jvm-ce-llvm', 'awfy:*')                                                                              + {name: 'weekly-bench-espresso-jvm-ce-awfy_interpreter-jdk21-linux-amd64'},
     common.jdk21_weekly_bench_linux    + common.espresso_interpreter_benchmark('native-ce-llvm', 'awfy:*')                                                                           + {name: 'weekly-bench-espresso-native-ce-awfy_interpreter-jdk21-linux-amd64'},
-
-    // Scala DaCapo warmup benchmarks
-    common.jdk21_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('jvm-ce-llvm'   , guest_jvm_config='single-tier'    , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-single_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('native-ce-llvm', guest_jvm_config='single-tier')                                                      + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-single_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('jvm-ce-llvm'   , guest_jvm_config='multi-tier'     , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-multi_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('native-ce-llvm', guest_jvm_config='multi-tier')                                                       + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-multi_tier-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux    + common.graal_benchmark('jvm-ce-llvm', common.scala_dacapo_jvm_warmup)                                                                       + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-reference-jdk21-linux-amd64'},
-
-    common.jdk21_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('jvm-ce-llvm'   , guest_jvm_config='3-compiler-threads', extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'weekly-bench-espresso-jvm-ce-scala_dacapo_warmup-3threads-jdk21-linux-amd64'},
-    common.jdk21_weekly_bench_linux    + common.scala_dacapo_warmup_benchmark('native-ce-llvm', guest_jvm_config='3-compiler-threads')                                                  + {name: 'weekly-bench-espresso-native-ce-scala_dacapo_warmup-3threads-jdk21-linux-amd64'},
 
     // Scala DaCapo benchmarks
     common.jdk21_on_demand_bench_linux + common.scala_dacapo_benchmark('jvm-ce-llvm'          , guest_jvm_config='single-tier'    , extra_args=['--vm.XX:ReservedCodeCacheSize=1g']) + {name: 'ondemand-bench-espresso-jvm-ce-scala_dacapo-single_tier-jdk21-linux-amd64'},

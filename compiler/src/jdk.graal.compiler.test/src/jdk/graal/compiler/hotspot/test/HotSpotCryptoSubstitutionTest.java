@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,13 +34,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.AlgorithmParameters;
 import java.security.GeneralSecurityException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
+import java.security.Signature;
+import java.util.Arrays;
+import java.util.Random;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.internal.AssumptionViolatedException;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
@@ -54,12 +66,6 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.internal.AssumptionViolatedException;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -369,10 +375,11 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     @Test
     public void testSha1() {
         Assume.assumeTrue("SHA1 not supported", SHA1Node.isSupported(getArchitecture()));
+        assertMessageDigestAlgorithmExists("SHA-1");
         testWithInstalledIntrinsic("sun.security.provider.SHA", "implCompress0", "testDigest", "SHA-1", getData());
     }
 
-    void testWithInstalledIntrinsic(String className, String methodName, String testSnippetName, String algorithm, byte[] data) {
+    void assertMessageDigestAlgorithmExists(String algorithm) {
         // Ensure the algorithm exists
         try {
             MessageDigest.getInstance(algorithm, "SUN");
@@ -381,7 +388,9 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         } catch (NoSuchProviderException e) {
             throw new RuntimeException(e);
         }
+    }
 
+    void testWithInstalledIntrinsic(String className, String methodName, String testSnippetName, Object... args) {
         Class<?> c;
         try {
             c = Class.forName(className);
@@ -395,10 +404,10 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         try {
             ResolvedJavaMethod method = getResolvedJavaMethod(testSnippetName);
             Object receiver = method.isStatic() ? null : this;
-            GraalCompilerTest.Result expect = executeExpected(method, receiver, algorithm, data);
+            GraalCompilerTest.Result expect = executeExpected(method, receiver, args);
             code = compileAndInstallSubstitution(c, methodName);
             assertTrue("Failed to install " + methodName, code != null);
-            testAgainstExpected(method, expect, receiver, algorithm, data);
+            testAgainstExpected(method, expect, receiver, args);
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
             // same Junit @Test annotated method can proceed.
@@ -411,23 +420,112 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     @Test
     public void testSha256() {
         Assume.assumeTrue("SHA256 not supported", SHA256Node.isSupported(getArchitecture()));
+        assertMessageDigestAlgorithmExists("SHA-256");
         testWithInstalledIntrinsic("sun.security.provider.SHA2", "implCompress0", "testDigest", "SHA-256", getData());
     }
 
     @Test
     public void testSha512() {
         Assume.assumeTrue("SHA512 not supported", SHA512Node.isSupported(getArchitecture()));
+        assertMessageDigestAlgorithmExists("SHA-512");
         testWithInstalledIntrinsic("sun.security.provider.SHA5", "implCompress0", "testDigest", "SHA-512", getData());
     }
 
     @Test
     public void testSha3() {
         Assume.assumeTrue("SHA3 not supported", SHA3Node.isSupported(getArchitecture()));
+        assertMessageDigestAlgorithmExists("SHA3-512");
         testWithInstalledIntrinsic("sun.security.provider.SHA3", "implCompress0", "testDigest", "SHA3-512", getData());
     }
 
     @Test
     public void testMD5() {
+        assertMessageDigestAlgorithmExists("MD5");
         testWithInstalledIntrinsic("sun.security.provider.MD5", "implCompress0", "testDigest", "MD5", getData());
+    }
+
+    static class SeededSecureRandom extends SecureRandom {
+
+        private static final long serialVersionUID = 1L;
+
+        private final Random rnd;
+
+        SeededSecureRandom() {
+            rnd = GraalCompilerTest.getRandomInstance();
+        }
+
+        @Override
+        public void nextBytes(byte[] bytes) {
+            rnd.nextBytes(bytes);
+        }
+
+        @Override
+        public byte[] generateSeed(int numBytes) {
+            var out = new byte[numBytes];
+            rnd.nextBytes(out);
+            return out;
+        }
+    }
+
+    KeyPair generateKeyPair(String algorithm) throws NoSuchAlgorithmException {
+        var g = KeyPairGenerator.getInstance(algorithm);
+        var size = switch (g.getAlgorithm()) {
+            case "RSA", "RSASSA-PSS", "DSA", "DiffieHellman" -> 1024;
+            case "EC" -> 256;
+            case "EdDSA", "Ed25519", "XDH", "X25519" -> 255;
+            case "Ed448", "X448" -> 448;
+            case "ML-KEM", "ML-KEM-768", "ML-KEM-512", "ML-KEM-1024",
+                            "ML-DSA", "ML-DSA-44", "ML-DSA-65", "ML-DSA-87" ->
+                -1;
+            default -> throw new UnsupportedOperationException(algorithm);
+        };
+        g.initialize(size, new SeededSecureRandom());
+        return g.generateKeyPair();
+    }
+
+    public byte[] testSignVer(String algorithm) throws GeneralSecurityException {
+        var kp = generateKeyPair(algorithm);
+        var sig = Signature.getInstance(algorithm, "SUN");
+        sig.initSign(kp.getPrivate(), new SeededSecureRandom());
+        sig.update(input.clone());
+        byte[] result = sig.sign();
+
+        sig.initVerify(kp.getPublic());
+        boolean verifyResult = sig.verify(result);
+
+        byte[] newResult = Arrays.copyOf(result, result.length + 1);
+        newResult[result.length] = (byte) (verifyResult ? 1 : 0);
+        return newResult;
+    }
+
+    @Test
+    public void testMLDSASigVer() {
+        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDoubleKeccak != 0L);
+        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumAlmostNtt != 0L);
+        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumAlmostInverseNtt != 0L);
+        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumNttMult != 0L);
+        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumMontMulByConstant != 0L);
+        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumDecomposePoly != 0L);
+        // ML-DSA-44
+        testWithInstalledIntrinsic("sun.security.provider.SHA3Parallel", "doubleKeccak", "testSignVer", "ML-DSA-44");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostNtt", "testSignVer", "ML-DSA-44");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostInverseNtt", "testSignVer", "ML-DSA-44");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumNttMult", "testSignVer", "ML-DSA-44");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumMontMulByConstant", "testSignVer", "ML-DSA-44");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumDecomposePoly", "testSignVer", "ML-DSA-44");
+        // ML-DSA-65
+        testWithInstalledIntrinsic("sun.security.provider.SHA3Parallel", "doubleKeccak", "testSignVer", "ML-DSA-65");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostNtt", "testSignVer", "ML-DSA-65");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostInverseNtt", "testSignVer", "ML-DSA-65");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumNttMult", "testSignVer", "ML-DSA-65");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumMontMulByConstant", "testSignVer", "ML-DSA-65");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumDecomposePoly", "testSignVer", "ML-DSA-65");
+        // ML-DSA-87
+        testWithInstalledIntrinsic("sun.security.provider.SHA3Parallel", "doubleKeccak", "testSignVer", "ML-DSA-87");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostNtt", "testSignVer", "ML-DSA-87");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostInverseNtt", "testSignVer", "ML-DSA-87");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumNttMult", "testSignVer", "ML-DSA-87");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumMontMulByConstant", "testSignVer", "ML-DSA-87");
+        testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumDecomposePoly", "testSignVer", "ML-DSA-87");
     }
 }

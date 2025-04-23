@@ -22,10 +22,15 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 @FunctionalInterface
-public interface VersionFilter {
+public interface VersionFilter extends LanguageFilter {
+
+    default boolean isValidFor(EspressoLanguage language) {
+        return isValidFor(language.getJavaVersion());
+    }
 
     boolean isValidFor(JavaVersion version);
 
@@ -74,6 +79,18 @@ public interface VersionFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java11OrEarlier();
+        }
+    }
+
+    final class Java11OrLater implements VersionFilter {
+        public static final Java11OrLater INSTANCE = new Java11OrLater();
+
+        private Java11OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java11OrLater();
         }
     }
 

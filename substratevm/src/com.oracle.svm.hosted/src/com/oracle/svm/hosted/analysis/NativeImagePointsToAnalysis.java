@@ -44,7 +44,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
@@ -53,6 +53,7 @@ import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -147,7 +148,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
             }
-            if (SubstrateOptions.includeAll()) {
+            if (type.isArray() && type.getComponentType().isInBaseLayer()) {
+                /* Rescan the component hub. This will be simplified by GR-60254. */
+                HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type.getComponentType(), ((SVMHost) hostVM).dynamicHub(type).getComponentHub());
+            }
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 /*
                  * Using getInstanceFields and getStaticFields allows to include the fields from the
                  * substitution class.
@@ -181,6 +186,15 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
             return ((HostedType) type).getWrapped().getWrapped();
         } else {
             return type;
+        }
+    }
+
+    @Override
+    protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
+        super.validateRootMethodRegistration(aMethod, invokeSpecial);
+
+        if (!invokeSpecial && aMethod.isConstructor()) {
+            LogUtils.warning("Constructors should be registered as special invoke entry points: %s", aMethod);
         }
     }
 

@@ -274,13 +274,13 @@ public abstract class TypeState {
     }
 
     /** Returns a type state representing left filtered with respect to the comparison and right. */
-    public static TypeState filter(TypeState left, PrimitiveComparison comparison, TypeState right) {
+    public static TypeState filter(TypeState left, PrimitiveComparison comparison, TypeState right, boolean isUnsigned) {
         assert left.isPrimitive() || left.isEmpty() : left;
         assert right.isPrimitive() || right.isEmpty() : right;
         if (left.isEmpty() || right.isEmpty()) {
             return forEmpty();
         }
-        return ((PrimitiveTypeState) left).filter(comparison, (PrimitiveTypeState) right);
+        return ((PrimitiveTypeState) left).filter(comparison, isUnsigned, (PrimitiveTypeState) right);
     }
 }
 

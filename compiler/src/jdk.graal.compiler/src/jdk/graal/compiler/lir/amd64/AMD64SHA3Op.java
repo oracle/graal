@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.LessEqual;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
+import static jdk.graal.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
 import static jdk.vm.ci.amd64.AMD64.k1;
@@ -78,8 +79,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/f0b72f728d357a257074177fbea2f1ff70cf70f2/src/hotspot/cpu/x86/stubGenerator_x86_64_sha3.cpp#L42-L326",
-          sha1 = "714247ae095f919159a8835d1435f497bbcd3643")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c447a10225576bc59e1ba9477417367d2ac28511/src/hotspot/cpu/x86/stubGenerator_x86_64_sha3.cpp#L43-L320",
+          sha1 = "85dbee8cb0c0f6d8f37d07da6cf8b2f9f4fc8ce8")
 // @formatter:on
 public final class AMD64SHA3Op extends AMD64LIRInstruction {
 
@@ -231,29 +232,16 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         masm.kshiftrw(k1, k5, 4);
 
         // load the state
-        masm.evmovdqu64(xmm0, k5, new AMD64Address(state, 0));
-        masm.evmovdqu64(xmm1, k5, new AMD64Address(state, 40));
-        masm.evmovdqu64(xmm2, k5, new AMD64Address(state, 80));
-        masm.evmovdqu64(xmm3, k5, new AMD64Address(state, 120));
-        masm.evmovdqu64(xmm4, k5, new AMD64Address(state, 160));
+        for (int i = 0; i < 5; i++) {
+            masm.evmovdqu64(asXMMRegister(i), k5, new AMD64Address(state, i * 40));
+        }
 
         // load the permutation and rotation constants
-        masm.evmovdqu64(xmm17, new AMD64Address(permsAndRots, 0));
-        masm.evmovdqu64(xmm18, new AMD64Address(permsAndRots, 64));
-        masm.evmovdqu64(xmm19, new AMD64Address(permsAndRots, 128));
-        masm.evmovdqu64(xmm20, new AMD64Address(permsAndRots, 192));
-        masm.evmovdqu64(xmm21, new AMD64Address(permsAndRots, 256));
-        masm.evmovdqu64(xmm22, new AMD64Address(permsAndRots, 320));
-        masm.evmovdqu64(xmm23, new AMD64Address(permsAndRots, 384));
-        masm.evmovdqu64(xmm24, new AMD64Address(permsAndRots, 448));
-        masm.evmovdqu64(xmm25, new AMD64Address(permsAndRots, 512));
-        masm.evmovdqu64(xmm26, new AMD64Address(permsAndRots, 576));
-        masm.evmovdqu64(xmm27, new AMD64Address(permsAndRots, 640));
-        masm.evmovdqu64(xmm28, new AMD64Address(permsAndRots, 704));
-        masm.evmovdqu64(xmm29, new AMD64Address(permsAndRots, 768));
-        masm.evmovdqu64(xmm30, new AMD64Address(permsAndRots, 832));
-        masm.evmovdqu64(xmm31, new AMD64Address(permsAndRots, 896));
+        for (int i = 0; i < 15; i++) {
+            masm.evmovdqu64(asXMMRegister(i + 17), new AMD64Address(permsAndRots, i * 64));
+        }
 
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(sha3Loop);
 
         // there will be 24 keccak rounds
@@ -304,6 +292,7 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         // The implementation closely follows the Java version, with the state
         // array "rows" in the lowest 5 64-bit slots of zmm0 - zmm4, i.e.
         // each row of the SHA3 specification is located in one zmm register.
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(rounds24Loop);
         masm.subl(roundsLeft, 1);
 
@@ -330,7 +319,7 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
 
         // Do the cyclical permutation of the 24 moving state elements
         // and the required rotations within each element (the combined
-        // rho and sigma steps).
+        // rho and pi steps).
         masm.evpermt2q(xmm4, xmm17, xmm3);
         masm.evpermt2q(xmm3, xmm18, xmm2);
         masm.evpermt2q(xmm2, xmm17, xmm1);
@@ -352,7 +341,7 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         masm.evpermt2q(xmm2, xmm24, xmm4);
         masm.evpermt2q(xmm3, xmm25, xmm4);
         masm.evpermt2q(xmm4, xmm26, xmm5);
-        // The combined rho and sigma steps are done.
+        // The combined rho and pi steps are done.
 
         // Do the chi step (the same operation on all 5 rows).
         // vpternlogq(x, 180, y, z) does x = x ^ (y & ~z).
@@ -394,11 +383,9 @@ public final class AMD64SHA3Op extends AMD64LIRInstruction {
         }
 
         // store the state
-        masm.evmovdqu64(new AMD64Address(state, 0), k5, xmm0);
-        masm.evmovdqu64(new AMD64Address(state, 40), k5, xmm1);
-        masm.evmovdqu64(new AMD64Address(state, 80), k5, xmm2);
-        masm.evmovdqu64(new AMD64Address(state, 120), k5, xmm3);
-        masm.evmovdqu64(new AMD64Address(state, 160), k5, xmm4);
+        for (int i = 0; i < 5; i++) {
+            masm.evmovdqu64(new AMD64Address(state, i * 40), k5, asXMMRegister(i));
+        }
 
         masm.pop(r14);
         masm.pop(r13);

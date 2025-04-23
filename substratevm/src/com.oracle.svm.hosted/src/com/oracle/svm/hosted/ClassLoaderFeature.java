@@ -37,13 +37,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
-import com.oracle.svm.hosted.imagelayer.ObjectToConstantFieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @AutomaticallyRegisteredFeature
 public class ClassLoaderFeature implements InternalFeature {
@@ -121,19 +122,10 @@ public class ClassLoaderFeature implements InternalFeature {
 
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            LibGraalClassLoaderBase libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
+            LibGraalLoader libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
             if (libGraalLoader != null) {
-                ClassLoader libGraalClassLoader = libGraalLoader.getClassLoader();
-                ClassForNameSupport.singleton().setLibGraalLoader(libGraalClassLoader);
-
-                ClassLoader runtimeLibGraalClassLoader = libGraalLoader.getRuntimeClassLoader();
-                if (runtimeLibGraalClassLoader != null) {
-                    /*
-                     * LibGraalLoader provides runtime-replacement ClassLoader instance. Make sure
-                     * LibGraalLoader gets replaced by runtimeLibGraalClassLoader instance in image.
-                     */
-                    access.registerObjectReplacer(obj -> obj == libGraalClassLoader ? runtimeLibGraalClassLoader : obj);
-                }
+                ClassLoader libGraalClassLoader = (ClassLoader) libGraalLoader;
+                ClassForNameSupport.currentLayer().setLibGraalLoader(libGraalClassLoader);
             }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
@@ -226,7 +218,7 @@ public class ClassLoaderFeature implements InternalFeature {
         final CrossLayerConstantRegistry registry = CrossLayerConstantRegistry.singletonOrNull();
 
         @Override
-        public JavaConstant transformToConstant(Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
+        public JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
             if (receiver == nativeImageSystemClassLoader.defaultSystemClassLoader) {
                 /*
                  * This map will be assigned within the application layer. Within this layer we

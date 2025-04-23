@@ -77,4 +77,9 @@ public final class ImageHeapRelocatableConstant extends ImageHeapConstant {
     public ImageHeapConstant forObjectClone() {
         throw AnalysisError.shouldNotReachHere("Unsupported in ImageHeapRelocatableConstant");
     }
+
+    @Override
+    public String toString() {
+        return "(ImageHeapRelocatableConstant) " + super.toString();
+    }
 }

@@ -4,7 +4,7 @@
   local linux_amd64 = common.linux_amd64,
 
   local javadoc_publisher = {
-    name: 'graal-publish-javadoc-' + utils.prefixed_jdk(self.jdk_version),
+    name: 'graal-publish-javadoc-' + self.jdk_name,
     run+: [
       ["cd", "./sdk"],
       ["mx", "build"],
@@ -59,7 +59,7 @@
   },
 
   local all_builds = [
-    common.post_merge + linux_amd64 + common.labsjdk21 + javadoc_publisher,
+    common.post_merge + linux_amd64 + common.labsjdkLatest + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(all_builds, std.thisFile),

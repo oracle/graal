@@ -30,7 +30,12 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 /**
  * #4.4.4.
  */
-public final class IntegerConstant implements PoolConstant {
+public final class IntegerConstant implements ImmutablePoolConstant {
+    private final int value;
+
+    IntegerConstant(int value) {
+        this.value = value;
+    }
 
     public static IntegerConstant create(int value) {
         // TODO: cache values between [-127, 128] ?
@@ -42,14 +47,16 @@ public final class IntegerConstant implements PoolConstant {
         return Tag.INTEGER;
     }
 
-    private final int value;
-
-    IntegerConstant(int value) {
-        this.value = value;
-    }
-
     public int value() {
         return value;
+    }
+
+    @Override
+    public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!(other instanceof IntegerConstant otherConstant)) {
+            return false;
+        }
+        return value == otherConstant.value;
     }
 
     @Override

@@ -54,19 +54,6 @@ suite = {
     },
     # Support Libraries.
     # Projects depending on these will *not be built* if the 'optional' is 'True' for the given OS/architecture.
-    # This is a dummy library for dragonegg support.
-    "DRAGONEGG_SUPPORT" : {
-      "os_arch" : {
-        "linux" : {
-          "amd64" : {
-            "path": "tests/support.txt",
-            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-          },
-          "<others>": {"optional": True},
-        },
-        "<others>": {"<others>" : {"optional": True}},
-      },
-    },
     # This is a dummy library for malloc.h support.
     "MALLOC_H_SUPPORT" : {
       "os_arch" : {
@@ -258,9 +245,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
     "com.oracle.truffle.llvm.tests.harness" : {
       "subDir" : "tests",
@@ -322,9 +306,12 @@ suite = {
         "sdk:POLYGLOT_TCK",
       ],
       "buildDependencies" : [
-        "NATIVE_MODE_SUPPORT",
         "SULONG_TCK_NATIVE",
       ],
+      "os" : {
+        "windows" : {"ignore": "Native mode is not supported on Windows"},
+        "<others>" : {},
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle, LLVM",
@@ -450,9 +437,6 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
 
     "com.oracle.truffle.llvm.nativemode.resources" : {
@@ -486,7 +470,7 @@ suite = {
         "jdk.unsupported", # sun.misc.Signal
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "17+",
       "spotbugsIgnoresGenerated" : True,
@@ -494,10 +478,7 @@ suite = {
       "license" : "BSD-new",
       "jacoco" : "include",
       # Using finalizer in signals implementation. GR-7018
-      # "javac.lint.overrides" : "-deprecation",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
+      "javac.lint.overrides" : "-deprecation",
     },
 
     "com.oracle.truffle.llvm.parser" : {
@@ -969,6 +950,7 @@ suite = {
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_ENABLE_STATIC" : "NO",
+        "LIBUNWIND_ENABLE_STATIC" : "NO",
         "CMAKE_INSTALL_PREFIX" : "native",
         # workaround for build problem with cmake >=3.22
         # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
@@ -984,6 +966,9 @@ suite = {
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "linux-musl" : {
@@ -994,6 +979,9 @@ suite = {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "LIBCXX_HAS_MUSL_LIBC" : "YES",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "darwin" : {
@@ -1004,6 +992,9 @@ suite = {
             "CMAKE_INSTALL_RPATH" : "@loader_path/",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
+            "CMAKE_ASM_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_C_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
+            "CMAKE_CXX_FLAGS": "-ffile-prefix-map=<sulong_prefix:com.oracle.truffle.llvm.libraries.bitcode.libcxx>=llvm-project",
           },
         },
         "windows" : {
@@ -1115,7 +1106,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulong.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
+      "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3"],
       "dependencies" : ["SULONG_TEST"],
       "testProject" : True,
       "defaultBuild" : False,
@@ -1530,28 +1521,6 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
-    "gcc_fortran" : {
-      "subDir" : "tests/gcc",
-      # The Ninja generator used by mx (version 1.8.2) does not support Fortran using Ninja version [GR-30808]
-      # "class" : "ExternalCMakeTestSuite",
-      # "variants" : ["executable-O0"],
-      "class" : "ExternalTestSuite",
-      "variants" : ["O0_OUT"],
-      "testDir" : "gcc-5.2.0/gcc/testsuite",
-      "fileExts" : [".f90", ".f", ".f03"],
-      "requireDragonegg" : True,
-      "native" : True,
-      "vpath" : True,
-      "single_job" : True, # problem with parallel builds and temporary module files
-      "buildRef" : True,
-      "dependencies" : ["SULONG_TEST"],
-      "buildDependencies" : [
-        "GCC_SOURCE",
-        "DRAGONEGG_SUPPORT",
-      ],
-      "testProject" : True,
-      "defaultBuild" : False,
-    },
     "parserTorture" : {
       "subDir" : "tests/gcc",
       "class" : "ExternalCMakeTestSuite",
@@ -1902,7 +1871,12 @@ suite = {
         },
         "<others>" : {
           "layout" : {
-            "./": ["dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*"],
+            "./": [{
+                "source_type": "dependency",
+                "dependency": "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
+                "path": "*",
+                "exclude": "native/lib/*.a",
+            }],
             "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
             # for source compatibility
             "./native/lib/<lib:polyglot-mock>": "link:<lib:graalvm-llvm>",
@@ -2258,16 +2232,6 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./" : ["dependency:gcc_cpp/*"],
-      },
-      "testDistribution" : True,
-      "defaultBuild" : False,
-    },
-    "SULONG_GCC_FORTRAN_TEST_SUITE" : {
-      "native" : True,
-      "relpath" : True,
-      "platformDependent" : True,
-      "layout" : {
-        "./" : ["dependency:gcc_fortran/*"],
       },
       "testDistribution" : True,
       "defaultBuild" : False,

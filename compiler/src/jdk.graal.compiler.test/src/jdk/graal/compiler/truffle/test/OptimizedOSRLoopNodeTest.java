@@ -487,7 +487,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertNotCompiled(rootNode.getOSRTarget());
     }
 
-    private static class CustomInnerLoopRepeatingNode extends TestRepeatingNode {
+    private static final class CustomInnerLoopRepeatingNode extends TestRepeatingNode {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
@@ -611,7 +611,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     }
 
-    private static class TestOSRStackTraceFromAbove extends TestOSRStackTrace {
+    private static final class TestOSRStackTraceFromAbove extends TestOSRStackTrace {
 
         @Child DirectCallNode callNode;
 

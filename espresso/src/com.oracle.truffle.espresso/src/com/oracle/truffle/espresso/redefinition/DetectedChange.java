@@ -32,7 +32,7 @@ import java.util.Set;
 
 import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -91,7 +91,7 @@ public final class DetectedChange {
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
         changedMethodBodies.put(oldMethod, newMethod);
-        if (oldMethod.getName() == Symbol.Name._clinit_) {
+        if (oldMethod.getName() == Names._clinit_) {
             classInitializerChanged = true;
         }
     }

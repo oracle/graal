@@ -84,7 +84,7 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
     }
 
     @Uninterruptible(reason = "Executes during isolate creation.")
-    CodeInfo prepareCodeInfo() {
+    static CodeInfo prepareCodeInfo() {
         ImageCodeInfo[] imageCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfo.class);
         ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
         int size = imageCodeInfos.length;
@@ -131,6 +131,7 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
         return codeStart;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public HostedImageCodeInfo getHostedImageCodeInfo() {
         return hostedImageCodeInfo;
     }

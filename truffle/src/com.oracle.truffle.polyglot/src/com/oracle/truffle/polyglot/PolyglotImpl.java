@@ -324,7 +324,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
             if (impl != null) {
                 assert hostLanguage.getClass() == impl.getHostLanguageSPI().getClass() || PreInitContextHostLanguage.isInstance(impl.hostLanguage);
-                impl.patch(sandboxPolicy, dispatchOut,
+                boolean patchSuccess = impl.patch(sandboxPolicy, dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
                                 engineOptions,
@@ -336,7 +336,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 useHandler,
                                 (TruffleLanguage<?>) hostLanguage,
                                 usePolyglotHostService);
-
+                if (!patchSuccess) {
+                    // Engine patching failed create a new engine
+                    impl = null;
+                }
             }
             if (impl == null) {
                 impl = new PolyglotEngineImpl(this, sandboxPolicy,
@@ -428,7 +431,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         Map<String, String> engineOptions = new HashMap<>();
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
         OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true, true);
-        values.putAll(null, engineOptions, allowExperimentalOptions);
+        values.putAll(engineOptions, allowExperimentalOptions, null);
         return values;
     }
 
@@ -749,7 +752,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public Object buildSource(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached,
-                    Charset encoding, URL url, String path)
+                    Charset encoding, URL url, String path, Map<String, String> options)
                     throws IOException {
         assert language != null;
         com.oracle.truffle.api.source.Source.SourceBuilder builder;
@@ -795,6 +798,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         builder.mimeType(mimeType);
         builder.cached(cached);
         builder.encoding(encoding);
+        if (options != null) {
+            builder.options(options);
+        }
 
         try {
             return PolyglotImpl.getOrCreatePolyglotSource(this, builder.build());

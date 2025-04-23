@@ -39,6 +39,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -158,11 +159,24 @@ public abstract class Stub {
     }
 
     /**
-     * Gets the graph that from which the code for this stub will be compiled.
+     * Gets the graph from which the code for this stub will be compiled.
      *
      * @param compilationId unique compilation id for the stub
      */
     protected abstract StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId);
+
+    /**
+     * Calls {@link #getGraph} for the side effect of registering the types used in the graph with
+     * SymbolicSnippetEncoder.snippetTypes.
+     */
+    @LibGraalSupport.HostedOnly
+    public final void findTypesInGraph() {
+        try (DebugContext debug = DebugContext.disabled(options)) {
+            Stub stub = linkage.getStub();
+            CompilationIdentifier compilationId = new StubCompilationIdentifier(stub);
+            stub.getGraph(debug, compilationId);
+        }
+    }
 
     @Override
     public String toString() {
@@ -290,7 +304,7 @@ public abstract class Stub {
         assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
     }
 
-    private static class EmptyHighTier extends BasePhase<HighTierContext> {
+    private static final class EmptyHighTier extends BasePhase<HighTierContext> {
         @Override
         public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;

@@ -45,6 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
 public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
+    public static final ResolvedJavaMethod[] NO_METHODS = new ResolvedJavaMethod[0];
 
     private final String name;
     private final Class<?> clazz;
@@ -260,8 +261,8 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
-    public final ResolvedJavaMethod[] getDeclaredMethods() {
-        throw VMError.intentionallyUnimplemented();
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return NO_METHODS;
     }
 
     @Override

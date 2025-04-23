@@ -19,6 +19,7 @@
   local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm") + task_spec(common.deps.svm),
 
   local eclipse = task_spec(common.deps.eclipse),
+  local spotbugs = task_spec(common.deps.spotbugs),
   local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
@@ -117,12 +118,10 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
-      // We could run the style gate on JDK 22 as well, and use old JDKs for running tools like StopBugs etc.,
-      // but since we support JDK 21 anyways, there is not good reason to do so.
-      "linux:amd64:jdk21": gate + t("30:00"),
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + spotbugs + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": gate + t("30:00"),
     }),
-    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
       "windows:amd64:jdk-latest": gate + t("1:30:00"),
     }) + variants({

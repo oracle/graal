@@ -34,7 +34,7 @@ import com.oracle.svm.configure.config.ConfigurationSet;
 public class ClassLoadingProcessor extends AbstractProcessor {
 
     @Override
-    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
+    void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;

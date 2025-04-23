@@ -34,7 +34,6 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -87,7 +86,7 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create();
+    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create("registeredBundles");
 
     public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
         this.allLocales = locales.toArray(new Locale[0]);
@@ -207,7 +206,7 @@ public class LocalizationSupport {
             if (bundleClass != null) {
                 registerNullaryConstructor(bundleClass);
             }
-            Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
+            Resources.currentLayer().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
 
             if (jdkBundle) {
                 String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
@@ -257,29 +256,6 @@ public class LocalizationSupport {
     @SuppressWarnings("unused")
     public boolean isNotIncluded(String bundleName) {
         return false;
-    }
-
-    /**
-     * @return locale for given tag or null for invalid ones
-     */
-    @SuppressWarnings("deprecation")
-    public static Locale parseLocaleFromTag(String tag) {
-        try {
-            return new Locale.Builder().setLanguageTag(tag).build();
-        } catch (IllformedLocaleException ex) {
-            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
-            String[] parts = tag.split("-");
-            switch (parts.length) {
-                case 1:
-                    return new Locale(parts[0]);
-                case 2:
-                    return new Locale(parts[0], parts[1]);
-                case 3:
-                    return new Locale(parts[0], parts[1], parts[2]);
-                default:
-                    return null;
-            }
-        }
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {

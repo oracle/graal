@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLASS_TO_STATIC;
@@ -64,19 +63,20 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
@@ -377,7 +377,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             }
             /* Check that the class has a public constructor */
             for (Method m : receiver.getDeclaredMethods()) {
-                if (m.isPublic() && !m.isStatic() && m.getName().equals(Name._init_)) {
+                if (m.isPublic() && !m.isStatic() && m.getName().equals(Names._init_)) {
                     return true;
                 }
             }
@@ -498,7 +498,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             return context.getAllocator().createNewMultiArray(arrayKlass.getComponentType(), dimensions);
         }
 
-        static final String INIT_NAME = Name._init_.toString();
+        static final String INIT_NAME = Names._init_.toString();
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
@@ -977,7 +977,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     private synchronized ArrayKlass createArrayKlass() {
         CompilerAsserts.neverPartOfCompilation();
         ArrayKlass result = this.arrayKlass;
-        if (result == null && Type._void != getType()) { // ignore void[]
+        if (result == null && Types._void != getType()) { // ignore void[]
             this.arrayKlass = result = new ArrayKlass(this);
         }
         return result;
@@ -1258,13 +1258,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     public abstract Method.MethodVersion[] getDeclaredMethodVersions();
 
     /**
-     * Returns an array reflecting all the methods declared by this type. This method is similar to
-     * {@link Class#getDeclaredMethods()} in terms of returned methods.
-     */
-    @Override
-    public abstract MethodRef[] getDeclaredMethodRefs();
-
-    /**
      * Returns an array reflecting all the fields declared by this type. This method is similar to
      * {@link Class#getDeclaredFields()} in terms of returned fields.
      */
@@ -1275,7 +1268,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        Method clinit = lookupDeclaredMethod(Name._clinit_, Signature._void);
+        Method clinit = lookupDeclaredMethod(Names._clinit_, Signatures._void);
         if (clinit != null && clinit.isStatic()) {
             return clinit;
         }
@@ -1653,7 +1646,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @CompilationFinal private final Symbol<Name> runtimePackage;
 
     private Symbol<Name> initRuntimePackage() {
-        ByteSequence hostPkgName = Types.getRuntimePackage(type);
+        ByteSequence hostPkgName = TypeSymbols.getRuntimePackage(type);
         return getNames().getOrCreate(hostPkgName);
     }
 
@@ -1862,11 +1855,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return null;
     }
 
-    @Override
-    public final ModuleRef getModule() {
-        return module();
-    }
-
     // visible to TypeCheckNode
     public Assumption getRedefineAssumption() {
         return Assumption.ALWAYS_VALID;
@@ -1877,17 +1865,17 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     // region TypeAccess impl
 
     @Override
-    public String getJavaName() {
+    public final String getJavaName() {
         return getExternalName();
     }
 
     @Override
-    public Klass getSuperClass() {
+    public final Klass getSuperClass() {
         return getSuperKlass();
     }
 
     @Override
-    public Method lookupInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
+    public final Method lookupInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).resolveInterfaceMethod(methodName, methodSignature);
         }
@@ -1895,8 +1883,65 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     @Override
-    public Method lookupInstanceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
+    public final Method lookupInstanceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
         return lookupMethod(methodName, methodSignature, LookupMode.INSTANCE_ONLY);
+    }
+
+    @Override
+    public final Symbol<Type> getSymbolicType() {
+        return getType();
+    }
+
+    @Override
+    public final boolean hasSameDefiningClassLoader(Klass other) {
+        return getDefiningClassLoader() == other.getDefiningClassLoader();
+    }
+
+    @Override
+    public final Klass getHostType() {
+        return getHostClass();
+    }
+
+    @Override
+    public final Symbol<Name> getSymbolicRuntimePackage() {
+        return getRuntimePackage();
+    }
+
+    @Override
+    public final boolean isMagicAccessor() {
+        return getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(this);
+    }
+
+    @Override
+    @TruffleBoundary
+    public final Klass resolveClassConstantInPool(int cpi) {
+        if (this instanceof ObjectKlass objectKlass) {
+            try {
+                return objectKlass.getConstantPool().resolvedKlassAt(objectKlass, cpi);
+            } catch (ClassCastException | IndexOutOfBoundsException e) {
+                throw new IllegalArgumentException("No ClassConstant at constant pool index " + cpi);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Method lookupVTableEntry(int vtableIndex) {
+        ObjectKlass k;
+        if (this instanceof ObjectKlass) {
+            k = (ObjectKlass) this;
+        } else if (this instanceof ArrayKlass) {
+            k = getMeta().java_lang_Object;
+        } else {
+            // primitive.
+            return null;
+        }
+        assert !k.isInterface();
+        Method.MethodVersion[] table = k.getVTable();
+        if (vtableIndex >= table.length) {
+            return null;
+        }
+        return table[vtableIndex].getMethod();
     }
 
     // endregion TypeAccess impl

@@ -22,46 +22,38 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_newInvokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
+
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface MethodHandleConstant extends PoolConstant {
 
-    static MethodHandleConstant create(int refKind, int refIndex) {
+    static Index create(int refKind, int refIndex) {
         return new Index(refKind, refIndex);
     }
 
+    @Override
     default Tag tag() {
         return Tag.METHODHANDLE;
     }
 
-    int GETFIELD = 1;
-    int GETSTATIC = 2;
-    int PUTFIELD = 3;
-    int PUTSTATIC = 4;
-    int INVOKEVIRTUAL = 5;
-    int INVOKESTATIC = 6;
-    int INVOKESPECIAL = 7;
-    int NEWINVOKESPECIAL = 8;
-    int INVOKEINTERFACE = 9;
-
-    int getRefKind();
-
-    char getRefIndex();
-
-    @Override
-    default String toString(ConstantPool pool) {
-        return getRefKind() + " " + pool.at(getRefIndex()).toString(pool);
-    }
-
-    final class Index implements MethodHandleConstant, Resolvable {
-
+    final class Index implements MethodHandleConstant, ImmutablePoolConstant, Resolvable {
         private final byte refKind;
         private final char refIndex;
 
@@ -70,32 +62,31 @@ public interface MethodHandleConstant extends PoolConstant {
             this.refIndex = PoolConstant.u2(refIndex);
         }
 
-        @Override
         public int getRefKind() {
             return refKind;
         }
 
-        @Override
         public char getRefIndex() {
             return refIndex;
         }
 
         @Override
         public void validate(ConstantPool pool) throws ValidationException {
-            pool.memberAt(refIndex).validate(pool);
+            MemberRefConstant.Indexes member = getMember(pool);
+            member.validate(pool);
 
-            Symbol<Name> memberName = pool.memberAt(refIndex).getName(pool);
-            if (Name._clinit_.equals(memberName)) {
+            Symbol<Name> memberName = member.getName(pool);
+            if (ParserNames._clinit_.equals(memberName)) {
                 throw ValidationException.raise("Ill-formed constant: " + tag());
             }
 
             // If the value is 8 (REF_newInvokeSpecial), the name of the method represented by a
             // CONSTANT_Methodref_info structure must be <init>.
-            if (Name._init_.equals(memberName) && refKind != NEWINVOKESPECIAL) {
+            if (ParserNames._init_.equals(memberName) && refKind != REF_newInvokeSpecial) {
                 throw ValidationException.raise("Ill-formed constant: " + tag());
             }
 
-            if (!(GETFIELD <= refKind && refKind <= INVOKEINTERFACE)) {
+            if (!(REF_getField <= refKind && refKind <= REF_invokeInterface)) {
                 throw ValidationException.raise("Ill-formed constant: " + tag());
             }
 
@@ -103,11 +94,11 @@ public interface MethodHandleConstant extends PoolConstant {
             // (REF_invokeStatic), 7 (REF_invokeSpecial), or 9 (REF_invokeInterface), the name of
             // the method represented by a CONSTANT_Methodref_info structure or a
             // CONSTANT_InterfaceMethodref_info structure must not be <init> or <clinit>.
-            if (memberName.equals(Name._init_) || memberName.equals(Name._clinit_)) {
-                if (refKind == INVOKEVIRTUAL ||
-                                refKind == INVOKESTATIC ||
-                                refKind == INVOKESPECIAL ||
-                                refKind == INVOKEINTERFACE) {
+            if (memberName.equals(ParserNames._init_) || memberName.equals(ParserNames._clinit_)) {
+                if (refKind == REF_invokeVirtual ||
+                                refKind == REF_invokeStatic ||
+                                refKind == REF_invokeSpecial ||
+                                refKind == REF_invokeInterface) {
                     throw ValidationException.raise("Ill-formed constant: " + tag());
                 }
             }
@@ -115,10 +106,10 @@ public interface MethodHandleConstant extends PoolConstant {
             boolean valid = false;
             Tag tag = pool.at(refIndex).tag();
             switch (getRefKind()) {
-                case GETFIELD: // fall-through
-                case GETSTATIC: // fall-through
-                case PUTFIELD: // fall-through
-                case PUTSTATIC:
+                case REF_getField: // fall-through
+                case REF_getStatic: // fall-through
+                case REF_putField: // fall-through
+                case REF_putStatic:
                     // If the value of the reference_kind item is 1 (REF_getField), 2
                     // (REF_getStatic), 3 (REF_putField), or 4 (REF_putStatic), then the
                     // constant_pool entry at that index must be a CONSTANT_Fieldref_info
@@ -126,16 +117,16 @@ public interface MethodHandleConstant extends PoolConstant {
                     // structure representing a field for which a method handle is to be created.
                     valid = (tag == Tag.FIELD_REF);
                     break;
-                case INVOKEVIRTUAL: // fall-through
-                case NEWINVOKESPECIAL:
+                case REF_invokeVirtual: // fall-through
+                case REF_newInvokeSpecial:
                     // If the value of the reference_kind item is 5 (REF_invokeVirtual) or 8
                     // (REF_newInvokeSpecial), then the constant_pool entry at that index must be a
                     // CONSTANT_Methodref_info structure (&sect;4.4.2) representing a class's method
                     // or constructor (&sect;2.9) for which a method handle is to be created.
                     valid = tag == Tag.METHOD_REF;
                     break;
-                case INVOKESTATIC: // fall-through
-                case INVOKESPECIAL:
+                case REF_invokeStatic: // fall-through
+                case REF_invokeSpecial:
                     // If the value of the reference_kind item is 6 (REF_invokeStatic) or 7
                     // (REF_invokeSpecial), then if the class file version number is less than 52.0,
                     // the constant_pool entry at that index must be a CONSTANT_Methodref_info
@@ -148,7 +139,7 @@ public interface MethodHandleConstant extends PoolConstant {
                                     (pool.getMajorVersion() >= ClassfileParser.JAVA_8_VERSION && tag == Tag.INTERFACE_METHOD_REF);
                     break;
 
-                case INVOKEINTERFACE:
+                case REF_invokeInterface:
                     // If the value of the reference_kind item is 9 (REF_invokeInterface), then the
                     // constant_pool entry at that index must be a CONSTANT_InterfaceMethodref_info
                     // structure representing an interface's method for which a method handle is to
@@ -160,13 +151,29 @@ public interface MethodHandleConstant extends PoolConstant {
             if (!valid) {
                 throw ValidationException.raise("Ill-formed constant: " + tag());
             }
+        }
 
+        private MemberRefConstant.Indexes getMember(ConstantPool pool) {
+            return pool.memberAt(refIndex);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Index otherConstant)) {
+                return false;
+            }
+            return getRefKind() == otherConstant.getRefKind() && getMember(thisPool).isSame(otherConstant.getMember(otherPool), thisPool, otherPool);
         }
 
         @Override
         public void dump(ByteBuffer buf) {
             buf.put(refKind);
             buf.putChar(refIndex);
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return getRefKind() + " " + pool.at(getRefIndex()).toString(pool);
         }
     }
 

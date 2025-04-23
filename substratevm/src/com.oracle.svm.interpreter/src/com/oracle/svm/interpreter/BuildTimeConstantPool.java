@@ -303,14 +303,23 @@ final class BuildTimeConstantPool {
                                     } else if (calleeHostedMethod.hasVTableIndex()) {
                                         InterpreterUtil.log("[weedout] good. Virtual call from %s @ bci=%s (interp) to %s (compiled) possible", method, bci, calleeInterpreterResolvedJavaMethod);
                                     } else if (calleeHostedMethod.getImplementations().length == 1) {
+                                        HostedMethod impl = calleeHostedMethod.getImplementations()[0];
+                                        if (!(impl.isCompiled() || isInterpreterExecutable(impl))) {
+                                            weedOut(method, BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(impl), impl, true);
+                                            chasingFixpoint = true;
+                                            continue methodsLoop;
+                                        }
+                                        assert impl.isCompiled() || isInterpreterExecutable(impl) : calleeHostedMethod + ", implementation: " + impl + ", ";
                                         InterpreterUtil.log("[weedout] good. Virtual call from %s @ bci=%s (interp) has exactly one implementation available %s", method, bci,
                                                         calleeHostedMethod.getImplementations()[0]);
+                                    } else if (!DebuggerFeature.isReachable(calleeHostedMethod.getWrapped())) {
+                                        /*
+                                         * not reached during analysis, let it fail during runtime
+                                         * if this call-site is reached
+                                         */
                                     } else {
-                                        InterpreterUtil.log("[weedout] bad. %s downgraded to non-interpreter-executable.", method);
-                                        InterpreterUtil.log("          there is no way to call a compiled version of %s or to execute it in the interpreter, but it is considered reachable",
-                                                        calleeInterpreterResolvedJavaMethod);
+                                        weedOut(method, calleeInterpreterResolvedJavaMethod, calleeHostedMethod, false);
                                         chasingFixpoint = true;
-                                        method.setCode(null);
                                         continue methodsLoop;
                                     }
                                 } else {
@@ -330,6 +339,27 @@ final class BuildTimeConstantPool {
             }
         }
         return chasingFixpoint;
+    }
+
+    private static boolean isInterpreterExecutable(HostedMethod impl) {
+        JavaMethod method = BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(impl);
+        if (method instanceof InterpreterResolvedJavaMethod interpreterResolvedJavaMethod) {
+            return interpreterResolvedJavaMethod.isInterpreterExecutable();
+        }
+        return false;
+    }
+
+    private static void weedOut(InterpreterResolvedJavaMethod method, JavaMethod calleeInterpreterResolvedJavaMethod, HostedMethod calleeHostedMethod, boolean singleCalleeImpl) {
+        InterpreterUtil.log("[weedout] bad. %s downgraded to non-interpreter-executable.", method);
+        if (singleCalleeImpl) {
+            InterpreterUtil.log("          there is no way to call the single callee implementation %s, but it is considered reachable",
+                            calleeInterpreterResolvedJavaMethod);
+        } else {
+            InterpreterUtil.log("          there is no way to call a compiled version of %s or to execute it in the interpreter, but it is considered reachable",
+                            calleeInterpreterResolvedJavaMethod);
+        }
+        assert DebuggerFeature.isReachable(calleeHostedMethod.getWrapped()) : calleeHostedMethod;
+        method.setCode(null);
     }
 
     public void hydrate(InterpreterResolvedObjectType type) {

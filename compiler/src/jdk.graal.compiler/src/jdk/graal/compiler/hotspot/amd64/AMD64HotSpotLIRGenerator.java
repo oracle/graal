@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,6 @@ import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
 import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
-import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64RestoreRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64SaveRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
@@ -625,24 +624,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Value emitTimeStamp() {
-        AMD64ReadTimestampCounterWithProcid timestamp = new AMD64ReadTimestampCounterWithProcid();
-        append(timestamp);
-        // Combine RDX and RAX into a single 64-bit register.
-        AllocatableValue lo = timestamp.getLowResult();
-        Value hi = getArithmetic().emitZeroExtend(timestamp.getHighResult(), 32, 64);
-        return combineLoAndHi(lo, hi);
-    }
-
-    /**
-     * Combines two 32 bit values to a 64 bit value: ( (hi << 32) | lo ).
-     */
-    private Value combineLoAndHi(Value lo, Value hi) {
-        Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
-        return getArithmetic().emitOr(shiftedHi, lo);
-    }
-
-    @Override
     public int getArrayLengthOffset() {
         return config.arrayOopDescLengthOffset();
     }
@@ -650,5 +631,22 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Register getHeapBaseRegister() {
         return getProviders().getRegisters().getHeapBaseRegister();
+    }
+
+    // no need to call super because HotSpot already overrides the value according to the CPU
+    // features
+    @Override
+    public boolean usePopCountInstruction() {
+        return config.usePopCountInstruction;
+    }
+
+    @Override
+    public boolean useCountLeadingZerosInstruction() {
+        return config.useCountLeadingZerosInstruction;
+    }
+
+    @Override
+    public boolean useCountTrailingZerosInstruction() {
+        return config.useCountTrailingZerosInstruction;
     }
 }

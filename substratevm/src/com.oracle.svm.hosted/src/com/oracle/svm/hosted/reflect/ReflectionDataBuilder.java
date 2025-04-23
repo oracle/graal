@@ -75,6 +75,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -141,6 +142,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Class<?>, Throwable> fieldLookupExceptions = new ConcurrentHashMap<>();
     private final Map<Class<?>, Throwable> methodLookupExceptions = new ConcurrentHashMap<>();
     private final Map<Class<?>, Throwable> constructorLookupExceptions = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Throwable> recordComponentsLookupExceptions = new ConcurrentHashMap<>();
 
     // Intermediate bookkeeping
     private final Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
@@ -159,7 +161,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
         this.annotationExtractor = annotationExtractor;
         pendingRecordClasses = !throwMissingRegistrationErrors() ? new ConcurrentHashMap<>() : null;
-        classForNameSupport = ClassForNameSupport.singleton();
+        classForNameSupport = ClassForNameSupport.currentLayer();
     }
 
     public void duringSetup(AnalysisMetaAccess analysisMetaAccess, AnalysisUniverse analysisUniverse) {
@@ -501,6 +503,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             } catch (NoSuchMethodException e) {
                 negativeMethodLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
                                 .add(new AnalysisMethod.Signature(methodName, metaAccess.lookupJavaTypes(parameterTypes)));
+            } catch (LinkageError le) {
+                registerLinkageError(declaringClass, le, methodLookupExceptions);
             }
         });
     }
@@ -514,6 +518,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             } catch (NoSuchMethodException e) {
                 negativeConstructorLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
                                 .add(metaAccess.lookupJavaTypes(parameterTypes));
+            } catch (LinkageError le) {
+                registerLinkageError(declaringClass, le, constructorLookupExceptions);
             }
         });
     }
@@ -525,7 +531,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllFields(ConfigurationCondition condition, Class<?> clazz) {
         registerAllFieldsQuery(condition, false, clazz);
     }
 
@@ -544,7 +550,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz) {
         registerAllDeclaredFieldsQuery(condition, false, clazz);
     }
 
@@ -577,13 +583,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
         var cndValue = classFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
-        if (!queriedOnly) {
-            /* queryOnly methods are conditioned by the type itself */
-            cndValue.getConditions().addCondition(cnd);
-        }
-
         if (!exists) {
-            registerTypesForField(analysisField, reflectField, true);
+            registerTypesForField(analysisField, reflectField, queriedOnly);
 
             /*
              * The image needs to know about subtypes shadowing fields registered for reflection to
@@ -611,10 +612,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         /*
-         * We need to run this even if the method has already been registered, in case it was only
+         * We need to run this even if the field has already been registered, in case it was only
          * registered as queried.
          */
         if (!queriedOnly) {
+            /* queryOnly methods are conditioned on the type itself */
+            cndValue.getConditions().addCondition(cnd);
             registerTypesForField(analysisField, reflectField, false);
         }
     }
@@ -631,6 +634,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * not necessary.
                  */
                 negativeFieldLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet()).add(fieldName);
+            } catch (LinkageError le) {
+                registerLinkageError(declaringClass, le, fieldLookupExceptions);
             }
         });
     }
@@ -752,14 +757,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerRecordComponents(Class<?> clazz) {
-        RecordComponent[] recordComponents = clazz.getRecordComponents();
-        if (recordComponents == null) {
-            return;
+        try {
+            RecordComponent[] recordComponents = clazz.getRecordComponents();
+            if (recordComponents == null) {
+                return;
+            }
+            for (RecordComponent recordComponent : recordComponents) {
+                registerTypesForRecordComponent(recordComponent);
+            }
+            registeredRecordComponents.put(clazz, recordComponents);
+        } catch (LinkageError le) {
+            registerLinkageError(clazz, le, recordComponentsLookupExceptions);
         }
-        for (RecordComponent recordComponent : recordComponents) {
-            registerTypesForRecordComponent(recordComponent);
-        }
-        registeredRecordComponents.put(clazz, recordComponents);
     }
 
     private void registerTypesForEnclosingMethodInfo(Class<?> clazz) {
@@ -1056,11 +1065,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private static <T> T queryGenericInfo(Callable<T> callable) {
         try {
             return callable.call();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError | AssertionError e) {
             /* These are rethrown at run time, so we can simply ignore them when querying. */
             return null;
         } catch (Throwable t) {
-            throw VMError.shouldNotReachHere(t);
+            throw VMError.shouldNotReachHere(callable.toString(), t);
         }
     }
 
@@ -1080,20 +1089,24 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * components in that case will throw an exception at image run time, see
          * DynamicHub.getRecordComponents0().
          */
-        Method[] accessors = RecordUtils.getRecordComponentAccessorMethods(clazz);
-        Set<Method> unregisteredAccessors = ConcurrentHashMap.newKeySet();
-        for (Method accessor : accessors) {
-            if (SubstitutionReflectivityFilter.shouldExclude(accessor, metaAccess, universe)) {
-                return;
+        try {
+            Method[] accessors = RecordUtils.getRecordComponentAccessorMethods(clazz);
+            Set<Method> unregisteredAccessors = ConcurrentHashMap.newKeySet();
+            for (Method accessor : accessors) {
+                if (SubstitutionReflectivityFilter.shouldExclude(accessor, metaAccess, universe)) {
+                    return;
+                }
+                unregisteredAccessors.add(accessor);
             }
-            unregisteredAccessors.add(accessor);
-        }
-        pendingRecordClasses.put(clazz, unregisteredAccessors);
+            pendingRecordClasses.put(clazz, unregisteredAccessors);
 
-        AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-        unregisteredAccessors.removeIf(accessor -> registeredMethods.getOrDefault(analysisType, Collections.emptyMap()).containsKey(metaAccess.lookupJavaMethod(accessor)));
-        if (unregisteredAccessors.isEmpty()) {
-            registerRecordComponents(clazz);
+            AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+            unregisteredAccessors.removeIf(accessor -> registeredMethods.getOrDefault(analysisType, Collections.emptyMap()).containsKey(metaAccess.lookupJavaMethod(accessor)));
+            if (unregisteredAccessors.isEmpty()) {
+                registerRecordComponents(clazz);
+            }
+        } catch (LinkageError le) {
+            registerLinkageError(clazz, le, recordComponentsLookupExceptions);
         }
     }
 
@@ -1280,6 +1293,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return Collections.unmodifiableMap(constructorLookupExceptions);
     }
 
+    @Override
+    public Map<Class<?>, Throwable> getRecordComponentLookupErrors() {
+        return Collections.unmodifiableMap(recordComponentsLookupExceptions);
+    }
+
     private static final AnnotationValue[] NO_ANNOTATIONS = new AnnotationValue[0];
 
     public AnnotationValue[] getAnnotationData(AnnotatedElement element) {
@@ -1307,12 +1325,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public int getReflectionMethodsCount() {
-        return registeredMethods.size();
+        return countConditionalElements(registeredMethods);
     }
 
     @Override
     public int getReflectionFieldsCount() {
-        return registeredFields.size();
+        return countConditionalElements(registeredFields);
+    }
+
+    private static int countConditionalElements(Map<? extends AnalysisElement, ? extends Map<? extends AnalysisElement, ?>> conditionalElements) {
+        return conditionalElements.values().stream()
+                        .map(Map::size)
+                        .reduce(0, Integer::sum);
     }
 
     private static void requireNonNull(Object[] values, String kind) {

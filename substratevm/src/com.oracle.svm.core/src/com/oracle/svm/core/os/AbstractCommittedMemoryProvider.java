@@ -30,7 +30,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static jdk.graal.compiler.word.Word.nullPointer;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -44,6 +43,8 @@ import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Uninterruptible(reason = "Still being initialized.")
@@ -123,4 +124,15 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         int result = VirtualMemoryProvider.get().free(start, nbytes);
         VMError.guarantee(result == 0, "Error while freeing virtual memory.");
     }
+
+    @Override
+    public UnsignedWord getCollectedHeapAddressSpaceSize() {
+        /* Only a part of the address space is available for the collected Java heap. */
+        UnsignedWord reservedAddressSpace = getReservedAddressSpaceSize();
+        UnsignedWord imageHeapSize = Heap.getHeap().getImageHeapReservedBytes();
+        assert reservedAddressSpace.aboveThan(imageHeapSize);
+        return reservedAddressSpace.subtract(imageHeapSize);
+    }
+
+    protected abstract UnsignedWord getReservedAddressSpaceSize();
 }

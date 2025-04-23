@@ -56,8 +56,8 @@ public final class JVMCIVersionCheck {
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "21", Map.of(DEFAULT_VENDOR_ENTRY, createLegacyVersion(23, 1, 33)),
                     "25", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("25+3", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+3", 1)));
+                                    "Oracle Corporation", createLabsJDKVersion("25+18", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+18", 1)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
@@ -239,7 +239,7 @@ public final class JVMCIVersionCheck {
         }
     }
 
-    public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk-*/releases";
+    public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk/releases";
 
     private final String javaSpecVersion;
     private final String vmVersion;

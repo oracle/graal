@@ -17,3 +17,4 @@ Native Image provides utilities for debugging and inspecting the produced binary
  - For an overall insight regarding build phases and the contents of a native executable, use [Build Reports](BuildReport.md)
  - For native memory tracking, see [Native Memory Tracking (NMT)](NMT.md)
  - See the [Java Diagnostic Command documentation](JCmd.md) for instructions on using `jcmd`.
+ - For Java Debug Wire Protocol (JDWP) support in Native Image to enable debugging with standard Java tooling, see [Java Debug Wire Protocol (JDWP)](JDWP.md).

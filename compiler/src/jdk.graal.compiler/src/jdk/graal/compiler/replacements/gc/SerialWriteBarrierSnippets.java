@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,8 +74,9 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
         int cardShift = cardTableShift();
         Word cardTableAddress = cardTableAddress();
-        Word start = cardTableAddress.add(getPointerToFirstArrayElement(address, length, elementStride).unsignedShiftRight(cardShift));
-        Word end = cardTableAddress.add(getPointerToLastArrayElement(address, length, elementStride).unsignedShiftRight(cardShift));
+        Word addr = Word.fromAddress(address);
+        Word start = cardTableAddress.add(getPointerToFirstArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
+        Word end = cardTableAddress.add(getPointerToLastArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
 
         Word cur = start;
         do {
@@ -125,7 +126,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
                 args.add("object", address.getBase());
             }
             args.add("counters", counters);
-            args.add("verifyOnly", barrier.getVerifyOnly());
+            args.add("verifyOnly", barrier.isEliminated());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }

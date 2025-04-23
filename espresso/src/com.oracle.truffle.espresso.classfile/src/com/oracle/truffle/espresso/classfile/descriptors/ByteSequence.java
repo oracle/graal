@@ -24,9 +24,9 @@ package com.oracle.truffle.espresso.classfile.descriptors;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -66,7 +66,6 @@ public abstract class ByteSequence {
 
     public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
         if ((length > 0 && offset >= underlyingBytes.length) || offset + (long) length > underlyingBytes.length || length < 0 || offset < 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IndexOutOfBoundsException("ByteSequence illegal bounds: offset: " + offset + " length: " + length + " bytes length: " + underlyingBytes.length);
         }
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {
@@ -76,14 +75,14 @@ public abstract class ByteSequence {
             }
 
             @Override
-            public int offset() {
+            int offset() {
                 return offset;
             }
         };
     }
 
     public static ByteSequence create(String str) {
-        final byte[] bytes = ModifiedUtf8.fromJavaString(str);
+        final byte[] bytes = ModifiedUTF8.fromJavaString(str);
         return ByteSequence.wrap(bytes, 0, bytes.length);
     }
 
@@ -108,7 +107,7 @@ public abstract class ByteSequence {
      */
     public abstract int length();
 
-    public abstract int offset();
+    abstract int offset();
 
     /**
      * Returns the <code>byte</code> value at the specified index. An index ranges from zero to
@@ -139,11 +138,29 @@ public abstract class ByteSequence {
         return hashCode;
     }
 
-    public final ByteSequence subSequence(int offset, int length) {
-        if (offset == 0 && length == length()) {
+    /**
+     * Returns a subsequence of this symbol from the specified index to the end.
+     *
+     * @param from The starting index (inclusive)
+     * @return A ByteSequence representing the subsequence
+     */
+    public ByteSequence subSequence(int from) {
+        return subSequence(from, length());
+    }
+
+    /**
+     * Returns a subsequence of this symbol between the specified indices.
+     *
+     * @param startInclusive The starting index (inclusive)
+     * @param endExclusive The ending index (exclusive)
+     * @return A ByteSequence representing the subsequence
+     */
+    public ByteSequence subSequence(int startInclusive, int endExclusive) {
+        assert 0 <= startInclusive && startInclusive <= endExclusive && endExclusive <= length();
+        if (startInclusive == 0 && endExclusive == length()) {
             return this;
         }
-        return wrap(getUnderlyingBytes(), offset() + offset, length);
+        return wrap(getUnderlyingBytes(), offset() + startInclusive, endExclusive - startInclusive);
     }
 
     public final boolean contentEquals(ByteSequence other) {
@@ -174,7 +191,7 @@ public abstract class ByteSequence {
     @Override
     public String toString() {
         try {
-            return ModifiedUtf8.toJavaString(getUnderlyingBytes(), offset(), length());
+            return ModifiedUTF8.toJavaString(getUnderlyingBytes(), offset(), length());
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -247,5 +264,18 @@ public abstract class ByteSequence {
         writeTo(data, 0);
         next.writeTo(data, this.length());
         return wrap(data);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof ByteSequence that)) {
+            return false;
+        }
+        if (this.hashCode != that.hashCode) {
+            return false;
+        }
+        return Arrays.equals(
+                        this.value, this.offset(), this.offset() + this.length(),
+                        that.value, that.offset(), that.offset() + that.length());
     }
 }

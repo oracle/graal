@@ -67,6 +67,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.container.Container;
@@ -78,6 +79,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
@@ -93,9 +95,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -210,7 +212,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         return runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
     }
@@ -290,6 +292,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             layeredPatchHeapRelativeRelocations();
         }
+
+        LocaleSupport.initialize();
 
         CEntryPointCreateIsolateParameters parameters = providedParameters;
         if (parameters.isNull() || parameters.version() < 1) {
@@ -386,6 +390,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NeverInline("GR-24649")
     private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
+        /* Initialize the isolate id (the id is needed for isolate teardown). */
+        long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
+        boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
+        Isolates.assignIsolateId(firstIsolate);
+
         /*
          * Initialize the physical memory size. This must be done as early as possible because we
          * must not trigger GC before PhysicalMemory is initialized.
@@ -400,11 +409,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             VMOperationControl.startVMOperationThread();
         }
 
-        long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
-        boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
-
-        Isolates.assignIsolateId(firstIsolate);
+        /*
+         * Before this point, only limited error handling is possible because the isolate is not
+         * sufficiently initialized (i.e., we can't tear it down properly).
+         */
         Isolates.assignStartTime();
+        LocaleSupport.checkForError();
 
         if (!firstIsolate) {
             int state = Unsafe.getUnsafe().getInt(initStateAddr);
@@ -425,6 +435,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * result in deadlocks if ReferenceInternals.waitForReferenceProcessing() is called.
          */
         if (ReferenceHandler.useDedicatedThread()) {
+            ReferenceInternals.initializeLocking();
             ReferenceHandlerThread.start();
         }
 
@@ -505,7 +516,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return error;
         }
 
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         if (ensureJavaThread) {
             return runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
@@ -655,7 +666,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
 
             /* After threadExit(), only uninterruptible code may be executed. */
-            ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+            RecurringCallbackSupport.suspendCallbackTimer("Execution of arbitrary code is prohibited during the last teardown steps.");
 
             /* Shut down VM thread. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {
@@ -714,7 +725,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         result = runtimeCall(ENTER_BY_ISOLATE, isolate);
         if (result == CEntryPointErrors.NO_ERROR) {
             if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
-                Safepoint.transitionNativeToJava(false);
+                ThreadStatusTransition.fromNativeToJava(false);
             }
         }
         return result;
@@ -754,7 +765,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
              */
             runtimeCall(VERIFY_ISOLATE_THREAD, thread);
         }
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         return CEntryPointErrors.NO_ERROR;
 
@@ -815,7 +826,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int returnFromJavaToCSnippet() {
-        VMThreads.StatusSupport.setStatusNative();
+        ThreadStatusTransition.fromJavaToNative();
         return CEntryPointErrors.NO_ERROR;
     }
 

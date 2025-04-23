@@ -26,11 +26,11 @@ package jdk.graal.compiler.replacements;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * A class that lives in the compiler that is full of snippets used for testing. Given that snippets
@@ -82,7 +82,7 @@ public abstract class TestSnippets {
             public Templates(OptionValues options, Providers providers) {
                 super(options, providers);
 
-                assert !ImageInfo.inImageRuntimeCode() : "This code must only be used in jargraal unittests";
+                assert LibGraalSupport.INSTANCE == null : "This code must only be used in jargraal unittests";
 
                 producer = snippet(providers, TransplantTestSnippets.class, "producer", Snippet.SnippetType.TRANSPLANTED_SNIPPET);
                 producerWithArgs = snippet(providers, TransplantTestSnippets.class, "producerWithArgs", Snippet.SnippetType.TRANSPLANTED_SNIPPET);

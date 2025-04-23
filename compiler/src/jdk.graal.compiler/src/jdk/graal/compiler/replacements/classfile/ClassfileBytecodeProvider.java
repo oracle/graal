@@ -28,6 +28,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -58,6 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * avoid this is to have a completely isolated {@code jdk.vm.ci.meta} implementation for parsing
  * snippet/intrinsic bytecodes.
  */
+@LibGraalSupport.HostedOnly
 public final class ClassfileBytecodeProvider implements BytecodeProvider {
 
     private final ClassLoader loader;

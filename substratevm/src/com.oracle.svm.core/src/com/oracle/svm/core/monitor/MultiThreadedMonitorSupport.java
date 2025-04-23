@@ -202,6 +202,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return timed ? ThreadStatus.PARKED_TIMED : ThreadStatus.PARKED;
     }
 
+    @Override
+    public void ensureInitialized(Object obj) {
+        JavaMonitor monitor = getOrCreateMonitor(obj, MonitorInflationCause.VM_INTERNAL);
+        monitor.getOrCreateCondition(true);
+    }
+
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
     private static void slowPathMonitorEnter(Object obj) {

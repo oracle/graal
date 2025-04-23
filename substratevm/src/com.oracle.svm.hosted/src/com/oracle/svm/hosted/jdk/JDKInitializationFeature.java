@@ -26,17 +26,18 @@ package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -86,6 +87,10 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HelloWorld", "Fails build-time initialization");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HTTPPostRequest", "Fails build-time initialization");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$TransactionBlocked", "Fails build-time initialization");
+        rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HTTPGetRequest", "Fails build-time initialization");
         rci.initializeAtBuildTime("jdk.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
@@ -139,9 +144,16 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
 
         /* XML-related */
-        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            // GR-50683 should remove this part
+            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        } else {
+            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        }
 
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
@@ -152,6 +164,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("java.security", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.security.pkcs11.P11Util", "Cleaner reference");
 
         rci.initializeAtBuildTime("javax.crypto", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.security.auth", JDK_CLASS_REASON);

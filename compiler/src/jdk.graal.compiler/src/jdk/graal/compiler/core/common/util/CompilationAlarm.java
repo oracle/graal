@@ -27,8 +27,6 @@ package jdk.graal.compiler.core.common.util;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.nativeimage.ImageInfo;
-
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.util.EventCounter.EventCounterMarker;
 import jdk.graal.compiler.debug.Assertions;
@@ -63,8 +61,7 @@ public final class CompilationAlarm implements AutoCloseable {
         // @formatter:on
     }
 
-    public static final boolean LOG_PROGRESS_DETECTION = !ImageInfo.inImageRuntimeCode() &&
-                    Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
+    public static final boolean LOG_PROGRESS_DETECTION = Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
     /**
      * The previously installed alarm.
@@ -215,7 +212,7 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Signal the execution of the phase identified by {@code name} starts.
      */
-    public void enterPhase(String name) {
+    public void enterPhase(CharSequence name) {
         if (!isEnabled()) {
             return;
         }
@@ -229,7 +226,7 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Signal the execution of the phase identified by {@code name} is over.
      */
-    public void exitPhase(String name) {
+    public void exitPhase(CharSequence name) {
         if (!isEnabled()) {
             return;
         }
@@ -240,7 +237,7 @@ public final class CompilationAlarm implements AutoCloseable {
         currentNode = currentNode.parent;
     }
 
-    private void setCurrentNodeDuration(String name) {
+    private void setCurrentNodeDuration(CharSequence name) {
         assert currentNode.startTimeNS >= 0 : Assertions.errorMessage("Must have a positive start time", name, elapsedPhaseTreeAsString());
         currentNode.durationNS = System.nanoTime() - currentNode.startTimeNS;
     }
@@ -281,7 +278,7 @@ public final class CompilationAlarm implements AutoCloseable {
         /**
          * The name of this node, normally the {@link BasePhase#contractorName()}.
          */
-        private final String name;
+        private final CharSequence name;
 
         /**
          * The time stamp in ns when this phase started running.
@@ -298,7 +295,7 @@ public final class CompilationAlarm implements AutoCloseable {
          */
         public boolean closed;
 
-        PhaseTreeNode(String name) {
+        PhaseTreeNode(CharSequence name) {
             this.name = name;
         }
 

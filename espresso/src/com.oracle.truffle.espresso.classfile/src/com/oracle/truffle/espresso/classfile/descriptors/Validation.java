@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.classfile.descriptors;
 
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 
 public final class Validation {
     private Validation() {
@@ -95,7 +95,7 @@ public final class Validation {
         }
         char first = (char) bytes.byteAt(0);
         if (first == '<') {
-            return bytes.contentEquals(Name._init_) || (allowClinit && bytes.contentEquals(Name._clinit_));
+            return bytes.contentEquals(ParserNames._init_) || (allowClinit && bytes.contentEquals(ParserNames._clinit_));
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
@@ -140,7 +140,7 @@ public final class Validation {
             while (i < bytes.length() && bytes.byteAt(i) != '/') {
                 ++i;
             }
-            if (!validUnqualifiedName(bytes.subSequence(prev, i - prev))) {
+            if (!validUnqualifiedName(bytes.subSequence(prev, i))) {
                 return false;
             }
             prev = i + 1;
@@ -223,14 +223,14 @@ public final class Validation {
                 return false;
             }
             // Arrays of void (V) are never allowed.
-            return validFieldDescriptor(bytes.subSequence(dimensions, bytes.length() - dimensions));
+            return validFieldDescriptor(bytes.subSequence(dimensions));
         }
         if (first == 'L') {
             char last = (char) bytes.byteAt(bytes.length() - 1);
             if (last != ';') {
                 return false;
             }
-            return validBinaryName(bytes.subSequence(1, bytes.length() - 2));
+            return validBinaryName(bytes.subSequence(1, bytes.length() - 1));
         }
         return false;
     }
@@ -290,7 +290,7 @@ public final class Validation {
                     return INVALID_SIGNATURE;
                 }
                 assert bytes.byteAt(index) == ';';
-                if (!validFieldDescriptor(bytes.subSequence(prev, index - prev + 1))) {
+                if (!validFieldDescriptor(bytes.subSequence(prev, index + 1))) {
                     return INVALID_SIGNATURE;
                 }
                 ++index; // skip ;
@@ -322,7 +322,7 @@ public final class Validation {
         if (isInitOrClinit) {
             return (bytes.byteAt(index + 1) == 'V' && bytes.length() == index + 2) ? slots : INVALID_SIGNATURE;
         } else {
-            return (validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true)) ? slots : INVALID_SIGNATURE;
+            return (validTypeDescriptor(bytes.subSequence(index + 1), true)) ? slots : INVALID_SIGNATURE;
         }
     }
 
@@ -343,6 +343,6 @@ public final class Validation {
     }
 
     public static boolean validModifiedUTF8(ByteSequence bytes) {
-        return ModifiedUtf8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
+        return ModifiedUTF8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
     }
 }

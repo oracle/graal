@@ -38,7 +38,7 @@ public class BC_getfield1 extends JTTTest {
         return OptimisticOptimizations.NONE;
     }
 
-    private static class TestClass {
+    private static final class TestClass {
         private int field = 13;
     }
 

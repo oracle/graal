@@ -1,5 +1,20 @@
 # Espresso Changelog
 
+## Version 25.0.0
+### User-visible changes
+* Added experimental support for JVMCI. It can be enabled with the `java.EnableJVMCI` option.
+* Added experimentation support for `-javaagent`. It can also be enabled from the polyglot API with `java.JavaAgent.$i` option set to `/path/to/jar=agent-options` where `$i` starts at 0 and increments by 1 for each extra java agent.
+
+## Version 24.2.0
+### User-visible changes
+* Added support for automatically using generic type parameters for incoming host objects, to allow more seamless communication between host and Espresso contexts.
+* Continuation suspension now clears slots based on liveness analysis. This ensures the set of captured variables is predictable and deterministic.
+* Custom type converters now always take precedence over built-in converters when passing objects from the host to the embedded Espresso context.
+* Espresso's [hash interop](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#hasHashEntries(java.lang.Object)) implementation now throws an unsupported operation exception when attempting to modify an unmodifiable guest map.
+* `Polyglot.cast()` now applies custom type converters and interface type mappings, same as `Polyglot.castWithGenerics()`.
+### Noteworthy fixes
+* The `<ProcessReferences>` builtin no longer hangs when multi-threading is disabled.
+
 ## Version 24.1.0
 ### User-visible changes
 * Added `java.RuntimeResourceId` to allow customizing the truffle resource used to locate the java standard library used by espresso.
@@ -38,7 +53,6 @@
 * Added option `java.PolyglotTypeConverters` that can be set to declare a type conversion function that maps a host meta qualified name to a type converter class in an embedded Espresso context.
 * Added option`java.PolyglotInterfaceMappings` that can be set to a semicolon-separated list of 1:1 interface type mappings to automatically construct guest proxies for host objects that implement declared interfaces in the list.
 
-### Internal changes
 ### Noteworthy fixes
 * Fix some conversions at interop boundaries: when an espresso-to-espresso conversion was seen, then an espresso-to-primitive conversion happens. The latter would fail.  
 * Fix exit status on uncaught exceptions in the main thread.

@@ -351,7 +351,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     /**
      * Constants for X86 prefix bytes.
      */
-    private static class Prefix {
+    private static final class Prefix {
         private static final int REX = 0x40;
         private static final int REXB = 0x41;
         private static final int REXX = 0x42;
@@ -828,7 +828,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     }
 
-    private class SSEEncoderImpl implements SIMDEncoder {
+    private final class SSEEncoderImpl implements SIMDEncoder {
 
         @Override
         public void simdPrefix(Register xreg, Register nds, AMD64Address adr, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
@@ -890,7 +890,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         }
     }
 
-    private class VEXEncoderImpl implements SIMDEncoder {
+    private final class VEXEncoderImpl implements SIMDEncoder {
 
         private int sizePrefixToPP(int sizePrefix) {
             switch (sizePrefix) {

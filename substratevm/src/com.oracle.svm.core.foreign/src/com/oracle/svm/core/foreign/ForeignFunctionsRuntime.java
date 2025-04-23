@@ -29,10 +29,10 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.invoke.MethodHandle;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -44,6 +44,8 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
@@ -53,6 +55,8 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
+import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.abi.CapturableState;
 
 public class ForeignFunctionsRuntime {
@@ -74,6 +78,21 @@ public class ForeignFunctionsRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime() {
+    }
+
+    public static boolean areFunctionCallsSupported() {
+        return switch (CABI.current()) {
+            case CABI.SYS_V -> !OS.DARWIN.isCurrent(); // GR-63074: code emit failures on
+                                                       // darwin-amd64
+            case CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
+            default -> false;
+        };
+    }
+
+    public static RuntimeException functionCallsUnsupported() {
+        assert SubstrateOptions.ForeignAPISupport.getValue();
+        throw VMError.unsupportedFeature("Calling foreign functions is currently not supported on platform: " +
+                        (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -117,6 +136,9 @@ public class ForeignFunctionsRuntime {
     }
 
     Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
+        if (!areFunctionCallsSupported()) {
+            throw functionCallsUnsupported();
+        }
         /*
          * Look up the upcall stub pointer first to avoid unnecessary allocation and synchronization
          * if it doesn't exist.
@@ -224,7 +246,7 @@ public class ForeignFunctionsRuntime {
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/downcallLinker.cpp")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+12/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         assert statesToCapture != 0;
         assert captureBuffer.isNonNull();

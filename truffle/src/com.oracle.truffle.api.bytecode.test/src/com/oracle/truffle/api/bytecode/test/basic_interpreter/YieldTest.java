@@ -57,6 +57,10 @@ import com.oracle.truffle.api.bytecode.BytecodeTier;
 
 public class YieldTest extends AbstractBasicInterpreterTest {
 
+    public YieldTest(TestRun run) {
+        super(run);
+    }
+
     @Test
     public void testYield() {
         // yield 1;

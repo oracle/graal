@@ -63,10 +63,11 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
         if (GenLoopSafepoints.getValue(graph.getOptions())) {
             for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
                 for (LoopEndNode loopEndNode : loopBeginNode.loopEnds().snapshot()) {
-                    if (loopEndNode.canSafepoint()) {
+                    if (loopEndNode.getSafepointState().canSafepoint()) {
                         try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                             SafepointNode safepointNode = graph.add(new SafepointNode(loopBeginNode));
                             graph.addBeforeFixed(loopEndNode, safepointNode);
+                            safepointNode.setLoopLink(loopBeginNode);
                         }
                     }
                 }

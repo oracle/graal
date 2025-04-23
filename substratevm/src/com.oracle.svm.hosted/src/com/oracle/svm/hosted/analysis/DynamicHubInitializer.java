@@ -44,6 +44,8 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
@@ -60,6 +62,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class DynamicHubInitializer {
 
@@ -70,10 +73,11 @@ public class DynamicHubInitializer {
 
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
-    private final Field dynamicHubClassInitializationInfoField;
-    private final Field dynamicHubArrayHubField;
-    private final Field dynamicHubInterfacesEncodingField;
-    private final Field dynamicHubAnnotationsEnumConstantsReferenceField;
+    private final Field hubCompanionArrayHubField;
+    private final Field hubCompanionClassInitializationInfo;
+    private final Field hubCompanionInterfacesEncoding;
+    private final Field hubCompanionAnnotationsEnumConstantsReference;
+    private final Field hubCompanionInterpreterType;
 
     public DynamicHubInitializer(BigBang bb) {
         this.bb = bb;
@@ -83,10 +87,11 @@ public class DynamicHubInitializer {
 
         this.interfacesEncodings = new ConcurrentHashMap<>();
 
-        dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
-        dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
-        dynamicHubInterfacesEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
-        dynamicHubAnnotationsEnumConstantsReferenceField = ReflectionUtil.lookupField(DynamicHub.class, "enumConstantsReference");
+        hubCompanionArrayHubField = ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub");
+        hubCompanionClassInitializationInfo = ReflectionUtil.lookupField(DynamicHubCompanion.class, "classInitializationInfo");
+        hubCompanionInterfacesEncoding = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interfacesEncoding");
+        hubCompanionAnnotationsEnumConstantsReference = ReflectionUtil.lookupField(DynamicHubCompanion.class, "enumConstantsReference");
+        hubCompanionInterpreterType = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interpreterType");
     }
 
     public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
@@ -105,16 +110,7 @@ public class DynamicHubInitializer {
             registerPackage(heapScanner, javaClass, hub);
         }
 
-        boolean rescan = true;
-        /*
-         * The constant should not be rescanned directly if it is from the base layer, as it would
-         * try to access the constant again, which would trigger the dynamic hub initialization
-         * again. The constant has to be rescanned after the initialization is finished.
-         */
-        if (hostVM.useBaseLayer()) {
-            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, OtherReason.HUB);
-            rescan = hubConstant == null || !hubConstant.isInBaseLayer();
-        }
+        boolean rescan = shouldRescanHub(heapScanner, hub);
 
         /*
          * Start by rescanning the hub itself. This ensures the correct scan reason in case this is
@@ -130,14 +126,14 @@ public class DynamicHubInitializer {
             if (type.isArray()) {
                 AnalysisError.guarantee(hub.getComponentHub().getArrayHub() == null, "Array hub already initialized for %s.", type.getComponentType().toJavaName(true));
                 hub.getComponentHub().setArrayHub(hub);
-                if (rescan) {
-                    heapScanner.rescanField(hub.getComponentHub(), dynamicHubArrayHubField);
+                if (shouldRescanHub(heapScanner, hub.getComponentHub())) {
+                    heapScanner.rescanField(hub.getComponentHub().getCompanion(), hubCompanionArrayHubField);
                 }
             }
 
             fillInterfaces(type, hub);
             if (rescan) {
-                heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
+                heapScanner.rescanField(hub.getCompanion(), hubCompanionInterfacesEncoding);
             }
 
             /* Support for Java enumerations. */
@@ -149,10 +145,31 @@ public class DynamicHubInitializer {
                     hub.initEnumConstants(retrieveEnumConstantArray(type, javaClass));
                 }
                 if (rescan) {
-                    heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
+                    heapScanner.rescanField(hub.getCompanion(), hubCompanionAnnotationsEnumConstantsReference);
                 }
             }
         }
+
+        if (RuntimeClassLoading.isSupported()) {
+            ResolvedJavaType interpreterType = RuntimeClassLoading.createInterpreterType(hub, type);
+            hub.setInterpreterType(interpreterType);
+            heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType);
+            heapScanner.rescanObject(interpreterType.getDeclaredMethods());
+        }
+    }
+
+    /**
+     * The hub should not be rescanned directly if it is from the base layer, as it would try to
+     * access the constant again, which would trigger the dynamic hub initialization again. The hub
+     * has to be rescanned after the initialization is finished. This will be simplified by
+     * GR-60254.
+     */
+    private boolean shouldRescanHub(ImageHeapScanner heapScanner, DynamicHub hub) {
+        if (hostVM.useBaseLayer()) {
+            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, OtherReason.HUB);
+            return hubConstant == null || !hubConstant.isInBaseLayer();
+        }
+        return true;
     }
 
     /**
@@ -234,7 +251,7 @@ public class DynamicHubInitializer {
         }
         hub.setClassInitializationInfo(info);
         if (rescan) {
-            heapScanner.rescanField(hub, dynamicHubClassInitializationInfoField);
+            heapScanner.rescanField(hub.getCompanion(), hubCompanionClassInitializationInfo);
         }
     }
 

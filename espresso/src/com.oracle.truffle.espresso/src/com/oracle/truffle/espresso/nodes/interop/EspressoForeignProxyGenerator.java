@@ -69,6 +69,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -133,7 +135,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      */
     private final Map<String, List<ProxyMethod>> proxyMethods = new HashMap<>();
 
-    private final Map<Symbol<Symbol.Name>, EspressoType> staticGenericReturnTypes = new HashMap<>();
+    private final Map<Symbol<Name>, EspressoType> staticGenericReturnTypes = new HashMap<>();
     private final Map<Integer, EspressoType> typeVariableGenericReturnTypes = new HashMap<>();
     private final Map<String, Integer> genericClassTypes;
     private int nextGenericIndex;
@@ -197,11 +199,11 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         public final byte[] bytes;
         public final String name;
         private final ObjectKlass superklass;
-        private final Map<Symbol<Symbol.Name>, EspressoType> staticGenericReturnTypes;
+        private final Map<Symbol<Name>, EspressoType> staticGenericReturnTypes;
         private final EspressoType[] genericTypeArray;
         private final Map<String, Integer> typeVariableIdentifiers;
 
-        GeneratedProxyBytes(byte[] bytes, String name, ObjectKlass superKlass, Map<Symbol<Symbol.Name>, EspressoType> staticGenericReturnTypes,
+        GeneratedProxyBytes(byte[] bytes, String name, ObjectKlass superKlass, Map<Symbol<Name>, EspressoType> staticGenericReturnTypes,
                         EspressoType[] genericTypeArray, Map<String, Integer> typeVariableIdentifiers) {
             this.bytes = bytes;
             this.name = name;
@@ -219,7 +221,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             return superklass;
         }
 
-        public Map<Symbol<Symbol.Name>, EspressoType> getStaticGenericReturnTypes() {
+        public Map<Symbol<Name>, EspressoType> getStaticGenericReturnTypes() {
             return staticGenericReturnTypes;
         }
     }
@@ -243,7 +245,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         }
     }
 
-    private Map<Symbol<Symbol.Name>, EspressoType> getStaticGenericReturnTypes() {
+    private Map<Symbol<Name>, EspressoType> getStaticGenericReturnTypes() {
         return staticGenericReturnTypes;
     }
 
@@ -632,7 +634,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         Klass[] parameterTypes = m.resolveParameterKlasses();
         EspressoType returnType = m.getGenericReturnType();
         ObjectKlass[] exceptionTypes = m.getCheckedExceptions();
-        Symbol<Symbol.Signature> signature = m.getRawSignature();
+        Symbol<Signature> signature = m.getRawSignature();
 
         String sig = name + getParameterDescriptors(parameterTypes);
         List<ProxyMethod> sigmethods = proxyMethods.get(sig);
@@ -687,7 +689,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private String registerStaticGenericReturnTypeForMethod(Method m) {
         String fieldName = GENERIC_TYPE_FIELD_PREFIX + nextStaticGenericTypeIndex();
-        Symbol<Symbol.Name> name = m.getContext().getNames().getOrCreate(fieldName);
+        Symbol<Name> name = m.getContext().getNames().getOrCreate(fieldName);
         staticGenericReturnTypes.put(name, m.getGenericReturnType());
         visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, fieldName, TYPE_LITERAL_TYPE, null, null);
         return fieldName;
@@ -828,13 +830,13 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         public EspressoType returnType;
         public Klass[] exceptionTypes;
         boolean isVarArgs;
-        Symbol<Symbol.Signature> signature;
+        Symbol<Signature> signature;
         int typeLiteralIndex;
         String resolvedGenericTypeField;
         boolean isOptimizedMethod;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
-                        EspressoType returnType, Klass[] exceptionTypes, boolean isVarArgs, Symbol<Symbol.Signature> signature, boolean isOptimizedMethod,
+                        EspressoType returnType, Klass[] exceptionTypes, boolean isVarArgs, Symbol<Signature> signature, boolean isOptimizedMethod,
                         int typeLiteralIndex, String resolvedGenericTypeField) {
             this.methodName = methodName;
             this.parameterTypes = parameterTypes;

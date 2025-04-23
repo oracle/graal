@@ -80,6 +80,8 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -90,7 +92,6 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -107,6 +108,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
@@ -216,6 +218,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private ProviderList cachedProviders;
 
     private Class<?> jceSecurityClass;
+
+    private AnnotationSubstitutionProcessor substitutionProcessor;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -335,6 +339,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
 
+        substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+
         access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
             /*
              * We must wait until all providers have been registered before filtering the list.
@@ -425,6 +431,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         if (usedProviders.contains(p)) {
             return false;
+        }
+        if (substitutionProcessor.isDeleted(p.getClass())) {
+            return true;
         }
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }

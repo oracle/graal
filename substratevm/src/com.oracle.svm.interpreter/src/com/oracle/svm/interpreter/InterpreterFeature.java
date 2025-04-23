@@ -47,17 +47,16 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
+import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
+import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
-import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
-import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
-import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
-import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -140,9 +139,7 @@ public class InterpreterFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(
-                        DeoptimizationFeature.class,
-                        DebuggerEventsFeature.class);
+        return Arrays.asList(DebuggerEventsFeature.class);
     }
 
     @Override
@@ -174,7 +171,7 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (Platform.includedIn(Platform.AARCH64.class)) {
             ImageSingletons.add(InterpreterStubSection.class, new AArch64InterpreterStubSection());
             ImageSingletons.add(InterpreterAccessStubData.class, new AArch64InterpreterStubs.AArch64InterpreterAccessStubData());
@@ -182,7 +179,7 @@ public class InterpreterFeature implements InternalFeature {
             ImageSingletons.add(InterpreterStubSection.class, new AMD64InterpreterStubSection());
             ImageSingletons.add(InterpreterAccessStubData.class, new AMD64InterpreterStubs.AMD64InterpreterAccessStubData());
         } else {
-            VMError.unsupportedFeature("Platform not supported yet");
+            throw VMError.unsupportedFeature("Platform not supported yet: " + ImageSingletons.lookup(Platform.class));
         }
     }
 

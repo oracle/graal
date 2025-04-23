@@ -32,6 +32,15 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 @CLibrary(value = "libchelper", requireStatic = true)
 public class CodeSynchronizationOperations {
 
+    /**
+     * Flushes the processor's instruction cache for the given region of memory if required.
+     *
+     * Some target architectures (e.g. aarch64) require that the instruction cache be flushed, after
+     * modifying memory containing code, in order to obtain deterministic behavior.
+     * 
+     * @param codeStart start address of the modified memory
+     * @param codeSize size of the modified memory
+     */
     @CFunction(value = "codeSynchronization_clearCache", transition = Transition.NO_TRANSITION)
     public static native void clearCache(long codeStart, long codeSize);
 }

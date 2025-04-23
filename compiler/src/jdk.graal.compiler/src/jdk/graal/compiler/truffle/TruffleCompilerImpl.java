@@ -39,9 +39,11 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -103,7 +105,6 @@ import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ProfilingInfo;
 
 /**
@@ -115,7 +116,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     public static final int LAST_TIER_INDEX = 2;
 
     static final int NUMBER_OF_CACHED_OPTIONS = 128;
-    static final TruffleCompilerOptionsOptionDescriptors OPTION_DESCRIPTORS = new TruffleCompilerOptionsOptionDescriptors();
+    static final UnmodifiableEconomicMap<String, OptionDescriptor> OPTION_DESCRIPTORS = initOptions();
+
+    private static UnmodifiableEconomicMap<String, OptionDescriptor> initOptions() {
+        EconomicMap<String, OptionDescriptor> map = EconomicMap.create();
+        for (OptionDescriptor d : new TruffleCompilerOptions_OptionDescriptors()) {
+            map.put(d.getName(), d);
+        }
+        return map;
+    }
 
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
@@ -127,7 +136,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
 
-    @SuppressWarnings("serial") private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTIONS));
+    private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTIONS));
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -172,7 +181,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime").doc("Total time spent in the Truffle tier.");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
-    public static final TimerKey EncodedGraphCacheEvictionTime = DebugContext.timer("EncodedGraphCacheEvictionTime");
 
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
@@ -345,7 +353,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             graphTooBig = true;
         }
         BailoutException bailout = error instanceof BailoutException ? (BailoutException) error : null;
-        boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
+        boolean permanentBailout = bailout != null && bailout.isPermanent();
         Throwable finalError = error;
         compilable.onCompilationFailed(() -> TruffleCompilable.serializeException(finalError), silent, bailout != null, permanentBailout, graphTooBig);
     }
@@ -404,6 +412,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
         CompilationResultInfoImpl(CompilationResult compResult) {
             this.compResult = compResult;
+        }
+
+        @Override
+        public long getCompilationId() {
+            return ((TruffleCompilationIdentifier) compResult.getCompilationId()).getTruffleCompilationId();
         }
 
         @Override
@@ -473,6 +486,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     }
 
     /**
+     * Gets a factory to use for creating the {@link CompilationWatchDog} watcher thread.
+     *
+     * @see CompilationWatchDog#watch
+     */
+    protected ThreadFactory getWatchDogThreadFactory() {
+        return null;
+    }
+
+    /**
      * Compiles a Truffle AST. If compilation succeeds, the AST will have compiled code associated
      * with it that can be executed instead of interpreting the AST.
      */
@@ -511,6 +533,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             if (wrapper.listener != null) {
                 wrapper.listener.onSuccess(wrapper.compilable, task, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
             }
+            wrapper.compilable.onCompilationSuccess(task.tier(), !task.hasNextTier());
 
             // Partial evaluation and installation are included in
             // compilation time and memory usage reported by printer
@@ -520,7 +543,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             // graph is null
             if (wrapper.listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
-                boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
+                boolean permanentBailout = bailout != null && bailout.isPermanent();
                 wrapper.listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier(), bailout != null ? null : () -> TruffleCompilable.serializeException(t));
             }
             throw t;
@@ -549,7 +572,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             wrapper.graph = context.graph;
 
             try (Scope s = context.debug.scope("CreateGraph", context.graph);
-                            Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
+                            Indent indent = context.debug.logAndIndent("evaluate %s", context.graph)) {
                 truffleTier.apply(context.graph, context);
                 graph = context.graph;
             } catch (Throwable e) {
@@ -667,10 +690,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return truffleTier;
     }
 
-    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
-        return config.snippetReflection().asObject(TruffleCompilable.class, constant);
-    }
-
     @Override
     public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, long stuckTime) {
         CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
@@ -765,7 +784,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         @SuppressWarnings("try")
         @Override
         protected Void performCompilation(DebugContext debug) {
-            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this)) {
+            ThreadFactory factory = getWatchDogThreadFactory();
+            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this, factory)) {
                 compileAST(this, debug);
                 return null;
             }
@@ -819,8 +839,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                 TruffleCompilerRuntime runtime = config.runtime();
                 ArrayList<Assumption> newAssumptions = new ArrayList<>();
                 for (Assumption assumption : result.getAssumptions()) {
-                    if (assumption != null && assumption instanceof TruffleAssumption) {
-                        TruffleAssumption truffleAssumption = (TruffleAssumption) assumption;
+                    if (assumption instanceof TruffleAssumption truffleAssumption) {
                         Consumer<OptimizedAssumptionDependency> dep = runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption());
                         if (dep == null) {
                             // Before bailing out, notify other assumptions waiting
@@ -862,8 +881,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         @Override
+        @SuppressWarnings("try")
         public void installFailed(Throwable t) {
-            notifyAssumptions(null);
+            try (TruffleRuntimeScope scope = config.openCanCallTruffleRuntimeScope()) {
+                notifyAssumptions(null);
+            }
         }
 
         private void notifyAssumptions(OptimizedAssumptionDependency dependency) {
@@ -902,7 +924,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return config.snippetReflection();
     }
 
-    private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+    protected final class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
 
         @Override
         public Backend.CodeInstallationTask create() {

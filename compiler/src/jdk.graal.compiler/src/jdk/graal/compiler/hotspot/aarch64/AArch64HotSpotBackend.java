@@ -161,7 +161,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         }
         Unsafe unsafe = Unsafe.getUnsafe();
         int instruction = unsafe.getIntVolatile(targetCode, unsafe.arrayBaseOffset(byte[].class) + verifiedEntryOffset);
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
+        AArch64MacroAssembler masm = new AArch64HotSpotMacroAssembler(getTarget(), config, heapBaseRegister);
         masm.nop();
         return instruction == masm.getInt(0);
     }
@@ -241,7 +241,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             rawEnter(crb, frameMap, masm, config, isStub);
 
             crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
-            if (!isStub && config.nmethodEntryBarrier != 0) {
+            if (!isStub) {
                 emitNmethodEntryBarrier(crb, masm);
             }
             if (entryPointDecorator != null) {

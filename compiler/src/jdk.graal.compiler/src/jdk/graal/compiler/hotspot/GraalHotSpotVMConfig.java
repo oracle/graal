@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -153,13 +153,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
-    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
+    public final boolean useCountLeadingZerosInstruction = getFlag("UseCountLeadingZerosInstruction", Boolean.class, false, osArch.equals("amd64"));
+    public final boolean useCountTrailingZerosInstruction = getFlag("UseCountTrailingZerosInstruction", Boolean.class, false, osArch.equals("amd64"));
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useCharacterCompareIntrinsics = getFlag("UseCharacterCompareIntrinsics", Boolean.class);
+    public final boolean useCondCardMark = getFlag("UseCondCardMark", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
     public final boolean alwaysSafeConstructors = getFlag("AlwaysSafeConstructors", Boolean.class);
 
+    public final boolean avoidUnalignedAccesses = getFlag("AvoidUnalignedAccesses", Boolean.class, false, osArch.equals("aarch64"));
+    public final boolean useLSE = getFlag("UseLSE", Boolean.class, false, osArch.equals("aarch64"));
+    public final boolean useBlockZeroing = getFlag("UseBlockZeroing", Boolean.class, false, osArch.equals("aarch64"));
     public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
     public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
 
@@ -239,7 +244,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
-    public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
+    public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint", -1, JDK == 21);
     public final int klassAccessFlagsOffset = getFieldOffset("Klass::_access_flags", Integer.class, "AccessFlags");
     public final int klassMiscFlagsOffset = getFieldOffset("Klass::_misc_flags._flags", Integer.class, "u1", 0, JDK >= 24);
     public final int klassLayoutHelperOffset = getFieldOffset("Klass::_layout_helper", Integer.class, "jint");
@@ -277,7 +282,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int arrayClassElementOffset = getFieldOffset("ObjArrayKlass::_element_klass", Integer.class, "Klass*");
 
-    public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
+    public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class, -1, JDK == 21);
     public final int jvmAccIsHiddenClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_hidden_class", Integer.class) : getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class);
     public final int jvmAccIsValueBasedClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_value_based_class", Integer.class) : getConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class);
     public final int jvmAccHasFinalizer = JDK >= 24 ? getConstant("KlassFlags::_misc_has_finalizer", Integer.class) : getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
@@ -296,17 +301,17 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * The _threadObj field is still present but refers to the carrier thread. The two fields have
      * the same value in non-virtual threads.
      */
-    public final int threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_vthread", Integer.class, "OopHandle");
+    public final int javaThreadVthreadOffset = getFieldOffset("JavaThread::_vthread", Integer.class, "OopHandle");
     public final boolean doJVMTIVirtualThreadTransitions = getFlag("DoJVMTIVirtualThreadTransitions", Boolean.class);
 
-    public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
-    public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle");
+    public final int javaThreadThreadObjOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
+    public final int javaThreadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle");
 
     public final int javaThreadMonitorOwnerIDOffset = getFieldOffset("JavaThread::_monitor_owner_id", Integer.class, "int64_t", -1, JDK > 21);
 
-    public final int threadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool");
-    public final int threadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool", -1, JDK == 21);
-    public final int threadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool", -1, JDK >= 22);
+    public final int javaThreadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool");
+    public final int javaThreadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool", -1, JDK == 21);
+    public final int javaThreadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool", -1, JDK >= 22);
 
     public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int");
     public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int");
@@ -321,7 +326,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int jfrThreadLocalVthreadExcludedOffset = getFieldOffset("JfrThreadLocal::_vthread_excluded", Integer.class, "bool");
     public final int jfrThreadLocalVthreadOffset = getFieldOffset("JfrThreadLocal::_vthread", Integer.class, "bool");
 
-    public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
 
@@ -330,7 +334,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool");
     public final int javaThreadReservedStackActivationOffset = getFieldOffset("JavaThread::_stack_overflow_state._reserved_stack_activation", Integer.class, "address"); // JDK-8253717
-    public final int jniEnvironmentOffset = getFieldOffset("JavaThread::_jni_environment", Integer.class, "JNIEnv");
 
     public boolean requiresReservedStackCheck(List<ResolvedJavaMethod> methods) {
         if (enableStackReservedZoneAddress != 0 && methods != null) {
@@ -397,12 +400,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, JDK > 21 ? "int64_t" : null);
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t");
-    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
-    public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
+    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1, JDK == 21);
+    public final int objectMonitorEntryList = getFieldOffset(JDK == 21 ? "ObjectMonitor::_EntryList" : "ObjectMonitor::_entry_list", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK > 21 ? "int64_t" : "JavaThread*");
 
-    public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
-    public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
+    public final int contEntryOffset = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
+    public final int pinCountOffset = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
 
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
 
@@ -438,14 +441,19 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public final long shouldNotifyObjectAllocAddress = getFieldValue("CompilerToVM::Data::_should_notify_object_alloc", Long.class, "int*", 0L, JDK >= 23);
 
+    // Check whether low-latency G1 post write barriers implemented in JDK-8340827 are available
+    public final boolean g1LowLatencyPostWriteBarrierSupport = getStore().getConstants().containsKey("G1ThreadLocalData::card_table_base_offset");
+
     // G1 Collector Related Values.
     public final byte dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
-    public final byte g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
+    public final byte cleanCardValue = getConstant("CardTable::clean_card", Byte.class, (byte) 0, g1LowLatencyPostWriteBarrierSupport);
+    public final byte g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class, (byte) 0, !g1LowLatencyPostWriteBarrierSupport);
     public final int g1SATBQueueMarkingActiveOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
     public final int g1SATBQueueIndexOffset = getConstant("G1ThreadLocalData::satb_mark_queue_index_offset", Integer.class);
     public final int g1SATBQueueBufferOffset = getConstant("G1ThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
-    public final int g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class);
-    public final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class);
+    public final int g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class, -1, !g1LowLatencyPostWriteBarrierSupport);
+    public final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class, -1, !g1LowLatencyPostWriteBarrierSupport);
+    public final int g1CardTableBaseOffset = getConstant("G1ThreadLocalData::card_table_base_offset", Integer.class, -1, g1LowLatencyPostWriteBarrierSupport);
 
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
@@ -510,7 +518,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long poly1305ProcessBlocks = getFieldValue("StubRoutines::_poly1305_processBlocks", Long.class, "address");
     public final long chacha20Block = getFieldValue("StubRoutines::_chacha20Block", Long.class, "address");
 
-    public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address", 0L, JDK >= 23);
+    public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address", 0L, JDK >= 25);
     public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address", 0L, JDK >= 23);
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue(JDK >= 24 ? "CompilerToVM::Data::SharedRuntime_throw_delayed_StackOverflowError_entry"
@@ -546,6 +554,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
     public final long unsafeSetMemory = getFieldValue("StubRoutines::_unsafe_setmemory", Long.class, "address", 0L, JDK >= 23);
 
+    public final long stubDoubleKeccak = getFieldValue("StubRoutines::_double_keccak", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumAlmostNtt = getFieldValue("StubRoutines::_dilithiumAlmostNtt", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumAlmostInverseNtt = getFieldValue("StubRoutines::_dilithiumAlmostInverseNtt", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumNttMult = getFieldValue("StubRoutines::_dilithiumNttMult", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumMontMulByConstant = getFieldValue("StubRoutines::_dilithiumMontMulByConstant", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDilithiumDecomposePoly = getFieldValue("StubRoutines::_dilithiumDecomposePoly", Long.class, "address", 0L, JDK >= 25);
+
     // Allocation stubs that return null when allocation fails
     public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
     public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null");
@@ -576,7 +591,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This flag indicates that support for loom is enabled.
     public final boolean continuationsEnabled = getFieldValue("CompilerToVM::Data::continuations_enabled", Boolean.class, "bool");
 
-    // If the nmethod_entry_barrier field is non-null then an entry barrier must be emitted
     public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_guard_value_offset", Integer.class, "int");
     public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address");
 
@@ -658,7 +672,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long vmErrorAddress = getAddress("JVMCIRuntime::vm_error");
     public final long loadAndClearExceptionAddress = getAddress("JVMCIRuntime::load_and_clear_exception");
     public final long writeBarrierPreAddress = getAddress("JVMCIRuntime::write_barrier_pre");
-    public final long writeBarrierPostAddress = getAddress("JVMCIRuntime::write_barrier_post");
+    public final long writeBarrierPostAddress = getAddress("JVMCIRuntime::write_barrier_post", -1L, !g1LowLatencyPostWriteBarrierSupport);
     public final long validateObject = getAddress("JVMCIRuntime::validate_object");
 
     public final long testDeoptimizeCallInt = getAddress("JVMCIRuntime::test_deoptimize_call_int");
@@ -738,6 +752,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             }
         }
 
+        assert nmethodEntryBarrier != 0L;
         assert codeEntryAlignment > 0 : codeEntryAlignment;
         assert checkNullAllocationStubs();
         return true;

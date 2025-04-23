@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -87,6 +89,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
@@ -121,9 +124,11 @@ import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.ClassIsArrayNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -158,6 +163,7 @@ import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -172,7 +178,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPlugins {
 
-    /** Collection of debug options for SubstrateGraphBuilderPlugins. */
+    /**
+     * Collection of debug options for SubstrateGraphBuilderPlugins.
+     */
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
@@ -384,32 +392,44 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
+    static final class ImageInfoPlugin extends RequiredInvocationPlugin {
+
+        private final JavaConstant returnValue;
+
+        ImageInfoPlugin(String name, JavaConstant returnValue) {
+            super(name);
+            this.returnValue = returnValue;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            b.push(JavaKind.Boolean, ConstantNode.forConstant(returnValue, b.getMetaAccess(), b.getGraph()));
+            return true;
+        }
+    }
+
+    /**
+     * @see ImageInfo#inImageCode()
+     * @see ImageInfo#inImageRuntimeCode()
+     * @see ImageInfo#inImageBuildtimeCode()
+     * @see NativeImageSupport#inBuildtimeCode()
+     * @see NativeImageSupport#inRuntimeCode()
+     * @see LibGraalSupport#inLibGraalRuntime()
+     */
     private static void registerImageInfoPlugins(InvocationPlugins plugins) {
         Registration registration = new Registration(plugins, ImageInfo.class);
-        registration.register(new RequiredInvocationPlugin("inImageCode") {
-            /** See {@link ImageInfo#inImageCode()}. */
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(JavaKind.Boolean, ConstantNode.forConstant(JavaConstant.TRUE, b.getMetaAccess(), b.getGraph()));
-                return true;
-            }
-        });
-        registration.register(new RequiredInvocationPlugin("inImageBuildtimeCode") {
-            /** See {@link ImageInfo#inImageBuildtimeCode()}. */
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(JavaKind.Boolean, ConstantNode.forConstant(JavaConstant.FALSE, b.getMetaAccess(), b.getGraph()));
-                return true;
-            }
-        });
-        registration.register(new RequiredInvocationPlugin("inImageRuntimeCode") {
-            /** See {@link ImageInfo#inImageRuntimeCode()}. */
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(JavaKind.Boolean, ConstantNode.forConstant(JavaConstant.TRUE, b.getMetaAccess(), b.getGraph()));
-                return true;
-            }
-        });
+        registration.register(new ImageInfoPlugin("inImageCode", JavaConstant.TRUE));
+        registration.register(new ImageInfoPlugin("inImageBuildtimeCode", JavaConstant.FALSE));
+        registration.register(new ImageInfoPlugin("inImageRuntimeCode", JavaConstant.TRUE));
+
+        registration = new Registration(plugins, NativeImageSupport.class);
+        registration.register(new ImageInfoPlugin("inBuildtimeCode", JavaConstant.FALSE));
+        registration.register(new ImageInfoPlugin("inRuntimeCode", JavaConstant.TRUE));
+
+        if (!SubstrateOptions.LibGraalClassLoader.getValue().isEmpty()) {
+            registration = new Registration(plugins, LibGraalSupport.class);
+            registration.register(new ImageInfoPlugin("inLibGraalRuntime", JavaConstant.TRUE));
+        }
     }
 
     private static void registerProxyPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
@@ -490,11 +510,11 @@ public class SubstrateGraphBuilderPlugins {
 
     /**
      * Try to extract a Class array from a ValueNode. There are two situations:
-     *
+     * <p>
      * 1. The node is a ConstantNode. Then we get its initial value. However, since Java doesn't
      * have immutable arrays this method cannot guarantee that the array content will not change.
      * Therefore, if <code>exact</code> is set to true we return null.
-     *
+     * <p>
      * 2. The node is a NewArrayNode. Then we track the stores in the array as long as all are
      * constants and there is no control flow split. If the content of the array cannot be
      * determined a null value is returned.
@@ -1092,6 +1112,17 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC > 21) {
+            // In JDK 21, the same plugin is registered in StandardGraphBuilderPlugins
+            r.register(new InvocationPlugin("isArray", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    LogicNode isArray = b.add(ClassIsArrayNode.create(b.getConstantReflection(), receiver.get(true)));
+                    b.addPush(JavaKind.Boolean, ConditionalNode.create(isArray, NodeView.DEFAULT));
+                    return true;
+                }
+            });
+        }
 
         registerClassDesiredAssertionStatusPlugin(plugins);
     }
@@ -1161,15 +1192,30 @@ public class SubstrateGraphBuilderPlugins {
                     return true;
                 }
 
-                Object singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
-                if (singleton instanceof LayeredImageSingleton layeredSingleton && !layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
+                if (InitialLayerOnlyImageSingleton.class.isAssignableFrom(key) && ImageLayerBuildingSupport.buildingExtensionLayer()) {
                     /*
-                     * Runtime compilation installs many singletons into the image which are
-                     * otherwise hosted only. Note the platform checks still apply and can be used
-                     * to ensure certain singleton are not installed into the image.
+                     * This singleton is only installed in the initial layer heap. When allowed, all
+                     * other layers lookups refer to this singleton.
                      */
-                    if (!RuntimeCompilation.isEnabled()) {
-                        throw VMError.shouldNotReachHere("Layered image singleton without runtime access is in runtime graph: " + singleton);
+                    JavaConstant initialSingleton = LayeredImageSingletonSupport.singleton().getInitialLayerOnlyImageSingleton(key);
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
+                    return true;
+                }
+
+                Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
+                if (singleton instanceof LayeredImageSingleton layeredSingleton) {
+                    if (!layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
+                        /*
+                         * Runtime compilation installs many singletons into the image which are
+                         * otherwise hosted only. Note the platform checks still apply and can be
+                         * used to ensure certain singleton are not installed into the image.
+                         */
+                        if (!RuntimeCompilation.isEnabled()) {
+                            throw VMError.shouldNotReachHere("Layered image singleton without runtime access is in runtime graph: " + singleton);
+                        }
+                    }
+                    if (layeredSingleton instanceof MultiLayeredImageSingleton) {
+                        throw VMError.shouldNotReachHere("Forbidden lookup of MultiLayeredImageSingleton in runtime graph: " + singleton);
                     }
                 }
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(singleton), b.getMetaAccess()));

@@ -25,21 +25,19 @@
 
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -74,17 +72,17 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     private InterpreterResolvedJavaMethod readInterpretedMethod(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[interpretedMethodSlot];
-        return readObject(sp, WordFactory.signed(valueInfo.getData()), valueInfo.isCompressedReference());
+        return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
     private int readBCI(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[bciSlot];
-        return readInt(sp, WordFactory.signed(valueInfo.getData()));
+        return readInt(sp, Word.signed(valueInfo.getData()));
     }
 
     private InterpreterFrame readInterpreterFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[interpretedFrameSlot];
-        return readObject(sp, WordFactory.signed(valueInfo.getData()), valueInfo.isCompressedReference());
+        return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
     @Override
@@ -95,7 +93,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         InterpreterResolvedJavaMethod interpretedMethod = readInterpretedMethod(frameInfo, sp);
         int bci = readBCI(frameInfo, sp);
         InterpreterFrame interpreterFrame = readInterpreterFrame(frameInfo, sp);
-        Class<?> interpretedClass = ((InterpreterResolvedJavaType) interpretedMethod.getDeclaringClass()).getJavaClass();
+        Class<?> interpretedClass = interpretedMethod.getDeclaringClass().getJavaClass();
         String sourceMethodName = interpretedMethod.getName();
         LineNumberTable lineNumberTable = interpretedMethod.getLineNumberTable();
 

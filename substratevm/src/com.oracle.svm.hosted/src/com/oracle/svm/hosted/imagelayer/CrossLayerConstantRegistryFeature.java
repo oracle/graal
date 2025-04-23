@@ -314,6 +314,10 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         VMError.guarantee(previous == null && !constantExists(keyName), "This key has been registered before: %s", keyName);
     }
 
+    public boolean isConstantRegistered(Object obj) {
+        return constantCandidates.containsValue(obj);
+    }
+
     @Override
     public void registerHeapConstant(String keyName, Object obj) {
         registerConstantCandidate(keyName, obj);
@@ -322,10 +326,12 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     }
 
     @Override
-    public void registerFutureHeapConstant(String keyName, AnalysisType futureType) {
+    public ImageHeapConstant registerFutureHeapConstant(String keyName, AnalysisType futureType) {
         assert futureType != null;
-        var futureConstant = new FutureConstantCandidateInfo(ImageHeapRelocatableConstant.create(futureType, keyName));
-        registerConstantCandidate(keyName, futureConstant);
+        var imageHeapConstant = ImageHeapRelocatableConstant.create(futureType, keyName);
+        var constantInfo = new FutureConstantCandidateInfo(imageHeapConstant);
+        registerConstantCandidate(keyName, constantInfo);
+        return constantInfo.constant();
     }
 
     @Override

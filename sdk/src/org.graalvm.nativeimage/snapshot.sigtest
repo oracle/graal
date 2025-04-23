@@ -453,6 +453,7 @@ meth public static java.lang.String getExecutableName()
 meth public static java.lang.String getObjectFile(java.lang.String)
 meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.function.CEntryPointLiteral<?>)
 meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
 meth public static long getProcessID()
 meth public static long getProcessID(java.lang.Process)
 meth public static void exec(java.nio.file.Path,java.lang.String[],java.util.Map<java.lang.String,java.lang.String>)
@@ -1079,6 +1080,7 @@ meth public abstract java.util.Set<java.lang.reflect.Executable> reachableMethod
 
 CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformer
 meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)
+meth public boolean isAvailable()
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void initializeAtBuildTime(java.lang.Class<?>[])

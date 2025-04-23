@@ -61,6 +61,8 @@ import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerObject;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -115,6 +117,7 @@ public final class NativeImageHeap implements ImageHeap {
     private final ImageHeapLayouter heapLayouter;
     private final int minInstanceSize;
     private final int minArraySize;
+    private final int fillerArrayBaseOffset;
     private final boolean layeredBuild = ImageLayerBuildingSupport.buildingImageLayer();
 
     /**
@@ -160,6 +163,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
         this.minArraySize = objectLayout.getMinImageHeapArraySize();
+        this.fillerArrayBaseOffset = objectLayout.getArrayBaseOffset(JavaKind.Int);
         assert assertFillerObjectSizes();
 
         dynamicHubLayout = DynamicHubLayout.singleton();
@@ -179,7 +183,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public int getLayerObjectCount() {
-        return (int) objects.values().stream().filter(o -> !o.constant.isInBaseLayer()).count();
+        return (int) objects.values().stream().filter(o -> !o.constant.isWrittenInPreviousLayer()).count();
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
@@ -232,7 +236,7 @@ public final class NativeImageHeap implements ImageHeap {
         processAddObjectWorklist();
 
         HostedField hostedField = hMetaAccess.optionalLookupJavaField(StringInternSupport.getInternedStringsField());
-        boolean usesInternedStrings = hostedField != null && hostedField.isAccessed();
+        boolean usesInternedStrings = hostedField != null && hostedField.isReachable();
         if (usesInternedStrings) {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
@@ -257,7 +261,7 @@ public final class NativeImageHeap implements ImageHeap {
             } else {
                 imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
                 Arrays.sort(imageInternedStrings);
-                ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
+                StringInternSupport.setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
             aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
@@ -291,19 +295,15 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private void addStaticFields() {
-        addObject(StaticFieldsSupport.getStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
-        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
+        addObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
+        addObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
 
         /*
          * We only have empty holder arrays for the static fields, so we need to add static object
          * fields manually.
          */
         for (HostedField field : hUniverse.getFields()) {
-            if (field.wrapped.isInBaseLayer()) {
-                /* Base layer static field values are accessed via the base layer arrays. */
-                continue;
-            }
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
+            if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
                 addConstant(readConstantField(field, null), false, field);
@@ -415,10 +415,12 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     @Override
-    public int countDynamicHubs() {
+    public int countAndVerifyDynamicHubs() {
+        ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
         for (ObjectInfo o : getObjects()) {
-            if (!o.constant.isInBaseLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+            if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+                objHeader.verifyDynamicHubOffsetInImageHeap(o.getOffset());
                 count++;
             }
         }
@@ -436,7 +438,8 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo addFillerObject(int size) {
         if (size >= minArraySize) {
             int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
-            int arrayLength = (size - minArraySize) / elementSize;
+            assert fillerArrayBaseOffset % elementSize == 0;
+            int arrayLength = (size - fillerArrayBaseOffset) / elementSize;
             assert objectLayout.getArraySize(JavaKind.Int, arrayLength, true) == size;
             return addLateToImageHeap(new int[arrayLength], HeapInclusionReason.FillerObject);
         } else if (size >= minInstanceSize) {
@@ -495,7 +498,7 @@ public final class NativeImageHeap implements ImageHeap {
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             // If the type has a monitor field, it has a reference field that is written.
-            if (clazz.getMonitorFieldOffset() != 0) {
+            if (clazz.getMonitorFieldOffset() >= 0) {
                 written = true;
                 references = true;
                 // also not immutable: users of registerAsImmutable() must take precautions
@@ -623,8 +626,10 @@ public final class NativeImageHeap implements ImageHeap {
                 recursiveAddObject(hub, false, info);
                 if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
                     VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-                    relocatable = addConstantArrayElements(constant, length, false, info);
+                    var result = addConstantArrayElements(constant, length, false, info);
                     references = true;
+                    relocatable = result.relocatable();
+                    patched = result.patched();
                 }
                 written = true; /* How to know if any of the array elements are written? */
             } catch (AnalysisError.TypeNotFoundError ex) {
@@ -648,7 +653,7 @@ public final class NativeImageHeap implements ImageHeap {
      * are reachable from regular constants in this layer.
      */
     private static boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
-        if (((ImageHeapConstant) constant).isInBaseLayer()) {
+        if (((ImageHeapConstant) constant).isWrittenInPreviousLayer()) {
             info.setOffsetInPartition(HostedImageLayerBuildingSupport.singleton().getLoader().getObjectOffset(constant));
             info.setHeapPartition(BASE_LAYER_PARTITION);
             return true;
@@ -767,17 +772,26 @@ public final class NativeImageHeap implements ImageHeap {
         return relocatable;
     }
 
-    private boolean addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
+    record AddConstantArrayResult(boolean relocatable, boolean patched) {
+
+    }
+
+    private AddConstantArrayResult addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
         boolean relocatable = otherFieldsRelocatable;
+        boolean patched = false;
         for (int idx = 0; idx < length; idx++) {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
             /* Object replacement is done as part as constant refection. */
             if (spawnIsolates()) {
                 relocatable = relocatable || value instanceof RelocatableConstant;
             }
-            recursiveAddConstant(value, false, reason);
+            if (value instanceof ImageHeapRelocatableConstant) {
+                patched = true;
+            } else {
+                recursiveAddConstant(value, false, reason);
+            }
         }
-        return relocatable;
+        return new AddConstantArrayResult(relocatable, patched);
     }
 
     /*
@@ -809,6 +823,7 @@ public final class NativeImageHeap implements ImageHeap {
             this.original = original;
             this.immutableFromParent = immutableFromParent;
             this.reason = reason;
+            VMError.guarantee(!(original instanceof ImageHeapRelocatableConstant));
         }
 
         final JavaConstant original;
@@ -1078,5 +1093,10 @@ final class BaseLayerPartition implements ImageHeapPartition {
     @Override
     public long getSize() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isFiller() {
+        return false;
     }
 }

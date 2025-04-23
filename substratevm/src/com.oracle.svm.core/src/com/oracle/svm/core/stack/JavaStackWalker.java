@@ -472,12 +472,13 @@ public final class JavaStackWalker {
                 return visitUnknownFrame(sp, ip, visitor, data);
             }
 
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);
             if (deoptimizedFrame != null) {
                 if (!vistDeoptimizedFrame(sp, ip, deoptimizedFrame, visitor, data)) {
                     return false;
                 }
             } else {
+                // Note that this code also visits frames pending lazy deoptimization.
                 UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
                 Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
                 try {

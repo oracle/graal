@@ -26,8 +26,9 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public class Attribute {
 
@@ -61,7 +62,8 @@ public class Attribute {
      * @param other the object to compare 'this' to
      * @return true if objects are equal
      */
-    public boolean sameAs(Attribute other) {
+    @SuppressWarnings("unused")
+    public boolean isSame(Attribute other, ConstantPool thisPool, ConstantPool otherPool) {
         if (this == other) {
             return true;
         }

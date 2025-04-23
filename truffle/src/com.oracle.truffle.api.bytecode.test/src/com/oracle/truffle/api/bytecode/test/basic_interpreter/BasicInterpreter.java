@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -104,13 +107,15 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
                                 enableSpecializationIntrospection = true, //
-                                allowUnsafe = false)),
+                                allowUnsafe = false, //
+                                variadicStackLimit = "4")),
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
-                                enableSpecializationIntrospection = true)),
+                                enableSpecializationIntrospection = true, //
+                                variadicStackLimit = "8")),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
@@ -118,21 +123,24 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
                                 defaultUncachedThreshold = "defaultUncachedThreshold", //
-                                enableSpecializationIntrospection = true)),
+                                enableSpecializationIntrospection = true, //
+                                variadicStackLimit = "16")),
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
                                 enableSpecializationIntrospection = true, //
-                                boxingEliminationTypes = {boolean.class, long.class})),
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                variadicStackLimit = "4")),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 enableSerialization = true, //
                                 enableSpecializationIntrospection = true, //
                                 enableTagInstrumentation = true, //
-                                defaultLocalValue = "LOCAL_DEFAULT_VALUE")),
+                                defaultLocalValue = "LOCAL_DEFAULT_VALUE", //
+                                variadicStackLimit = "8")),
                 @Variant(suffix = "WithRootScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
@@ -140,7 +148,8 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableBlockScoping = false, //
                                 enableTagInstrumentation = true, //
                                 enableSpecializationIntrospection = true, //
-                                defaultLocalValue = "LOCAL_DEFAULT_VALUE")),
+                                defaultLocalValue = "LOCAL_DEFAULT_VALUE", //
+                                variadicStackLimit = "16")),
                 @Variant(suffix = "WithStoreBytecodeIndexInFrame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
@@ -150,7 +159,8 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 storeBytecodeIndexInFrame = true, //
-                                enableTagInstrumentation = true)),
+                                enableTagInstrumentation = true, //
+                                variadicStackLimit = "4")),
                 // A typical "production" configuration with all of the bells and whistles.
                 @Variant(suffix = "ProductionBlockScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
@@ -160,7 +170,8 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableUncachedInterpreter = true, //
                                 defaultUncachedThreshold = "defaultUncachedThreshold", //
                                 enableSpecializationIntrospection = true, //
-                                boxingEliminationTypes = {boolean.class, long.class})),
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                variadicStackLimit = "8")),
                 @Variant(suffix = "ProductionRootScoping", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
@@ -170,7 +181,8 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableUncachedInterpreter = true, //
                                 defaultUncachedThreshold = "defaultUncachedThreshold", //
                                 enableSpecializationIntrospection = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}))
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                variadicStackLimit = "16"))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
@@ -323,10 +335,15 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    static final class VeryComplexOperation {
+    static final class VariadicOperation {
         @Specialization
-        public static long bla(long a1, @Variadic Object[] a2) {
+        public static long doLong(long a1, @Variadic Object[] a2) {
             return a1 + a2.length;
+        }
+
+        @Fallback
+        public static long doOther(@SuppressWarnings("unused") Object a1, @Variadic Object[] a2) {
+            return a2.length;
         }
     }
 
@@ -521,6 +538,19 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         protected static boolean callTargetMatches(CallTarget left, CallTarget right) {
             return left == right;
+        }
+    }
+
+    @Operation
+    public static final class InvokeRecursive {
+        @Specialization(guards = "true")
+        public static Object doRootNode(@Variadic Object[] args, @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return callNode.call(args);
+        }
+
+        @Specialization(replaces = {"doRootNode"})
+        public static Object doRootNodeUncached(@Variadic Object[] args, @Bind BasicInterpreter root, @Shared @Cached IndirectCallNode callNode) {
+            return callNode.call(root.getCallTarget(), args);
         }
     }
 
@@ -866,6 +896,59 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
             return new Bindings(bytecode, root1, location, instruction, node, bytecodeIndex);
         }
     }
+
+    @Operation
+    static final class Variadic0Operation {
+        @Specialization
+        public static Object[] variadic(@Variadic Object[] args) {
+            return args;
+        }
+    }
+
+    @Operation
+    static final class Variadic1Operation {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static Object[] variadic(long arg0, @Variadic Object[] args) {
+            return args;
+        }
+    }
+
+    @Operation
+    static final class VariadicOffsetOperation {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static Object[] variadic(@Variadic(startOffset = 4) Object[] args) {
+            assertTrue(args.length >= 3);
+            for (int i = 0; i < 4; i++) {
+                assertNull(args[i]);
+            }
+            return args;
+        }
+    }
+
+    @Operation
+    @Variadic
+    static final class DynamicVariadic {
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public static Object[] pass(@Variadic Object[] args) {
+            return args;
+        }
+    }
+
+    @Operation
+    @Variadic
+    static final class DynamicVariadicNull {
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public static Object[] pass() {
+            return null;
+        }
+    }
+
 }
 
 class TestClosure {

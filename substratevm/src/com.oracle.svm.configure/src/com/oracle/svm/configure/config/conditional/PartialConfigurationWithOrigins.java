@@ -26,14 +26,17 @@ package com.oracle.svm.configure.config.conditional;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
+import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.configure.ConfigurationParser;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.graal.compiler.util.json.JsonPrintable;
@@ -46,7 +49,7 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
     private final MethodInfoRepository methodInfoRegistry;
 
     public PartialConfigurationWithOrigins(MethodCallNode root, MethodInfoRepository methodInfoRegistry) {
-        super(true);
+        super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.root = root;
         this.methodInfoRegistry = methodInfoRegistry;
     }
@@ -143,34 +146,53 @@ public class PartialConfigurationWithOrigins extends ConfigurationParser impleme
 
     private static void printConfigurationSet(JsonWriter writer, ConfigurationSet configurationSet) throws IOException {
         if (!configurationSet.isEmpty()) {
-            writer.quote("config").append(": {").indent().newline();
+            writer.quote("config").appendFieldSeparator().appendObjectStart();
+
+            /* Print combined file */
+            writer.quote(ConfigurationFile.REACHABILITY_METADATA.getName()).appendFieldSeparator().appendObjectStart();
             boolean first = true;
             for (ConfigurationFile file : ConfigurationFile.agentGeneratedFiles()) {
-                if (!configurationSet.getConfiguration(file).isEmpty()) {
+                ConfigurationBase<?, ?> config = configurationSet.getConfiguration(file);
+                if (!config.isEmpty() && config.supportsCombinedFile()) {
                     if (first) {
                         first = false;
                     } else {
-                        writer.append(",").newline();
+                        writer.appendSeparator();
                     }
-
-                    writer.quote(file.getName()).append(": ");
-                    configurationSet.getConfiguration(file).printJson(writer);
+                    ConfigurationSet.printConfigurationToCombinedFile(config, file, writer);
                 }
             }
-            writer.unindent().newline()
-                            .append("}");
+            writer.appendObjectEnd();
+
+            /* Print legacy files */
+            for (ConfigurationFile file : ConfigurationFile.agentGeneratedFiles()) {
+                ConfigurationBase<?, ?> config = configurationSet.getConfiguration(file);
+                if (!config.isEmpty() && !config.supportsCombinedFile()) {
+                    writer.appendSeparator();
+                    writer.quote(file.getName()).appendFieldSeparator();
+                    config.printLegacyJson(writer);
+                }
+            }
+            writer.appendObjectEnd();
         }
     }
 
     private static void parseConfigurationSet(EconomicMap<String, ?> configJson, ConfigurationSet configurationSet, URI origin) throws IOException {
         MapCursor<String, ?> cursor = configJson.getEntries();
+        EnumSet<ConfigurationParserOption> parserOptions = EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION, ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
         while (cursor.advance()) {
             String configName = cursor.getKey();
             ConfigurationFile configType = ConfigurationFile.getByName(configName);
             if (configType == null) {
                 throw new JsonParserException("Invalid configuration type: " + configName);
             }
-            configurationSet.getConfiguration(configType).createParser(false).parseAndRegister(cursor.getValue(), origin);
+            if (configType == ConfigurationFile.REACHABILITY_METADATA) {
+                for (ConfigurationFile file : ConfigurationFile.combinedFileConfigurations()) {
+                    configurationSet.getConfiguration(file).createParser(true, parserOptions).parseAndRegister(cursor.getValue(), origin);
+                }
+            } else {
+                configurationSet.getConfiguration(configType).createParser(false, parserOptions).parseAndRegister(cursor.getValue(), origin);
+            }
         }
     }
 }

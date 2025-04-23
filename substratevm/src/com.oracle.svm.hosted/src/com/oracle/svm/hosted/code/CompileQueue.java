@@ -990,7 +990,7 @@ public class CompileQueue {
             SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
             hasAnalyzedGraph = imageLayerLoader.hasStrengthenedGraph(method.wrapped);
         }
-        assert hasAnalyzedGraph || method.isCompiledInPriorLayer() || method.compilationInfo.inParseQueue.get() : method;
+        assert hasAnalyzedGraph || !method.wrapped.reachableInCurrentLayer() || method.isCompiledInPriorLayer() || method.compilationInfo.inParseQueue.get() : method;
         return hasAnalyzedGraph;
     }
 
@@ -1202,6 +1202,19 @@ public class CompileQueue {
         if (method.isCompiledInPriorLayer()) {
             /*
              * Since this method was compiled in a prior layer we should not compile it again.
+             */
+            return;
+        }
+        if (ImageLayerBuildingSupport.buildingExtensionLayer() && !method.wrapped.reachableInCurrentLayer()) {
+            assert method.wrapped.isInBaseLayer();
+            /*
+             * This method was reached and analyzed in the base layer, but it was not compiled in
+             * that layer, e.g., because it was always inlined. It is referenced in the app layer,
+             * but it was not reached during this layer's analysis, so its base layer graph was not
+             * loaded. However, it is considered as a potential compilation target because it is the
+             * implementation of a method invoked in this layer. Since we don't have an analysis
+             * graph we cannot compile it, however it should not be called at run time since it was
+             * not reached during analysis. (GR-64200)
              */
             return;
         }

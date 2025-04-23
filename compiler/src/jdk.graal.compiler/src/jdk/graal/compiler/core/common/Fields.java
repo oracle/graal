@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,25 @@
  */
 package jdk.graal.compiler.core.common;
 
-import java.util.ArrayList;
+import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Edges;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Describes fields in a class, primarily for access via {@link Unsafe}.
+ * Describes fields in a class, primarily for access via {@link Unsafe}. The order of the fields is
+ * determined by the argument passed to {@link Fields#Fields(List)}} but it must be stable between
+ * two JVM processes for the same input class files.
  */
 public class Fields {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-    private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
+    private static final Fields EMPTY_FIELDS = new Fields(List.of());
 
     /**
      * Offsets used with {@link Unsafe} to access the fields.
@@ -58,7 +62,6 @@ public class Fields {
     private final Class<?>[] declaringClasses;
 
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
-        Collections.sort(fields);
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
         this.types = new Class<?>[offsets.length];
@@ -73,8 +76,35 @@ public class Fields {
         }
     }
 
-    public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
-        if (fields.size() == 0) {
+    public Field getField(int i) {
+        try {
+            return getDeclaringClass(i).getDeclaredField(getName(i));
+        } catch (NoSuchFieldException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
+    }
+
+    /**
+     * Recomputes the {@link Unsafe} based field offsets and the {@link Edges#getIterationMask()}
+     * derived from them.
+     *
+     * @param getFieldOffset provides the new offsets
+     * @return a pair (represented as a map entry) where the key is the new offsets and the value is
+     *         the iteration mask
+     *
+     */
+    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Function<Field, Long> getFieldOffset) {
+        long[] newOffsets = new long[offsets.length];
+        for (int i = 0; i < offsets.length; i++) {
+            Field field = getField(i);
+            long newOffset = getFieldOffset.apply(field);
+            newOffsets[i] = newOffset;
+        }
+        return Map.entry(newOffsets, 0L);
+    }
+
+    public static Fields create(List<? extends FieldsScanner.FieldInfo> fields) {
+        if (fields.isEmpty()) {
             return EMPTY_FIELDS;
         }
         return new Fields(fields);
@@ -87,21 +117,6 @@ public class Fields {
         return offsets.length;
     }
 
-    public static void translateInto(Fields fields, ArrayList<FieldsScanner.FieldInfo> infos) {
-        for (int index = 0; index < fields.getCount(); index++) {
-            infos.add(new FieldsScanner.FieldInfo(fields.offsets[index], fields.names[index], fields.types[index], fields.declaringClasses[index]));
-        }
-    }
-
-    /**
-     * Function enabling an object field value to be replaced with another value when being copied
-     * within {@link Fields#copy(Object, Object, ObjectTransformer)}.
-     */
-    @FunctionalInterface
-    public interface ObjectTransformer {
-        Object apply(int index, Object from);
-    }
-
     /**
      * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
      *
@@ -109,18 +124,6 @@ public class Fields {
      * @param to the object to which the fields should be copied
      */
     public void copy(Object from, Object to) {
-        copy(from, to, null);
-    }
-
-    /**
-     * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
-     *
-     * @param from the object from which the fields should be copied
-     * @param to the object to which the fields should be copied
-     * @param trans function to applied to object field values as they are copied. If {@code null},
-     *            the value is copied unchanged.
-     */
-    public void copy(Object from, Object to, ObjectTransformer trans) {
         assert from.getClass() == to.getClass() : from + " " + to;
         for (int index = 0; index < offsets.length; index++) {
             long offset = offsets[index];
@@ -154,33 +157,23 @@ public class Fields {
                         obj = ((Object[]) obj).clone();
                     }
                 }
-                UNSAFE.putReference(to, offset, trans == null ? obj : trans.apply(index, obj));
+                UNSAFE.putReference(to, offset, obj);
             }
         }
     }
 
     private static Object copyObjectAsArray(Object obj) {
-        Object objCopy;
-        if (obj instanceof int[]) {
-            objCopy = Arrays.copyOf((int[]) obj, ((int[]) obj).length);
-        } else if (obj instanceof short[]) {
-            objCopy = Arrays.copyOf((short[]) obj, ((short[]) obj).length);
-        } else if (obj instanceof long[]) {
-            objCopy = Arrays.copyOf((long[]) obj, ((long[]) obj).length);
-        } else if (obj instanceof float[]) {
-            objCopy = Arrays.copyOf((float[]) obj, ((float[]) obj).length);
-        } else if (obj instanceof double[]) {
-            objCopy = Arrays.copyOf((double[]) obj, ((double[]) obj).length);
-        } else if (obj instanceof boolean[]) {
-            objCopy = Arrays.copyOf((boolean[]) obj, ((boolean[]) obj).length);
-        } else if (obj instanceof byte[]) {
-            objCopy = Arrays.copyOf((byte[]) obj, ((byte[]) obj).length);
-        } else if (obj instanceof char[]) {
-            objCopy = Arrays.copyOf((char[]) obj, ((char[]) obj).length);
-        } else {
-            throw GraalError.shouldNotReachHereUnexpectedValue(obj);
-        }
-        return objCopy;
+        return switch (obj) {
+            case int[] ints -> Arrays.copyOf(ints, ints.length);
+            case short[] shorts -> Arrays.copyOf(shorts, shorts.length);
+            case long[] longs -> Arrays.copyOf(longs, longs.length);
+            case float[] floats -> Arrays.copyOf(floats, floats.length);
+            case double[] doubles -> Arrays.copyOf(doubles, doubles.length);
+            case boolean[] booleans -> Arrays.copyOf(booleans, booleans.length);
+            case byte[] bytes -> Arrays.copyOf(bytes, bytes.length);
+            case char[] chars -> Arrays.copyOf(chars, chars.length);
+            case null, default -> throw GraalError.shouldNotReachHereUnexpectedValue(obj);
+        };
     }
 
     /**
@@ -276,10 +269,29 @@ public class Fields {
     /**
      * Gets the type of a field.
      *
-     * @param index index of a field
+     * @param index index of the field
      */
     public Class<?> getType(int index) {
         return types[index];
+    }
+
+    /**
+     * Gets the index of the field denoted by {@code declaringClass} and {@code name}.
+     */
+    public int getIndex(Class<?> declaringClass, String name) {
+        int res = -1;
+        for (int index = 0; index < getCount(); index++) {
+            if (getDeclaringClass(index) == declaringClass && names[index].equals(name)) {
+                if (res != -1) {
+                    throw new GraalError("More than one field %s.%s in %s", declaringClass.getName(), name, this);
+                }
+                res = index;
+            }
+        }
+        if (res == -1) {
+            throw new GraalError("Unknown field %s.%s in %s", declaringClass.getName(), name, this);
+        }
+        return res;
     }
 
     public Class<?> getDeclaringClass(int index) {
@@ -289,13 +301,15 @@ public class Fields {
     /**
      * Checks that a given field is assignable from a given value.
      *
+     * @param object object containing the field
      * @param index the index of the field to check
      * @param value a value that will be assigned to the field
      */
     private boolean checkAssignableFrom(Object object, int index, Object value) {
         if (value != null && !getType(index).isAssignableFrom(value.getClass())) {
-            throw new GraalError(String.format("Field %s.%s of type %s in %s is not assignable from %s", object.getClass().getSimpleName(),
-                            getName(index), object, getType(index).getSimpleName(), value.getClass().getSimpleName()));
+            throw new GraalError(String.format("Field %s.%s of type %s in %s is not assignable from %s",
+                            object.getClass().getSimpleName(),
+                            getName(index), getType(index).getSimpleName(), object, value.getClass().getSimpleName()));
         }
         return true;
     }

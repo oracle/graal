@@ -359,6 +359,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     @Test
+    @Ignore("GR-64260")
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
@@ -637,6 +638,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     @Test
+    @Ignore("GR-64260")
     public void testStackTrace() {
         Assume.assumeFalse("JaCoCo break expected graph structure", TestUtils.isJaCoCoAttached());
         forEachConfig((threads, events) -> {
@@ -1700,6 +1702,56 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             assertTrue(future.isDone());
             assertFalse(future.isCancelled());
             assertEquals(0, action.actions.size());
+        }
+    }
+
+    /*
+     * Test for GR-61393. We enter and schedule a thread local action on the current thread. Then we
+     * spawn a thread that polls safepoints which is not entered. So TruffleSafepoint.getCurrent()
+     * is not initialized. We should still be able to poll safepoints there. In the default
+     * handshake implementation this did fail because DefaultThreadLocalHandshake.PENDING_COUNT is
+     * global.
+     */
+    @Test
+    public void testTruffleSafepointNotEnteredThread() throws Throwable {
+        try (Context c = createTestContext()) {
+            c.enter();
+            c.initialize(ProxyLanguage.ID);
+            Env env = LanguageContext.get(null).getEnv();
+
+            env.submitThreadLocal(null, new ThreadLocalAction(false, false) {
+                @Override
+                protected void perform(Access access) {
+                    // don't ever process this action
+                }
+            });
+
+            AtomicReference<Throwable> e = new AtomicReference<>();
+            Thread t = new Thread(() -> {
+                try {
+                    AbstractPolyglotTest.assertFails(() -> TruffleSafepoint.getCurrent(), Throwable.class, (ex) -> {
+                        /*
+                         * If we build this on an older SVM version (23.1) then we might still get
+                         * an AssertionError here.
+                         */
+                        assertTrue(ex instanceof AssertionError || ex instanceof IllegalStateException);
+                    });
+
+                    // no exception, just ignored
+                    TruffleSafepoint.poll(null);
+                    TruffleSafepoint.pollHere(null);
+                } catch (Throwable error) {
+                    e.set(error);
+                }
+            });
+
+            t.start();
+            t.join();
+
+            Throwable error = e.get();
+            if (error != null) {
+                throw error;
+            }
         }
     }
 

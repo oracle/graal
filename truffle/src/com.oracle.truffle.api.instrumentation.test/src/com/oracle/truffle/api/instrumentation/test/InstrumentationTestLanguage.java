@@ -45,6 +45,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.util.AbstractSet;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -1587,13 +1588,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportLibrary(InteropLibrary.class)
         public static class TestLanguageException extends AbstractTruffleException {
 
-            private static final long serialVersionUID = 2709459650157465163L;
+            @Serial private static final long serialVersionUID = 2709459650157465163L;
 
             private final String type;
+            private final transient Object metaObject;
 
             TestLanguageException(String type, String message, ThrowNode throwNode) {
                 super(message, throwNode);
                 this.type = type;
+                this.metaObject = new InstrumentationMetaObject(this, type);
             }
 
             @ExportMessage
@@ -1609,6 +1612,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             @ExportMessage
             ExceptionType getExceptionType() {
                 return ExceptionType.RUNTIME_ERROR;
+            }
+
+            @ExportMessage
+            boolean hasMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMetaObject() {
+                return metaObject;
             }
 
             @ExportMessage
@@ -3780,7 +3793,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
-    private static class StringBuilderWrapper {
+    private static final class StringBuilderWrapper {
         private final StringBuilder delegate = new StringBuilder();
 
         @TruffleBoundary
@@ -3857,7 +3870,7 @@ class InstrumentContext {
         return REFERENCE.get(node);
     }
 
-    private static class WeakSet<T> extends AbstractSet<T> {
+    private static final class WeakSet<T> extends AbstractSet<T> {
 
         private final Map<T, Void> map = new WeakHashMap<>();
 

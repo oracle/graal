@@ -24,9 +24,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 /**
  * Base interface for entries in a constant pool.
@@ -41,27 +39,12 @@ public interface PoolConstant {
 
     Tag tag();
 
-    String toString(ConstantPool pool);
-
-    /**
-     * Throws {@link ValidationException} if the constant is ill-formed (/ex: a StringConstant does
-     * not refer to an UTF8Constant).
-     * <p>
-     * Resolved entries are not validated.
-     *
-     * @param pool The constant pool in which this constant appears.
-     */
-    @SuppressWarnings("unused")
-    default void validate(ConstantPool pool) throws ValidationException {
-        /* nop */
-    }
-
     /**
      * Pushes the byte representation of this pool constant as seen in the classfile to the given
      * {@link ByteBuffer}. Only unresolved pool constants can restore their byte representation.
      */
     default void dumpBytes(ByteBuffer buf) {
-        buf.put((byte) tag().getValue());
+        buf.put(tag().getValue());
         dump(buf);
     }
 

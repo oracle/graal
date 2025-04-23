@@ -281,10 +281,39 @@ abstract class JavaMonitorQueuedSynchronizer {
         return (1 << parks) - 1;
     }
 
+    // see AbstractQueuedLongSynchronizer.reacquire(Node, long)
+    private void reacquire(Node node, long arg) {
+        try {
+            acquire(node, arg);
+        } catch (Error | RuntimeException firstEx) {
+            // While we currently do not emit an JFR events in this situation, mainly
+            // because the conditions under which this happens are such that it
+            // cannot be presumed to be possible to actually allocate an event, and
+            // using a preconstructed one would have limited value in serviceability.
+            // Having said that, the following place would be the more appropriate
+            // place to put such logic:
+            // emit JFR event
+
+            for (long nanos = 1L;;) {
+                U.park(false, nanos); // must use Unsafe park to sleep
+                if (nanos < 1L << 30) {           // max about 1 second
+                    nanos <<= 1;
+                }
+                try {
+                    acquire(node, arg);
+                } catch (Error | RuntimeException ignored) {
+                    continue;
+                }
+
+                throw firstEx;
+            }
+        }
+    }
+
     // see AbstractQueuedLongSynchronizer.acquire(Node, long, false, false, false, 0L)
     @SuppressWarnings("all")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/hotspot/share/runtime/objectMonitor.cpp#L895-L930")
-    final int acquire(Node node, long arg) {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/share/runtime/objectMonitor.cpp#L982-L1017")
+    private int acquire(Node node, long arg) {
         Thread current = Thread.currentThread();
         /* Spinning logic is SVM-specific. */
         int parks = 0;
@@ -578,7 +607,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedLongSynchronizer.ConditionObject.newConditionNode()
         private ConditionNode newConditionNode() {
-            long savedState;
+            long savedAcquisitions;
             if (tryInitializeHead() != null) {
                 try {
                     return new ConditionNode();
@@ -586,11 +615,11 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             }
             // fall through if encountered OutOfMemoryError
-            if (!isHeldExclusively() || !release(savedState = getState())) {
+            if (!isHeldExclusively() || !release(savedAcquisitions = getAcquisitions())) {
                 throw new IllegalMonitorStateException();
             }
             U.park(false, OOME_COND_WAIT_DELAY);
-            acquireOnOOME(savedState);
+            acquireOnOOME(savedAcquisitions);
             return null;
         }
 
@@ -624,7 +653,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, 0L, false);
-            acquire(node, savedAcquisitions);
+            reacquire(node, savedAcquisitions);
             if (interrupted) {
                 if (cancelled) {
                     unlinkCancelledWaiters(node);
@@ -665,7 +694,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, time, cancelled);
-            acquire(node, savedAcquisitions);
+            reacquire(node, savedAcquisitions);
             if (cancelled) {
                 unlinkCancelledWaiters(node);
                 if (interrupted) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** The contents of a {@code subscription} when type is {@code eventtype::clock}. */
 public final class SubscriptionClock {
@@ -59,49 +60,49 @@ public final class SubscriptionClock {
     public static final int BYTES = 32;
 
     /** Reads the clock against which to compare the timestamp. */
-    public static Clockid readId(Node node, WasmMemory memory, int address) {
-        return Clockid.fromValue(memory.load_i32(node, address + 0));
+    public static Clockid readId(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return Clockid.fromValue(memoryLib.load_i32(memory, node, address + 0));
     }
 
     /** Writes the clock against which to compare the timestamp. */
-    public static void writeId(Node node, WasmMemory memory, int address, Clockid value) {
-        memory.store_i32(node, address + 0, value.toValue());
+    public static void writeId(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, Clockid value) {
+        memoryLib.store_i32(memory, node, address + 0, value.toValue());
     }
 
     /** Reads the absolute or relative timestamp. */
-    public static long readTimeout(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 8);
+    public static long readTimeout(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 8);
     }
 
     /** Writes the absolute or relative timestamp. */
-    public static void writeTimeout(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 8, value);
+    public static void writeTimeout(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 8, value);
     }
 
     /**
      * Reads the amount of time that the implementation may wait additionally to coalesce with other
      * events.
      */
-    public static long readPrecision(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 16);
+    public static long readPrecision(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 16);
     }
 
     /**
      * Writes the amount of time that the implementation may wait additionally to coalesce with
      * other events.
      */
-    public static void writePrecision(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 16, value);
+    public static void writePrecision(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 16, value);
     }
 
     /** Reads flags specifying whether the timeout is absolute or relative. */
-    public static short readFlags(Node node, WasmMemory memory, int address) {
-        return (short) memory.load_i32_16u(node, address + 24);
+    public static short readFlags(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return (short) memoryLib.load_i32_16u(memory, node, address + 24);
     }
 
     /** Writes flags specifying whether the timeout is absolute or relative. */
-    public static void writeFlags(Node node, WasmMemory memory, int address, short value) {
-        memory.store_i32_16(node, address + 24, value);
+    public static void writeFlags(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, short value) {
+        memoryLib.store_i32_16(memory, node, address + 24, value);
     }
 
 }

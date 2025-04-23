@@ -49,7 +49,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -114,6 +113,7 @@ import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.site.Call;
@@ -348,7 +348,7 @@ public abstract class NativeImageCodeCache {
         Map<Class<?>, Set<Class<?>>> innerClasses = reflectionSupport.getReflectionInnerClasses();
         Set<?> heapDynamicHubs = reflectionSupport.getHeapDynamicHubs();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.getWrapped().isReachable() && !type.getWrapped().isInBaseLayer() && heapDynamicHubs.contains(type.getHub())) {
+            if (type.getWrapped().isReachable() && heapDynamicHubs.contains(type.getHub())) {
                 Class<?>[] typeInnerClasses = innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]);
                 runtimeMetadataEncoder.addClassMetadata(hMetaAccess, type, typeInnerClasses);
             }
@@ -372,6 +372,11 @@ public abstract class NativeImageCodeCache {
         reflectionSupport.getConstructorLookupErrors().forEach((clazz, error) -> {
             HostedType type = hMetaAccess.lookupJavaType(clazz);
             runtimeMetadataEncoder.addConstructorLookupError(type, error);
+        });
+
+        reflectionSupport.getRecordComponentLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            runtimeMetadataEncoder.addRecordComponentsLookupError(type, error);
         });
 
         Set<AnalysisField> includedFields = new HashSet<>();
@@ -524,7 +529,7 @@ public abstract class NativeImageCodeCache {
 
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
                     RuntimeMetadataEncoder runtimeMetadataEncoder, DeadlockWatchdog watchdog) {
-        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
+        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getCurrentLayerImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection), watchdog::recordActivity);
         runtimeMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
@@ -735,7 +740,7 @@ public abstract class NativeImageCodeCache {
 
     }
 
-    private static class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {
+    private static final class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {
         int numDeoptEntryPoints;
         int numDuringCallEntryPoints;
 
@@ -830,6 +835,8 @@ public abstract class NativeImageCodeCache {
         void addMethodLookupError(HostedType declaringClass, Throwable exception);
 
         void addConstructorLookupError(HostedType declaringClass, Throwable exception);
+
+        void addRecordComponentsLookupError(HostedType declaringClass, Throwable exception);
 
         void encodeAllAndInstall();
 

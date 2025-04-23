@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -36,9 +36,8 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonPrintable;
@@ -150,7 +149,7 @@ public class ConfigurationSet {
             case PREDEFINED_CLASSES_NAME:
                 return (T) predefinedClassesConfiguration;
             default:
-                throw VMError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
+                throw new IllegalArgumentException("Unsupported configuration in configuration container: " + configurationFile);
         }
     }
 
@@ -189,20 +188,23 @@ public class ConfigurationSet {
                     } else {
                         writer.appendSeparator();
                     }
-                    if (!configFile.equals(ConfigurationFile.RESOURCES)) {
-                        /*
-                         * Resources are printed at the top level of the object, not in a defined
-                         * field
-                         */
-                        writer.quote(configFile.getFieldName()).appendFieldSeparator();
-                    }
-                    configSupplier.apply(configFile).printJson(writer);
+                    printConfigurationToCombinedFile(configSupplier.apply(configFile), configFile, writer);
                 }
             }
             writer.appendObjectEnd();
             writer.close();
         }
         return writtenFiles;
+    }
+
+    public static void printConfigurationToCombinedFile(JsonPrintable config, ConfigurationFile configFile, JsonWriter writer) throws IOException {
+        if (!configFile.equals(ConfigurationFile.RESOURCES)) {
+            /*
+             * Resources are printed at the top level of the object, not in a defined field
+             */
+            writer.quote(configFile.getFieldName()).appendFieldSeparator();
+        }
+        config.printJson(writer);
     }
 
     public List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver) throws IOException {

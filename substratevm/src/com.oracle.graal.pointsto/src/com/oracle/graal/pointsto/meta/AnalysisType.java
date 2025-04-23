@@ -28,6 +28,7 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -61,6 +62,7 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -561,6 +563,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     protected void onInstantiated() {
+        assert !isWordType() : Assertions.errorMessage("Word types cannot be instantiated", this);
         forAllSuperTypes(superType -> AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater));
 
         universe.onTypeInstantiated(this);
@@ -669,6 +672,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             AnalysisMethod override = resolveConcreteMethod(method, null);
             if (override != null && !override.equals(method)) {
                 ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                if (method.reachableInCurrentLayer()) {
+                    override.setReachableInCurrentLayer();
+                }
             }
         });
     }
@@ -813,10 +819,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * part of more than one partitions.
      */
     public void registerUnsafeAccessedField(AnalysisField field) {
+        AnalysisError.guarantee(!universe.analysisPolicy().useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         ConcurrentLightHashSet.addElement(this, UNSAFE_ACCESS_FIELDS_UPDATER, field);
     }
 
     public Collection<AnalysisField> unsafeAccessedFields() {
+        AnalysisError.guarantee(!universe.analysisPolicy().useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         /*
          * Walk up the type hierarchy and collect all the unsafe fields of the current type and all
          * its super types. We optimize for the most likely outcome: the returned list is empty.
@@ -900,7 +908,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean isWordType() {
         /* Word types are currently the only types where kind and storageKind differ. */
-        return getJavaKind() != getStorageKind();
+        boolean wordType = getJavaKind() != getStorageKind();
+        assert !wordType || getJavaKind().isObject() : Assertions.errorMessage("Only words are expected to have a discrepancy between java kind and storage kind", this);
+        return wordType;
     }
 
     @Override
@@ -1220,8 +1230,22 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
+    /**
+     * Sort fields by the field's name *and* type. Note that sorting by name is not enough as the
+     * class file format doesn't disallow duplicated names with differing types in the same class.
+     * Even though you cannot declare duplicated names in source code the class file can be
+     * manipulated such that two fields will have the same name.
+     */
+    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
+
     private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        for (ResolvedJavaField original : originals) {
+        ResolvedJavaField[] localOriginals = originals;
+        if (universe.hostVM.sortFields()) {
+            /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
+            localOriginals = originals.clone();
+            Arrays.sort(localOriginals, FIELD_COMPARATOR);
+        }
+        for (ResolvedJavaField original : localOriginals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
                     AnalysisField aField = universe.lookup(original);
@@ -1355,14 +1379,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             return dispatchTableMethods;
         }
 
-        Set<ResolvedJavaMethod> wrappedMethods = new HashSet<>();
-        wrappedMethods.addAll(Arrays.asList(getWrapped().getDeclaredMethods(false)));
-        wrappedMethods.addAll(Arrays.asList(getWrapped().getDeclaredConstructors(false)));
-
         var resultSet = new HashSet<AnalysisMethod>();
-        for (ResolvedJavaMethod m : wrappedMethods) {
+        for (ResolvedJavaMethod m : getWrapped().getDeclaredMethods(false)) {
+            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
             if (m.isStatic()) {
-                /* Only looking at member methods and constructors */
+                /* Only looking at member methods */
                 continue;
             }
             try {

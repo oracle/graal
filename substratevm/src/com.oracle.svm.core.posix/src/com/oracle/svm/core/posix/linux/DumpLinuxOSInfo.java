@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
     private static final CGlobalData<CCharPointer> MAX_THREADS_PATH = CGlobalDataFactory.createCString("/proc/sys/kernel/threads-max");
@@ -107,7 +107,7 @@ class DumpLinuxOSInfoFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
-            DiagnosticThunkRegistry.singleton().addAfter(new DumpLinuxOSInfo(), SubstrateDiagnostics.DumpMachineInfo.class);
+            DiagnosticThunkRegistry.singleton().addAfter(new DumpLinuxOSInfo(), SubstrateDiagnostics.DumpRuntimeInfo.class);
         }
     }
 }

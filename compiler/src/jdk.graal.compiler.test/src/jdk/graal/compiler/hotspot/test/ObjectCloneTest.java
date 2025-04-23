@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,11 @@ package jdk.graal.compiler.hotspot.test;
 import java.util.ArrayList;
 import java.util.Optional;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneNode;
 import jdk.graal.compiler.nodes.GraphState;
@@ -35,11 +39,11 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import jdk.graal.compiler.virtual.phases.ea.FinalPartialEscapePhase;
-import org.junit.Assert;
-import org.junit.Test;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Exercise intrinsification of {@link Object#clone}.
@@ -47,9 +51,15 @@ import org.junit.Test;
 public class ObjectCloneTest extends GraalCompilerTest {
 
     @Override
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
+        OptionValues newOptions = new OptionValues(options, GraalOptions.PartialEscapeAnalysis, false);
+        return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, newOptions);
+    }
+
+    @Override
     protected Suites createSuites(OptionValues opts) {
         Suites suites = super.createSuites(opts);
-        var pos = suites.getHighTier().findPhase(FinalPartialEscapePhase.class);
+        var pos = suites.getHighTier().findPhase(HighTierLoweringPhase.class);
         pos.previous();
         pos.add(new BasePhase<HighTierContext>() {
             @Override

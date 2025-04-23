@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -180,13 +180,18 @@ public class AMD64VectorMove {
         public AllocatableValue getResult() {
             return result;
         }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return true;
+        }
     }
 
     @Opcode("VMOVE")
     public static class MoveFromArrayConstOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
         public static final LIRInstructionClass<MoveFromArrayConstOp> TYPE = LIRInstructionClass.create(MoveFromArrayConstOp.class);
 
-        @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
+        @Def({OperandFlag.REG}) protected AllocatableValue result;
         private final DataPointerConstant input;
         private final AMD64SIMDInstructionEncoding encoding;
 
@@ -213,6 +218,11 @@ public class AMD64VectorMove {
         @Override
         public AllocatableValue getResult() {
             return result;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return false;
         }
     }
 

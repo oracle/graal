@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
+
 import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
@@ -85,11 +87,11 @@ public class BytecodeDSLBuiltins {
                                         The result of a Block is the result produced by the last child (or void, if no value is produced).
                                         """) //
                         .setTransparent(true) //
-                        .setVariadic(true) //
+                        .setVariadic(true, 0) //
                         .setDynamicOperands(transparentOperationChild());
         m.rootOperation = m.operation(OperationKind.ROOT, "Root", rootOperationJavadoc(m)) //
                         .setTransparent(true) //
-                        .setVariadic(true) //
+                        .setVariadic(true, 0) //
                         .setDynamicOperands(transparentOperationChild());
         m.ifThenOperation = m.operation(OperationKind.IF_THEN, "IfThen", """
                         IfThen implements an if-then statement. It evaluates {@code condition}, which must produce a boolean. If the value is {@code true}, it executes {@code thens}.
@@ -183,7 +185,7 @@ public class BytecodeDSLBuiltins {
                                         When walking the operation stack, we skip over operations above finallyOperationSp since they do not logically enclose the handler.
                                         """) //
                         .setVoid(true) //
-                        .setVariadic(true) //
+                        .setVariadic(true, 0) //
                         .setDynamicOperands(transparentOperationChild()) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(short.class), Encoding.SHORT, "finallyOperationSp",
                                         "the operation stack pointer for the finally operation that created the FinallyHandler")) //
@@ -287,18 +289,32 @@ public class BytecodeDSLBuiltins {
                         Source associates the children in its {@code body} with {@code source}. Together with SourceSection, it encodes source locations for operations in the program.
                         """) //
                         .setTransparent(true) //
-                        .setVariadic(true) //
+                        .setVariadic(true, 0) //
                         .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations")) //
                         .setDynamicOperands(transparentOperationChild());
-        m.sourceSectionOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSection",
-                        """
-                                        SourceSection associates the children in its {@code body} with the source section with the given character {@code index} and {@code length}.
-                                        To specify an {@link Source#createUnavailableSection() unavailable source section}, provide {@code -1} for both arguments.
-                                        This operation must be (directly or indirectly) enclosed within a Source operation.
-                                        """) //
+
+        String sourceDoc = """
+                        SourceSection associates the children in its {@code body} with the source section with the given character {@code index} and {@code length}.
+                        To specify an {@link Source#createUnavailableSection() unavailable source section}, provide {@code -1} for both arguments.
+                        This operation must be (directly or indirectly) enclosed within a Source operation.
+                        """;
+
+        m.sourceSectionPrefixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionPrefix",
+                        sourceDoc, "SourceSection") //
                         .setTransparent(true) //
-                        .setVariadic(true) //
+                        .setVariadic(true, 0) //
                         .setOperationBeginArguments(
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
+                                                        "the starting character index of the source section, or -1 if the section is unavailable"),
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",
+                                                        "the length (in characters) of the source section, or -1 if the section is unavailable")) //
+                        .setDynamicOperands(transparentOperationChild());
+
+        m.sourceSectionSuffixOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSectionSuffix",
+                        sourceDoc, "SourceSection") //
+                        .setTransparent(true) //
+                        .setVariadic(true, 0) //
+                        .setOperationEndArguments(
                                         new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
                                                         "the starting character index of the source section, or -1 if the section is unavailable"),
                                         new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",
@@ -337,18 +353,58 @@ public class BytecodeDSLBuiltins {
             }
         }
 
-        m.loadVariadicInstruction = new InstructionModel[9];
-        for (int i = 0; i <= 8; i++) {
-            m.loadVariadicInstruction[i] = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic_" + i, m.signature(void.class, Object.class));
-            m.loadVariadicInstruction[i].variadicPopCount = i;
-        }
-        m.mergeVariadicInstruction = m.instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", m.signature(Object.class, Object.class));
-        m.storeNullInstruction = m.instruction(InstructionKind.STORE_NULL, "constant_null", m.signature(Object.class));
-
         m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
         m.clearLocalInstruction.addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
 
         m.sortInstructionsByKind();
+    }
+
+    /*
+     * Invoked when instructions are being finalized. Allows to conditionally add builtin
+     * instructions depending on the almost final model.
+     */
+    public static void addBuiltinsOnFinalize(BytecodeDSLModel m) {
+        if (m.hasCustomVariadic) {
+            m.loadVariadicInstruction = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic", m.signature(void.class, Object.class));
+            m.createVariadicInstruction = m.instruction(InstructionKind.CREATE_VARIADIC, "create.variadic", m.signature(Object.class, Object.class));
+            m.emptyVariadicInstruction = m.instruction(InstructionKind.EMPTY_VARIADIC, "empty.variadic", m.signature(Object.class));
+
+            m.loadVariadicInstruction.addImmediate(ImmediateKind.INTEGER, "offset");
+            m.loadVariadicInstruction.addImmediate(ImmediateKind.SHORT, "count");
+
+            if (m.maximumVariadicOffset > 0) {
+                m.createVariadicInstruction.addImmediate(ImmediateKind.INTEGER, "offset");
+            }
+            m.createVariadicInstruction.addImmediate(ImmediateKind.INTEGER, "count");
+
+            if (m.hasVariadicReturn) {
+                m.splatVariadicInstruction = m.instruction(InstructionKind.SPLAT_VARIADIC, "splat.variadic", m.signature(Object.class, Object.class));
+                m.splatVariadicInstruction.addImmediate(ImmediateKind.INTEGER, "offset");
+                m.splatVariadicInstruction.addImmediate(ImmediateKind.INTEGER, "count");
+
+                m.loadVariadicInstruction.addImmediate(ImmediateKind.SHORT, "merge_count");
+                m.createVariadicInstruction.addImmediate(ImmediateKind.SHORT, "merge_count");
+            }
+        }
+
+        // invalidate instructions should be the last instructions to add as it they depend on the
+        // length of all other instructions
+        if (m.isBytecodeUpdatable()) {
+            int maxLength = OPCODE_WIDTH;
+            for (InstructionModel instruction : m.getInstructions()) {
+                maxLength = Math.max(maxLength, instruction.getInstructionLength());
+            }
+            // Allocate instructions with [0, 1, ..., maxLength - OPCODE_WIDTH] short immediates.
+            int numShortImmediates = (maxLength - OPCODE_WIDTH) / 2;
+            m.invalidateInstructions = new InstructionModel[numShortImmediates + 1];
+            for (int i = 0; i < numShortImmediates + 1; i++) {
+                InstructionModel model = m.instruction(InstructionKind.INVALIDATE, "invalidate" + i, m.signature(void.class));
+                for (int j = 0; j < i; j++) {
+                    model.addImmediate(ImmediateKind.SHORT, "invalidated" + j);
+                }
+                m.invalidateInstructions[i] = model;
+            }
+        }
     }
 
     private static String rootOperationJavadoc(BytecodeDSLModel m) {

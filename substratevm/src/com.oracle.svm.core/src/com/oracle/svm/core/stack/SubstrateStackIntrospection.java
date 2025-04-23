@@ -214,7 +214,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     private Deoptimizer getDeoptimizer() {
         assert virtualFrame == null;
         if (deoptimizer == null) {
-            deoptimizer = new Deoptimizer(sp, codeInfo, CurrentIsolate.getCurrentThread());
+            deoptimizer = new Deoptimizer(sp, codeInfo, CurrentIsolate.getCurrentThread(), CurrentIsolate.getCurrentThread());
         }
         return deoptimizer;
     }
@@ -294,7 +294,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
 
     private VirtualFrame lookupVirtualFrame() {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
-        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(thread, sp);
+        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(thread, sp);
         if (deoptimizedFrame != null) {
             /*
              * Find the matching inlined frame, by skipping over the virtual frames that were
@@ -314,13 +314,13 @@ class SubstrateInspectedFrame implements InspectedFrame {
     public void materializeVirtualObjects(boolean invalidateCode) {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (virtualFrame == null) {
-            DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptSourceFrame(ip, false);
-            assert deoptimizedFrame == Deoptimizer.checkDeoptimized(thread, sp);
+            DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptimizeEagerly();
+            assert deoptimizedFrame == Deoptimizer.checkEagerDeoptimized(thread, sp);
         }
 
         if (invalidateCode) {
             /*
-             * Note that we deoptimize the our frame before invalidating the method, with would also
+             * Note that we deoptimize our frame before invalidating the method, which would also
              * deoptimize our frame. But we would deoptimize it with new materialized objects, i.e.,
              * a virtual object that was accessed via a local variable before would now have a
              * different value.

@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
@@ -32,5 +31,6 @@ public enum ErrorType {
     IllegalAccessError,
     NoSuchFieldError,
     NoSuchMethodError,
-    IncompatibleClassChangeError;
+    IncompatibleClassChangeError,
+    LinkageError;
 }

@@ -89,6 +89,7 @@ public final class UnalignedHeapChunk {
     }
 
     public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize) {
+        assert chunk.isNonNull();
         HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk), chunkSize);
     }
 

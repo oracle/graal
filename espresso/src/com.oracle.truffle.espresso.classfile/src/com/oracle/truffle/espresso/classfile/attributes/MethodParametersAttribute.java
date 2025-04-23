@@ -22,12 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public final class MethodParametersAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.MethodParameters;
+    public static final Symbol<Name> NAME = ParserNames.MethodParameters;
 
     public static final MethodParametersAttribute EMPTY = new MethodParametersAttribute(NAME, Entry.EMPTY_ARRAY);
 
@@ -55,8 +57,8 @@ public final class MethodParametersAttribute extends Attribute {
             return accessFlags;
         }
 
-        public boolean sameAs(Entry otherEntry) {
-            return nameIndex == otherEntry.nameIndex && accessFlags == otherEntry.accessFlags;
+        public boolean isSame(Entry otherEntry, ConstantPool thisPool, ConstantPool otherPool) {
+            return thisPool.at(nameIndex).isSame(otherPool.at(otherEntry.nameIndex), thisPool, otherPool) && accessFlags == otherEntry.accessFlags;
         }
     }
 
@@ -68,26 +70,20 @@ public final class MethodParametersAttribute extends Attribute {
     }
 
     @Override
-    public boolean sameAs(Attribute other) {
-        if (this == other) {
-            return true;
-        }
-        if (other == null || getClass() != other.getClass()) {
-            return false;
-        }
-        if (!super.sameAs(other)) {
+    public boolean isSame(Attribute other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!super.isSame(other, thisPool, otherPool)) {
             return false;
         }
         MethodParametersAttribute that = (MethodParametersAttribute) other;
-        return entriesSameAs(that.entries);
+        return entriesSameAs(that.entries, thisPool, otherPool);
     }
 
-    private boolean entriesSameAs(Entry[] otherEntries) {
+    private boolean entriesSameAs(Entry[] otherEntries, ConstantPool thisPool, ConstantPool otherPool) {
         if (entries.length != otherEntries.length) {
             return false;
         }
         for (int i = 0; i < entries.length; i++) {
-            if (!entries[i].sameAs(otherEntries[i])) {
+            if (!entries[i].isSame(otherEntries[i], thisPool, otherPool)) {
                 return false;
             }
         }

@@ -138,6 +138,10 @@ public class OperationModel implements PrettyPrintable {
     public final int id;
     public final OperationKind kind;
     public final String name;
+    /*
+     * Name used to generate builder methods.
+     */
+    public final String builderName;
     public final String javadoc;
 
     /**
@@ -150,6 +154,8 @@ public class OperationModel implements PrettyPrintable {
     public boolean isTransparent;
     public boolean isVoid;
     public boolean isVariadic;
+    public int variadicOffset = 0;
+    public boolean variadicReturn;
 
     /**
      * Internal operations are generated and used internally by the DSL. They should not be exposed
@@ -177,11 +183,12 @@ public class OperationModel implements PrettyPrintable {
     // A unique identifier for instrumentation instructions.
     public int instrumentationIndex;
 
-    public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String javadoc) {
+    public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String builderName, String javadoc) {
         this.parent = parent;
         this.id = id;
         this.kind = kind;
         this.name = name;
+        this.builderName = builderName;
         this.javadoc = javadoc;
     }
 
@@ -228,8 +235,9 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public OperationModel setVariadic(boolean isVariadic) {
+    public OperationModel setVariadic(boolean isVariadic, int variadicOffset) {
         this.isVariadic = isVariadic;
+        this.variadicOffset = variadicOffset;
         return this;
     }
 
@@ -323,4 +331,10 @@ public class OperationModel implements PrettyPrintable {
     public String getConstantName() {
         return name.toUpperCase();
     }
+
+    @Override
+    public String toString() {
+        return "OperationModel [id=" + id + ", kind=" + kind + ", name=" + name + "]";
+    }
+
 }

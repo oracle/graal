@@ -20,15 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ClasspathFile;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
@@ -64,7 +61,7 @@ public final class BootClassRegistry extends ClassRegistry {
     @SuppressWarnings("try")
     public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        if (Types.isPrimitive(type)) {
+        if (TypeSymbols.isPrimitive(type)) {
             return null;
         }
         ClasspathFile classpathFile;
@@ -80,11 +77,6 @@ public final class BootClassRegistry extends ClassRegistry {
         context.getRegistries().recordConstraint(type, result, getClassLoader());
         result.packageEntry().setBootClasspathLocation(classpathFile.classpathEntry.path());
         return result;
-    }
-
-    @TruffleBoundary
-    public Symbol<Name>[] getPackages() {
-        return packages().getKeys();
     }
 
     @Override

@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.api;
 
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -31,6 +32,11 @@ public class ImageLayerWriter {
 
     @SuppressWarnings("unused")
     public void onTrackedAcrossLayer(AnalysisMethod method, Object reason) {
+        throw AnalysisError.shouldNotReachHere("This method should not be called");
+    }
+
+    @SuppressWarnings("unused")
+    public void persistAnalysisParsedGraph(AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
         throw AnalysisError.shouldNotReachHere("This method should not be called");
     }
 }

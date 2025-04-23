@@ -77,7 +77,6 @@ import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
-import com.oracle.truffle.api.strings.bench.TStringTestDummyLanguage;
 
 import sun.misc.Unsafe;
 
@@ -203,6 +202,18 @@ public class TStringTestBase {
     }
 
     public interface TestStrings {
+
+        default void runWithErrorDecorator(AbstractTruffleString a, byte[] array, TruffleString.CodeRange codeRange, boolean isValid, TruffleString.Encoding encoding, int[] codepoints,
+                        int[] byteIndices) {
+            try {
+                run(a, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            } catch (Throwable t) {
+                String msg = String.format("string: %s, array: %s, codeRange: %s, isValid: %b, encoding: %s, codepoints: %s, byteIndices: %s", a.toStringDebug(),
+                                Arrays.toString(array), codeRange, isValid, encoding, Arrays.toString(codepoints), Arrays.toString(byteIndices));
+                throw new RuntimeException(msg, t);
+            }
+        }
+
         void run(AbstractTruffleString a, byte[] array, TruffleString.CodeRange codeRange, boolean isValid, TruffleString.Encoding encoding, int[] codepoints, int[] byteIndices) throws Exception;
     }
 
@@ -410,17 +421,17 @@ public class TStringTestBase {
                 byte[] encodedValidPadded = pad(dat.encodedValid);
                 TruffleString substring = TruffleString.fromByteArrayUncached(encodedValidPadded, 1, dat.encodedValid.length, encoding, false);
                 TruffleString nativeSubstring = TruffleString.fromNativePointerUncached(PointerObject.create(encodedValidPadded), 1, dat.encodedValid.length, encoding, false);
-                test.run(substring.concatUncached(nativeSubstring, encoding, true), concatBytes, codeRangeValid, true, encoding, concatCodepoints, concatByteIndices);
+                test.runWithErrorDecorator(substring.concatUncached(nativeSubstring, encoding, true), concatBytes, codeRangeValid, true, encoding, concatCodepoints, concatByteIndices);
                 if (isAsciiCompatible(encoding)) {
                     byte[] array = encoding == UTF_32 ? lazyLongBytesUTF32 : encoding == UTF_16 ? lazyLongBytesUTF16 : lazyLongBytes;
-                    test.run(TruffleString.fromLongUncached(10, encoding, true), array, TruffleString.CodeRange.ASCII, true, encoding, lazyLongCodePoints, byteIndices01);
+                    test.runWithErrorDecorator(TruffleString.fromLongUncached(10, encoding, true), array, TruffleString.CodeRange.ASCII, true, encoding, lazyLongCodePoints, byteIndices01);
                 }
             }
         }
     }
 
-    protected static void checkStringVariants(byte[] array, TruffleString.CodeRange codeRange, boolean isValid, TruffleString.Encoding encoding, int[] codepoints, int[] byteIndices, TestStrings test)
-                    throws Exception {
+    protected static void checkStringVariants(byte[] array, TruffleString.CodeRange codeRange, boolean isValid, TruffleString.Encoding encoding, int[] codepoints, int[] byteIndices,
+                    TestStrings test) {
         byte[] arrayPadded = pad(array);
         for (AbstractTruffleString string : new AbstractTruffleString[]{
                         TruffleString.fromByteArrayUncached(array, 0, array.length, encoding, false),
@@ -435,9 +446,9 @@ public class TStringTestBase {
                         MutableTruffleString.fromNativePointerUncached(PointerObject.create(arrayPadded), 1, array.length, encoding, false),
                         MutableTruffleString.fromNativePointerUncached(PointerObject.create(arrayPadded), 1, array.length, encoding, true),
         }) {
-            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            test.runWithErrorDecorator(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
             if ((encoding == UTF_16 || encoding == UTF_32) && string.isImmutable() && string.isManaged()) {
-                test.run(((TruffleString) string).asNativeUncached(PointerObject::create, encoding, true, false), array, codeRange, isValid, encoding, codepoints, byteIndices);
+                test.runWithErrorDecorator(((TruffleString) string).asNativeUncached(PointerObject::create, encoding, true, false), array, codeRange, isValid, encoding, codepoints, byteIndices);
             }
         }
         if (encoding == UTF_16LE) {
@@ -451,7 +462,7 @@ public class TStringTestBase {
                     Assert.assertSame(codeRangeImprecise, codeRange);
                 }
             }
-            test.run(fromJavaString, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            test.runWithErrorDecorator(fromJavaString, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
             byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];
@@ -461,7 +472,7 @@ public class TStringTestBase {
             TStringTestUtil.writeValue(bytesUTF16, 1, codepoints.length, 0xffff);
             TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF16, 0, bytesUTF16.length, UTF_16, false).substringByteIndexUncached(0, bytesUTF16.length - 2, UTF_16,
                             true).switchEncodingUncached(encoding);
-            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            test.runWithErrorDecorator(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
             byte[] bytesUTF32 = new byte[(codepoints.length + 1) * 4];
@@ -471,7 +482,7 @@ public class TStringTestBase {
             TStringTestUtil.writeValue(bytesUTF32, 2, codepoints.length, 0x10ffff);
             TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF32, 0, bytesUTF32.length, UTF_32, false).substringByteIndexUncached(0, bytesUTF32.length - 4, UTF_32,
                             true).switchEncodingUncached(encoding);
-            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            test.runWithErrorDecorator(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
     }
 
@@ -662,7 +673,7 @@ public class TStringTestBase {
     protected static void assertCodePointsEqual(AbstractTruffleString a, TruffleString.Encoding encoding, int[] codepoints, int fromIndex, int length) {
         TruffleStringIterator it = a.createCodePointIteratorUncached(encoding);
         for (int i = 0; i < length; i++) {
-            Assert.assertEquals(codepoints[fromIndex + i], it.nextUncached());
+            Assert.assertEquals(codepoints[fromIndex + i], it.nextUncached(encoding));
         }
     }
 

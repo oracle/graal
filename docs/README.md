@@ -11,7 +11,6 @@ The Truffle framework documentation can be found in the [graal/truffle/docs](htt
 GraalVM languages implementations are being developed and tested in separate from the GraalVM core repositories, so their user documentation can be found in:
 
 * [GraalJS](https://github.com/oracle/graaljs/tree/master/docs/user) - JavaScript and Node.js
-* [FastR](https://github.com/oracle/fastr/tree/master/documentation/user) - R
 * [GraalPy](https://github.com/oracle/graalpython/tree/master/docs/user) - Python
 * [TruffleRuby](https://github.com/oracle/truffleruby/tree/master/doc/user) - Ruby
 
@@ -21,7 +20,7 @@ To update the documentation:
 2. Navigate to the source file you are intended to update
 3. Click the "edit" button at the top of the section.
    > Note: GitHub introduced a new feature: online web editor, which allows to edit multiple files from a browser. To enable it, press `.` on any GitHub repo. For example, go to [https://github.com/oracle/graal](https://github.com/oracle/graal) and hit `.`. You will be immediately redirected to [https://github.dev/oracle/graal](https://github.dev/oracle/graal).
- 
+
 4. Create a Pull Request (PR)
 5. Sign the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/)
 6. Watch your PR for pipeline results

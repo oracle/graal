@@ -20,11 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.shared.meta;
 
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 
 /**
  * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.
@@ -33,28 +35,39 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F> {
+public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F>, Signed, PartialMethod<C, M, F> {
     /**
-     * @return The symbolic signature of this method.
+     * Obtains the parsed signature for this method.
+     * <p>
+     * A default implementation is provided, but it is encouraged to override this method if the
+     * representation of methods allows for a simpler computation (for example, if the method caches
+     * its parsed signature).
+     *
+     * @param symbolPool The symbol pool from which this method draws its symbols.
+     * @return The parsed signature of this method.
      */
-    Symbol<Signature> getSymbolicSignature();
-
-    /**
-     * @return {@code true} if this method represents an instance initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
-     */
-    boolean isConstructor();
-
-    /**
-     * @return {@code true} if this method represents a class initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, and it is {@link #isStatic()
-     *         static}), {@code false} otherwise.
-     */
-    boolean isClassInitializer();
+    default Symbol<Type>[] getParsedSymbolicSignature(SymbolPool symbolPool) {
+        return symbolPool.getSignatures().parsed(getSymbolicSignature());
+    }
 
     /**
      * Whether loading constraints checks should be skipped for this method. An example of method
      * which should skip loading constraints are the polymorphic signature methods.
      */
     boolean shouldSkipLoadingConstraints();
+
+    /**
+     * Whether this method appears in a VTable, and its VTable index is initialized.
+     */
+    boolean hasVTableIndex();
+
+    /**
+     * The {@link CodeAttribute} associated with this method.
+     */
+    CodeAttribute getCodeAttribute();
+
+    /**
+     * The {@link ExceptionHandler exception handlers} associated with this method.
+     */
+    ExceptionHandler[] getSymbolicExceptionHandlers();
 }

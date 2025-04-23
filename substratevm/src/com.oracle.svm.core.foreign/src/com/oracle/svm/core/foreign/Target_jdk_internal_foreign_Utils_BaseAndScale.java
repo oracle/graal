@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,23 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.Utils;
 import jdk.vm.ci.meta.JavaKind;
 
-@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = {ForeignAPIPredicates.Enabled.class, JDKLatest.class})
 final class Target_jdk_internal_foreign_Utils_BaseAndScale {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = BaseFieldRecomputer.class) //
+    long base;
+}
+
+@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = {ForeignAPIPredicates.Enabled.class, JDK21OrEarlier.class})
+final class Target_jdk_internal_foreign_Utils_BaseAndScale_JDK21 {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = BaseFieldRecomputer.class) //
     int base;
@@ -64,6 +74,10 @@ final class BaseFieldRecomputer implements FieldValueTransformer {
         } else {
             throw VMError.shouldNotReachHere("Unexpected BaseAndScale instance: " + receiver);
         }
-        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
+        int offset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            return offset;
+        }
+        return (long) offset;
     }
 }

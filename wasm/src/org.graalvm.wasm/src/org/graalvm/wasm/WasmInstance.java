@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package org.graalvm.wasm;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.TruffleContext;
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.constants.GlobalModifier;
 
@@ -63,25 +62,14 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
-    /**
-     * Prevents {@link TruffleContext} from being garbage collected and closed.
-     */
-    final TruffleContext truffleContext;
-
     private List<LinkAction> linkActions;
 
-    public WasmInstance(WasmContext context, WasmModule module, TruffleContext currentTruffleContext) {
-        this(context, module, module.numFunctions(), module.droppedDataInstanceOffset(), currentTruffleContext);
+    public WasmInstance(WasmStore store, WasmModule module) {
+        this(store, module, module.numFunctions(), module.droppedDataInstanceOffset());
     }
 
-    public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, TruffleContext currentTruffleContext) {
-        this(context, module, numberOfFunctions, 0, currentTruffleContext);
-    }
-
-    private WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress,
-                    TruffleContext currentTruffleContext) {
-        super(context, module, numberOfFunctions, droppedDataInstanceAddress);
-        this.truffleContext = currentTruffleContext;
+    private WasmInstance(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress) {
+        super(store, module, numberOfFunctions, droppedDataInstanceAddress);
     }
 
     public String name() {
@@ -111,7 +99,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     }
 
     private void ensureLinked() {
-        WasmContext.get(null).linker().tryLink(this);
+        store().linker().tryLink(this);
     }
 
     public List<LinkAction> linkActions() {
@@ -151,8 +139,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         }
         final Integer tableIndex = symbolTable.exportedTables().get(member);
         if (tableIndex != null) {
-            final WasmContext context = WasmContext.get(null);
-            return context.tables().table(tableAddress(tableIndex));
+            return store().tables().table(tableAddress(tableIndex));
         }
         final Integer memoryIndex = symbolTable.exportedMemories().get(member);
         if (memoryIndex != null) {
@@ -160,7 +147,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
-            return readGlobal(this, symbolTable, globalIndex);
+            return readGlobal(symbolTable, globalIndex);
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -185,7 +172,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
         long longValue = ((Number) value).longValue();
-        WasmContext.get(null).globals().storeLong(address, longValue);
+        store().globals().storeLong(address, longValue);
     }
 
     @ExportMessage
@@ -221,9 +208,9 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         return false;
     }
 
-    private static Object readGlobal(WasmInstance instance, SymbolTable symbolTable, int globalIndex) {
-        final int address = instance.globalAddress(globalIndex);
-        final GlobalRegistry globals = WasmContext.get(null).globals();
+    private Object readGlobal(SymbolTable symbolTable, int globalIndex) {
+        final int address = globalAddress(globalIndex);
+        final GlobalRegistry globals = store().globals();
         final byte type = symbolTable.globalValueType(globalIndex);
         switch (type) {
             case WasmType.I32_TYPE:

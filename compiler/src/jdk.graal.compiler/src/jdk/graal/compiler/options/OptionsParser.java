@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.options;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
@@ -36,12 +33,14 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+
+import jdk.graal.compiler.core.common.LibGraalSupport;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -53,9 +52,7 @@ public class OptionsParser {
      * Info about libgraal options.
      *
      * @param descriptors set of compiler options available in libgraal. These correspond to the
-     *            reachable {@link OptionKey}s discovered during Native Image static analysis. This
-     *            field is only non-null when {@link OptionsParser} is loaded by the
-     *            LibGraalClassLoader.
+     *            reachable {@link OptionKey}s discovered during Native Image static analysis.
      * @param enterpriseOptions {@linkplain OptionKey#getName() names} of enterprise options
      */
     public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
@@ -65,27 +62,25 @@ public class OptionsParser {
     }
 
     /**
-     * Compiler options info available in libgraal. This field is only non-null when
-     * {@link OptionsParser} is loaded by the LibGraalClassLoader.
+     * Compiler options info available in libgraal.
      */
-    private static LibGraalOptionsInfo libgraalOptions;
+    public static final LibGraalOptionsInfo libgraalOptions = LibGraalSupport.INSTANCE != null ? LibGraalOptionsInfo.create() : null;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
     @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        if (inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
             return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        boolean inLibGraal = libgraalOptions != null;
-        if (inLibGraal && inImageBuildtimeCode()) {
+        if (LibGraalSupport.INSTANCE != null) {
             /*
-             * Graal code is being run in the context of the LibGraalClassLoader while building
-             * libgraal so use the LibGraalClassLoader to load the OptionDescriptors.
+             * Executing in the context of the libgraal class loader so use it to load the
+             * OptionDescriptors.
              */
-            ClassLoader myCL = OptionsParser.class.getClassLoader();
-            return ServiceLoader.load(OptionDescriptors.class, myCL);
+            ClassLoader libgraalLoader = OptionsParser.class.getClassLoader();
+            return OptionsContainer.getDiscoverableOptions(libgraalLoader);
         } else {
             /*
              * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
@@ -93,16 +88,8 @@ public class OptionsParser {
              * (instead of the platform class loader) to load the OptionDescriptors.
              */
             ClassLoader loader = ClassLoader.getSystemClassLoader();
-            return ServiceLoader.load(OptionDescriptors.class, loader);
+            return OptionsContainer.getDiscoverableOptions(loader);
         }
-    }
-
-    @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static LibGraalOptionsInfo setLibgraalOptions(LibGraalOptionsInfo info) {
-        GraalError.guarantee(inImageBuildtimeCode(), "Can only set libgraal compiler options when building libgraal");
-        GraalError.guarantee(libgraalOptions == null, "Libgraal compiler options must be set exactly once");
-        OptionsParser.libgraalOptions = info;
-        return info;
     }
 
     /**
@@ -237,14 +224,13 @@ public class OptionsParser {
     public static Object parseOptionValue(OptionDescriptor desc, Object uncheckedValue) {
         Class<?> optionType = desc.getOptionValueType();
         Object value;
-        if (!(uncheckedValue instanceof String)) {
+        if (!(uncheckedValue instanceof String valueString)) {
             if (optionType != uncheckedValue.getClass()) {
                 String type = optionType.getSimpleName();
                 throw new IllegalArgumentException(type + " option '" + desc.getName() + "' must have " + type + " value, not " + uncheckedValue.getClass() + " [toString: " + uncheckedValue + "]");
             }
             value = uncheckedValue;
         } else {
-            String valueString = (String) uncheckedValue;
             if (optionType == Boolean.class) {
                 if ("true".equals(valueString)) {
                     value = Boolean.TRUE;
@@ -269,9 +255,9 @@ public class OptionsParser {
                     } else if (optionType == Double.class) {
                         value = Double.parseDouble(valueString);
                     } else if (optionType == Integer.class) {
-                        value = Integer.valueOf((int) parseLong(valueString));
+                        value = (int) parseLong(valueString);
                     } else if (optionType == Long.class) {
-                        value = Long.valueOf(parseLong(valueString));
+                        value = parseLong(valueString);
                     } else {
                         throw new IllegalArgumentException("Wrong value for option '" + desc.getName() + "'");
                     }
@@ -345,19 +331,36 @@ public class OptionsParser {
      * @return whether any fuzzy matches were found
      */
     public static boolean collectFuzzyMatches(Iterable<OptionDescriptor> toSearch, String name, Collection<OptionDescriptor> matches) {
+        return collectFuzzyMatches(toSearch, name, matches, OptionDescriptor::getName);
+    }
+
+    /**
+     * Collects from given entries toSearch the ones that fuzzy match a given String name. String
+     * similarity for fuzzy matching is based on Dice's coefficient.
+     *
+     * @param toSearch the entries search
+     * @param name the name to search for
+     * @param matches the collection to which fuzzy matches of {@code name} will be added
+     * @param extractor functor that maps entry to String
+     * @return whether any fuzzy matches were found
+     */
+    public static <T> boolean collectFuzzyMatches(Iterable<T> toSearch, String name, Collection<T> matches, Function<T, String> extractor) {
         boolean found = false;
-        for (OptionDescriptor option : toSearch) {
-            float score = stringSimilarity(option.getName(), name);
+        for (T entry : toSearch) {
+            float score = stringSimilarity(extractor.apply(entry), name);
             if (score >= FUZZY_MATCH_THRESHOLD) {
                 found = true;
-                matches.add(option);
+                matches.add(entry);
             }
         }
         return found;
     }
 
     static boolean isEnterpriseOption(OptionDescriptor desc) {
-        if (inImageRuntimeCode()) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
+            if (libgraalOptions == null) {
+                return false;
+            }
             return Objects.requireNonNull(libgraalOptions.enterpriseOptions, "missing options").contains(desc.getName());
         }
         Class<?> declaringClass = desc.getDeclaringClass();

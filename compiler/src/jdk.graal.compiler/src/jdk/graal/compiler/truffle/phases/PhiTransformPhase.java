@@ -145,7 +145,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 if (n1.getInputBits() != n2.getInputBits() || n1.getResultBits() != n2.getResultBits()) {
                     return ValidTransformation.Invalid;
                 }
-            } else if (usage instanceof AnyNarrowNode n1) {
+            } else if (usage instanceof AnyNarrowNode) {
                 if (!(transformation instanceof NarrowNode n2)) {
                     return ValidTransformation.Invalid;
                 }

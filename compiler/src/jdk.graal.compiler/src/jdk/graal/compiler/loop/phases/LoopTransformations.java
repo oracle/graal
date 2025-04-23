@@ -567,8 +567,9 @@ public abstract class LoopTransformations {
     }
 
     private static void rewirePreToMainPhis(LoopBeginNode preLoopBegin, LoopFragment mainLoop, LoopFragment preLoop, LoopExitNode preLoopCountedExit, boolean inverted) {
-        // Update the main loop phi initialization to carry from the pre loop
-        for (PhiNode prePhiNode : preLoopBegin.phis()) {
+        // Update the main loop phi initialization to carry from the pre loop, use a snapshot
+        // because guard prox nodes can reference the loop begin and change usage lists
+        for (PhiNode prePhiNode : preLoopBegin.phis().snapshot()) {
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
             rewirePhi(prePhiNode, mainPhiNode, preLoopCountedExit, preLoop, inverted);
         }
@@ -794,6 +795,9 @@ public abstract class LoopTransformations {
     }
 
     public static boolean isUnrollableLoop(Loop loop) {
+        if (LoopUtility.excludeLoopFromOptimizer(loop)) {
+            return false;
+        }
         if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.getCFGLoop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled, inverted loops cannot be unrolled without

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,9 +96,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/prims/upcallLinker.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/upcallLinker.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;
 
@@ -188,12 +188,14 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
         List<ValueNode> arguments = new ArrayList<>(kit.getInitialArguments());
 
         /*
-         * Prologue: save function-preserved registers, allocate return space if needed, transition
-         * from native to Java.
+         * Prologue: save callee-save registers, allocate return space if needed, transition from
+         * native to Java.
+         *
+         * Saving the callee-save registers is necessary because the invocation of the high-level
+         * stub uses the Java calling convention which may interfere with those registers.
          */
         assert !savedRegisters.asList().contains(registers.methodHandle());
         assert !savedRegisters.asList().contains(registers.isolate());
-        var save = kit.saveRegisters(savedRegisters);
         ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
@@ -213,11 +215,11 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             FrameState frameState = new FrameState(BytecodeFrame.UNKNOWN_BCI);
             frameState.invalidateForDeoptimization();
             returnBuffer.setStateAfter(kit.getGraph().add(frameState));
-            arguments.add(0, returnBuffer);
+            arguments.addFirst(returnBuffer);
         }
 
         /* Transfers to the Java-side stub; note that exceptions should be handled there. */
-        arguments.add(0, mh);
+        arguments.addFirst(mh);
         InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, highLevelStub, arguments.toArray(ValueNode.EMPTY_ARRAY));
         kit.exceptionPart();
         kit.append(new DeadEndNode());
@@ -232,7 +234,6 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             long offset = 0;
             for (AssignedLocation loc : AbiUtils.create().toMemoryAssignment(jep.returnAssignment(), true)) {
                 assert loc.assignsToRegister();
-                assert !save.containsKey(loc.register());
 
                 AddressNode address = new OffsetAddressNode(returnBuffer, ConstantNode.forLong(offset, kit.getGraph()));
                 ReadNode val = kit.append(new ReadNode(address, LocationIdentity.any(), StampFactory.forKind(loc.registerKind()), BarrierType.NONE, MemoryOrderMode.PLAIN));
@@ -247,7 +248,6 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             assert offset == jep.returnBufferSize();
         }
         kit.append(new CEntryPointLeaveNode(CEntryPointLeaveNode.LeaveAction.Leave));
-        kit.restoreRegisters(save);
         kit.createReturn(returnValue, jep.cMethodType());
 
         return kit.finalizeGraph();
@@ -307,7 +307,7 @@ class HighLevelUpcallStub extends UpcallStub {
 
         List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());
 
-        ValueNode mh = allArguments.remove(0);
+        ValueNode mh = allArguments.removeFirst();
         /* If adaptations are ever needed for upcalls, they should most likely be applied here */
         allArguments = kit.boxArguments(allArguments, jep.handleType());
         ValueNode arguments = kit.packArguments(allArguments);

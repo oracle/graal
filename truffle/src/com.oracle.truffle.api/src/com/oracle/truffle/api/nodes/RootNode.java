@@ -475,6 +475,7 @@ public abstract class RootNode extends ExecutableNode {
         if (this.callTarget != null) {
             throw CompilerDirectives.shouldNotReachHere(message);
         }
+        prepareForCall();
         this.callTarget = callTarget;
 
         // Call notifyOnLoad() after the callTarget field is set, so the invariant that if a
@@ -501,6 +502,18 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean isInstrumentable() {
         return true;
+    }
+
+    /**
+     * Prepares this {@link RootNode} to be called with a {@link CallTarget}. This method will be
+     * called exactly once when a {@link #getCallTarget() call target is requested} for the first
+     * time. This method can be used to lazily initialize parts of a root node, or to validate that
+     * a root node can be used as a call target.
+     * 
+     * @since 25.0
+     */
+    protected void prepareForCall() {
+        // no default implementation
     }
 
     /**
@@ -638,15 +651,15 @@ public abstract class RootNode extends ExecutableNode {
     /**
      * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
      * node on the provided frame. The asynchronous frames are expected to be found here when
-     * {@link Env#getAsynchronousStackDepth()} is positive. The language is free to provide
-     * asynchronous frames or longer list of frames when it's of no performance penalty, or if
-     * requested by other options. This method is invoked on slow-paths only and with a context
+     * {@link TruffleLanguage#getAsynchronousStackDepth()} is positive. The language is free to
+     * provide asynchronous frames or longer list of frames when it's of no performance penalty, or
+     * if requested by other options. This method is invoked on slow-paths only and with a context
      * entered.
      *
      * @param frame A frame, never <code>null</code>
      * @return a list of {@link TruffleStackTraceElement}, or <code>null</code> when no asynchronous
      *         stack is available.
-     * @see Env#getAsynchronousStackDepth()
+     * @see TruffleLanguage#getAsynchronousStackDepth()
      * @since 20.1.0
      */
     protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {

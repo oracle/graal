@@ -57,6 +57,9 @@ from mx_unittest import _run_tests, _VMLauncher
 
 import sys
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
+
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
@@ -181,11 +184,15 @@ _vm_homes = {}
 
 def _vm_home(config):
     if config not in _vm_homes:
-        # get things initialized (e.g., cloning)
-        _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
-        capture = mx.OutputCapture()
-        _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
-        _vm_homes[config] = capture.data.strip()
+        if config is None:
+            result = mx_sdk_vm.graalvm_home(fatalIfMissing=False)
+        else:
+            # get things initialized (e.g., cloning)
+            _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
+            capture = mx.OutputCapture()
+            _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
+            result = capture.data.strip()
+        _vm_homes[config] = result
     return _vm_homes[config]
 
 
@@ -388,6 +395,29 @@ def truffle_unittest_task(extra_build_args=None):
         # GR-44492
         native_unittest(['jdk.graal.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
 
+    logfile = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    logfile.close()
+    success = False
+    try:
+        native_unittest(['com.oracle.truffle.sl.test.SLFactorialTest'] + truffle_args(extra_build_args) +[
+                    '-Dpolyglot.engine.CompileImmediately=true',
+                    '-Dpolyglot.engine.BackgroundCompilation=false',
+                    f'-Dpolyglot.log.file={logfile.name}',
+                    '-Djdk.graal.PrintCompilation=true'
+        ])
+        compilation_pattern = re.compile(r"^SubstrateCompilation-.*root_eval.*allocated start=0x([0-9a-f]*)$")
+        with open(logfile.name) as f:
+            for line in f:
+                match = compilation_pattern.match(line)
+                if match and int(match.group(1), 16) != 0:
+                    success = True
+                    break
+        if not success:
+            mx.abort(f"Failed to find expected PrintCompilation output in log file: {logfile.name}.")
+    finally:
+        if success:
+            os.unlink(logfile.name)
+
 
 def truffle_context_pre_init_unittest_task(extra_build_args):
     native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args(extra_build_args))
@@ -545,7 +575,7 @@ def native_unittests_task(extra_build_args=None):
             out.write(f"Simple file{i}" + '\n')
 
     additional_build_args = svm_experimental_options([
-        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider',
+        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
         '-cp', cp_entry_name
     ])
@@ -563,26 +593,28 @@ def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
     conditional_config_filter_path = join(svmbuild_dir(), 'conditional-config-filter.json')
     with open(conditional_config_filter_path, 'w') as conditional_config_filter:
-        conditional_config_filter.write(
-'''
+        conditional_config_filter.write('''
 {
    "rules": [
         {"includeClasses": "com.oracle.svm.configure.test.conditionalconfig.**"}
    ]
 }
-'''
-        )
-
+''')
     run_agent_conditional_config_test(agent_path, conditional_config_filter_path)
-
     run_nic_conditional_config_test(agent_path, conditional_config_filter_path)
 
 
 def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
+    """
+    Invoke ConfigurationGenerator test methods across multiple runs to produce multiple partial traces,
+    use native-image-configure to compute the conditional configuration, then compare against the expected
+    configuration.
+    """
     test_cases = [
         "createConfigPartOne",
         "createConfigPartTwo",
         "createConfigPartThree",
+        "createConfigPartFour",
     ]
     config_directories = []
     nic_test_dir = join(svmbuild_dir(), 'nic-cond-config-test')
@@ -599,10 +631,11 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
                       'com.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator#' + test_case])
     config_output_dir = join(nic_test_dir, 'config-output')
     nic_exe = mx.cmd_suffix(join(mx.JDKConfig(home=mx_sdk_vm_impl.graalvm_output()).home, 'bin', 'native-image-configure'))
-    nic_command = [nic_exe, 'create-conditional'] \
-                  + ['--user-code-filter=' + conditional_config_filter_path] \
-                  + ['--input-dir=' + config_dir for config_dir in config_directories] \
-                  + ['--output-dir=' + config_output_dir]
+    nic_command = [nic_exe, 'generate-conditional',
+                   '--user-code-filter=' + conditional_config_filter_path,
+                   '--class-name-filter=' + conditional_config_filter_path,
+                   '--output-dir=' + config_output_dir] \
+                  + ['--input-dir=' + config_dir for config_dir in config_directories]
     mx.run(nic_command)
     jvm_unittest(
         ['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_output_dir,
@@ -616,7 +649,8 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
         mx.rmtree(config_dir)
 
     agent_opts = ['config-output-dir=' + config_dir,
-                  'experimental-conditional-config-filter-file=' + conditional_config_filter_path]
+                  'experimental-conditional-config-filter-file=' + conditional_config_filter_path,
+                  'conditional-config-class-filter-file=' + conditional_config_filter_path]
     # This run generates the configuration from different test cases
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
@@ -1217,8 +1251,10 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
+        'substratevm:SVM_CONFIGURE',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
+        'substratevm:SVM_CAPNPROTO_RUNTIME',
         'substratevm:NATIVE_IMAGE_BASE',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
@@ -1460,11 +1496,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     jlink=False,
 ))
 
+# Jars copied to the <graalvm-home>/lib/graalvm of the libgraal GraalVM that
+# are also added to the value of the `-imagecp` Native Image option when
+# building libgraal.
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
-    'compiler:LIBGRAAL_LOADER',
-    'substratevm:LIBGRAAL_LIBRARY']
+    'compiler:LIBGRAAL',
+    'compiler:LIBGRAAL_LOADER']
 
 def allow_build_path_in_libgraal():
     """
@@ -1494,33 +1533,15 @@ def prevent_build_path_in_libgraal():
             return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
     return []
 
-libgraal_features = [
-    'com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'
-]
-
 libgraal_build_args = [
-    '--features=' + ','.join(libgraal_features),
+    '--features=jdk.graal.compiler.libgraal.LibGraalFeature',
 
-    ## Pass via JVM args opening up of packages needed for image builder early on
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot.libgraal=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle.hotspot=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.nativeimage/com.oracle.svm.core.annotate=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
-    ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
-    # LibGraalFeature implements com.oracle.svm.core.feature.InternalFeature (needed to be able to instantiate LibGraalFeature)
-    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
-    # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
-    '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
-    # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
-    '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+    # Need jdk.internal.module.Modules to do exporting
+    '-J--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
 
-    '--initialize-at-build-time=jdk.graal.compiler,org.graalvm.libgraal,com.oracle.truffle',
+    # This is the truffle:TRUFFLE_COMPILER dependency that defines
+    # the Truffle compiler API.
+    '--initialize-at-build-time=com.oracle.truffle.compiler',
 
     '-H:+ReportExceptionStackTraces',
 
@@ -1530,6 +1551,8 @@ libgraal_build_args = [
     # If building on the console, use as many cores as available
     f'--parallelism={mx.cpu_count()}',
 ] if mx.is_interactive() else []) + svm_experimental_options([
+    "-H:LibGraalClassLoader=jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader",
+    "-Dlibgraal.module.path=${.}/../../../graalvm/libgraal.jar",
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Dtruffle.TruffleRuntime=',
@@ -1537,6 +1560,7 @@ libgraal_build_args = [
     '-H:InitialCollectionPolicy=LibGraal',
 
     # Needed for initializing jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE.
+    # Remove after JDK-8346781.
     '-Djdk.vm.ci.services.aot=true',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal.
@@ -1569,6 +1593,9 @@ libgraal_build_args = [
     # Reduce image size by outlining all write barriers.
     # Benchmarking showed no performance degradation.
     '-H:+OutlineWriteBarriers',
+
+    # Libgraal must not change the process-wide locale settings.
+    '-H:-UseSystemLocale',
 ] + ([
     # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
     '-H:PageSize=64K'
@@ -1633,13 +1660,14 @@ libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
+    builder_jar_distributions=[],
     support_distributions=[],
     priority=1,
     library_configs=[libsvmjdwp_lib_config],
     stability="experimental",
     jlink=False,
 )
+
 mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 
 def _native_image_configure_extra_jvm_args():
@@ -2517,11 +2545,15 @@ def capnp_compile(args):
  */
 //@formatter:off
 //Checkstyle: stop
+// Generated via:
+//  $ mx capnp-compile
 """)
         for line in lines:
             if line.startswith("public final class "):
                 f.write('@SuppressWarnings("all")\n')
             if 'public static final class Schemas {' in line:
                 break
-            f.write(line)
+            # Replace org.capnproto with com.oracle.svm.shaded.org.capnproto in generated code
+            shaded = line.replace("org.capnproto", "com.oracle.svm.shaded.org.capnproto")
+            f.write(shaded)
         f.write('}\n')

@@ -331,7 +331,7 @@ public class DebugHelper {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static class IncludeDebugHelperMethods implements BooleanSupplier {
+    private static final class IncludeDebugHelperMethods implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return SubstrateOptions.IncludeDebugHelperMethods.getValue();

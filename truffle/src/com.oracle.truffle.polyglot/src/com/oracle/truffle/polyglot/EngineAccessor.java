@@ -84,6 +84,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport.VetoException;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
@@ -106,7 +108,11 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -116,6 +122,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -129,6 +136,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotSourceCache.ParseOrigin;
 import com.oracle.truffle.polyglot.PolyglotThreadTask.PolyglotThread;
 import com.oracle.truffle.polyglot.PolyglotThreadTask.ThreadSpawnRootNode;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
@@ -283,7 +291,20 @@ final class EngineAccessor extends Accessor {
             PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(sourceContext, source.getLanguage(), source.getMimeType(), true, allowInternal);
             PolyglotLanguageContext targetContext = sourceContext.context.getContextInitialized(targetLanguage, sourceContext.language);
             targetContext.checkAccess(sourceContext.getLanguageInstance().language);
-            return targetContext.parseCached(sourceContext.language, source, argumentNames);
+            return targetContext.parseCached(ParseOrigin.LANGUAGE, sourceContext.language, source, argumentNames);
+        }
+
+        @Override
+        public ExecutableNode parseInlineForLanguage(Object languageContext, Source source, Node node, MaterializedFrame frame) {
+            PolyglotLanguageContext sourceContext = (PolyglotLanguageContext) languageContext;
+            TruffleLanguage.Env env = sourceContext.requireEnv();
+            OptionValuesImpl options = sourceContext.getLanguageInstance().parseSourceOptions(ParseOrigin.LANGUAGE, source, null);
+            ExecutableNode fragment = EngineAccessor.LANGUAGE.parseInline(env, source, options, node, frame);
+            if (fragment != null) {
+                TruffleLanguage<?> languageSPI = EngineAccessor.LANGUAGE.getSPI(env);
+                fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
+            }
+            return fragment;
         }
 
         @Override
@@ -919,7 +940,7 @@ final class EngineAccessor extends Accessor {
             targetContext.checkAccess(accessingLanguage);
             Object result;
             try {
-                CallTarget target = targetContext.parseCached(accessingLanguage, source, null);
+                CallTarget target = targetContext.parseCached(ParseOrigin.INSTRUMENT, accessingLanguage, source, null);
                 result = target.call(null, PolyglotImpl.EMPTY_ARGS);
             } catch (Throwable e) {
                 throw OtherContextGuestObject.migrateException(context.parent, e, context);
@@ -1712,6 +1733,22 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public OptionValues getInstrumentSourceOptions(Object polyglotInstrument, Source source) {
+            PolyglotInstrument instrument = (PolyglotInstrument) polyglotInstrument;
+            return instrument.parseSourceOptions(source, instrument.getId());
+        }
+
+        @Override
+        public OptionValues parseLanguageSourceOptions(Object polyglotLanguageContext, Source source) {
+            try {
+                PolyglotLanguageInstance c = (PolyglotLanguageInstance) polyglotLanguageContext;
+                return c.parseSourceOptions(ParseOrigin.LANGUAGE, source, c.language.getId());
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        @Override
         public boolean isContextClosed(Object polyglotContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
             PolyglotContextImpl.State localContextState = context.state;
@@ -1987,6 +2024,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isLogRecordCallerClassSet(LogRecord logRecord) {
+            return PolyglotLoggers.isCallerClassSet(logRecord);
+        }
+
+        @Override
+        public boolean isLogRecordCallerMethodSet(LogRecord logRecord) {
+            return PolyglotLoggers.isCallerMethodSet(logRecord);
+        }
+
+        @Override
+        public void logFallback(String s) {
+            PolyglotEngineImpl.logFallback(s);
+        }
+
+        @Override
         public boolean isCurrentThreadPolyglotThread() {
             PolyglotThreadInfo info = PolyglotFastThreadLocals.getCurrentThread(null);
             return info != null && info.isPolyglotThread();
@@ -2186,6 +2238,72 @@ final class EngineAccessor extends Accessor {
         @Override
         public Node getUncachedLocation(Object polyglotContext) {
             return ((PolyglotContextImpl) polyglotContext).uncachedLocation;
+        }
+
+        @Override
+        public MessageEndpoint startEngineServer(Object engineImpl, URI uri, MessageEndpoint server) throws IOException, VetoException {
+            PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineImpl);
+            if (engine.messageTransport == null) {
+                return null;
+            }
+            return engine.messageTransport.open(uri, server);
+        }
+
+        @Override
+        public Object getInstrumentEngine(Object polyglotInstrument) {
+            return ((PolyglotInstrument) polyglotInstrument).engine;
+        }
+
+        @Override
+        public DispatchOutputStream getEngineErr(Object engine) {
+            return ((PolyglotEngineImpl) engine).err;
+        }
+
+        @Override
+        public InputStream getEngineIn(Object engine) {
+            return ((PolyglotEngineImpl) engine).in;
+        }
+
+        @Override
+        public DispatchOutputStream getEngineOut(Object engine) {
+            return ((PolyglotEngineImpl) engine).out;
+        }
+
+    }
+
+    private static class GuardedExecutableNode extends ExecutableNode {
+
+        private final FrameDescriptor frameDescriptor;
+        @Child private ExecutableNode fragment;
+
+        GuardedExecutableNode(TruffleLanguage<?> languageSPI, ExecutableNode fragment, MaterializedFrame frameLocation) {
+            super(languageSPI);
+            this.frameDescriptor = (frameLocation != null) ? frameLocation.getFrameDescriptor() : null;
+            this.fragment = fragment;
+        }
+
+        private static boolean checkNullOrInterop(Object obj) {
+            if (obj == null) {
+                return true;
+            }
+            EngineAccessor.INTEROP.checkInteropType(obj);
+            return true;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            assert frameDescriptor == null || frameDescriptor == frame.getFrameDescriptor();
+            assureAdopted();
+            Object ret = fragment.execute(frame);
+            assert checkNullOrInterop(ret);
+            return ret;
+        }
+
+        private void assureAdopted() {
+            if (getParent() == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException("Needs to be inserted into the AST before execution.");
+            }
         }
     }
 

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.shared.meta;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PROTECTED;
 import static java.lang.reflect.Modifier.PUBLIC;
@@ -149,5 +150,9 @@ public interface ModifiersProvider {
      */
     default boolean isConcrete() {
         return !isAbstract();
+    }
+
+    default boolean isEnum() {
+        return (getModifiers() & ACC_ENUM) != 0;
     }
 }

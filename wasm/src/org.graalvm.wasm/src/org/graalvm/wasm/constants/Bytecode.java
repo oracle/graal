@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 
 package org.graalvm.wasm.constants;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 public class Bytecode {
     public static final int UNREACHABLE = 0x00;
@@ -350,9 +353,7 @@ public class Bytecode {
     public static final int I64_TRUNC_SAT_F64_U = 0x07;
 
     public static final int MEMORY_INIT = 0x08;
-    public static final int MEMORY_INIT_UNSAFE = 0x09;
     public static final int MEMORY64_INIT = 0x0A;
-    public static final int MEMORY64_INIT_UNSAFE = 0x0B;
     public static final int DATA_DROP = 0x0C;
     public static final int DATA_DROP_UNSAFE = 0x0D;
     public static final int MEMORY_COPY = 0x0E;
@@ -699,6 +700,66 @@ public class Bytecode {
     public static final int VECTOR_F32X4_DEMOTE_F64X2_ZERO = 0x5E;
     public static final int VECTOR_F64X2_PROMOTE_LOW_F32X4 = 0x5F;
 
+    // Relaxed SIMD
+    // The binary encoding of the Relaxed SIMD instructions uses opcodes higher than 0xFF. To avoid
+    // using multi-byte encoding for vector bytecodes, we make use of the unused opcodes in the
+    // vector opcode space. There happen to be the exact same number of Relaxed SIMD instructions
+    // as there are unused opcodes in the 0x00-0xFF range. A similar approach was used when
+    // prototyping the Relaxed SIMD proposal. We use the same single-byte bytecodes as those given
+    // by the "prototype opcode" column of
+    // https://github.com/WebAssembly/relaxed-simd/blob/c3f9359af2cd607cc46b0a3274f90ea52543a2f2/proposals/relaxed-simd/Overview.md#binary-format
+    // except for the last three instructions for which we use the last 3 unused opcodes in the
+    // 0x00-0xFF range (0x9A, 0xBB, 0xC2).
+    public static final int VECTOR_I8X16_RELAXED_SWIZZLE = 0xA2;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F32X4_S = 0xA5;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F32X4_U = 0xA6;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO = 0xC5;
+    public static final int VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO = 0xC6;
+    public static final int VECTOR_F32X4_RELAXED_MADD = 0xAF;
+    public static final int VECTOR_F32X4_RELAXED_NMADD = 0xB0;
+    public static final int VECTOR_F64X2_RELAXED_MADD = 0xCF;
+    public static final int VECTOR_F64X2_RELAXED_NMADD = 0xD0;
+    public static final int VECTOR_I8X16_RELAXED_LANESELECT = 0xB2;
+    public static final int VECTOR_I16X8_RELAXED_LANESELECT = 0xB3;
+    public static final int VECTOR_I32X4_RELAXED_LANESELECT = 0xD2;
+    public static final int VECTOR_I64X2_RELAXED_LANESELECT = 0xD3;
+    public static final int VECTOR_F32X4_RELAXED_MIN = 0xB4;
+    public static final int VECTOR_F32X4_RELAXED_MAX = 0xE2;
+    public static final int VECTOR_F64X2_RELAXED_MIN = 0xD4;
+    public static final int VECTOR_F64X2_RELAXED_MAX = 0xEE;
+    public static final int VECTOR_I16X8_RELAXED_Q15MULR_S = 0x9A;
+    public static final int VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S = 0xBB;
+    public static final int VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S = 0xC2;
+
     public static final byte[] EMPTY_BYTES = {};
     public static final int COMMON_BYTECODE_OFFSET = Bytecode.I32_EQ - Instructions.I32_EQ;
+
+    private static final byte[] VECTOR_OPCODE_TO_BYTECODE;
+
+    static {
+        try {
+            int maxOpcode = 0;
+            for (Field f : Instructions.class.getDeclaredFields()) {
+                if (Modifier.isStatic(f.getModifiers()) && f.getType() == int.class && f.getName().startsWith("VECTOR_")) {
+                    int opcode = f.getInt(null);
+                    maxOpcode = Math.max(maxOpcode, opcode);
+                }
+            }
+            VECTOR_OPCODE_TO_BYTECODE = new byte[maxOpcode + 1];
+            for (Field f : Instructions.class.getDeclaredFields()) {
+                if (Modifier.isStatic(f.getModifiers()) && f.getType() == int.class && f.getName().startsWith("VECTOR_")) {
+                    int opcode = f.getInt(null);
+                    int bytecode = Bytecode.class.getDeclaredField(f.getName()).getInt(null);
+                    assert bytecode >= 0 && bytecode <= 0xFF;
+                    VECTOR_OPCODE_TO_BYTECODE[opcode] = (byte) bytecode;
+                }
+            }
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static final int vectorOpcodeToBytecode(int opcode) {
+        return Byte.toUnsignedInt(VECTOR_OPCODE_TO_BYTECODE[opcode]);
+    }
 }

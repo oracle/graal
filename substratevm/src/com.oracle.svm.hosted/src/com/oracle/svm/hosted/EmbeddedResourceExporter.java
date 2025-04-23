@@ -33,11 +33,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
@@ -101,12 +99,11 @@ public class EmbeddedResourceExporter {
         }
 
         List<ResourceReportEntry> resourceInfoList = new ArrayList<>();
-        EconomicMap<Resources.ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resourceStorage = Resources.singleton().getResourceStorage();
-        resourceStorage.getKeys().forEach(key -> {
+        Resources.currentLayer().forEachResource((key, value) -> {
             Module module = key.module();
             String resourceName = key.resource();
 
-            ResourceStorageEntryBase storageEntry = resourceStorage.get(key).getValueUnconditionally();
+            ResourceStorageEntryBase storageEntry = value.getValueUnconditionally();
             List<SourceAndOrigin> registeredEntrySources = collection.get(key);
 
             if (registeredEntrySources == null && storageEntry != NEGATIVE_QUERY_MARKER) {

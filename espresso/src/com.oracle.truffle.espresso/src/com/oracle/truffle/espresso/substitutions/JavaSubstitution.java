@@ -20,41 +20,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.substitutions;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 
 public abstract class JavaSubstitution extends SubstitutionProfiler {
 
-    public abstract static class Factory {
-        public abstract JavaSubstitution create();
-
-        private final String[] methodName;
-        private final String[] substitutionClassName;
+    public static final class Factory {
+        private final Object methodName;
+        private final Object substitutionClassName;
         private final String returnType;
         private final String[] parameterTypes;
         private final boolean hasReceiver;
 
-        public Factory(String methodName, String substitutionClassName, String returnType, String[] parameterTypes, boolean hasReceiver) {
-            this.methodName = new String[]{methodName};
-            this.substitutionClassName = new String[]{substitutionClassName};
+        private final LanguageFilter filter;
+        private final byte flags;
+        private final InlinedMethodPredicate guard;
+
+        private final Constructor<? extends JavaSubstitution> constructor;
+
+        public Factory(Object methodName,
+                        Object substitutionClassName,
+                        String returnType,
+                        String[] parameterTypes,
+                        boolean hasReceiver,
+                        LanguageFilter filter,
+                        byte flags,
+                        InlinedMethodPredicate guard,
+                        Constructor<? extends JavaSubstitution> constructor) {
+            this.methodName = methodName;
+            this.substitutionClassName = substitutionClassName;
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
             this.hasReceiver = hasReceiver;
+            this.filter = filter;
+            this.flags = flags;
+            this.guard = guard;
+            this.constructor = constructor;
         }
 
         public String[] getMethodNames() {
-            return methodName;
+            return decodeNames(methodName);
         }
 
         public String[] substitutionClassNames() {
-            return substitutionClassName;
+            return decodeNames(substitutionClassName);
         }
 
         public String returnType() {
@@ -69,24 +87,59 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
             return hasReceiver;
         }
 
-        public boolean isValidFor(@SuppressWarnings("unused") JavaVersion version) {
-            return true;
+        public boolean isValidFor(EspressoLanguage language) {
+            return filter.isValidFor(language);
         }
 
         public boolean isTrivial() {
-            return false;
+            return isFlag(SubstitutionFlag.IsTrivial);
         }
 
         public boolean inlineInBytecode() {
-            return false;
+            return isTrivial() || isFlag(SubstitutionFlag.InlineInBytecode);
         }
 
         public InlinedMethodPredicate guard() {
-            return null;
+            return guard;
+        }
+
+        public JavaSubstitution create() {
+            try {
+                return constructor.newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("Failed substitution creation: ", e);
+            }
+        }
+
+        private boolean isFlag(byte flag) {
+            return (flags & flag) != 0;
+        }
+
+        private static String[] decodeNames(Object encodedNames) {
+            if (encodedNames instanceof String singleName) {
+                return new String[]{singleName};
+            } else if (encodedNames instanceof String[] names) {
+                return names;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Unrecognized encoded names for substitution. " + encodedNames);
         }
     }
 
-    JavaSubstitution() {
+    private final byte flags;
+
+    public JavaSubstitution(Factory factory) {
+        this.flags = factory.flags;
+    }
+
+    public static Constructor<? extends JavaSubstitution> lookupConstructor(Class<? extends JavaSubstitution> cls) {
+        try {
+            return cls.getConstructor();
+        } catch (NoSuchMethodException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Failed to locate constructor for " + cls, e);
+        }
     }
 
     public abstract Object invoke(Object[] args);
@@ -105,4 +158,13 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
     // Generated in substitutions' classes
     @Override
     public abstract JavaSubstitution split();
+
+    @Override
+    public final boolean isTrivial() {
+        return isFlag(SubstitutionFlag.IsTrivial);
+    }
+
+    private boolean isFlag(byte flag) {
+        return (flags & flag) != 0;
+    }
 }

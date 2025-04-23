@@ -117,7 +117,11 @@ public final class ConfigurationMemberInfo {
         ACCESSED;
 
         public ConfigurationMemberAccessibility combine(ConfigurationMemberAccessibility other) {
-            return (ordinal() < other.ordinal()) ? other : this;
+            return other.includes(this) ? other : this;
+        }
+
+        public ConfigurationMemberAccessibility intersect(ConfigurationMemberAccessibility other) {
+            return other.includes(this) ? this : other;
         }
 
         public ConfigurationMemberAccessibility remove(ConfigurationMemberAccessibility other) {

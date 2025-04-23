@@ -26,13 +26,13 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface StringConstant extends PoolConstant {
 
-    static StringConstant create(int utf8Index) {
+    static Index create(int utf8Index) {
         return new Index(utf8Index);
     }
 
@@ -41,26 +41,8 @@ public interface StringConstant extends PoolConstant {
         return Tag.STRING;
     }
 
-    @Override
-    default String toString(ConstantPool pool) {
-        return getSymbol(pool).toString();
-    }
-
-    /**
-     * Gets the name of this name+descriptor pair constant.
-     *
-     * @param pool the constant pool that maybe be required to convert a constant pool index to a
-     *            name
-     */
-    Symbol<ModifiedUTF8> getSymbol(ConstantPool pool);
-
-    final class Index implements StringConstant, Resolvable {
+    final class Index implements StringConstant, ImmutablePoolConstant, Resolvable {
         private final char utf8Index;
-
-        @Override
-        public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
-            return pool.symbolAt(utf8Index);
-        }
 
         Index(int utf8Index) {
             this.utf8Index = PoolConstant.u2(utf8Index);
@@ -74,6 +56,29 @@ public interface StringConstant extends PoolConstant {
         @Override
         public void dump(ByteBuffer buf) {
             buf.putChar(utf8Index);
+        }
+
+        /**
+         * Gets the name of this name+descriptor pair constant.
+         *
+         * @param pool the constant pool that maybe be required to convert a constant pool index to
+         *            a name
+         */
+        public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
+            return pool.symbolAtUnsafe(utf8Index);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Index otherConstant)) {
+                return false;
+            }
+            return getSymbol(thisPool) == otherConstant.getSymbol(otherPool);
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return getSymbol(pool).toString();
         }
     }
 

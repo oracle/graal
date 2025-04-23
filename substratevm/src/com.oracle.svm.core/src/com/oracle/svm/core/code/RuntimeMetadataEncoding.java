@@ -34,6 +34,7 @@ import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.MetadataAccessorImpl;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 
@@ -50,6 +51,11 @@ import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 @AutomaticallyRegisteredImageSingleton
 public class RuntimeMetadataEncoding implements MultiLayeredImageSingleton, UnsavedSingleton {
     @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static RuntimeMetadataEncoding currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(RuntimeMetadataEncoding.class, false, true);
+    }
 
     public byte[] getEncoding() {
         return encoding;

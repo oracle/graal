@@ -125,8 +125,8 @@ public @interface GenerateBytecode {
     boolean enableUncachedInterpreter() default false;
 
     /**
-     * Sets the default number of times an uncached interpreter must return, branch backwards, or
-     * yield before transitioning to cached.
+     * Sets the default number of times an uncached interpreter must be invoked/resumed or branch
+     * backwards before transitioning to cached.
      * <p>
      * The default uncached threshold expression supports a subset of Java (see the
      * {@link com.oracle.truffle.api.dsl.Cached Cached} documentation). It should evaluate to an
@@ -511,5 +511,21 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     boolean enableBytecodeDebugListener() default true;
+
+    /**
+     * Sets the maximum number of stack slots that will be used for parameters annotated with
+     * {@link Variadic}. The value must represent a power of 2 greater than 1 and must not exceed
+     * {@link Short#MAX_VALUE}. The default value is "32". As with {@link #defaultLocalValue()}, it
+     * is possible to specify this limit via an expression. If a constant value is provided, the
+     * limit is validated at compile time; otherwise, it is validated at class initialization.
+     * <p>
+     * The expression supports a subset of Java (see {@link com.oracle.truffle.api.dsl.Cached
+     * Cached}), and may include simple constants (for example, <code>0</code>) or static method
+     * calls. It must evaluate to an <code>int</code>. Note that only static members of the root
+     * node can be bound with the expression.
+     *
+     * @since 25.0
+     */
+    String variadicStackLimit() default "32";
 
 }

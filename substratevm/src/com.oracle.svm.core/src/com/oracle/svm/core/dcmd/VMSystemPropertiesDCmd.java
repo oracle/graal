@@ -42,7 +42,7 @@ public class VMSystemPropertiesDCmd extends AbstractDCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L67-L109")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/services/attachListener.cpp#L221-L264")
     public String execute(DCmdArguments args) throws Throwable {
         /* serializePropertiesToByteArray() explicitly returns a ISO_8859_1 encoded byte array. */
         byte[] bytes = VMSupport.serializePropertiesToByteArray();

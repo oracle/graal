@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -320,6 +320,12 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void gr60222() {
+        test("(?<=a)b|", "m", "aaabaaa", 3, true, 3, 4);
+        test("(?=^(?:[^])+){3}|(?:(^)+(?!\\b(([^]))+))*", "m", "\u00ea\u9bbb\n\n\n\u00ea\u9bbb\n\n\n\u00ea\u9bbb\n\n\n\u00ea\u9bbb\n\n\n", 10, true, 10, 10, -1, -1, -1, -1, -1, -1);
+    }
+
+    @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
@@ -542,6 +548,15 @@ public class JsTests extends RegexTestBase {
         expectSyntaxError("[--a]", "v", "", getTRegexEncoding(), "empty", 0, ErrorCode.InvalidCharacterClass);
         test("(?:^\\1|$){10,11}bc", "", "aaaaaabc", 0, false);
         test("a(?:|[0-9]+?a|[0-9a]){11,13}?[ab]", "", "a372a466a109585878b", 0, true, 0, 5);
+        test("(?<=ab(?:c|$){8,8})", "", "abccccc", 0, true, 7, 7);
+        test("(?:^a|$){1,72}a", "", "aaaaaaaa", 0, true, 0, 2);
+        test("(?<=a)b|", "", "aaabaaa", 3, true, 3, 4);
+        test("^a|(?:^)*", "m", "aa\n\n\naa\n\n\naa\n\n\naa\n\n\n", 10, true, 10, 11);
+        test("(?<=[ab][a])", "", "ababab", 2, true, 3, 3);
+        test("[ab]*(?<=a)$", "", "bbabaa", 1, true, 1, 6);
+        test("[\u7514-\ua3e3\ub107]*(?<=\\S)$", "", "\u76a3\u782b\u782b\ub107\u782b\u9950\u76a3\ub107\u9950\u76a3\u9a36", 3, true, 3, 11);
+        test("$(?<=a)", "y", "aaaaa", 5, true, 5, 5);
+        test("^abc[^]", "m", "abcdabc", 1, false);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }

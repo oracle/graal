@@ -32,7 +32,8 @@ import java.util.Objects;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A buffer used by the {@link BinaryMarshaller} to marshall parameters and results passed by value.
@@ -618,7 +619,7 @@ public abstract class BinaryOutput {
             if (unmanaged) {
                 UnmanagedMemory.free(address);
                 byteBufferView = null;
-                address = WordFactory.nullPointer();
+                address = Word.nullPointer();
                 length = 0;
                 unmanaged = false;
                 pos = Integer.MIN_VALUE;
@@ -642,7 +643,7 @@ public abstract class BinaryOutput {
                     throw new OutOfMemoryError();
                 }
                 if (unmanaged) {
-                    address = UnmanagedMemory.realloc(address, WordFactory.unsigned(newCapacity));
+                    address = UnmanagedMemory.realloc(address, Word.unsigned(newCapacity));
                 } else {
                     CCharPointer newAddress = UnmanagedMemory.malloc(newCapacity);
                     memcpy(newAddress, address, pos);

@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.classfile;
 
 /**
@@ -36,6 +35,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         public static final VersionRange VERSION_16_OR_HIGHER = higher(16);
         public static final VersionRange VERSION_17_OR_HIGHER = higher(17);
         public static final VersionRange VERSION_19_OR_HIGHER = higher(19);
+        public static final VersionRange VERSION_20_OR_LOWER = lower(20);
+        public static final VersionRange VERSION_21_OR_HIGHER = higher(21);
         public static final VersionRange ALL = new VersionRange(0, LATEST_SUPPORTED);
 
         private final int low;

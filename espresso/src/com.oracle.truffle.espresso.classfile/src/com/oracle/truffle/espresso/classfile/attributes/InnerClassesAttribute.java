@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.classfile.attributes;
+
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-
 public final class InnerClassesAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.InnerClasses;
+    public static final Symbol<Name> NAME = ParserNames.InnerClasses;
 
     public static class Entry {
         public final int innerClassIndex;

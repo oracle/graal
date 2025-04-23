@@ -25,26 +25,48 @@
 
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalDouble;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalFloat;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalInt;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalLong;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
+
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
@@ -56,35 +78,30 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalDouble;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalFloat;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalInt;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalLong;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
 
 @InternalVMMethod
 public abstract class InterpreterStubSection {
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final SectionName SVM_INTERP = new SectionName.ProgbitsSectionName("svm_interp");
+
+    private static final CGlobalData<Pointer> BASE = CGlobalDataFactory.forSymbol(nameForVTableIndex(0));
+
+    /* '-3' to reduce padding due to alignment in .svm_interp section */
+    static final int MAX_VTABLE_STUBS = 2 * 1024 - 3;
 
     protected RegisterConfig registerConfig;
     protected SubstrateTargetDescription target;
     protected ValueKindFactory<LIRKind> valueKindFactory;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private ObjectFile.ProgbitsSectionImpl stubsBufferImpl;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private final Map<InterpreterResolvedJavaMethod, Integer> enterTrampolineOffsets = new HashMap<>();
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private int vTableStubBaseOffset = -1;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void createInterpreterEnterStubSection(AbstractImage image, Collection<InterpreterResolvedJavaMethod> methods) {
         ObjectFile objectFile = image.getObjectFile();
         byte[] stubsBlob = generateEnterStubs(methods);
@@ -108,9 +125,19 @@ public abstract class InterpreterStubSection {
         return "interp_enter_" + NativeImage.localSymbolNameForMethod(method);
     }
 
-    public void createInterpreterVtableEnterStubSection(AbstractImage image, int maxVtableIndex) {
+    public static String nameForVTableIndex(int vTableIndex) {
+        return "crema_enter_" + String.format("%04d", vTableIndex);
+    }
+
+    public static Pointer getCremaStubForVTableIndex(int vTableIndex) {
+        VMError.guarantee(vTableIndex >= 0 && vTableIndex < MAX_VTABLE_STUBS);
+        return BASE.get().add(vTableIndex * ImageSingletons.lookup(InterpreterStubSection.class).getVTableStubSize());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void createInterpreterVTableEnterStubSection(AbstractImage image) {
         ObjectFile objectFile = image.getObjectFile();
-        byte[] stubsBlob = generateVtableEnterStubs(maxVtableIndex);
+        byte[] stubsBlob = generateVTableEnterStubs(MAX_VTABLE_STUBS);
 
         RelocatableBuffer stubsBuffer = new RelocatableBuffer(stubsBlob.length, objectFile.getByteOrder());
         stubsBufferImpl = new BasicProgbitsSectionImpl(stubsBuffer.getBackingArray());
@@ -124,42 +151,68 @@ public abstract class InterpreterStubSection {
         boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
         objectFile.createDefinedSymbol("crema_enter_trampoline", stubsSection, 0, 0, true, internalSymbolsAreGlobal);
 
-        int vtableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-        for (int index = 0; index < maxVtableIndex; index++) {
-            int offset = index * vtableEntrySize;
-            objectFile.createDefinedSymbol(nameForVtableOffset(offset), stubsSection, offset, ConfigurationValues.getTarget().wordSize, true, internalSymbolsAreGlobal);
+        assert vTableStubBaseOffset != -1;
+        for (int vTableIndex = 0; vTableIndex < MAX_VTABLE_STUBS; vTableIndex++) {
+            int codeOffset = vTableStubBaseOffset + vTableIndex * getVTableStubSize();
+            String symbolName = nameForVTableIndex(vTableIndex);
+            objectFile.createDefinedSymbol(symbolName, stubsSection, codeOffset, ConfigurationValues.getTarget().wordSize, true, internalSymbolsAreGlobal);
         }
     }
 
-    public static String nameForVtableOffset(int offset) {
-        return "crema_enter_" + String.format("%04x", offset);
+    protected void recordVTableStubBaseOffset(int codeOffset) {
+        assert vTableStubBaseOffset == -1;
+        vTableStubBaseOffset = codeOffset;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected void recordEnterTrampoline(InterpreterResolvedJavaMethod m, int position) {
         enterTrampolineOffsets.put(m, position);
     }
 
-    public abstract int getVTableStubSize();
-
     protected abstract byte[] generateEnterStubs(Collection<InterpreterResolvedJavaMethod> methods);
 
-    protected abstract byte[] generateVtableEnterStubs(int maxVtableIndex);
+    protected abstract byte[] generateVTableEnterStubs(int maxVTableIndex);
 
-    public void markEnterStubPatch(HostedMethod enterStub) {
+    public abstract int getVTableStubSize();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void markEnterStubPatch(ResolvedJavaMethod enterStub) {
         markEnterStubPatch(stubsBufferImpl, enterStub);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected abstract void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub);
 
     @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)
     @NeverInline("needs ABI boundary")
-    public static Pointer enterInterpreterStub(int interpreterMethodESTOffset, Pointer enterData) {
-        InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
-        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
+    public static Pointer enterMethodInterpreterStub(int interpreterMethodESTOffset, Pointer enterData) {
         DebuggerSupport interpreterSupport = ImageSingletons.lookup(DebuggerSupport.class);
 
         InterpreterResolvedJavaMethod interpreterMethod = (InterpreterResolvedJavaMethod) interpreterSupport.getUniverse().getMethodForESTOffset(interpreterMethodESTOffset);
         VMError.guarantee(interpreterMethod != null);
+
+        return enterHelper(interpreterMethod, enterData);
+    }
+
+    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)
+    @NeverInline("needs ABI boundary")
+    public static Pointer enterVTableInterpreterStub(int vTableIndex, Pointer enterData) {
+        InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
+
+        /* assuming that this is a virtual method, i.e. has a 'this' argument */
+        Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(null, enterData, 0))).toObject();
+
+        DynamicHub hub = DynamicHub.fromClass(receiver.getClass());
+        InterpreterResolvedObjectType thisType = (InterpreterResolvedObjectType) hub.getInterpreterType();
+        InterpreterResolvedJavaMethod interpreterMethod = thisType.getVtable()[vTableIndex];
+
+        return enterHelper(interpreterMethod, enterData);
+    }
+
+    @AlwaysInline("helper")
+    private static Pointer enterHelper(InterpreterResolvedJavaMethod interpreterMethod, Pointer enterData) {
+        InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
+        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
 
         InterpreterUnresolvedSignature signature = interpreterMethod.getSignature();
         VMError.guarantee(signature != null);
@@ -180,7 +233,7 @@ public abstract class InterpreterStubSection {
         int gpIdx = 0;
         int fpIdx = 0;
         if (interpreterMethod.hasReceiver()) {
-            Object receiver = ((Pointer) WordFactory.pointer(accessHelper.getGpArgumentAt(callingConvention.getArgument(gpIdx), enterData, gpIdx))).toObject();
+            Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(callingConvention.getArgument(gpIdx), enterData, gpIdx))).toObject();
             setLocalObject(frame, 0, receiver);
             gpIdx++;
             interpSlot++;
@@ -212,7 +265,7 @@ public abstract class InterpreterStubSection {
                 case Long:    setLocalLong(frame, interpSlot, arg); interpSlot++; break;
                 case Float:   setLocalFloat(frame, interpSlot, Float.intBitsToFloat((int) arg)); break;
                 case Double:  setLocalDouble(frame, interpSlot, Double.longBitsToDouble(arg)); interpSlot++; break;
-                case Object:  setLocalObject(frame, interpSlot, ((Pointer) WordFactory.pointer(arg)).toObject()); break;
+                case Object:  setLocalObject(frame, interpSlot, ((Pointer) Word.pointer(arg)).toObject()); break;
                 // @formatter:on
                 default:
                     throw VMError.shouldNotReachHereAtRuntime();
@@ -301,9 +354,9 @@ public abstract class InterpreterStubSection {
 
         int stackSize = NumUtil.roundUp(callingConvention.getStackSize(), stubSection.target.stackAlignment);
 
-        Pointer stackBuffer = WordFactory.nullPointer();
+        Pointer stackBuffer = Word.nullPointer();
         if (stackSize > 0) {
-            stackBuffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(stackSize));
+            stackBuffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(Word.unsigned(stackSize));
             accessHelper.setSp(leaveData, stackSize, stackBuffer);
         }
 
@@ -382,7 +435,7 @@ public abstract class InterpreterStubSection {
             case Long    -> accessHelper.getGpReturn(leaveData);
             case Float   -> Float.intBitsToFloat((int) accessHelper.getFpReturn(leaveData));
             case Double  -> Double.longBitsToDouble(accessHelper.getFpReturn(leaveData));
-            case Object  -> ((Pointer) WordFactory.pointer(accessHelper.getGpReturn(leaveData))).toObject();
+            case Object  -> ((Pointer) Word.pointer(accessHelper.getGpReturn(leaveData))).toObject();
             case Void    -> null;
             default      -> throw VMError.shouldNotReachHereAtRuntime();
         };

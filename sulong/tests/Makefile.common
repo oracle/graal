@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -166,12 +166,6 @@ endif
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.bc: %.dragonegg.ll
-	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
-
-%/gcc_O0.bc: %/gcc_O0.ll
-	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
-
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -passes=mem2reg $<
 
@@ -213,30 +207,9 @@ define OPT_RULES
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
-%.f.dir/$(1).dragonegg.ll: %.f
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_FC) -w -S -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) -J$$(shell dirname $$@) $(CPPFLAGS) $(FFLAGS) -o $$@ $$<
-
-%.f90.dir/$(1).dragonegg.ll: %.f90
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_FC) -w -S -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) -J$$(shell dirname $$@) $(CPPFLAGS) $(FFLAGS) -o $$@ $$<
-
-%.f03.dir/$(1).dragonegg.ll: %.f03
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_FC) -w -S -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) -J$$(shell dirname $$@) $(CPPFLAGS) $(FFLAGS) -o $$@ $$<
-
-%.c.dir/gcc_$(1).ll: %.c
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
-
 %.ll.dir/$(1).bc: %.ll
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(LLVM_LINK) -o $$@ $$^
-
-%.c.dir/gcc_$(1).ll: %.c
-	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
-
 
 %.c.dir/$(1)_OUT.bc: %.c
 	@mkdir -p $$(shell dirname $$@)

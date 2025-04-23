@@ -37,12 +37,12 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
-import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
@@ -53,7 +53,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
 
-final class AlignedChunkRememberedSet {
+public final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {
     }
 
@@ -63,7 +63,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Fold
-    public static UnsignedWord getHeaderSize() {
+    static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getFirstObjectTableLimitOffset();
         if (SerialGCOptions.useCompactingOldGen()) {
             // Compaction needs room for a ObjectMoveInfo structure before the first object.
@@ -74,7 +74,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void enableRememberedSet(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects) {
+    static void enableRememberedSet(HostedByteBufferPointer chunk, int chunkPosition, List<ImageHeapObject> objects) {
         // Completely clean the card table and the first object table.
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
         FirstObjectTable.initializeTable(getFirstObjectTableStart(chunk), getFirstObjectTableSize());
@@ -94,7 +94,7 @@ final class AlignedChunkRememberedSet {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize) {
+    static void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
 
@@ -107,7 +107,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void enableRememberedSet(AlignedHeader chunk) {
+    static void enableRememberedSet(AlignedHeader chunk) {
         // Completely clean the card table and the first object table as further objects may be
         // added later on to this chunk.
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
@@ -124,7 +124,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void clearRememberedSet(AlignedHeader chunk) {
+    static void clearRememberedSet(AlignedHeader chunk) {
         CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
     }
 
@@ -133,7 +133,7 @@ final class AlignedChunkRememberedSet {
      * the post-write barrier.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void dirtyCardForObject(Object object, boolean verifyOnly) {
+    static void dirtyCardForObject(Object object, boolean verifyOnly) {
         Pointer objectPointer = Word.objectToUntrackedPointer(object);
         AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objectPointer);
         Pointer cardTableStart = getCardTableStart(chunk);
@@ -146,7 +146,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
+    static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
@@ -200,7 +200,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
-    private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, GreyToBlackObjectVisitor visitor) {
+    private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, UninterruptibleObjectVisitor visitor) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         UnsignedWord index = CardTable.memoryOffsetToIndex(start.subtract(objectsStart));
@@ -212,7 +212,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    public static boolean verify(AlignedHeader chunk) {
+    static boolean verify(AlignedHeader chunk) {
         boolean success = true;
         success &= CardTable.verify(getCardTableStart(chunk), getCardTableEnd(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
         success &= FirstObjectTable.verify(getFirstObjectTableStart(chunk), AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getTopPointer(chunk));
@@ -242,7 +242,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Fold
-    static UnsignedWord getFirstObjectTableSize() {
+    public static UnsignedWord getFirstObjectTableSize() {
         return getCardTableSize();
     }
 
@@ -294,7 +294,7 @@ final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Pointer getFirstObjectTableStart(AlignedHeader chunk) {
+    public static Pointer getFirstObjectTableStart(AlignedHeader chunk) {
         return getFirstObjectTableStart(HeapChunk.asPointer(chunk));
     }
 

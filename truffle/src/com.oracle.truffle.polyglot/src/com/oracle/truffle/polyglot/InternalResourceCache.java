@@ -104,6 +104,7 @@ final class InternalResourceCache {
     private final String id;
     private final String resourceId;
     private final Supplier<InternalResource> resourceFactory;
+    private boolean requiresEagerUnpack;
 
     /**
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
@@ -145,6 +146,9 @@ final class InternalResourceCache {
                     }
                 }
             }
+            if (polyglotEngine.inEnginePreInitialization) {
+                requiresEagerUnpack = true;
+            }
             return result;
         } else {
             throw new IllegalArgumentException("Internal resources are restricted. To enable them, use '-H:+CopyLanguageResources' during the native image build.");
@@ -185,6 +189,14 @@ final class InternalResourceCache {
     void clearCache() {
         owningRoot = null;
         path = null;
+    }
+
+    /**
+     * Returns {@code true} if the resource requires eager installation during pre-initialized
+     * engine patching.
+     */
+    boolean requiresEagerUnpack() {
+        return requiresEagerUnpack;
     }
 
     /**
@@ -326,13 +338,12 @@ final class InternalResourceCache {
      * {@code TruffleBaseFeature#afterImageWrite}.
      */
     static boolean copyResourcesForNativeImage(Path target, String... components) throws IOException {
-        boolean result = false;
-        Collection<LanguageCache> languages;
-        Collection<InstrumentCache> instruments;
-        if (components.length == 0) {
-            languages = LanguageCache.languages().values();
-            instruments = InstrumentCache.load();
-        } else {
+        boolean[] result = {false};
+        Set<String> componentFilter;
+        if (components.length != 0) {
+            componentFilter = new HashSet<>();
+            // Always install engine resources
+            componentFilter.add(PolyglotEngineImpl.ENGINE_ID);
             Set<String> requiredComponentIds = new HashSet<>();
             Collections.addAll(requiredComponentIds, components);
             Set<String> requiredLanguageIds = new HashSet<>(LanguageCache.languages().keySet());
@@ -352,29 +363,26 @@ final class InternalResourceCache {
             for (String requiredLanguageId : requiredLanguageIds) {
                 requiredLanguages.addAll(LanguageCache.computeTransitiveLanguageDependencies(requiredLanguageId));
             }
-            languages = requiredLanguages;
-            Set<InstrumentCache> requiredInstruments = new HashSet<>(InstrumentCache.internalInstruments());
-            InstrumentCache.load().stream().filter((ic) -> requiredInstrumentIds.contains(ic.getId())).forEach(requiredInstruments::add);
-            instruments = requiredInstruments;
+            requiredLanguages.stream().map(LanguageCache::getId).forEach(componentFilter::add);
+            InstrumentCache.internalInstruments().stream().map(InstrumentCache::getId).forEach(componentFilter::add);
+            componentFilter.addAll(requiredInstrumentIds);
+        } else {
+            componentFilter = null;
         }
-        for (LanguageCache language : languages) {
-            for (InternalResourceCache cache : language.getResources()) {
-                result |= cache.copyResourcesForNativeImage(target);
+        walkAllResources((componentId, resources) -> {
+            if (componentFilter == null || componentFilter.contains(componentId)) {
+                for (InternalResourceCache cache : resources) {
+                    result[0] |= cache.copyResourcesForNativeImage(target);
+                }
             }
-        }
-        for (InstrumentCache instrument : instruments) {
-            for (InternalResourceCache cache : instrument.getResources()) {
-                result |= cache.copyResourcesForNativeImage(target);
-            }
-        }
-        // Always install engine resources
-        for (InternalResourceCache cache : getEngineResources()) {
-            result |= cache.copyResourcesForNativeImage(target);
-        }
-        return result;
+        });
+        return result[0];
     }
 
     private boolean copyResourcesForNativeImage(Path target) throws IOException {
+        if (isMissingOptionalResource()) {
+            return false;
+        }
         Path root = findStandaloneResourceRoot(target);
         unlink(root);
         Files.createDirectories(root);
@@ -389,24 +397,17 @@ final class InternalResourceCache {
         }
     }
 
+    private boolean isMissingOptionalResource() {
+        return path == null && resourceFactory instanceof NonExistingResourceSupplier;
+    }
+
     @SuppressWarnings("unused")
-    static void includeResourcesForNativeImage(Path tempDir, BiConsumer<Module, Pair<String, byte[]>> resourceLocationConsumer) throws IOException, NoSuchAlgorithmException {
-        Collection<LanguageCache> languages = LanguageCache.languages().values();
-        Collection<InstrumentCache> instruments = InstrumentCache.load();
-        for (LanguageCache language : languages) {
-            for (InternalResourceCache cache : language.getResources()) {
+    static void includeResourcesForNativeImage(Path tempDir, BiConsumer<Module, Pair<String, byte[]>> resourceLocationConsumer) throws Exception {
+        walkAllResources((componentId, resources) -> {
+            for (InternalResourceCache cache : resources) {
                 cache.includeResourcesForNativeImageImpl(tempDir, resourceLocationConsumer);
             }
-        }
-        for (InstrumentCache instrument : instruments) {
-            for (InternalResourceCache cache : instrument.getResources()) {
-                cache.includeResourcesForNativeImageImpl(tempDir, resourceLocationConsumer);
-            }
-        }
-        // Always install engine resources
-        for (InternalResourceCache cache : getEngineResources()) {
-            cache.includeResourcesForNativeImageImpl(tempDir, resourceLocationConsumer);
-        }
+        });
         useExternalDirectoryInNativeImage = false;
     }
 
@@ -423,6 +424,9 @@ final class InternalResourceCache {
     }
 
     private void includeResourcesForNativeImageImpl(Path tempDir, BiConsumer<Module, Pair<String, byte[]>> resourceLocationConsumer) throws IOException, NoSuchAlgorithmException {
+        if (isMissingOptionalResource()) {
+            return;
+        }
         Path root = findStandaloneResourceRoot(tempDir);
         unlink(root);
         Files.createDirectories(root);
@@ -449,6 +453,30 @@ final class InternalResourceCache {
         aggregatedFileListHash = bytesToHex(encodedHash);
         aggregatedFileListResource = Path.of("META-INF", "resources").resolve(tempDir.relativize(root)).resolve("filelist." + aggregatedFileListHash);
         resourceLocationConsumer.accept(resource.getClass().getModule(), Pair.create(getResourceName(aggregatedFileListResource), fileList.toString().getBytes()));
+    }
+
+    @FunctionalInterface
+    interface ResourcesVisitor<T extends Throwable> {
+        void visit(String componentId, Collection<InternalResourceCache> resources) throws T;
+    }
+
+    static <T extends Throwable> void walkAllResources(ResourcesVisitor<T> consumer) throws T {
+        for (LanguageCache language : LanguageCache.languages().values()) {
+            Collection<InternalResourceCache> resources = language.getResources();
+            if (!resources.isEmpty()) {
+                consumer.visit(language.getId(), language.getResources());
+            }
+        }
+        for (InstrumentCache instrument : InstrumentCache.load()) {
+            Collection<InternalResourceCache> resources = instrument.getResources();
+            if (!resources.isEmpty()) {
+                consumer.visit(instrument.getId(), resources);
+            }
+        }
+        Collection<InternalResourceCache> engineResources = InternalResourceCache.getEngineResources();
+        if (!engineResources.isEmpty()) {
+            consumer.visit(PolyglotEngineImpl.ENGINE_ID, engineResources);
+        }
     }
 
     static Collection<String> getEngineResourceIds() {
@@ -583,6 +611,20 @@ final class InternalResourceCache {
                 }
             }
             return res;
+        }
+    }
+
+    static Supplier<InternalResource> nonExistingResource(String component, String resource) {
+        return new NonExistingResourceSupplier(component, resource);
+    }
+
+    private record NonExistingResourceSupplier(String component, String resource) implements Supplier<InternalResource> {
+
+        @Override
+        public InternalResource get() {
+            throw new IllegalStateException(String.format("Optional resource '%s' for component '%s' is missing. " +
+                            "Use `-Dpolyglot.engine.resourcePath.%s.%s=<path>` to configure a path to the internal resource root or include resource jar file to the module-path.",
+                            resource, component, component, resource));
         }
     }
 }

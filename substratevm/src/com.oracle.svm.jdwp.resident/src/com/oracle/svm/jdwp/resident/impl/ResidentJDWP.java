@@ -24,6 +24,18 @@
  */
 package com.oracle.svm.jdwp.resident.impl;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.OptionalInt;
+import java.util.Set;
+
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordBase;
+
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
@@ -31,13 +43,13 @@ import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
-import com.oracle.svm.interpreter.DebuggerSupport;
-import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.interpreter.DebuggerSupport;
 import com.oracle.svm.interpreter.EspressoFrame;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.InterpreterToVM;
@@ -46,6 +58,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.jdwp.bridge.ErrorCode;
 import com.oracle.svm.jdwp.bridge.FrameId;
@@ -58,10 +71,12 @@ import com.oracle.svm.jdwp.bridge.SymbolicRefs;
 import com.oracle.svm.jdwp.bridge.TagConstants;
 import com.oracle.svm.jdwp.bridge.TypeTag;
 import com.oracle.svm.jdwp.bridge.WritablePacket;
+import com.oracle.svm.jdwp.resident.ClassUtils;
 import com.oracle.svm.jdwp.resident.JDWPBridgeImpl;
 import com.oracle.svm.jdwp.resident.ThreadStartDeathSupport;
-import com.oracle.svm.jdwp.resident.ClassUtils;
 import com.oracle.svm.jdwp.resident.api.StackframeDescriptor;
+
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -69,18 +84,6 @@ import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Set;
 
 public final class ResidentJDWP implements JDWP {
 
@@ -1095,11 +1098,11 @@ public final class ResidentJDWP implements JDWP {
             for (int i = firstIndex; i - firstIndex < length; ++i) {
                 switch (InterpreterToVM.wordJavaKind()) {
                     case Int -> {
-                        WordBase value = WordFactory.signed(reader.readInt());
+                        WordBase value = Word.signed(reader.readInt());
                         InterpreterToVM.setArrayWord(value, i, (WordBase[]) array);
                     }
                     case Long -> {
-                        WordBase value = WordFactory.signed(reader.readLong());
+                        WordBase value = Word.signed(reader.readLong());
                         InterpreterToVM.setArrayWord(value, i, (WordBase[]) array);
                     }
                     default ->
@@ -1239,7 +1242,7 @@ public final class ResidentJDWP implements JDWP {
                 if (method.isStatic()) {
                     thisObject = null;
                 } else {
-                    DeoptState deoptState = new DeoptState(stackframeDescriptor.getStackPointer(), WordFactory.zero());
+                    DeoptState deoptState = new DeoptState(stackframeDescriptor.getStackPointer(), Word.zero());
                     JavaConstant javaConstant = deoptState.readLocalVariable(0, frameInfoQueryResult);
                     thisObject = SubstrateObjectConstant.asObject(javaConstant);
                 }
@@ -1321,8 +1324,8 @@ public final class ResidentJDWP implements JDWP {
             assert typeOrReceiver instanceof InterpreterResolvedJavaType;
             // typeOrReceiver is ignored, all static fields are grouped together.
             receiver = (fieldKind.isPrimitive() || field.getType().isWordType())
-                            ? StaticFieldsSupport.getStaticPrimitiveFields()
-                            : StaticFieldsSupport.getStaticObjectFields();
+                            ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
+                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
             receiver = typeOrReceiver;
             assert receiver != null;
@@ -1551,7 +1554,7 @@ public final class ResidentJDWP implements JDWP {
             throw JDWPException.raise(ErrorCode.ABSENT_INFORMATION);
         }
 
-        IsolateThread targetThread = WordFactory.zero();
+        IsolateThread targetThread = Word.zero();
         DeoptState deoptState = new DeoptState(stackPointer, targetThread);
         JavaConstant javaConstant = deoptState.readLocalVariable(slot, frame);
 
@@ -1761,8 +1764,8 @@ public final class ResidentJDWP implements JDWP {
             assert typeOrReceiver instanceof InterpreterResolvedJavaType;
             // typeOrReceiver is ignored, all static fields are grouped together.
             receiver = (fieldKind.isPrimitive() || field.getType().isWordType())
-                            ? StaticFieldsSupport.getStaticPrimitiveFields()
-                            : StaticFieldsSupport.getStaticObjectFields();
+                            ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
+                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
             receiver = typeOrReceiver;
             assert receiver != null;
@@ -1778,9 +1781,9 @@ public final class ResidentJDWP implements JDWP {
         if (field.getType().isWordType()) {
             switch (InterpreterToVM.wordJavaKind()) {
                 case Int ->
-                    InterpreterToVM.setFieldWord(WordFactory.signed(reader.readInt()), receiver, field);
+                    InterpreterToVM.setFieldWord(Word.signed(reader.readInt()), receiver, field);
                 case Long ->
-                    InterpreterToVM.setFieldWord(WordFactory.signed(reader.readLong()), receiver, field);
+                    InterpreterToVM.setFieldWord(Word.signed(reader.readLong()), receiver, field);
                 default ->
                     throw VMError.shouldNotReachHere("Unexpected word kind " + InterpreterToVM.wordJavaKind());
             }

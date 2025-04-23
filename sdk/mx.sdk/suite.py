@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.36.0",
+  "mxversion": "7.45.0",
   "name" : "sdk",
   "version" : "25.0.0",
   "release" : False,
@@ -127,34 +127,34 @@ suite = {
     },
     "JLINE_READER": {
       "moduleName": "org.jline.reader",
-      "digest": "sha512:777733fa5d19f34386e4ff4ac578fb8ef3bbe160db5755dc551a5ec085dd3d966d74525be0e2d0c7bab222f03e09e28190cb5b263a92c63c6683a09332accf2e",
-      "sourceDigest": "sha512:a0f4c316c46f06ea30a6c6819d5c129dccc74b43fd8ba0380646feec89b61d0465a052645ca699211aab931daa1216b26de064ca2be9e16dfe842d2fd2a91404",
+      "digest": "sha512:dafd45af79a9874d7b41d146d37386da605e19ec2bf9c8989f121f9403902ce60ca9708fb016afed785186935d2dddd4b5b3304aca234c926b0e4368607b11ed",
+      "sourceDigest": "sha512:f8ec62508f3e83278156b7bd14d5daded72976b10da63adac53be2f7b1c5e6c69340fac5b2f10ffe7e92d86b27425beee73e5d5b3c775e72595b47158bfbed1b",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-reader",
-        "version": "3.23.0",
+        "version": "3.28.0",
       },
     },
 
     "JLINE_TERMINAL": {
       "moduleName": "org.jline.terminal",
-      "digest": "sha512:d0d96389d750d6de82f4d8a29fc3756c0f28c19f520e761db69c6668b1e3fc9c2add30aee86ab7ac10426f2c075a63a0e5f7537096591fe585d8836f25c692ed",
-      "sourceDigest": "sha512:931de13f023b9d15751c7e5b76ec9ad7811df19e7254146875ebd7e6d68e69764b916eef045ea743bd6d21515badeb1ddb795504d71ff1cad7e1b5889486c500",
+      "digest": "sha512:abe0ad0303e5eb81b549301dfdcf34aace14495240816f14302d193296c7a8be31488e468d18a215976b8e4e8fa29f72d830e492eed7d4a6f9f04c81a6e36c3c",
+      "sourceDigest": "sha512:cb70ad2bee2f7713fa5358c16fc7c53974c862e33957d3ec809468abcbc0b20de8546ecb41955dcc2003e702e5469069fd856a1ce51b132e29d0286beec4fe7e",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-terminal",
-        "version": "3.23.0",
+        "version": "3.28.0",
       },
     },
 
     "JLINE_BUILTINS": {
       "moduleName": "org.jline.builtins",
-      "digest": "sha512:166920f4252b4d6618a29aabc0e501930807c84df53cc727d238005aefc453b7c915345daa6653d281077e9dc25d3eb2f5a13ac9ceee1e230d9fd83b38113e32",
-      "sourceDigest": "sha512:9b1c2cf976044810ea12e7a4c2b9462b33ce36c36716a2029b171dd3f4151d1852320d3b08f21bf5e86f694f85d77ccd71bbef679764dfa393516f6e0e0bfa32",
+      "digest": "sha512:189d893405170a3edc624a6b822a8a394a2f8b623c23aed9e015d4b018b232307408b6038322719155fc7da7e9c04a9bb0a76c8521f49dd86a5f84ea3880acb6",
+      "sourceDigest": "sha512:33f06d7e2bb232ce413d8cf7234bdb416c3a6770dcf18a5c17e3889887b287378ff5fc531758143383c3f50b56613e5bf802b5c49a2a09b748c804568e0565b8",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-builtins",
-        "version": "3.23.0",
+        "version": "3.28.0",
       },
     },
     "LLVM_ORG" : {
@@ -301,6 +301,12 @@ suite = {
       "digest" : "sha512:3707b0aee8b1f53828832a85d118981c9b0919c7c1f26dc86fd368d8092857a0b5b75cb5427fee791b0ea89bb7b60a66e2130f55a037c8b082235d3035d9e9cf",
     },
 
+    "DACAPO_23.11_MR2_chopin" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-23.11-MR2-chopin.zip"],
+      "digest" : "sha512:1399c9a743d4a52202372d7a5acef7e5d90181b79194484056cb716ba0284224c9bd7a7620b6db3a7a3c4ccdb8427ee4843fca4d23e37c0b13ada6ce9f041b6f",
+      "packedResource": True,
+    },
+
     "DACAPO_SCALA" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "digest" : "sha512:9a3908f3a0f2937bbc7edcd78f7e7e229bea8dee566d5f2d922bd4dc3c5b02cf97de294e479200372ff90bfbdf80e88dc7fc9fda9cb294088346e4a5ff28893e",
@@ -409,7 +415,7 @@ suite = {
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "workingSets" : "API,SDK",
     },
 
@@ -424,6 +430,8 @@ suite = {
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.nativeimage" : {
@@ -436,6 +444,18 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
+
+    # Native Image API extensions for libgraal.
+    "org.graalvm.nativeimage.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:NATIVEIMAGE"
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "21+"
+    },
+
     "com.oracle.svm.core.annotate" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -457,6 +477,8 @@ suite = {
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -487,6 +509,8 @@ suite = {
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.polyglot.tck" : {
       "subDir" : "src",
@@ -517,6 +541,8 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.home" : {
       "subDir" : "src",
@@ -540,6 +566,8 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.jniutils" : {
       "subDir" : "src",
@@ -658,6 +686,12 @@ suite = {
             "JLineNativeLoader.initialize\\(\\);": "",
             "return JLineLibrary.newFileDescriptor\\(fd\\);": "throw new RuntimeException(\"not implemented\");",
           },
+          "org/jline/terminal/impl/exec/ExecTerminalProvider.java": {
+            "import org.graalvm.shadowed.org.jline.nativ.JLineLibrary;": "",
+            "import org.graalvm.shadowed.org.jline.nativ.JLineNativeLoader;": "",
+            "JLineNativeLoader.initialize\\(\\);": "",
+            "return JLineLibrary.newRedirectPipe\\(fd\\);": "throw new RuntimeException(\"not implemented\");",
+          },
           # Hard-coded list of terminal providers replaces a generic reflection based mechanism that
           # looks up the provider class names in the resources
           "org/jline/terminal/spi/TerminalProvider.java": {
@@ -703,6 +737,16 @@ suite = {
       ],
       "graalCompilerSourceEdition": "ignore",
     },
+    "org.graalvm.resourcecopy" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "license" : "UPL",
+      "dependencies": [
+        "sdk:POLYGLOT",
+      ],
+      "graalCompilerSourceEdition": "ignore",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -740,6 +784,10 @@ suite = {
     "EPL-2.0": {
       "name": "Eclipse Public License 2.0",
       "url": "https://opensource.org/licenses/EPL-2.0",
+    },
+    "Oracle Proprietary": {
+      "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
+      "url": "http://www.oracle.com/us/legal/copyright/index.html"
     },
 },
 
@@ -820,6 +868,37 @@ suite = {
       "description" : "A framework that allows to customize native image generation.",
       "maven": {
           "tag": ["default", "public"],
+      },
+    },
+
+    "NATIVEIMAGE_LIBGRAAL" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativeimage.libgraal",
+      ],
+      "distDependencies" : ["NATIVEIMAGE"],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.nativeimage.libgraal",
+        "requires" : [
+          "transitive org.graalvm.nativeimage",
+        ],
+        "exports" : [
+          "org.graalvm.nativeimage.libgraal",
+          "org.graalvm.nativeimage.libgraal.hosted",
+          "org.graalvm.nativeimage.libgraal.impl to org.graalvm.nativeimage.builder",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "Native Image API extensions for libgraal.",
+      "maven": {
+        # Explicitly set the artifactId here instead of relying on mx automatically
+        # deriving it from the distribution name. This also makes the maven
+        # coordinates stable in case of the (unlikely) event that the distribution
+        # is renamed.
+        "artifactId": "nativeimage-libgraal",
+        "tag": ["default", "public"],
       },
     },
 
@@ -992,6 +1071,7 @@ suite = {
           "org.graalvm.shadowed.org.jline.reader.impl.history",
           "org.graalvm.shadowed.org.jline.terminal",
           "org.graalvm.shadowed.org.jline.terminal.impl",
+          "org.graalvm.shadowed.org.jline.terminal.impl.exec",
           "org.graalvm.shadowed.org.jline.terminal.spi",
           "org.graalvm.shadowed.org.jline.utils",
         ],
@@ -1124,6 +1204,17 @@ suite = {
       },
       "maven": False,
       "testDistribution" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+    "RESOURCECOPY" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.resourcecopy"
+      ],
+      "distDependencies" : [
+        "POLYGLOT",
+      ],
+      "maven": False,
       "graalCompilerSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN": {
@@ -1298,7 +1389,7 @@ CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
 AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
 CFLAGS=
 CXXFLAGS=
-LDFLAGS=
+LDFLAGS=-fuse-ld=lld
 '''
             },
           },
@@ -1338,6 +1429,7 @@ LDFLAGS=
       "platformDependent" : True,
       "native_toolchain" : {
         "kind": "ninja",
+        "compiler": "gcc",
         "target": {
           # host os/arch
           "libc": "musl",
@@ -1400,6 +1492,7 @@ LDFLAGS=
       "platformDependent" : True,
       "native_toolchain" : {
         "kind": "cmake",
+        "compiler": "gcc",
         "target": {
           # host os/arch
           "libc": "musl",

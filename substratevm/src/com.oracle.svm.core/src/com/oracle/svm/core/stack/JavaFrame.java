@@ -53,6 +53,12 @@ public interface JavaFrame extends SimpleCodeInfoQueryResult {
     void setIP(CodePointer ip);
 
     @RawField
+    boolean getIsPendingLazyDeopt();
+
+    @RawField
+    void setIsPendingLazyDeopt(boolean isPendingLazyDeopt);
+
+    @RawField
     UntetheredCodeInfo getIPCodeInfo();
 
     @RawField

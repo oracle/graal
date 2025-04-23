@@ -294,7 +294,7 @@ final class TruffleFromLibGraalEntryPoints {
 
     @TruffleFromLibGraal(CompilableToString)
     static String compilableToString(Object compilable) {
-        return ((TruffleCompilable) compilable).toString();
+        return compilable.toString();
     }
 
     @TruffleFromLibGraal(GetCompilableName)
@@ -340,6 +340,10 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(OnCompilationFailed)
     static void onCompilationFailed(Object compilable, Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         ((TruffleCompilable) compilable).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
+    }
+
+    static void onCompilationSuccess(Object compilable, int compilationTier, boolean lastTier) {
+        ((TruffleCompilable) compilable).onCompilationSuccess(compilationTier, lastTier);
     }
 
     @TruffleFromLibGraal(OnSuccess)

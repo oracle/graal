@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -309,7 +310,10 @@ public class FeatureImpl {
 
         /**
          * Register a callback that is executed when an object of the specified type or any of its
-         * subtypes is marked as reachable.
+         * subtypes is marked as reachable. The callback is executed before the object is added to
+         * the shadow heap. A callback may throw an {@link UnsupportedFeatureException} to reject an
+         * object based on specific validation rules. This will stop the image build and report how
+         * the object was reached.
          *
          * @since 24.0
          */
@@ -366,7 +370,7 @@ public class FeatureImpl {
             this.nativeLibraries = nativeLibraries;
             this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
             this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
-            this.classForNameSupport = ClassForNameSupport.singleton();
+            this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -742,6 +746,10 @@ public class FeatureImpl {
 
         public AbstractImage getImage() {
             return image;
+        }
+
+        public String getOutputFilename() {
+            return image.getImageKind().getOutputFilename(imageName);
         }
 
         public RuntimeConfiguration getRuntimeConfiguration() {

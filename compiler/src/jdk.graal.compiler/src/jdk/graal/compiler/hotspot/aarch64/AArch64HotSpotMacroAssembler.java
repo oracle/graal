@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,17 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
     private final GraalHotSpotVMConfig config;
     private final Register heapBaseRegister;
 
+    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(AArch64.rscratch1), new ScratchRegister(AArch64.rscratch2)};
+
     public AArch64HotSpotMacroAssembler(TargetDescription target, GraalHotSpotVMConfig config, Register heapBaseRegister) {
         super(target);
         this.config = config;
         this.heapBaseRegister = heapBaseRegister;
+    }
+
+    @Override
+    protected ScratchRegister[] getScratchRegisters() {
+        return scratchRegister;
     }
 
     @Override
@@ -116,14 +123,14 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
 
     public void verifyHeapBase() {
         if (heapBaseRegister != null && config.narrowOopBase != 0) {
-            try (AArch64MacroAssembler.ScratchRegister sc1 = getScratchRegister()) {
+            try (AArch64MacroAssembler.ScratchRegister sc = getScratchRegister()) {
                 Label skip = new Label();
-                Register scratch1 = sc1.getRegister();
-                mov(scratch1, config.narrowOopBase);
-                cmp(64, heapBaseRegister, scratch1);
+                Register scratch = sc.getRegister();
+                mov(scratch, config.narrowOopBase);
+                cmp(64, heapBaseRegister, scratch);
                 branchConditionally(AArch64Assembler.ConditionFlag.EQ, skip);
                 AArch64Address base = makeAddress(64, heapBaseRegister, 0);
-                ldr(64, scratch1, base);
+                ldr(64, scratch, base);
                 bind(skip);
             }
         }
@@ -133,5 +140,15 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
         GraalError.guarantee(config.useCompactObjectHeaders, "Load class pointer from markWord only when UseCompactObjectHeaders is on");
         ldr(64, result, makeAddress(64, receiver, config.markOffset));
         lsr(64, result, result, config.markWordKlassShift);
+    }
+
+    @Override
+    public boolean useLSE() {
+        return config.useLSE;
+    }
+
+    @Override
+    public boolean avoidUnalignedAccesses() {
+        return config.avoidUnalignedAccesses;
     }
 }

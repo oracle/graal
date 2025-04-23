@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.driver.metainf;
 
-import jdk.graal.compiler.options.OptionKey;
-
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
+
+import jdk.graal.compiler.options.OptionKey;
 
 public enum MetaInfFileType {
     Properties(null, NativeImageMetaInfWalker.nativeImagePropertiesFilename),

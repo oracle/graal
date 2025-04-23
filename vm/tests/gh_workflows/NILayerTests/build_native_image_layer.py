@@ -96,7 +96,7 @@ def build_layers(native_image_path, coordinates, delimiter):
         currDir = os.getcwd()
         group_id, artifact_id, version = gav.rstrip().split(':')
 
-        subprocess.run(['mvn', 'dependency:get', f'-Dartifact={gav}', '-Dtransitive=true'])
+        subprocess.run(['mvn', '-B', 'dependency:get', f'-Dartifact={gav}', '-Dtransitive=true'])
 
         library_path = os.path.join(Path.home(), '.m2', 'repository', group_id.replace('.','/'), artifact_id, version)
         jar_path = os.path.join(library_path, f'{artifact_id}-{version}.jar')
@@ -114,10 +114,10 @@ def build_layers(native_image_path, coordinates, delimiter):
                     '-J-ea', '-J-esa',
                     '--no-fallback',
                     '-cp' ,f'{jar_path}:{dependency_path}',
-                    '-o', f'{artifact_id}-{version}'
                     '-H:+UnlockExperimentalVMOptions',
                     f'-H:LayerCreate=layer.nil,path={jar_path}',
                     '-H:+ReportExceptionStackTraces',
+                    '-o', f'{artifact_id}-{version}'
             ]
             print(f'Command: {' '.join(command)}')
             subprocess.run(command, check=True)

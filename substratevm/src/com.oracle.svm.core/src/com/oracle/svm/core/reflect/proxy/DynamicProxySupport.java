@@ -40,6 +40,7 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -73,7 +74,17 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(interfaces);
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                /*
+                 * The hash code cannot be computed using the interfaces' hash code in Layered Image
+                 * because the hash code of classes cannot be injected in the application layer.
+                 * This causes the internal structure of the proxyCache to be unusable in the
+                 * application layer.
+                 */
+                return Arrays.hashCode(Arrays.stream(interfaces).map(Class::getName).toArray());
+            } else {
+                return Arrays.hashCode(interfaces);
+            }
         }
 
         @Override
@@ -82,7 +93,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create();
+    private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create("proxyCache");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicProxySupport() {

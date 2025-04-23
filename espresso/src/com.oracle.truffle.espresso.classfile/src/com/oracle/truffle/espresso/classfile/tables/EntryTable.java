@@ -26,10 +26,12 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     private final HashMap<Symbol<Name>, T> entries = new HashMap<>();
@@ -49,10 +51,11 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         }
     }
 
-    @SuppressWarnings({"try", "unchecked", "rawtypes"})
-    public Symbol<Name>[] getKeys() {
+    @SuppressWarnings("try")
+    @TruffleBoundary
+    public void collectEntries(BiConsumer<Symbol<Name>, T> consumer) {
         try (BlockLock block = read()) {
-            return entries.keySet().toArray(new Symbol[entries.size()]);
+            entries.forEach(consumer::accept);
         }
     }
 

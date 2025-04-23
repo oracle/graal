@@ -92,7 +92,7 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
             "license": "UPL",
         },
 
@@ -164,7 +164,7 @@ suite = {
             "jacoco" : "include",
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
         },
 
         "com.oracle.truffle.espresso.resources.libs": {
@@ -228,6 +228,27 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso.jdwp",
+        },
+
+        "com.oracle.truffle.espresso.jvmci": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "requires": [
+                "jdk.internal.vm.ci",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.runtime",
+                ],
+            },
+            "javaCompliance": "8+",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         # Native library for Espresso native interface
@@ -340,17 +361,6 @@ suite = {
                     },
                 }
             },
-        },
-
-        "com.oracle.truffle.espresso.dacapo": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "sdk:DACAPO_SCALA",
-            ],
-            "javaCompliance": "8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-            "testProject" : True,
         },
 
         "com.oracle.truffle.espresso.shadowed.asm" : {
@@ -501,6 +511,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
+                                "dependency:espresso:ESPRESSO_JVMCI",
                             ],
                         },
                     },
@@ -515,6 +526,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
+                                "dependency:espresso:ESPRESSO_JVMCI",
                             ],
                         },
                     },
@@ -529,6 +541,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
+                                "dependency:espresso:ESPRESSO_JVMCI",
                             ],
                         },
                     },
@@ -555,6 +568,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
+                                "dependency:espresso:ESPRESSO_JVMCI/*",
                             ],
                         },
                     },
@@ -571,6 +585,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
+                                "dependency:espresso:ESPRESSO_JVMCI/*",
                             ],
                         },
                     },
@@ -587,6 +602,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
+                                "dependency:espresso:ESPRESSO_JVMCI/*",
                             ],
                         },
                     },
@@ -665,31 +681,18 @@ suite = {
             },
         },
 
-        "DACAPO_SCALA_WARMUP": {
+        "ESPRESSO_JVMCI": {
             "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.espresso.dacapo",
-                "sdk:DACAPO_SCALA",
-            ],
-            "testDistribution": True,
-            "manifestEntries" : {
-                    "Manifest-Version": "1.0",
-                    "Build-Timestamp": "2012-02-16T11:12:52",
-                    "Implementation-Title": "Scala Benchmark Suite",
-                    "Implementation-Version": "0.1.0-SNAPSHOT",
-                    "Built-By": "sewe",
-                    "Specification-Vendor": "Technische Universitat Darmstadt",
-                    "Created-By": "Apache Maven 3.0.4",
-                    "Implementation-Vendor": "Technische Universitat Darmstadt",
-                    "Build-Number": "02fbc0d55f60",
-                    "Implementation-Vendor-Id": "org.scalabench.benchmarks",
-                    "Build-Jdk": "1.6.0_26",
-                    "Specification-Title": "Scala Benchmark Suite",
-                    "Specification-Version": "0.1.0-SNAPSHOT",
-                    "Main-Class": "Harness",
-                    "Archiver-Version": "Plexus Archiver",
+            "moduleInfo": {
+                "name": "jdk.internal.vm.ci.espresso",
+                "exports": [
+                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso",
+                ]
             },
-            "description": "Scala DaCapo with WallTime callback",
+            "dependencies": [
+                "com.oracle.truffle.espresso.jvmci",
+            ],
+            "description": "JVMCI implementation for Espresso",
             "maven": False,
         },
     }

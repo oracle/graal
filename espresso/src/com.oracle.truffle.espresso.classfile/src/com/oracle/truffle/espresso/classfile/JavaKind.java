@@ -37,10 +37,10 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Void
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.descriptors.ErrorUtil;
-import com.oracle.truffle.espresso.classfile.descriptors.StaticSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,
@@ -105,8 +105,8 @@ public enum JavaKind {
         this.primitiveJavaClass = primitiveJavaClass;
         this.boxedJavaClass = boxedJavaClass;
         this.basicType = basicType;
-        this.type = (primitiveJavaClass != null) ? StaticSymbols.putType("" + typeChar) : null;
-        this.name = StaticSymbols.putName(javaName);
+        this.type = (primitiveJavaClass != null) ? ParserSymbols.SYMBOLS.putType("" + typeChar) : null;
+        this.name = ParserSymbols.SYMBOLS.putName(javaName);
         this.unwrapMethodName = (primitiveJavaClass != null) ? javaName + "Value" : null;
         this.unwrapMethodDesc = (primitiveJavaClass != null) ? "()" + typeChar : null;
         this.wrapperValueOfDesc = (primitiveJavaClass != null) ? "(" + typeChar + ")Ljava/lang/" + boxedJavaClass.getSimpleName() + ";" : null;
@@ -248,12 +248,26 @@ public enum JavaKind {
     }
 
     /**
-     * Returns the kind from the character describing a primitive or void.
+     * Returns the kind from the character describing a primitive or void. An exception is thrown if
+     * the character doesn't correspond to any primitive or void type.
      *
      * @param ch the character for a void or primitive kind as returned by {@link #getTypeChar()}
-     * @return the kind
      */
     public static JavaKind fromPrimitiveOrVoidTypeChar(char ch) {
+        JavaKind kind = fromPrimitiveOrVoidTypeCharOrNull(ch);
+        if (kind == null) {
+            throw new IllegalArgumentException(invalidTypeCharMessage(ch));
+        }
+        return kind;
+    }
+
+    /**
+     * Returns the kind from the character describing a primitive or void. If the character doesn't
+     * correspond to any primitive or void type, null is returned.
+     *
+     * @param ch the character for a void or primitive kind as returned by {@link #getTypeChar()}
+     */
+    public static JavaKind fromPrimitiveOrVoidTypeCharOrNull(char ch) {
         return switch (ch) {
             case 'Z' -> Boolean;
             case 'C' -> Char;
@@ -264,8 +278,7 @@ public enum JavaKind {
             case 'I' -> Int;
             case 'J' -> Long;
             case 'V' -> Void;
-            default ->
-                throw new IllegalStateException(invalidTypeCharMessage(ch));
+            default -> null;
         };
     }
 

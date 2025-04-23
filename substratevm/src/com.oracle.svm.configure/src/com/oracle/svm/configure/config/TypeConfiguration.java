@@ -27,6 +27,7 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,14 +35,14 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.configure.ConditionalElement;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -108,7 +109,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     public void add(ConfigurationType type) {
         ConfigurationType previous = types.putIfAbsent(new ConditionalElement<>(type.getCondition(), type.getTypeDescriptor()), type);
         if (previous != null && previous != type) {
-            VMError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
+            throw new IllegalArgumentException("Cannot replace existing type " + previous + " with " + type);
         }
     }
 
@@ -154,8 +155,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     @Override
-    public ConfigurationParser createParser(boolean strictMetadata) {
-        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), true, false, false);
+    public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
+        return ReflectionConfigurationParser.create(combinedFileKey, combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
-@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_UpcallLinker {
 
     @Substitute
@@ -48,7 +48,7 @@ final class Target_jdk_internal_foreign_abi_UpcallLinker {
     }
 }
 
-@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", innerClass = "CallRegs", onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", innerClass = "CallRegs", onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs {
     @Alias private VMStorage[] argRegs;
     @Alias private VMStorage[] retRegs;

@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.jar.JarOutputStream;
 
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageGenerator;
@@ -49,9 +50,6 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         Path fileName = layerFile.getFileName();
         if (fileName == null || !fileName.toString().endsWith(LAYER_FILE_EXTENSION)) {
             throw UserError.abort("The given layer file " + layerFile + " must end with '" + LAYER_FILE_EXTENSION + "'.");
-        }
-        if (layerFile.getParent() != null) {
-            throw UserError.abort("The given layer file " + layerFile + " must be a simple file name, i.e., no path separators are allowed.");
         }
         Path layerFilePath = layerFile.toAbsolutePath();
         if (Files.isDirectory(layerFilePath)) {
@@ -88,6 +86,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
             // copy the properties file to the jar
             Path propertiesFile = imageBuilderOutputDir.resolve(layerPropertiesFileName);
             archiveSupport.addFileToJar(imageBuilderOutputDir, propertiesFile, outputLayerLocation, jarOutStream);
+            BuildArtifacts.singleton().add(ArtifactType.IMAGE_LAYER_BUNDLE, outputLayerLocation);
         } catch (IOException e) {
             throw UserError.abort("Failed to create Native Image Layer file " + outputLayerLocation.getFileName(), e);
         }

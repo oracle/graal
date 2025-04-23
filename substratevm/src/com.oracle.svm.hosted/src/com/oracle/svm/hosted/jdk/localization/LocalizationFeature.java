@@ -84,6 +84,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LocaleUtil;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -385,7 +386,7 @@ public class LocalizationFeature implements InternalFeature {
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
-            Locale locale = LocalizationSupport.parseLocaleFromTag(tag);
+            Locale locale = LocaleUtil.parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
             } else {
@@ -548,7 +549,7 @@ public class LocalizationFeature implements InternalFeature {
         int splitIndex = input.indexOf('_');
         boolean specificLocaleRequested = splitIndex != -1;
         if (specificLocaleRequested) {
-            Locale locale = splitIndex + 1 < input.length() ? LocalizationSupport.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
+            Locale locale = splitIndex + 1 < input.length() ? LocaleUtil.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
             if (locale != null) {
                 /* Get rid of locale specific suffix. */
                 String baseName = input.substring(0, splitIndex);
@@ -564,6 +565,10 @@ public class LocalizationFeature implements InternalFeature {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareClassResourceBundle(String basename, String className) {
         Class<?> bundleClass = findClassByName.apply(className);
+        if (bundleClass == null) {
+            /* Unknown classes are ignored */
+            return;
+        }
         UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
         trace("Adding class based resource bundle: " + className + " " + bundleClass);
         support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false);

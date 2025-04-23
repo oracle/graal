@@ -42,7 +42,6 @@ package com.oracle.truffle.api.instrumentation;
 
 import static com.oracle.truffle.api.instrumentation.InstrumentAccessor.ENGINE;
 
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
@@ -70,7 +69,6 @@ import java.util.function.Supplier;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -144,25 +142,16 @@ final class InstrumentationHandler {
      * Fast lookup of instrumenter instances based on a key provided by the accessor.
      */
     final ConcurrentHashMap<Object, AbstractInstrumenter> instrumenterMap = new ConcurrentHashMap<>();
-
-    private DispatchOutputStream out;   // effectively final
-    private DispatchOutputStream err;   // effectively final
-    private InputStream in;             // effectively final
-    private MessageTransport messageInterceptor; // effectively final
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
     final EngineInstrumenter engineInstrumenter;
 
-    InstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
+    InstrumentationHandler(Object polyglotEngine) {
         this.polyglotEngine = polyglotEngine;
-        this.out = out;
-        this.err = err;
-        this.in = in;
-        this.messageInterceptor = messageInterceptor;
         this.engineInstrumenter = new EngineInstrumenter();
     }
 
-    Object getSourceVM() {
+    Object getEngine() {
         return polyglotEngine;
     }
 
@@ -231,7 +220,7 @@ final class InstrumentationHandler {
             trace("Initialize instrument class %s %n", instrumentClassName);
         }
 
-        Env env = new Env(polyglotInstrument, out, err, in, messageInterceptor);
+        Env env = new Env(polyglotInstrument);
         TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
         if (instrument.locals.contextLocals == null) {
             instrument.locals.contextLocals = Collections.emptyList();
@@ -301,8 +290,9 @@ final class InstrumentationHandler {
             sourceSectionBindings.removeAll(disposedSourceSectionBindings);
             sourcesLoaded.clearForDisposedInstrumenter(disposedInstrumenter);
             sourcesExecuted.clearForDisposedInstrumenter(disposedInstrumenter);
-            disposeOutputBindingsBulk(out, outputStdBindings);
-            disposeOutputBindingsBulk(err, outputErrBindings);
+
+            disposeOutputBindingsBulk(out(), outputStdBindings);
+            disposeOutputBindingsBulk(err(), outputErrBindings);
 
             synchronized (threadsActivationBindings) {
                 Collection<EventBinding<?>> disposedThreadsActivationBindings = filterBindingsForInstrumenter(threadsActivationBindings, disposedInstrumenter);
@@ -315,6 +305,14 @@ final class InstrumentationHandler {
         if (TRACE) {
             trace("END: Disposed instrumenter %n", key);
         }
+    }
+
+    private DispatchOutputStream err() {
+        return InstrumentAccessor.ENGINE.getEngineErr(polyglotEngine);
+    }
+
+    private DispatchOutputStream out() {
+        return InstrumentAccessor.ENGINE.getEngineOut(polyglotEngine);
     }
 
     private static void setDisposingBindingsBulk(Collection<EventBinding<?>> list) {
@@ -464,10 +462,10 @@ final class InstrumentationHandler {
 
         if (errorOutput) {
             this.outputErrBindings.add(binding);
-            InstrumentAccessor.engineAccess().attachOutputConsumer(this.err, binding.getElement());
+            InstrumentAccessor.engineAccess().attachOutputConsumer(this.err(), binding.getElement());
         } else {
             this.outputStdBindings.add(binding);
-            InstrumentAccessor.engineAccess().attachOutputConsumer(this.out, binding.getElement());
+            InstrumentAccessor.engineAccess().attachOutputConsumer(this.out(), binding.getElement());
         }
 
         if (TRACE) {
@@ -606,9 +604,21 @@ final class InstrumentationHandler {
             Object elm = binding.getElement();
             if (elm instanceof OutputStream) {
                 if (outputErrBindings.contains(binding)) {
-                    InstrumentAccessor.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
+                    /*
+                     * err can be null if InstrumentationHandler#finalizeStore was called.
+                     */
+                    DispatchOutputStream err = err();
+                    if (err != null) {
+                        InstrumentAccessor.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
+                    }
                 } else if (outputStdBindings.contains(binding)) {
-                    InstrumentAccessor.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                    /*
+                     * out can be null if InstrumentationHandler#finalizeStore was called.
+                     */
+                    DispatchOutputStream out = out();
+                    if (out != null) {
+                        InstrumentAccessor.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                    }
                 }
             } else if (elm instanceof ContextsListener) {
                 // binding disposed
@@ -1273,18 +1283,6 @@ final class InstrumentationHandler {
         return allocationReporter;
     }
 
-    void finalizeStore() {
-        this.out = null;
-        this.err = null;
-        this.in = null;
-    }
-
-    void patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn) {
-        this.out = newOut;
-        this.err = newErr;
-        this.in = newIn;
-    }
-
     static void failInstrumentInitialization(Env env, String message, Throwable t) {
         Exception exception = new Exception(message, t);
         PrintStream stream = new PrintStream(env.err());
@@ -1689,7 +1687,7 @@ final class InstrumentationHandler {
      * visitorBuilder.buildVisitor();
      * </pre>
      */
-    private class VisitorBuilder {
+    private final class VisitorBuilder {
         List<VisitOperation> operations = new ArrayList<>();
         boolean shouldMaterializeSyntaxNodes;
 

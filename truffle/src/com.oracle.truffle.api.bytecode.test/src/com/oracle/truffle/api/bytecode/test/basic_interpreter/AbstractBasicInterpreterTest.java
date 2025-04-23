@@ -65,9 +65,9 @@ import org.junit.Assert;
 import org.junit.function.ThrowingRunnable;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
@@ -112,6 +112,11 @@ public abstract class AbstractBasicInterpreterTest {
                             interpreterClass == BasicInterpreterProductionRootScoping.class;
         }
 
+        @SuppressWarnings("static-method")
+        public boolean hasYield() {
+            return true;
+        }
+
         public boolean hasRootScoping() {
             return interpreterClass == BasicInterpreterWithRootScoping.class ||
                             interpreterClass == BasicInterpreterProductionRootScoping.class;
@@ -128,6 +133,36 @@ public abstract class AbstractBasicInterpreterTest {
         @Override
         public String toString() {
             return interpreterClass.getSimpleName() + "[serialize=" + testSerialize + "]";
+        }
+
+        public int getFrameBaseSlots() {
+            int baseCount = 0;
+            if (hasUncachedInterpreter() || storesBciInFrame()) {
+                baseCount++; // bci
+            }
+            if (hasYield()) {
+                baseCount++;
+            }
+            return baseCount;
+        }
+
+        @SuppressWarnings("static-method")
+        public int getVariadicsLimit() {
+            if (interpreterClass == BasicInterpreterBase.class //
+                            || interpreterClass == BasicInterpreterWithBE.class //
+                            || interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class) {
+                return 4;
+            } else if (interpreterClass == BasicInterpreterUnsafe.class //
+                            || interpreterClass == BasicInterpreterWithOptimizations.class //
+                            || interpreterClass == BasicInterpreterProductionBlockScoping.class) {
+                return 8;
+            } else if (interpreterClass == BasicInterpreterWithUncached.class //
+                            || interpreterClass == BasicInterpreterWithRootScoping.class //
+                            || interpreterClass == BasicInterpreterProductionRootScoping.class) {
+                return 16;
+            }
+
+            throw CompilerDirectives.shouldNotReachHere();
         }
 
         public Object getDefaultLocalValue() {
@@ -227,7 +262,11 @@ public abstract class AbstractBasicInterpreterTest {
         return result;
     }
 
-    @Parameter(0) public TestRun run;
+    public final TestRun run;
+
+    public AbstractBasicInterpreterTest(TestRun run) {
+        this.run = run;
+    }
 
     public <T extends BasicInterpreterBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
         BytecodeRootNode rootNode = parseNode(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
@@ -269,7 +308,11 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         for (BasicInterpreter interpreter : result.getNodes()) {
-            testIntrospectionInvariants(interpreter.getBytecodeNode());
+            try {
+                testIntrospectionInvariants(interpreter.getBytecodeNode());
+            } catch (Throwable e) {
+                throw new AssertionError("Invariant failure " + interpreter.dump(), e);
+            }
         }
 
         return result;

@@ -133,7 +133,7 @@ public abstract class SLBaseParser extends SimpleLanguageBaseVisitor<Void> {
 
     // ------------------------------- locals handling --------------------------
 
-    private static class FindLocalsVisitor extends SimpleLanguageBaseVisitor<Void> {
+    private static final class FindLocalsVisitor extends SimpleLanguageBaseVisitor<Void> {
         boolean entered = false;
         List<Token> results = new ArrayList<>();
 

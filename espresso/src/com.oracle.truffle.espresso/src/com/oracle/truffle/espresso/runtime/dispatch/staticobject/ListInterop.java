@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -177,13 +176,16 @@ public final class ListInterop extends IterableInterop {
     @GenerateUncached
     abstract static class ListSet extends EspressoNode {
 
-        public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException {
+        public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
             try {
                 execute(receiver, (int) index, value);
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
                     throw InvalidArrayIndexException.create(index);
+                }
+                if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_UnsupportedOperationException)) {
+                    throw UnsupportedMessageException.create(e);
                 }
                 throw e; // unexpected exception
             }

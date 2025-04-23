@@ -371,7 +371,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      */
     @Override
     public boolean isEntryPoint() {
-        return wrapped.isEntryPoint();
+        return wrapped.isNativeEntryPoint();
     }
 
     @Override

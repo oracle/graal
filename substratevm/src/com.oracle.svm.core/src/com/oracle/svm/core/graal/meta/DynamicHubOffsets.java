@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.meta;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -41,88 +40,53 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class DynamicHubOffsets {
+    private static final int UNINITIALIZED = -1;
     /* defining order in DynamicHub */
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int nameOffset;
+    private int nameOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int hubTypeOffset;
+    private int hubTypeOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int referenceTypeOffset;
+    private int referenceTypeOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int layoutEncodingOffset;
+    private int layoutEncodingOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int typeIDOffset;
+    private int typeIDOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int typeIDDepthOffset;
+    private int typeIDDepthOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int numClassTypesOffset;
+    private int numClassTypesOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int numInterfaceTypesOffset;
+    private int numInterfaceTypesOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int openTypeWorldTypeCheckSlotsOffset;
+    private int openTypeWorldTypeCheckSlotsOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int monitorOffsetOffset;
+    private int monitorOffsetOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int identityHashOffsetOffset;
+    private int identityHashOffsetOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int flagsOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int additionalFlagsOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int modifiersOffset;
+    private int flagsOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int superHubOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int componentTypeOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int arrayHubOffset;
+    private int componentTypeOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int declaringClassOffset;
+    private int referenceMapIndexOffset = UNINITIALIZED;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int interfacesEncodingOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int enumConstantsReferenceOffset;
+    private int layerIdOffset = UNINITIALIZED;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int referenceMapIndexOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int layerIdOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int metaTypeOffset;
-
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int sourceFileNameOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int classInitializationInfoOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int moduleOffset;
-
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int nestHostOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int simpleBinaryNameOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int companionOffset;
-
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int signatureOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int classRedefinedCountOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int hubMetadataOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int reflectionMetadataOffset;
+    private int companionOffset = UNINITIALIZED;
 
     @Fold
     public static DynamicHubOffsets singleton() {
@@ -152,6 +116,18 @@ public class DynamicHubOffsets {
                 Field offsetField = ReflectionUtil.lookupField(DynamicHubOffsets.class, field.getName() + "Offset");
                 offsetField.setInt(singleton(), field.getOffset());
             } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+        // Ensure the expected fields exist
+        for (Field field : DynamicHubOffsets.class.getDeclaredFields()) {
+            String name = field.getName();
+            if (!name.endsWith("Offset")) {
+                continue;
+            }
+            try {
+                DynamicHub.class.getDeclaredField(name.substring(0, name.length() - "Offset".length()));
+            } catch (NoSuchFieldException e) {
                 throw VMError.shouldNotReachHere(e);
             }
         }
@@ -205,36 +181,8 @@ public class DynamicHubOffsets {
         return flagsOffset;
     }
 
-    public int getAdditionalFlagsOffset() {
-        return additionalFlagsOffset;
-    }
-
-    public int getModifiersOffset() {
-        return modifiersOffset;
-    }
-
-    public int getSuperHubOffset() {
-        return superHubOffset;
-    }
-
     public int getComponentTypeOffset() {
         return componentTypeOffset;
-    }
-
-    public int getArrayHubOffset() {
-        return arrayHubOffset;
-    }
-
-    public int getDeclaringClassOffset() {
-        return declaringClassOffset;
-    }
-
-    public int getInterfacesEncodingOffset() {
-        return interfacesEncodingOffset;
-    }
-
-    public int getEnumConstantsReferenceOffset() {
-        return enumConstantsReferenceOffset;
     }
 
     public int getReferenceMapIndexOffset() {
@@ -245,48 +193,8 @@ public class DynamicHubOffsets {
         return layerIdOffset;
     }
 
-    public int getMetaTypeOffset() {
-        return metaTypeOffset;
-    }
-
-    public int getSourceFileNameOffset() {
-        return sourceFileNameOffset;
-    }
-
-    public int getClassInitializationInfoOffset() {
-        return classInitializationInfoOffset;
-    }
-
-    public int getModuleOffset() {
-        return moduleOffset;
-    }
-
-    public int getNestHostOffset() {
-        return nestHostOffset;
-    }
-
-    public int getSimpleBinaryNameOffset() {
-        return simpleBinaryNameOffset;
-    }
-
     public int getCompanionOffset() {
         return companionOffset;
-    }
-
-    public int getSignatureOffset() {
-        return signatureOffset;
-    }
-
-    public int getClassRedefinedCountOffset() {
-        return classRedefinedCountOffset;
-    }
-
-    public int getHubMetadataOffset() {
-        return hubMetadataOffset;
-    }
-
-    public int getReflectionMetadataOffset() {
-        return reflectionMetadataOffset;
     }
 
     public static void writeObject(DynamicHub hub, int offset, Object value) {

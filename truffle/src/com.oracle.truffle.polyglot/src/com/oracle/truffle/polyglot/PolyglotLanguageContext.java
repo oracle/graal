@@ -92,6 +92,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.polyglot.PolyglotSourceCache.ParseOrigin;
 
 /** The data corresponding to a specific context of a {@link TruffleLanguage}. */
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
@@ -367,11 +368,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return initialized;
     }
 
-    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
+    CallTarget parseCached(ParseOrigin origin, PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
         ensureInitialized(accessingLanguage);
         PolyglotSourceCache cache = context.layer.getSourceCache();
         assert cache != null;
-        return cache.parseCached(this, source, argumentNames);
+        return cache.parseCached(origin, this, source, argumentNames);
     }
 
     Env requireEnv() {
@@ -1094,7 +1095,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return "PolyglotLanguageContext [language=" + language + ", initialized=" + (env != null) + "]";
     }
 
-    private class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+    private final class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
 
         @SuppressWarnings({"unused", "try"})
         @Override
@@ -1403,4 +1404,5 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         }
     }
+
 }

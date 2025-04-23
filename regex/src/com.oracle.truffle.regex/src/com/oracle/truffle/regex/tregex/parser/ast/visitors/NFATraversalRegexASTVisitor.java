@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -330,7 +330,7 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             assert cur == pathGetNode(curPath.peek());
             visit(cur);
-            if (canPruneAfterUnconditionalFinalState() && cur.isMatchFound() && !dollarsOnPath() && !caretsOnPath() && lookAroundsOnPath.isEmpty() && !hasTransitionGuards()) {
+            if (canPruneAfterUnconditionalFinalState() && cur.isMatchFound() && !dollarsOnPath() && !caretsOnPath() && lookAroundsOnPath.isEmpty() && !hasTransitionGuards() && !root.isPrefix()) {
                 /*
                  * Transitions after an unconditional final state transition will never be taken, so
                  * it is safe to prune them.
@@ -573,7 +573,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (!getFlavor().emptyChecksOnMandatoryLoopIterations() &&
                                 curGroup.isMandatoryQuantifier() &&
                                 !curGroup.isExpandedQuantifier() &&
-                                (!ast.getOptions().isBooleanMatch() || ast.getProperties().hasBackReferences() || caretsOnPath())) {
+                                (!ast.getOptions().isBooleanMatch() || ast.getProperties().hasBackReferences() || caretsOnPath() || isReverse() && dollarsOnPath())) {
                     // the existence of a mandatory copy of the quantifier loop implies a minimum
                     // greater than zero
                     assert !curGroup.isMandatoryQuantifier() || quantifier.getMin() > 0;
@@ -1076,7 +1076,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     Quantifier quantifier = quantifierGroup.getQuantifier();
                     if (!quantifierGroup.isExpandedQuantifier()) {
                         if (quantifierGroup.isDead()) {
-                            if (quantifier.getMin() > 0) {
+                            if (quantifier.getMin() > 0 && !quantifierGroup.isOptionalQuantifier()) {
                                 setShouldRetreat();
                             }
                         } else if (quantifier.hasIndex()) {

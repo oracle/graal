@@ -37,12 +37,9 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.util.GlobUtils;
 
 public class GlobTrieNode<C> {
-    protected static final String STAR = "*";
-    protected static final String STAR_STAR = "**";
-    protected static final String LEVEL_IDENTIFIER = "/";
-    public static final String SAME_LEVEL_IDENTIFIER = "#";
 
     private String content;
     @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
@@ -130,14 +127,14 @@ public class GlobTrieNode<C> {
              * complex level (with stars), all children from the same level will have
              * SAME_LEVEL_IDENTIFIER, so we must append it here
              */
-            String sameLevel = !child.isNewLevel() ? SAME_LEVEL_IDENTIFIER : "";
+            String sameLevel = !child.isNewLevel() ? GlobUtils.SAME_LEVEL_IDENTIFIER : "";
             String childKey = child.getContent() + sameLevel;
             children.remove(childKey);
         }
     }
 
     protected GlobTrieNode<C> getChildFromSameLevel(String child) {
-        return children.get(child + SAME_LEVEL_IDENTIFIER);
+        return children.get(child + GlobUtils.SAME_LEVEL_IDENTIFIER);
     }
 
     protected GlobTrieNode<C> addChild(String child, GlobTrieNode<C> childValue) {
@@ -146,7 +143,7 @@ public class GlobTrieNode<C> {
         // to make difference between a*b* (represented as: a* -> b*#)
         // and a*/b* (represented as: a* -> b*) append # when current node is a part of previous one
         if (!childValue.isNewLevel()) {
-            sb.append(SAME_LEVEL_IDENTIFIER);
+            sb.append(GlobUtils.SAME_LEVEL_IDENTIFIER);
         }
 
         /* only add if we don't have same child to avoid duplicates */
@@ -170,7 +167,7 @@ public class GlobTrieNode<C> {
     }
 
     protected DoubleStarNode<C> getDoubleStarNode() {
-        return (DoubleStarNode<C>) getChild(STAR_STAR);
+        return (DoubleStarNode<C>) getChild(GlobUtils.STAR_STAR);
     }
 
     /**

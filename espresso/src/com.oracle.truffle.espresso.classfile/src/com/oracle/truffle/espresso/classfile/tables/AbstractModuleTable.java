@@ -25,8 +25,8 @@ package com.oracle.truffle.espresso.classfile.tables;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.AbstractModuleEntry<M>> extends EntryTable<ME, AbstractModuleTable.ModuleData<M>> {
     public AbstractModuleTable(ReadWriteLock lock) {
@@ -64,6 +64,7 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
         private String location;
         private boolean canReadAllUnnamed;
         private ArrayList<AbstractModuleEntry<M>> reads;
+        private volatile boolean hasDefaultReads;
 
         protected AbstractModuleEntry(Symbol<Name> name, ModuleData<M> data) {
             super(name);
@@ -135,6 +136,14 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
 
         public void setCanReadAllUnnamed() {
             canReadAllUnnamed = true;
+        }
+
+        public boolean hasDefaultReads() {
+            return hasDefaultReads;
+        }
+
+        public void setHasDefaultReads() {
+            hasDefaultReads = true;
         }
 
         public boolean isOpen() {

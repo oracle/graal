@@ -55,7 +55,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
 
     static final long TIMEOUT = 5000;
 
-    private static class Monitor {
+    private static final class Monitor {
         private volatile State state = State.INITIAL;
 
         public synchronized void setState(State newState) {
@@ -181,7 +181,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
      */
     private static void removeLoopSafepoint(StructuredGraph graph) {
         LoopBeginNode loopBegin = findFirstLoop(graph);
-        loopBegin.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+        loopBegin.setLoopEndSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
     }
 
     @Test

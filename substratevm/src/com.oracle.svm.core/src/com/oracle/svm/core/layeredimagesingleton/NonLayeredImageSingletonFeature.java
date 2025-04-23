@@ -67,7 +67,7 @@ public class NonLayeredImageSingletonFeature implements InternalFeature, Feature
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         Function<Class<?>, Object> lookupMultiLayeredImageSingleton = (key) -> {
-            Object singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
+            Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
             boolean conditions = singleton.getClass().equals(key) &&
                             singleton instanceof MultiLayeredImageSingleton multiLayerSingleton &&
                             multiLayerSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS);

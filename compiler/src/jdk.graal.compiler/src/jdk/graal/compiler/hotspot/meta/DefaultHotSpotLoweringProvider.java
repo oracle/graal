@@ -35,7 +35,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CO
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
@@ -48,6 +48,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -168,6 +169,7 @@ import jdk.graal.compiler.nodes.gc.G1PreWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrierNode;
 import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
+import jdk.graal.compiler.nodes.java.CheckFastPathMonitorEnterNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayWithExceptionNode;
@@ -391,6 +393,21 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         return monitorSnippets;
     }
 
+    @Override
+    protected FixedWithNextNode maybeEmitLockingCheck(List<MonitorIdNode> locks, FixedWithNextNode insertionPoint, FrameState stateBefore) {
+        if (!locks.isEmpty()) {
+            if (useLightweightLocking(getVMConfig())) {
+                StructuredGraph graph = insertionPoint.graph();
+                CheckFastPathMonitorEnterNode check = graph.add(new CheckFastPathMonitorEnterNode(locks));
+                graph.addAfterFixed(insertionPoint, check);
+                check.setStateBefore(stateBefore.duplicate());
+                return check;
+            }
+            // The stack lock and heavyweight monitors cases don't need any checks.
+        }
+        return insertionPoint;
+    }
+
     /**
      * Handles the lowering of {@code n} without delegating to plugins or super.
      *
@@ -509,6 +526,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 monitorSnippets.lower((MonitorEnterNode) n, registers, tool);
             } else {
                 loadHubForMonitorEnterNode((MonitorEnterNode) n, tool, graph);
+            }
+        } else if (n instanceof CheckFastPathMonitorEnterNode) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+                monitorSnippets.lower((CheckFastPathMonitorEnterNode) n, registers, runtime.getVMConfig(), tool);
             }
         } else if (n instanceof MonitorExitNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
@@ -1035,8 +1056,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void throwCachedException(BytecodeExceptionNode node) {
-        if (inImageRuntimeCode()) {
-            throw new InternalError("Can't throw exception from SVM object");
+        if (LibGraalSupport.inLibGraalRuntime()) {
+            throw new InternalError("Cannot throw exception from libgraal (JDK-8306085)");
         }
         Throwable exception = Exceptions.cachedExceptions.get(node.getExceptionKind());
         assert exception != null;

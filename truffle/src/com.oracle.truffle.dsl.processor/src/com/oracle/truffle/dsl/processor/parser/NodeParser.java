@@ -1263,11 +1263,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         }
 
                         if (declaredSharing.size() <= 1 && (expressions == null || expressions.size() <= 1)) {
-                            cache.addError(cache.getSharedGroupMirror(), cache.getSharedGroupValue(),
-                                            "Could not find any other cached parameter that this parameter could be shared. " +
-                                                            "Cached parameters are only sharable if they declare the same type and initializer expressions and if the specialization only has a single instance. " +
-                                                            "Remove the @%s annotation or make the parameter sharable to resolve this.",
-                                            types.Cached_Shared.asElement().getSimpleName().toString());
+                            if (declaredSharing.size() == 1 && expressions != null && expressions.size() == 1 && declaredSharing.get(0).specialization.hasMultipleInstances()) {
+                                // allow single shared in multiple instance specialization
+                                sharedExpressions.put(sharable.expression, group);
+                            } else {
+                                cache.addError(cache.getSharedGroupMirror(), cache.getSharedGroupValue(),
+                                                "Could not find any other cached parameter that this parameter could be shared. " +
+                                                                "Cached parameters are only sharable if they declare the same type and initializer expressions and if the specialization only has a single instance. " +
+                                                                "Remove the @%s annotation or make the parameter sharable to resolve this.",
+                                                types.Cached_Shared.asElement().getSimpleName().toString());
+                            }
                         } else {
                             if (declaredSharing.size() <= 1) {
 
@@ -3018,6 +3023,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     boolean allReplaced = true;
                     for (SpecializationData replacedBy : overload.getReplacedBy()) {
                         if (!replacedBy.getBoxingOverloads().contains(overload)) {
+                            // not a boxing overload
+
+                            if (replacedBy.getReplaces().containsAll(cur.getBoxingOverloads()) && replacedBy.getReplaces().contains(cur)) {
+                                /*
+                                 * It is fine to use as boxing overload as the replacer replaces the
+                                 * specialization and all boxing overloads.
+                                 */
+                                continue;
+                            }
+
                             allReplaced = false;
                         }
                     }
@@ -4263,7 +4278,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private final Map<String, NodeData> nodeDataCache = new HashMap<>();
 
-    private static class FactoryMethodCacheKey {
+    private static final class FactoryMethodCacheKey {
     }
 
     private List<CodeExecutableElement> parseNodeFactoryMethods(TypeMirror nodeType) {
@@ -4911,7 +4926,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return hashCode;
         }
 
-        private static class DSLExpressionHash implements DSLExpressionVisitor {
+        private static final class DSLExpressionHash implements DSLExpressionVisitor {
             private int hash = 1;
 
             public void visitCast(Cast binary) {

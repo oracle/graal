@@ -30,7 +30,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Function;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.PointerBase;
 
@@ -38,6 +37,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveEpilogue;
+
+import jdk.graal.compiler.word.Word;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -151,9 +152,9 @@ public @interface CEntryPointOptions {
     }
 
     /**
-     * Specifies a class with epilogue code that is executed when the entry point method returns to
-     * C in order to leave the execution context. See {@link CEntryPointSetup} for commonly used
-     * epilogues.
+     * Specifies a class with epilogue code that is executed just before the entry point method
+     * returns to C in order to leave the execution context. See {@link CEntryPointSetup} for
+     * commonly used epilogues.
      * <p>
      * The given class must have exactly one static {@link Uninterruptible} method with no
      * parameters. Within the epilogue method, {@link CEntryPointActions} can be used to leave the
@@ -161,4 +162,20 @@ public @interface CEntryPointOptions {
      */
     Class<? extends Epilogue> epilogue() default LeaveEpilogue.class;
 
+    /** Marker interface for {@linkplain #callerEpilogue caller epilogue} classes. */
+    interface CallerEpilogue {
+    }
+
+    /** Placeholder class for {@link #callerEpilogue()} to omit an epilogue at call sites. */
+    final class NoCallerEpilogue implements CallerEpilogue {
+    }
+
+    /**
+     * Specifies a class with epilogue code that is executed by a Java <em>caller</em> of the entry
+     * point after the call has returned, in the caller's isolate. This code is injected only at
+     * sites of <em>direct Java calls</em> to the {@link CEntryPoint}-annotated method, but not
+     * where it is called by its address or symbol, for example from C code. The specified class
+     * must have exactly one static method with no parameters.
+     */
+    Class<? extends CallerEpilogue> callerEpilogue() default NoCallerEpilogue.class;
 }

@@ -25,13 +25,12 @@
 package jdk.graal.compiler.replacements;
 
 import static jdk.graal.compiler.core.common.GraalOptions.UseSnippetGraphCache;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static org.graalvm.nativeimage.ImageInfo.inImageCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.util.BitSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,7 +87,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
@@ -177,7 +175,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
-        if (!inImageRuntimeCode()) {
+        if (!inRuntimeCode()) {
             if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
                 return GeneratedInvocationPlugin.class;
             }
@@ -205,7 +203,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
             // Force inlining when parsing replacements
             return createIntrinsicInlineInfo(method, defaultBytecodeProvider);
         } else {
-            assert inImageCode() || method.getAnnotation(NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
+            assert inRuntimeCode() || method.getAnnotation(NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
                             NodeIntrinsic.class.getSimpleName(),
                             method.format("%h.%n"), b);
         }
@@ -456,7 +454,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                     if (node instanceof Invoke) {
                         CallTargetNode callTarget = ((Invoke) node).callTarget();
                         if (callTarget instanceof MethodCallTargetNode) {
-                            ResolvedJavaMethod targetMethod = ((MethodCallTargetNode) callTarget).targetMethod();
+                            ResolvedJavaMethod targetMethod = callTarget.targetMethod();
                             if (targetMethod.isConstructor()) {
                                 ResolvedJavaType throwableType = replacements.providers.getMetaAccess().lookupJavaType(Throwable.class);
                                 return !throwableType.isAssignableFrom(targetMethod.getDeclaringClass());
@@ -479,8 +477,8 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
             @Override
             public boolean isDeferredInvoke(StateSplit stateSplit) {
-                if (GraalServices.isInLibgraal()) {
-                    throw GraalError.shouldNotReachHere("unused in libgraal"); // ExcludeFromJacocoGeneratedReport
+                if (inRuntimeCode()) {
+                    throw GraalError.shouldNotReachHere("unused in native image"); // ExcludeFromJacocoGeneratedReport
                 }
                 if (stateSplit instanceof Invoke invoke) {
                     ResolvedJavaMethod method = invoke.callTarget().targetMethod();
@@ -539,10 +537,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                 }
 
                 IntrinsicContext initialIntrinsicContext = null;
-                Snippet snippetAnnotation = null;
-                if (!inImageRuntimeCode()) {
-                    snippetAnnotation = method.getAnnotation(Snippet.class);
-                }
+                Snippet snippetAnnotation = !inRuntimeCode() ? method.getAnnotation(Snippet.class) : null;
                 if (snippetAnnotation == null) {
                     // Post-parse inlined intrinsic
                     initialIntrinsicContext = new EncodedIntrinsicContext(substitutedMethod, method, bytecodeProvider, context, false);

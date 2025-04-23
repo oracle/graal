@@ -23,6 +23,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -49,11 +52,6 @@ public abstract class EspressoClassLoadingException extends Exception {
         throw new EspressoClassLoadingException.SecurityException(msg);
     }
 
-    public static EspressoClassLoadingException.ClassDefNotFoundError classDefNotFoundError(String msg) throws EspressoClassLoadingException.ClassDefNotFoundError {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoClassLoadingException.ClassDefNotFoundError(msg);
-    }
-
     public static EspressoClassLoadingException.LinkageError linkageError(String msg) throws EspressoClassLoadingException.LinkageError {
         CompilerDirectives.transferToInterpreter();
         throw new EspressoClassLoadingException.LinkageError(msg);
@@ -64,12 +62,12 @@ public abstract class EspressoClassLoadingException extends Exception {
         throw new EspressoClassLoadingException.IllegalAccessError(msg);
     }
 
-    public static EspressoException wrapClassNotFoundGuestException(ClassLoadingEnv env, EspressoException e) {
-        Meta meta = env.getMeta();
+    public static EspressoException wrapClassNotFoundGuestException(Meta meta, EspressoException e, Symbol<Type> root) {
         if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
             // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
             StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
             meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
+            meta.java_lang_Throwable_detailMessage.set(ncdfe, meta.toGuestString(TypeSymbols.typeToName(root)));
             throw meta.throwException(ncdfe);
         }
         throw e;
@@ -120,20 +118,6 @@ public abstract class EspressoClassLoadingException extends Exception {
         @Override
         public EspressoException asGuestException(Meta meta) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, getMessage());
-        }
-    }
-
-    public static final class ClassDefNotFoundError extends EspressoClassLoadingException {
-
-        private static final long serialVersionUID = 1820085678127928882L;
-
-        private ClassDefNotFoundError(String msg) {
-            super(msg);
-        }
-
-        @Override
-        public EspressoException asGuestException(Meta meta) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, getMessage());
         }
     }
 

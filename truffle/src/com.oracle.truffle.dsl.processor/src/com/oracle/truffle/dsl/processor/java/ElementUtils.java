@@ -78,7 +78,6 @@ import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -366,7 +365,7 @@ public class ElementUtils {
         if (typeParameters.isEmpty()) {
             return type;
         }
-        if (declaredType instanceof DeclaredCodeTypeMirror generatedType) {
+        if (declaredType instanceof DeclaredCodeTypeMirror) {
             // Special case: generated types
             List<TypeMirror> typeArguments = new ArrayList<>(typeParameters.size());
             for (int i = 0; i < typeArguments.size(); i++) {
@@ -912,7 +911,7 @@ public class ElementUtils {
             case ERROR:
                 throw new CompileErrorException("Type error " + mirror);
             case EXECUTABLE:
-                return ((ExecutableType) mirror).toString();
+                return mirror.toString();
             case NONE:
                 return "$none";
             default:
@@ -1303,7 +1302,7 @@ public class ElementUtils {
         return value.accept(new AnnotationValueVisitorImpl(), null);
     }
 
-    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
+    private static final class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
 
         @Override
         public Object visitBoolean(boolean b, Void p) {

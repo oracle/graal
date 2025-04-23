@@ -54,7 +54,7 @@
     local libgraal_profiling_only(value) = if is_libgraal && with_profiling then value else [],
     local collect_libgraal_profile = libgraal_profiling_only(config.compiler.collect_libgraal_profile()),
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
-    local measure_libgraal_size = libgraal_only([
+    local measure_libgraal_size = libgraal_profiling_only([
       self.plain_benchmark_cmd + ["file-size:*", "--"] + self.extra_vm_args,
     ] + self._maybe_bench_upload()),
 

@@ -87,7 +87,7 @@ public abstract class NativeImageDebugInfoProviderBase {
     protected final int objectAlignment;
     protected final int primitiveStartOffset;
     protected final int referenceStartOffset;
-    protected final int reservedBitsMask;
+    protected final int reservedHubBitsMask;
 
     protected final HostedType hubType;
     protected final HostedType wordBaseType;
@@ -103,9 +103,9 @@ public abstract class NativeImageDebugInfoProviderBase {
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
-        this.reservedBitsMask = objectHeader.getReservedBitsMask();
+        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
+        this.reservedHubBitsMask = objectHeader.getReservedHubBitsMask();
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
             this.useHeapBase = compressEncoding.hasBase();
@@ -385,8 +385,8 @@ public abstract class NativeImageDebugInfoProviderBase {
         return objectAlignment;
     }
 
-    public int reservedBitsMask() {
-        return reservedBitsMask;
+    public int reservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
     public int compiledCodeMax() {

@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR;
@@ -84,7 +83,7 @@ public final class GraphBuilder {
     private GraphBuilder(Method method) {
         this.bs = new BytecodeStream(method.getOriginalCode());
         this.status = new long[bs.endBCI()];
-        this.handlers = method.getExceptionHandlers();
+        this.handlers = method.getSymbolicExceptionHandlers();
     }
 
     private EspressoExecutionGraph build() {

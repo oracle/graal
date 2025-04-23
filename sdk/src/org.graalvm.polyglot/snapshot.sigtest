@@ -352,6 +352,7 @@ meth public java.lang.String getName()
 meth public java.lang.String getVersion()
 meth public java.lang.String getWebsite()
 meth public org.graalvm.options.OptionDescriptors getOptions()
+meth public org.graalvm.options.OptionDescriptors getSourceOptions()
 supr java.lang.Object
 hfds dispatch,engine,receiver
 
@@ -367,6 +368,7 @@ meth public java.lang.String getVersion()
 meth public java.lang.String getWebsite()
 meth public java.util.Set<java.lang.String> getMimeTypes()
 meth public org.graalvm.options.OptionDescriptors getOptions()
+meth public org.graalvm.options.OptionDescriptors getSourceOptions()
 supr java.lang.Object
 hfds dispatch,engine,receiver
 
@@ -407,6 +409,7 @@ meth public int hashCode()
 meth public java.lang.Iterable<org.graalvm.polyglot.PolyglotException$StackFrame> getPolyglotStackTrace()
 meth public java.lang.StackTraceElement[] getStackTrace()
 meth public java.lang.String getMessage()
+meth public java.lang.String toString()
 meth public java.lang.Throwable asHostException()
 meth public java.lang.Throwable fillInStackTrace()
 meth public org.graalvm.polyglot.SourceSection getSourceLocation()
@@ -516,9 +519,11 @@ meth public org.graalvm.polyglot.Source$Builder interactive(boolean)
 meth public org.graalvm.polyglot.Source$Builder internal(boolean)
 meth public org.graalvm.polyglot.Source$Builder mimeType(java.lang.String)
 meth public org.graalvm.polyglot.Source$Builder name(java.lang.String)
+meth public org.graalvm.polyglot.Source$Builder option(java.lang.String,java.lang.String)
+meth public org.graalvm.polyglot.Source$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Source$Builder uri(java.net.URI)
 supr java.lang.Object
-hfds cached,content,fileEncoding,interactive,internal,language,mimeType,name,origin,uri
+hfds cached,content,fileEncoding,interactive,internal,language,mimeType,name,options,origin,uri
 
 CLSS public final org.graalvm.polyglot.SourceSection
 meth public boolean equals(java.lang.Object)

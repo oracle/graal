@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -212,10 +212,17 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
                 // Calculate the address of the card to be enqueued to the
                 // thread local card queue.
-                Word cardAddress = cardTableAddress(oop);
+                Word cardAddress = cardTableBase().add(cardTableOffset(oop));
 
                 byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
                 counters.g1EffectiveAfterNullPostWriteBarrierCounter.inc();
+
+                if (supportsLowLatencyBarriers()) {
+                    if (probability(NOT_FREQUENT_PROBABILITY, cardByte == cleanCardValue())) {
+                        cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
+                    }
+                    return;
+                }
 
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByte != youngCardValue())) {
@@ -259,7 +266,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word indexAddress = thread.add(satbQueueIndexOffset());
         long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
         long scale = objectArrayIndexScale();
-        Word start = getPointerToFirstArrayElement(address, length, elementStride);
+        Word start = getPointerToFirstArrayElement(Word.fromAddress(address), length, elementStride);
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(Word.unsigned(i * scale));
@@ -285,15 +292,28 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             return;
         }
 
+        Word base = cardTableBase();
+        Word addr = Word.fromAddress(address);
+        Word start = base.add(cardTableOffset(getPointerToFirstArrayElement(addr, length, elementStride)));
+        Word end = base.add(cardTableOffset(getPointerToLastArrayElement(addr, length, elementStride)));
+
+        Word cur = start;
+        if (supportsLowLatencyBarriers()) {
+            do {
+                byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
+                if (probability(NOT_FREQUENT_PROBABILITY, cardByte == cleanCardValue())) {
+                    cur.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
+                }
+                cur = cur.add(1);
+            } while (GraalDirectives.injectIterationCount(10, cur.belowOrEqual(end)));
+            return;
+        }
+
         Word thread = getThread();
         Word bufferAddress = thread.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
         Word indexAddress = thread.add(cardQueueIndexOffset());
         long indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION).rawValue();
 
-        Word start = cardTableAddress(getPointerToFirstArrayElement(address, length, elementStride));
-        Word end = cardTableAddress(getPointerToLastArrayElement(address, length, elementStride));
-
-        Word cur = start;
         do {
             byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
             // If the card is already dirty, (hence already enqueued) skip the insertion.
@@ -343,7 +363,13 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract byte youngCardValue();
 
-    protected abstract Word cardTableAddress(Pointer oop);
+    public abstract byte cleanCardValue();
+
+    protected abstract boolean supportsLowLatencyBarriers();
+
+    protected abstract Word cardTableBase();
+
+    protected abstract UnsignedWord cardTableOffset(Pointer oop);
 
     protected abstract int logOfHeapRegionGrainBytes();
 

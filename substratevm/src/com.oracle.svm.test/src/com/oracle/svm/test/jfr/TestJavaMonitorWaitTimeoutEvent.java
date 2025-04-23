@@ -140,7 +140,7 @@ public class TestJavaMonitorWaitTimeoutEvent extends JfrRecordingTest {
                         simpleWaitFound && timeoutFound);
     }
 
-    private class Helper {
+    private final class Helper {
         public synchronized void timeout() throws InterruptedException {
             wait(MILLIS);
         }

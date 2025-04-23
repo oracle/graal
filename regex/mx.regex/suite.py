@@ -92,7 +92,7 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,
@@ -113,6 +113,8 @@ suite = {
       "checkstyle" : "com.oracle.truffle.regex",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.regex.test.dummylang" : {
@@ -127,6 +129,8 @@ suite = {
       "checkstyle" : "com.oracle.truffle.regex",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
   },
 
@@ -177,6 +181,7 @@ suite = {
       "description" : "Truffle regular expressions testing dummy language.",
       "allowsJavadocWarnings": True,
       "maven" : False,
+      "testDistribution": True,
     },
 
     "TREGEX_UNIT_TESTS" : {
@@ -192,6 +197,7 @@ suite = {
         "regex:TREGEX_TEST_DUMMY_LANG",
       ],
       "maven" : False,
+      "testDistribution": True,
     },
 
     "TREGEX_GRAALVM_SUPPORT" : {

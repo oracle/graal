@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public class StackMapTableAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Symbol.Name.StackMapTable;
+    public static final Symbol<Name> NAME = ParserNames.StackMapTable;
 
     public static final StackMapTableAttribute EMPTY = new StackMapTableAttribute(NAME, null);
 
-    public StackMapTableAttribute(Symbol<Symbol.Name> name, byte[] data) {
+    public StackMapTableAttribute(Symbol<Name> name, byte[] data) {
         super(name, data);
     }
 }

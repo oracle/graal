@@ -71,6 +71,9 @@ import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldName;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldNameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
@@ -80,7 +83,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
@@ -399,6 +402,7 @@ public class HeapDumpWriter {
     private static final int HEAP_DUMP_SEGMENT_TARGET_SIZE = 1 * 1024 * 1024;
 
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("HeapDumpWriter", false);
+    private final ReplaceDotWithSlash dotWithSlashReplacer = new ReplaceDotWithSlash();
     private final DumpStackFrameVisitor dumpStackFrameVisitor = new DumpStackFrameVisitor();
     private final DumpObjectsVisitor dumpObjectsVisitor = new DumpObjectsVisitor();
     private final CodeMetadataVisitor codeMetadataVisitor = new CodeMetadataVisitor();
@@ -417,7 +421,7 @@ public class HeapDumpWriter {
 
     public boolean dumpHeap(RawFileDescriptor fd) {
         assert VMOperation.isInProgressAtSafepoint();
-        assert ThreadingSupportImpl.isRecurringCallbackPaused();
+        assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
 
         noAllocationVerifier.open();
         try {
@@ -546,15 +550,19 @@ public class HeapDumpWriter {
         for (int i = 0; i < metadata.getClassInfoCount(); i++) {
             ClassInfo classInfo = metadata.getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
-                writeSymbol(classInfo.getHub().getName());
+                writeSymbol(classInfo.getHub().getName(), dotWithSlashReplacer);
             }
         }
     }
 
     private void writeSymbol(String value) {
+        writeSymbol(value, null);
+    }
+
+    private void writeSymbol(String value, CharReplacer replacer) {
         startTopLevelRecord(HProfTopLevelRecord.UTF8);
         writeObjectId(value);
-        writeUTF8(value);
+        writeUTF8(value, replacer);
         endTopLevelRecord();
     }
 
@@ -686,9 +694,9 @@ public class HeapDumpWriter {
 
     private static Object getStaticFieldDataHolder(HProfType type) {
         if (type == HProfType.NORMAL_OBJECT) {
-            return StaticFieldsSupport.getStaticObjectFields();
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
-            return StaticFieldsSupport.getStaticPrimitiveFields();
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         }
     }
 
@@ -1108,7 +1116,11 @@ public class HeapDumpWriter {
     }
 
     private void writeUTF8(String value) {
-        boolean success = file().writeUTF8(f, value);
+        writeUTF8(value, null);
+    }
+
+    private void writeUTF8(String value, CharReplacer replacer) {
+        boolean success = file().writeUTF8(f, value, replacer);
         handleError(success);
     }
 
@@ -1438,6 +1450,6 @@ public class HeapDumpWriter {
         }
     }
 
-    private static class UnknownClass {
+    private static final class UnknownClass {
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -43,7 +44,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
     @Override
     public boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed) {
         // changed enum classes store enum constants in static fields
-        if (changed && getContext().getMeta().java_lang_Enum.isAssignable(klass)) {
+        if (changed && getContext().getMeta().java_lang_Enum.isAssignableFrom(klass)) {
             enumClassesToRerun.add(klass);
         }
         return false;
@@ -73,7 +74,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                             MethodVariable nameVar = variables[1];
                             String enumName = objectKlass.getMeta().toHostString((StaticObject) nameVar.getValue());
 
-                            Symbol<Symbol.Name> name = objectKlass.getContext().getNames().getOrCreate(enumName);
+                            Symbol<Name> name = objectKlass.getContext().getNames().getOrCreate(enumName);
                             Field field = objectKlass.lookupField(name, objectKlass.getType());
                             StaticObject existingEnumConstant = field.getObject(objectKlass.getStatics());
                             if (StaticObject.notNull(existingEnumConstant)) {
@@ -84,7 +85,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                                     args[i] = variables[i].getValue();
                                 }
                                 // avoid a recursive hook on the constructor call
-                                method.removeActiveHook(this);
+                                method.removeMethodHook(this);
                                 method.invokeDirectSpecial(args);
                                 method.addMethodHook(this);
                             }
@@ -105,7 +106,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
             for (Map.Entry<Method, MethodHook> entry : hooks.entrySet()) {
                 Method method = entry.getKey();
                 MethodHook hook = entry.getValue();
-                method.removeActiveHook(hook);
+                method.removeMethodHook(hook);
             }
         }
         for (ObjectKlass changedKlass : changedKlasses) {

@@ -105,7 +105,7 @@ public final class RuntimeOptionParser {
     }
 
     /** All reachable options. */
-    public EconomicMap<String, OptionDescriptor> options = ImageHeapMap.create();
+    public EconomicMap<String, OptionDescriptor> options = ImageHeapMap.create("options");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addDescriptor(OptionDescriptor optionDescriptor) {

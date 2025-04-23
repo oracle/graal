@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;

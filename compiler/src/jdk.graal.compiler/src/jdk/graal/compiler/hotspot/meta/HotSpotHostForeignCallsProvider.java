@@ -33,6 +33,12 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_MONT_MUL_BY_CONSTANT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_NTT_MULT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
@@ -97,8 +103,6 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.EnumMap;
@@ -106,6 +110,7 @@ import java.util.EnumMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -142,6 +147,7 @@ import jdk.graal.compiler.replacements.nodes.ArrayCompareToForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsWithMaskForeignCalls;
+import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
@@ -363,7 +369,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
 
-        if (!inImageRuntimeCode()) {
+        if (!LibGraalSupport.inLibGraalRuntime()) {
             /*
              * These functions are only used for testing purposes but their registration also
              * ensures that libgraal has support for InvokeJavaMethodStub built into the image,
@@ -548,12 +554,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(NOTIFY, c.notifyAddress, NativeCall);
         registerForeignCall(NOTIFY_ALL, c.notifyAllAddress, NativeCall);
 
-        if (c.nmethodEntryBarrier != 0) {
-            registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);
-        } else if (inImageBuildtimeCode()) {
-            // Ensure this is known to libgraal
-            register(NMETHOD_ENTRY_BARRIER.getSignature());
-        }
+        registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);
 
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_LOAD_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_WITHOUT_HEALING, c.zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing, DONT_PREPEND_THREAD);
@@ -574,7 +575,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD);
         linkForeignCall(options, providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD);
+        if (!c.g1LowLatencyPostWriteBarrierSupport) {
+            linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD);
+        }
         linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD);
 
         linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD);
@@ -663,6 +666,24 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.intpolyAssign != 0L) {
             registerForeignCall(INTPOLY_ASSIGN, c.intpolyAssign, NativeCall);
         }
+        if (c.stubDoubleKeccak != 0L) {
+            registerForeignCall(DOUBLE_KECCAK, c.stubDoubleKeccak, NativeCall);
+        }
+        if (c.stubDilithiumAlmostNtt != 0L) {
+            registerForeignCall(DILITHIUM_ALMOST_NTT, c.stubDilithiumAlmostNtt, NativeCall);
+        }
+        if (c.stubDilithiumAlmostInverseNtt != 0L) {
+            registerForeignCall(DILITHIUM_ALMOST_INVERSE_NTT, c.stubDilithiumAlmostInverseNtt, NativeCall);
+        }
+        if (c.stubDilithiumNttMult != 0L) {
+            registerForeignCall(DILITHIUM_NTT_MULT, c.stubDilithiumNttMult, NativeCall);
+        }
+        if (c.stubDilithiumMontMulByConstant != 0L) {
+            registerForeignCall(DILITHIUM_MONT_MUL_BY_CONSTANT, c.stubDilithiumMontMulByConstant, NativeCall);
+        }
+        if (c.stubDilithiumDecomposePoly != 0L) {
+            registerForeignCall(DILITHIUM_DECOMPOSE_POLY, c.stubDilithiumDecomposePoly, NativeCall);
+        }
 
         registerSnippetStubs(providers, options);
         registerStubCallFunctions(options, providers, runtime.getVMConfig());
@@ -684,6 +705,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     private void registerSnippetStubs(HotSpotProviders providers, OptionValues options) {
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayIndexOfForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayFillNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsWithMaskForeignCalls.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCompareToForeignCalls.STUBS);

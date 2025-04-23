@@ -56,7 +56,7 @@ public final class RuntimePropertyParser {
         }
         MapCursor<String, String> cursor = properties.getEntries();
         while (cursor.advance()) {
-            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue(), false);
+            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue());
         }
         if (newIdx == args.length) {
             /* We can be allocation free and just return the original arguments. */

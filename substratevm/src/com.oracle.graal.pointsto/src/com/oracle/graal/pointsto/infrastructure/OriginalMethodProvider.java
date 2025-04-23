@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import java.lang.reflect.Executable;
 
+import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -56,6 +57,10 @@ public interface OriginalMethodProvider {
      */
     static Executable getJavaMethod(ResolvedJavaMethod method) {
         ResolvedJavaMethod originalMethod = getOriginalMethod(method);
+        if (originalMethod instanceof BaseLayerMethod) {
+            /* We don't know corresponding java.lang.reflect.Method. */
+            return null;
+        }
         if (originalMethod != null) {
             try {
                 return GraalAccess.getOriginalSnippetReflection().originalMethod(originalMethod);

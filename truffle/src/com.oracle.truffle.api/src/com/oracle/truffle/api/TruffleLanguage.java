@@ -536,6 +536,21 @@ public abstract class TruffleLanguage<C> {
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};
+
+        /**
+         * A declarative list of optional {@link InternalResource} identifiers associated with this
+         * language. It is recommended to register all optional resource identifiers here.
+         * Specifying the resource identifier allows the language use the resource even if its
+         * implementation was omitted at runtime. To use the resource when its implementation was
+         * omitted the {@code polyglot.engine.resourcePath.languageId} system property must be
+         * specified and point to a path with the resources. This allows to omit the resource
+         * implementation class in standalone distributions.
+         *
+         * @see InternalResource
+         * @see Id
+         * @since 25.0
+         */
+        String[] optionalResources() default {};
     }
 
     /**
@@ -725,8 +740,8 @@ public abstract class TruffleLanguage<C> {
      * Example usage of areOptionsCompatible if sharing of the language instances and parse caching
      * should be restricted by the script version option:
      *
-     * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"}
+     * {@snippet file = "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.CompatibleLanguage#areOptionsCompatible"}
      *
      * @param firstOptions the options used to create the first context, never <code>null</code>
      * @param newOptions the options that will be used for the new context, never <code>null</code>
@@ -779,8 +794,8 @@ public abstract class TruffleLanguage<C> {
      * do any complex operations. Just create the instance of the context, let the runtime system
      * register it properly. Should there be a need to perform complex initialization, override this
      * method and let the runtime call it <em>later</em> to finish any <em>post initialization</em>
-     * actions. Example: {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.PostInitLanguage#createContext"}
+     * actions. Example: {@snippet file = "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.PostInitLanguage#createContext"}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
@@ -840,8 +855,8 @@ public abstract class TruffleLanguage<C> {
      * <p>
      * Typical implementation looks like:
      *
-     * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"}
+     * {@snippet file = "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext"}
      *
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
@@ -1064,6 +1079,20 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
+     * Returns a set of source option descriptors that are supported by this language. Option values
+     * are accessible using the {@link Source#getOptions(TruffleLanguage) environment} or using a
+     * {@link ParsingRequest#getOptionValues() parsing request} when the source is parsed. Languages
+     * must always return the same option descriptors independent of the language instance or
+     * side-effects.
+     *
+     * @see Option For an example of declaring the option descriptor using an annotation.
+     * @since 25.0
+     */
+    protected OptionDescriptors getSourceOptionDescriptors() {
+        return OptionDescriptors.EMPTY;
+    }
+
+    /**
      * Notifies the language with pre-initialized context about {@link Env} change. See
      * {@link org.graalvm.polyglot.Context} for information how to enable the Context
      * pre-initialization.
@@ -1079,9 +1108,9 @@ public abstract class TruffleLanguage<C> {
      * successful for all pre-initialized languages the pre-initialized context is used, otherwise a
      * new context is created.
      * <p>
-     * Typical implementation looks like: {@snippet
-     * file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.PreInitializedLanguage#patchContext"}
+     * Typical implementation looks like: {@snippet file =
+     * "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.PreInitializedLanguage#patchContext"}
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} during
@@ -1105,11 +1134,13 @@ public abstract class TruffleLanguage<C> {
     public static final class ParsingRequest {
         private final Source source;
         private final String[] argumentNames;
+        private final OptionValues optionValues;
         private boolean disposed;
 
-        ParsingRequest(Source source, String... argumentNames) {
+        ParsingRequest(Source source, OptionValues optionValues, String... argumentNames) {
             Objects.requireNonNull(source);
             this.source = source;
+            this.optionValues = optionValues;
             this.argumentNames = argumentNames;
         }
 
@@ -1127,6 +1158,24 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns the source option values associated with the parsing request's source and
+         * language. This method should be preferred over {@link Source#getOptions(TruffleLanguage)}
+         * when accessing the source options of a source when possible, to avoid parsing the options
+         * twice.
+         * <p>
+         * In order to allow users of the language to specify source options they must be declared
+         * by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}.
+         *
+         * @since 25.0
+         */
+        public OptionValues getOptionValues() {
+            if (disposed) {
+                throw new IllegalStateException();
+            }
+            return optionValues;
+        }
+
+        /**
          * Argument names. The result of
          * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsing} is an
          * instance of {@link CallTarget} that {@link CallTarget#call(java.lang.Object...) can be
@@ -1134,8 +1183,8 @@ public abstract class TruffleLanguage<C> {
          * the {@link #getSource()} references them, it is essential to name them. Example that uses
          * the argument names:
          *
-         * {@snippet file="com/oracle/truffle/api/TruffleLanguage.java"
-         * region="TruffleLanguageSnippets#parseWithParams"}
+         * {@snippet file = "com/oracle/truffle/api/TruffleLanguage.java" region =
+         * "TruffleLanguageSnippets#parseWithParams"}
          *
          * @return symbolic names for parameters of {@link CallTarget#call(java.lang.Object...)}
          * @since 0.22
@@ -1165,13 +1214,15 @@ public abstract class TruffleLanguage<C> {
         private final Node node;
         private final MaterializedFrame frame;
         private final Source source;
+        private final OptionValues optionValues;
         private boolean disposed;
 
-        InlineParsingRequest(Source source, Node node, MaterializedFrame frame) {
+        InlineParsingRequest(Source source, OptionValues optionValues, Node node, MaterializedFrame frame) {
             Objects.requireNonNull(source);
             this.node = node;
             this.frame = frame;
             this.source = source;
+            this.optionValues = optionValues;
         }
 
         /**
@@ -1185,6 +1236,24 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalStateException();
             }
             return source;
+        }
+
+        /**
+         * Returns the source option values associated with the parsing request's source and
+         * language. This method should be preferred over {@link Source#getOptions(TruffleLanguage)}
+         * when accessing the source options of a source when possible, to avoid parsing the options
+         * twice.
+         * <p>
+         * In order to allow users of the language to specify source options they must be declared
+         * by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}.
+         *
+         * @since 25.0
+         */
+        public OptionValues getOptionValues() {
+            if (disposed) {
+                throw new IllegalStateException();
+            }
+            return optionValues;
         }
 
         /**
@@ -1237,9 +1306,9 @@ public abstract class TruffleLanguage<C> {
      * method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException} the
      * exception interop messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b> {@snippet
-     * file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
+     * <b>Example multi-threaded language implementation:</b> {@snippet file =
+     * "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param thread the thread that accesses the context for the first time.
      * @param singleThreaded <code>true</code> if the access is considered single-threaded,
@@ -1259,9 +1328,9 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
      * messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b> {@snippet
-     * file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
+     * <b>Example multi-threaded language implementation:</b> {@snippet file =
+     * "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param context the context that should be prepared for multi-threading.
      * @since 0.28
@@ -1283,9 +1352,9 @@ public abstract class TruffleLanguage<C> {
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
      * the exception interop messages may be executed without a context being entered.
      * <p>
-     * <b>Example multi-threaded language implementation:</b> {@snippet
-     * file="com/oracle/truffle/api/TruffleLanguage.java"
-     * region="TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
+     * <b>Example multi-threaded language implementation:</b> {@snippet file =
+     * "com/oracle/truffle/api/TruffleLanguage.java" region =
+     * "TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread"}
      *
      * @param context the context that is entered
      * @param thread the thread that accesses the context for the first time.
@@ -1542,8 +1611,8 @@ public abstract class TruffleLanguage<C> {
         return null;
     }
 
-    CallTarget parse(Source source, String... argumentNames) {
-        ParsingRequest request = new ParsingRequest(source, argumentNames);
+    CallTarget parse(Source source, OptionValues optionValues, String... argumentNames) {
+        ParsingRequest request = new ParsingRequest(source, optionValues, argumentNames);
         CallTarget target;
         try {
             target = request.parse(this);
@@ -1557,9 +1626,9 @@ public abstract class TruffleLanguage<C> {
         return target;
     }
 
-    ExecutableNode parseInline(Source source, Node context, MaterializedFrame frame) {
+    ExecutableNode parseInline(Source source, OptionValues optionValues, Node context, MaterializedFrame frame) {
         assert context != null;
-        InlineParsingRequest request = new InlineParsingRequest(source, context, frame);
+        InlineParsingRequest request = new InlineParsingRequest(source, optionValues, context, frame);
         ExecutableNode snippet;
         try {
             snippet = request.parse(this);

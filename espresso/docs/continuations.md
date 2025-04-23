@@ -7,14 +7,14 @@ permalink: /reference-manual/espresso/continuations/
 
 # Continuation API
 
-The [Continuation API](https://mvnrepository.com/artifact/org.graalvm.espresso/continuations) enables you to control the program stack.
+The [Continuation API](https://central.sonatype.com/artifact/org.graalvm.espresso/continuations){:target="_blank"} enables you to control the program stack.
 When a continuation is _suspended_, the stack is unwound and copied onto the heap as ordinary Java objects.
 When a continuation is _resumed_, those objects are put back onto the stack, along with all the needed metadata to resume execution at the pause point.
 The heap objects can be serialized to resume execution in a different JVM running the same code (for example, after a restart).
 
 ## Usage
 
-Add the `continuations.jar` to your classpath at compilation time (it will be automatically provided at runtime).
+Add `org.graalvm.espresso:continuations:24.2.0` to your classpath at compilation time (it will be automatically provided at runtime).
 The continuation feature is experimental and needs to be explicitly enabled by using these options: `--experimental-options --java.Continuum=true`.
 
 See an [example usage](serialization.md) of the Continuation API with serialization.
@@ -45,7 +45,7 @@ freshly created or it has been previously suspended), and `isCompleted()` to ver
 `Continuation` implements `Serializable` and can serialize to a backwards compatible format. Because frames can point to
 anything in their parameters and local variables, the class `ContinuationSerializable` provides static
 methods `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
-continuation-related objects with a non-jdk serialization engine. Note that when the `--java.Continuum` flag is specified, 
+continuation-related objects with a non-jdk serialization engine. Note that when the `--java.Continuum` flag is specified,
 all lambdas are serializable but deserialization will require special support from your serializer engine.
 
 ## Security
@@ -168,4 +168,3 @@ format is designed to enable backwards-compatible evolution of the format.
 ### Further Reading
 * [Serialization of Continuations](serialization.md)
 * [Generator API](generators.md)
-

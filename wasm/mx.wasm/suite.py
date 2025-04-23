@@ -88,14 +88,11 @@ suite = {
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
 
     "org.graalvm.wasm.launcher" : {
@@ -273,7 +270,7 @@ suite = {
         "artifactId": "wasm-community",
         "tag": ["default", "public"],
       },
-      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency pulls in GraalWasm dependencies and Truffle Community Edition.",
+      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency includes GraalWasm dependencies and Truffle Community Edition.",
       "license": "UPL",
     },
 

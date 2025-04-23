@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.reflect;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
@@ -56,9 +56,9 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -67,7 +67,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.ClassForNameSupportFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
@@ -220,6 +219,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 if (!targetMethod.canBeStaticallyBound()) {
                     vtableOffset = SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED;
                 }
+                if (callerSensitiveAdapter) {
+                    VMError.guarantee(vtableOffset == SubstrateMethodAccessor.STATICALLY_BOUND, "Caller sensitive adapters should always be statically bound %s", targetMethod);
+                }
                 VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
                 if (!targetMethod.isStatic()) {
                     receiverType = target.getDeclaringClass();
@@ -308,7 +310,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
-            ClassForNameSupport.singleton().registerNegativeQuery(ConfigurationCondition.alwaysTrue(), primitiveClass.getName());
+            ClassForNameSupport.currentLayer().registerNegativeQuery(ConfigurationCondition.alwaysTrue(), primitiveClass.getName());
         }
 
         access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
@@ -392,6 +394,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             return -1;
         }
         return hostedField.getLocation();
+    }
+
+    @Override
+    public int getInstalledLayerNumber(Field field) {
+        VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
+
+        HostedField hostedField = hostedMetaAccess().lookupJavaField(field);
+        return hostedField.getInstalledLayerNum();
     }
 
     @Override
@@ -485,7 +495,10 @@ final class ComputeVTableOffset implements FieldValueTransformerWithAvailability
         SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
 
         if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
-            SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+            HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+            if (member.canBeStaticallyBound()) {
+                return SubstrateMethodAccessor.STATICALLY_BOUND;
+            }
             if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), true);
             } else {

@@ -37,8 +37,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -66,7 +68,7 @@ public final class InnerClassRedefiner {
     private final Map<StaticObject, Map<Symbol<Name>, ImmutableClassInfo>> innerClassInfoMap = new WeakHashMap<>();
 
     // map from classloader to a map of Type to
-    private final Map<StaticObject, Map<Symbol<Symbol.Type>, Set<ObjectKlass>>> innerKlassCache = new WeakHashMap<>();
+    private final Map<StaticObject, Map<Symbol<Type>, Set<ObjectKlass>>> innerKlassCache = new WeakHashMap<>();
 
     // list of class info for all top-level classed about to be redefined
     private final Map<Symbol<Name>, HotSwapClassInfo> hotswapState = new HashMap<>();
@@ -89,7 +91,7 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), context.getClassLoadingEnv().getParsingContext(), redefineInfo.getClassBytes());
+                Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), ClassLoadingEnv.createParsingContext(context.getClassLoadingEnv(), false), redefineInfo.getClassBytes());
                 if (handled.containsKey(klassName)) {
                     ClassRedefinition.LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
                     it.remove();
@@ -334,7 +336,7 @@ public final class InnerClassRedefiner {
 
     Set<ObjectKlass> findLoadedInnerClasses(Klass klass) {
         // we use a cache to store inner/outer class mappings
-        Map<Symbol<Symbol.Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
+        Map<Symbol<Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
         if (classLoaderMap == null) {
             classLoaderMap = new HashMap<>();
             // register a listener on the registry to fill in
@@ -356,7 +358,7 @@ public final class InnerClassRedefiner {
                     if (matcher.matches()) {
                         Symbol<Name> outerClassName = getOuterClassName(loadedKlass.getName());
                         if (outerClassName != null && outerClassName.length() > 0) {
-                            Symbol<Symbol.Type> outerType = context.getTypes().fromName(outerClassName);
+                            Symbol<Type> outerType = context.getTypes().fromClassNameEntry(outerClassName);
                             Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
                             if (innerKlasses == null) {
                                 innerKlasses = new HashSet<>(1);
@@ -378,10 +380,10 @@ public final class InnerClassRedefiner {
         Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
 
         if (matcher.matches()) {
-            Map<Symbol<Symbol.Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
+            Map<Symbol<Type>, Set<ObjectKlass>> classLoaderMap = innerKlassCache.get(klass.getDefiningClassLoader());
             // found inner class, now hunt down the outer
             Symbol<Name> outerName = getOuterClassName(klass.getName());
-            Symbol<Symbol.Type> outerType = context.getTypes().fromName(outerName);
+            Symbol<Type> outerType = context.getTypes().fromClassNameEntry(outerName);
 
             Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
             if (innerKlasses == null) {

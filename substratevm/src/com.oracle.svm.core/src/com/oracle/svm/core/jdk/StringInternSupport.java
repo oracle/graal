@@ -33,21 +33,28 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredImageSingleton
-public final class StringInternSupport implements MultiLayeredImageSingleton {
+public final class StringInternSupport implements LayeredImageSingleton {
 
     interface SetGenerator {
         Set<String> generateSet();
@@ -55,23 +62,8 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Field getInternedStringsField() {
-        return ReflectionUtil.lookupField(StringInternSupport.class, "internedStrings");
+        return ReflectionUtil.lookupField(RuntimeInternedStrings.class, "internedStrings");
     }
-
-    /** The String intern table at run time. */
-    private final ConcurrentHashMap<String, String> internedStrings;
-
-    /**
-     * The native image contains a lot of interned strings. All Java String literals, and all class
-     * names, are interned per Java specification. We don't want the memory overhead of an hash
-     * table entry, so we store them (sorted) in this String[] array. When a string is interned at
-     * run time, it is added to the real hash map, so we pay the (logarithmic) cost of the array
-     * access only once per string.
-     *
-     * The field is set late during image generation, so the value is not available during static
-     * analysis and compilation.
-     */
-    @UnknownObjectField(availability = AfterHeapLayout.class) private String[] imageInternedStrings;
 
     @Platforms(Platform.HOSTED_ONLY.class) private Object priorLayersInternedStrings;
 
@@ -83,14 +75,13 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
     }
 
     private StringInternSupport(Object obj) {
-        this.internedStrings = new ConcurrentHashMap<>(16, 0.75f, 1);
         this.priorLayersInternedStrings = obj;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setImageInternedStrings(String[] newImageInternedStrings) {
+    public static void setImageInternedStrings(String[] newImageInternedStrings) {
         assert !ImageLayerBuildingSupport.buildingImageLayer();
-        this.imageInternedStrings = newImageInternedStrings;
+        ImageInternedStrings.setImageInternedStrings(newImageInternedStrings);
     }
 
     @SuppressWarnings("unchecked")
@@ -121,7 +112,7 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
 
         Arrays.sort(currentLayerInternedStrings);
 
-        this.imageInternedStrings = currentLayerInternedStrings;
+        ImageInternedStrings.setImageInternedStrings(currentLayerInternedStrings);
 
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             internedStringsIdentityMap = new IdentityHashMap<>(priorInternedStrings.size() + currentLayerInternedStrings.length);
@@ -132,7 +123,7 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
             Arrays.stream(currentLayerInternedStrings).forEach(internedString -> internedStringsIdentityMap.put(internedString, internedString));
         }
 
-        return imageInternedStrings;
+        return currentLayerInternedStrings;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -141,8 +132,8 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
         return internedStringsIdentityMap;
     }
 
-    String intern(String str) {
-        String result = internedStrings.get(str);
+    static String intern(String str) {
+        String result = RuntimeInternedStrings.getInternedStrings().get(str);
         if (result != null) {
             return result;
         } else {
@@ -150,27 +141,30 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
         }
     }
 
-    private String doIntern(String str) {
+    private static String doIntern(String str) {
         String result = str;
-        StringInternSupport[] layers = MultiLayeredImageSingleton.getAllLayers(StringInternSupport.class);
-        for (StringInternSupport layer : layers) {
-            String[] layerImageInternedStrings = layer.imageInternedStrings;
+        for (ImageInternedStrings layer : MultiLayeredImageSingleton.getAllLayers(ImageInternedStrings.class)) {
+            String[] layerImageInternedStrings = layer.getImageInternedStrings();
             int imageIdx = Arrays.binarySearch(layerImageInternedStrings, str);
             if (imageIdx >= 0) {
                 result = layerImageInternedStrings[imageIdx];
                 break;
             }
         }
-        String oldValue = internedStrings.putIfAbsent(result, result);
+        String oldValue = RuntimeInternedStrings.getInternedStrings().putIfAbsent(result, result);
         if (oldValue != null) {
             result = oldValue;
         }
         return result;
     }
 
+    public static Object getImageInternedStrings() {
+        return LayeredImageSingletonSupport.singleton().lookup(ImageInternedStrings.class, false, true);
+    }
+
     @Override
     public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
     }
 
     @Override
@@ -189,5 +183,75 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
         SetGenerator gen = (() -> Set.of(loader.readStringList("internedStrings").toArray(new String[0])));
 
         return new StringInternSupport(gen);
+    }
+}
+
+@AutomaticallyRegisteredImageSingleton
+class RuntimeInternedStrings implements InitialLayerOnlyImageSingleton {
+
+    /** The String intern table at run time. */
+    final ConcurrentHashMap<String, String> internedStrings = new ConcurrentHashMap<>(16, 0.75f, 1);
+
+    static ConcurrentHashMap<String, String> getInternedStrings() {
+        return ImageSingletons.lookup(RuntimeInternedStrings.class).internedStrings;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+}
+
+@AutomaticallyRegisteredImageSingleton
+class ImageInternedStrings implements MultiLayeredImageSingleton, UnsavedSingleton {
+
+    /**
+     * The native image contains a lot of interned strings. All Java String literals, and all class
+     * names, are interned per Java specification. We don't want the memory overhead of an hash
+     * table entry, so we store them (sorted) in this String[] array. When a string is interned at
+     * run time, it is added to the real hash map, so we pay the (logarithmic) cost of the array
+     * access only once per string.
+     *
+     * The field is set late during image generation, so the value is not available during static
+     * analysis and compilation.
+     */
+    @UnknownObjectField(availability = AfterHeapLayout.class) private String[] imageInternedStrings;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void setImageInternedStrings(String[] newImageInternedStrings) {
+        var singleton = LayeredImageSingletonSupport.singleton().lookup(ImageInternedStrings.class, false, true);
+        singleton.imageInternedStrings = newImageInternedStrings;
+    }
+
+    String[] getImageInternedStrings() {
+        return imageInternedStrings;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+}
+
+/**
+ * Within layered images we must eagerly register {@link RuntimeInternedStrings#internedStrings} as
+ * accessed. This is because some builder code queries whether it exists and will otherwise omit
+ * required information from the build.
+ */
+@AutomaticallyRegisteredFeature
+class LayeredStringInternFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.buildingImageLayer();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        access.registerAsAccessed(StringInternSupport.getInternedStringsField());
     }
 }

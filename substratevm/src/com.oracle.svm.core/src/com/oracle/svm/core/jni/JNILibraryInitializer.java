@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
@@ -47,6 +46,8 @@ import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.util.ImageHeapMap;
 
+import jdk.graal.compiler.word.Word;
+
 interface JNIOnLoadFunctionPointer extends CFunctionPointer {
     @InvokeCFunctionPointer
     int invoke(JNIJavaVM vm, VoidPointer reserved);
@@ -54,7 +55,7 @@ interface JNIOnLoadFunctionPointer extends CFunctionPointer {
 
 public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitializer {
 
-    private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = ImageHeapMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = ImageHeapMap.create(Equivalence.IDENTITY, "onLoadCGlobalDataMap");
 
     private static String getOnLoadName(String libName, boolean isBuiltIn) {
         String name = "JNI_OnLoad";

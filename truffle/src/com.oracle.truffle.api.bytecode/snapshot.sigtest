@@ -306,6 +306,7 @@ meth public abstract !hasdefault java.lang.Class<?> tagTreeNodeLibrary()
 meth public abstract !hasdefault java.lang.Class<?>[] boxingEliminationTypes()
 meth public abstract !hasdefault java.lang.String defaultLocalValue()
 meth public abstract !hasdefault java.lang.String defaultUncachedThreshold()
+meth public abstract !hasdefault java.lang.String variadicStackLimit()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> languageClass()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants
@@ -622,8 +623,9 @@ supr com.oracle.truffle.api.library.DynamicDispatchLibrary
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Variadic
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER, TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int startOffset()
 
 CLSS public abstract interface com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener
 meth public void afterInstructionExecute(com.oracle.truffle.api.bytecode.Instruction,java.lang.Throwable)
@@ -807,6 +809,7 @@ meth protected int computeSize()
 meth protected int findBytecodeIndex(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
 meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
+meth protected void prepareForCall()
 meth protected void prepareForInstrumentation(java.util.Set<java.lang.Class<?>>)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public boolean isCaptureFramesForTrace()
@@ -920,7 +923,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation

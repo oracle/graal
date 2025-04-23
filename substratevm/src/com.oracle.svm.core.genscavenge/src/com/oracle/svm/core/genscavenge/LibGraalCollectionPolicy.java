@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 
 /**
  * A libgraal specific garbage collection policy that responds to GC hints and aggressively
@@ -59,6 +60,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
      * See class javadoc for rationale behind this 16G limit.
      */
     protected static final UnsignedWord MAXIMUM_HEAP_SIZE = Word.unsigned(16L * 1024L * 1024L * 1024L);
+    protected static final UnsignedWord MAXIMUM_YOUNG_SIZE = Word.unsigned(5L * 1024L * 1024L * 1024L);
 
     private UnsignedWord sizeBefore = Word.zero();
     private GCCause lastGCCause = null;
@@ -93,12 +95,13 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     }
 
     @Override
-    public UnsignedWord getMaximumHeapSize() {
-        UnsignedWord initialSetup = super.getMaximumHeapSize();
-        if (initialSetup.aboveThan(MAXIMUM_HEAP_SIZE)) {
-            return MAXIMUM_HEAP_SIZE;
-        }
-        return initialSetup;
+    protected UnsignedWord getHeapSizeLimit() {
+        return UnsignedUtils.min(super.getHeapSizeLimit(), MAXIMUM_HEAP_SIZE);
+    }
+
+    @Override
+    protected UnsignedWord getYoungSizeLimit(UnsignedWord maxHeap) {
+        return UnsignedUtils.min(super.getYoungSizeLimit(maxHeap), MAXIMUM_YOUNG_SIZE);
     }
 
     @Override

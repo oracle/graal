@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package org.graalvm.wasm.predefined.wasi;
 import java.util.Random;
 
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -65,17 +64,17 @@ public class WasiConstantRandomGetNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         final Object[] args = frame.getArguments();
         return randomGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "This is a testing class only")
     @CompilerDirectives.TruffleBoundary
-    private static int randomGet(WasmMemory memory, int buf, int size) {
+    private int randomGet(WasmMemory memory, int buf, int size) {
         byte[] randomData = new byte[size];
         new Random(SEED).nextBytes(randomData);
-        memory.initialize(randomData, 0, buf, size);
+        memoryLib.initialize(memory, null, randomData, 0, buf, size);
         return Errno.Success.ordinal();
     }
 

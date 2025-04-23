@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -377,7 +377,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (IntegerTest value Constant=a))")
     public ComplexMatchResult testBitAndBranch(IfNode root, ValueNode value, ConstantNode a) {
         long constant = a.asJavaConstant().asLong();
-        if (Long.bitCount(constant) == 1) {
+        if (Long.bitCount(constant) == 1 && !NumUtil.isUByte(constant)) {
             return builder -> {
                 LabelRef trueDestination = getLIRBlock(root.trueSuccessor());
                 LabelRef falseDestination = getLIRBlock(root.falseSuccessor());

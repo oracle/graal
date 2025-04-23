@@ -92,7 +92,7 @@ public abstract class Instruction {
      * {@link BytecodeNode}, it is therefore recommended to use {@link #getLocation()} instead
      * whenever possible.
      *
-     * @ee {@link #getLocation()}
+     * @see #getLocation()
      * @since 24.2
      */
     public abstract int getBytecodeIndex();
@@ -255,10 +255,10 @@ public abstract class Instruction {
      */
     @Override
     public final String toString() {
-        return formatInstruction(-1, this, 40, 60);
+        return formatInstruction(null, -1, this, 40, 60);
     }
 
-    static String formatInstruction(int index, Instruction instruction, int maxLabelWidth, int maxArgumentWidth) {
+    static String formatInstruction(List<Throwable> errors, int index, Instruction instruction, int maxLabelWidth, int maxArgumentWidth) {
         StringBuilder sb = new StringBuilder();
         if (index != -1) {
             sb.append(String.format("%3d ", index));
@@ -269,10 +269,19 @@ public abstract class Instruction {
         String arguments = formatArguments(instruction);
         sb.append(arguments);
         appendSpaces(sb, maxArgumentWidth - arguments.length());
-        SourceSection s = instruction.getSourceSection();
-        if (s != null) {
-            sb.append(" | ");
-            sb.append(SourceInformation.formatSourceSection(s, 60));
+        try {
+            SourceSection s = instruction.getSourceSection();
+            if (s != null) {
+                sb.append(" | ");
+                sb.append(SourceInformation.formatSourceSection(s, 60));
+            }
+        } catch (Throwable t) {
+            if (errors != null) {
+                errors.add(t);
+                sb.append(" | " + t.toString());
+            } else {
+                throw t;
+            }
         }
         return sb.toString();
     }

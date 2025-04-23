@@ -24,19 +24,21 @@ package com.oracle.truffle.espresso.preinit;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParsingContext;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public interface ParserKlassProvider {
     ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info);
@@ -46,11 +48,36 @@ public interface ParserKlassProvider {
     }
 
     static ParserKlass parseKlass(ClassRegistry.ClassDefinitionInfo info, ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes) {
-        boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+        boolean verifiable = EspressoVerifier.needsVerify(env.getLanguage(), loader);
         boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
         Meta meta = env.getMeta();
         try {
-            return ClassfileParser.parse(env.getParsingContext(), new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden, info.forceAllowVMAnnotations);
+            // Classes from trusted class loaders can create strongly referenced symbols directly
+            // during parsing.
+            boolean ensureStrongSymbols = env.loaderIsBootOrPlatform(loader) || env.loaderIsAppLoader(loader);
+            ParsingContext parsingContext = ClassLoadingEnv.createParsingContext(env, ensureStrongSymbols);
+
+            // Trusted classes do not need validation/verification.
+            boolean validate = verifiable;
+            ParserKlass parserKlass = ClassfileParser.parse(parsingContext, new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden,
+                            info.forceAllowVMAnnotations, validate);
+            if (info.isHidden) {
+                Symbol<Type> requestedClassType = typeOrNull;
+                assert requestedClassType != null;
+                long hiddenKlassId = env.getNewKlassId();
+                Symbol<Name> thisKlassName = parsingContext.getOrCreateName(TypeSymbols.hiddenClassName(requestedClassType, hiddenKlassId));
+                Symbol<Type> thisKlassType = parsingContext.getOrCreateTypeFromName(thisKlassName);
+                var pool = parserKlass.getConstantPool().patchForHiddenClass(parserKlass.getThisKlassIndex(), thisKlassName);
+                var classFlags = parserKlass.getFlags() | Constants.ACC_IS_HIDDEN_CLASS;
+                return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType,
+                                parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
+                                parserKlass.getMethods(), parserKlass.getFields(),
+                                parserKlass.getAttributes(),
+                                parserKlass.getThisKlassIndex(), parserKlass.getHiddenKlassId());
+            }
+
+            return parserKlass;
+
         } catch (ValidationException | ParserException.ClassFormatError validationOrBadFormat) {
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, validationOrBadFormat.getMessage());
         } catch (ParserException.UnsupportedClassVersionError unsupportedClassVersionError) {

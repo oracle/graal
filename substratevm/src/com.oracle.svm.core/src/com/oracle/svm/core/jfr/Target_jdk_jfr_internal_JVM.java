@@ -547,6 +547,16 @@ public final class Target_jdk_jfr_internal_JVM {
         /* Not implemented at the moment. */
         return -1;
     }
+
+    @Substitute
+    @TargetElement(onlyWith = JDKLatest.class) //
+    public static boolean isProduct() {
+        /*
+         * Currently only used for jdk.jfr.internal.tool.Command, which is not relevant for us. We
+         * implement it nevertheless and return true to disable non-product features.
+         */
+        return true;
+    }
 }
 
 class HasChunkRotationMonitorField implements BooleanSupplier {

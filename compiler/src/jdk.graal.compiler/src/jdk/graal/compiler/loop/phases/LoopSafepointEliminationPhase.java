@@ -26,12 +26,15 @@ package jdk.graal.compiler.loop.phases;
 
 import java.util.Optional;
 
+import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -58,12 +61,138 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         //@formatter:on
     }
 
+    /**
+     * Models SafepointState transforms that can be applied to all loops in a graph.
+     */
+    public static class LoopSafepointPlan {
+        private final EconomicMap<LoopBeginNode, SafepointStateEffect> loopStates;
+
+        public LoopSafepointPlan(StructuredGraph g) {
+            loopStates = EconomicMap.create();
+            for (LoopBeginNode lb : g.getNodes(LoopBeginNode.TYPE)) {
+                loopStates.put(lb, new SafepointStateEffect(lb));
+            }
+        }
+
+        /**
+         * Apply all safepoint effects on all loops, that is, enable/disable loop safepoint on loop
+         * ends and exits.
+         */
+        public void apply() {
+            for (SafepointStateEffect loopPlan : loopStates.getValues()) {
+                loopPlan.apply();
+            }
+        }
+
+        public void setGuestEndStateAllEnds(Loop loop, SafepointState state) {
+            loopStates.get(loop.loopBegin()).setGuestEndStateAllEnds(state);
+        }
+
+        public void setGuestEndState(LoopEndNode loopEnd, SafepointState state) {
+            loopStates.get(loopEnd.loopBegin()).setGuestEndState(loopEnd, state);
+        }
+
+        public void setEndState(LoopEndNode loopEnd, SafepointState state) {
+            LoopBeginNode lb = loopEnd.loopBegin();
+            loopStates.get(lb).setEndState(loopEnd, state);
+        }
+
+        public void setEndStateAllEnds(Loop loop, SafepointState state) {
+            loopStates.get(loop.loopBegin()).setEndStateAllEnds(state);
+        }
+
+        public void setExitState(Loop loop, SafepointState state) {
+            loopStates.get(loop.loopBegin()).setExitState(state);
+        }
+
+        public boolean canSafepoint(LoopEndNode len) {
+            return loopStates.get(len.loopBegin()).getEndStates().get(len).canSafepoint();
+        }
+
+    }
+
+    /**
+     * Models SafepointState transforms that can be {@linkplain #apply applied} to a single loop.
+     */
+    public static class SafepointStateEffect {
+        /**
+         * The safepoint state that should be assigned to the loop exit nodes of this loop.
+         */
+        private SafepointState exitState;
+        /**
+         * The safepoint state assigned to every loop end of this loop.
+         */
+        private final EconomicMap<LoopEndNode, SafepointState> endStates;
+        /**
+         * The guest safepoint state assigned to every loop end of this loop.
+         */
+        private final EconomicMap<LoopEndNode, SafepointState> guestEndStates;
+        /**
+         * The corresponding loop begin node.
+         */
+        private final LoopBeginNode loopBegin;
+
+        public SafepointStateEffect(LoopBeginNode lb) {
+            this.loopBegin = lb;
+            endStates = EconomicMap.create();
+            guestEndStates = EconomicMap.create();
+            // Start with the states before the elimination
+            for (LoopEndNode len : lb.loopEnds()) {
+                endStates.put(len, len.getSafepointState());
+                guestEndStates.put(len, len.getGuestSafepointState());
+            }
+            exitState = lb.getLoopExitsSafepointState();
+        }
+
+        public SafepointState getExitState() {
+            return exitState;
+        }
+
+        public void setExitState(SafepointState exitState) {
+            this.exitState = exitState;
+        }
+
+        public EconomicMap<LoopEndNode, SafepointState> getEndStates() {
+            return endStates;
+        }
+
+        public EconomicMap<LoopEndNode, SafepointState> getGuestEndStates() {
+            return guestEndStates;
+        }
+
+        public void setEndState(LoopEndNode len, SafepointState newState) {
+            endStates.put(len, newState);
+        }
+
+        public void setEndStateAllEnds(SafepointState newState) {
+            for (LoopEndNode len : loopBegin.loopEnds()) {
+                endStates.put(len, newState);
+            }
+        }
+
+        public void setGuestEndStateAllEnds(SafepointState newState) {
+            for (LoopEndNode len : loopBegin.loopEnds()) {
+                guestEndStates.put(len, newState);
+            }
+        }
+
+        public void setGuestEndState(LoopEndNode len, SafepointState newState) {
+            guestEndStates.put(len, newState);
+        }
+
+        public void apply() {
+            for (LoopEndNode len : loopBegin.loopEnds()) {
+                len.setSafepointState(endStates.get(len));
+                len.setGuestSafepointState(guestEndStates.get(len));
+            }
+            loopBegin.setLoopExitSafepoint(exitState);
+        }
+
+    }
+
     private static final long IntegerRangeDistance = NumUtil.unsafeAbs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
-    public static boolean iterationRangeIsIn32Bit(Loop loop) {
-        if (loop.counted().getStamp().getBits() <= 32) {
-            return true;
-        }
+    public static boolean loopIsInIterationRange(Loop loop, long distance) {
         final Stamp limitStamp = loop.counted().getTripCountLimit().stamp(NodeView.DEFAULT);
         if (limitStamp instanceof IntegerStamp) {
             final IntegerStamp limitIStamp = (IntegerStamp) limitStamp;
@@ -86,13 +215,20 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                     final InductionVariable counter = loop.counted().getLimitCheckedIV();
                     final long stride = counter.isConstantStride() ? NumUtil.safeAbs(counter.constantStride()) : 1;
                     final long strideRelativeStartToLimitDistance = startToLimitDistance / stride;
-                    return strideRelativeStartToLimitDistance <= IntegerRangeDistance;
+                    return strideRelativeStartToLimitDistance <= distance;
                 } catch (ArithmeticException e) {
                     return false;
                 }
             }
         }
         return false;
+    }
+
+    public static boolean iterationRangeIsIn32Bit(Loop loop) {
+        if (loop.counted().getStamp().getBits() <= 32) {
+            return true;
+        }
+        return loopIsInIterationRange(loop, IntegerRangeDistance);
     }
 
     @Override
@@ -102,14 +238,14 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
-        new Instance(graph, context).optimizeSafepoints();
+        new SafepointOptimizer(graph, context).optimizeSafepoints().apply();
     }
 
-    protected static class Instance {
+    public static class SafepointOptimizer {
         private final StructuredGraph graph;
         private final MidTierContext context;
 
-        protected Instance(StructuredGraph graph, MidTierContext context) {
+        public SafepointOptimizer(StructuredGraph graph, MidTierContext context) {
             this.graph = graph;
             this.context = context;
         }
@@ -140,7 +276,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
          * {@code call2} dominate the backedges. We can remove safepoint polls from both of them
          * because the call will be a guaranteed safepoint.
          */
-        private int disableSafepointsByBodyNodes(Loop loop, ControlFlowGraph cfg) {
+        private int disableSafepointsByBodyNodes(LoopSafepointPlan safepointPlan, Loop loop, ControlFlowGraph cfg) {
             int loopEndSafepointsDisabled = 0;
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 HIRBlock b = cfg.blockFor(loopEnd);
@@ -148,9 +284,9 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
                         boolean canDisableSafepoint = canDisableSafepoint(node, context);
-                        boolean disabledInSubclass = onCallInLoop(loopEnd, node);
+                        boolean disabledInSubclass = onCallInLoop(safepointPlan, loopEnd, node);
                         if (canDisableSafepoint) {
-                            loopEnd.disableSafepoint();
+                            safepointPlan.setEndState(loopEnd, SafepointState.OPTIMIZER_DISABLED);
                             graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
                             loopEndSafepointsDisabled++;
                             /*
@@ -167,20 +303,33 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             return loopEndSafepointsDisabled;
         }
 
-        public void optimizeSafepoints() {
-            final boolean optimisticallyRemoveLoopSafepoints = Options.RemoveLoopSafepoints.getValue(graph.getOptions());
-
+        public LoopSafepointPlan optimizeSafepoints() {
             LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
             loops.detectCountedLoops();
+            return optimizeSafepoints(loops);
+        }
+
+        public LoopSafepointPlan optimizeSafepoints(LoopsData loops) {
+            LoopSafepointPlan graphWidePlan = new LoopSafepointPlan(graph);
+
+            final boolean optimisticallyRemoveLoopSafepoints = Options.RemoveLoopSafepoints.getValue(graph.getOptions());
 
             for (Loop loop : loops.loops()) {
                 if (!allowGuestSafepoints()) {
-                    loop.loopBegin().disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                    graphWidePlan.setGuestEndStateAllEnds(loop, SafepointState.MUST_NEVER_SAFEPOINT);
                 }
-                int loopEndSafepointsDisabled = disableSafepointsByBodyNodes(loop, loops.getCFG());
-                final boolean allLoopEndSafepointsDisabled = loopEndSafepointsDisabled == loop.loopBegin().getLoopEndCount();
-                if (!allLoopEndSafepointsDisabled && optimisticallyRemoveLoopSafepoints) {
-                    if (optimizeSafepointsForCountedLoop(loop)) {
+                if (!loop.loopBegin().canEndsSafepoint() && !loop.loopBegin().canEndsGuestSafepoint()) {
+                    /*
+                     * There are no safepoints at the loop ends. Therefore, we want safepoints at
+                     * loop exits. Skip optimization of loop exit safepoints.
+                     */
+                    continue;
+                }
+
+                int loopEndSafepointsDisabled = disableSafepointsByBodyNodes(graphWidePlan, loop, loops.getCFG());
+                final boolean allLoopEndSafepointsDisabledByBodyNodes = loopEndSafepointsDisabled == loop.loopBegin().getLoopEndCount();
+                if (!allLoopEndSafepointsDisabledByBodyNodes && optimisticallyRemoveLoopSafepoints) {
+                    if (optimizeSafepointsForCountedLoop(graphWidePlan, loop)) {
                         /*
                          * We removed all loop end safepoints if we do it optimistically for the
                          * entire loop.
@@ -188,18 +337,28 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         loopEndSafepointsDisabled = loop.loopBegin().getLoopEndCount();
                     }
                 }
+                if (!loop.loopBegin().canExitsSafepoint()) {
+                    continue;
+                }
                 final boolean allLoopEndSafepointsEnabled = loopEndSafepointsDisabled == 0;
-                if (allLoopEndSafepointsEnabled) {
-                    /*
-                     * Only if ALL paths through the loop are guaranteed to safepoint we can drop
-                     * the exit safepoint. If there is any path left that does not safepoint we
-                     * could be only executing that path and then we need an exit safepoint.
-                     */
-                    loop.loopBegin().disableLoopExitSafepoint(SafepointState.OPTIMIZER_DISABLED);
+                // strip mined outer is never counted
+                final boolean stripMinedOuter = loop.loopBegin().isAnyStripMinedOuter();
+                // retain the exit safepoint for all non-counted loops
+                if (loop.isCounted() || stripMinedOuter) {
+                    if (allLoopEndSafepointsEnabled || allLoopEndSafepointsDisabledByBodyNodes) {
+                        /**
+                         * If all paths inside the loop are guaranteed to trigger a safepoint
+                         * explicitly via SafepointNodes, or implicitly via other nodes (e.g.,
+                         * InvokeNode), we can drop the exit safepoint.
+                         */
+                        graphWidePlan.setExitState(loop, SafepointState.OPTIMIZER_DISABLED);
+                    }
                 }
 
             }
             loops.deleteUnusedNodes();
+
+            return graphWidePlan;
         }
 
         /**
@@ -217,7 +376,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
          * traversing.
          */
         @SuppressWarnings("unused")
-        protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
+        protected boolean onCallInLoop(LoopSafepointPlan safepointPlan, LoopEndNode loopEnd, FixedNode currentCallNode) {
             return true;
         }
 
@@ -225,7 +384,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
          * To be implemented by subclasses to compute additional fields.
          */
         @SuppressWarnings("unused")
-        protected void onSafepointDisabledLoopBegin(Loop loop) {
+        protected void onSafepointDisabledLoopBegin(LoopSafepointPlan safepointPlan, Loop loop) {
         }
 
         /**
@@ -233,14 +392,17 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
          * able to remove safepoints from the loop ends of the given loop yet. However, the
          * optimizer may believe this loop is short running enough to remove safepoints.
          */
-        private boolean optimizeSafepointsForCountedLoop(Loop loop) {
+        private boolean optimizeSafepointsForCountedLoop(LoopSafepointPlan safepointPlan, Loop loop) {
             if (loop.isCounted()) {
-                if (loop.getCFGLoop().getChildren().isEmpty() &&
-                                (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) ||
-                                                loop.loopBegin().isStripMinedInner())) {
+                final boolean leafLoop = loop.getCFGLoop().getChildren().isEmpty();
+                final boolean preLoop = loop.loopBegin().isPreLoop();
+                final boolean postLoop = loop.loopBegin().isPostLoop();
+                final boolean briefLoop = loopIsInBriefRange(loop);
+                final boolean stripMinedInner = loop.loopBegin().isAnyStripMinedInner();
+                if (leafLoop && (preLoop || postLoop || briefLoop || stripMinedInner)) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                        hasSafepoint |= loopEnd.canSafepoint();
+                        hasSafepoint |= loopEnd.getSafepointState().canSafepoint();
                     }
                     if (hasSafepoint) {
                         if (!loop.counted().counterNeverOverflows()) {
@@ -256,18 +418,18 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                                 return false;
                             }
                         }
-                        loop.loopBegin().disableSafepoint(SafepointState.OPTIMIZER_DISABLED);
-                        if (loop.loopBegin().isStripMinedInner()) {
+                        safepointPlan.setEndStateAllEnds(loop, SafepointState.OPTIMIZER_DISABLED);
+                        if (stripMinedInner) {
                             /*
                              * graal strip mined this loop, trust the heuristics and remove the
                              * inner loop safepoint
                              */
-                            loop.loopBegin().disableGuestSafepoint(SafepointState.OPTIMIZER_DISABLED);
+                            safepointPlan.setGuestEndStateAllEnds(loop, SafepointState.OPTIMIZER_DISABLED);
                         } else {
                             /*
                              * let the shape of the loop decide whether a guest safepoint is needed
                              */
-                            onSafepointDisabledLoopBegin(loop);
+                            onSafepointDisabledLoopBegin(safepointPlan, loop);
                         }
                         graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
                         return true;
@@ -277,7 +439,11 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             return false;
         }
 
-        public boolean loopIsIn32BitRange(Loop loop) {
+        /**
+         * Determine if this loop is a brief range loop. A brief range loop is one where we assume
+         * that we can drop the safepoint because the body of the loop executes quickly enough.
+         */
+        public boolean loopIsInBriefRange(Loop loop) {
             return iterationRangeIsIn32Bit(loop);
         }
 

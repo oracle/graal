@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -181,13 +182,11 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
-    public boolean isInBaseLayer() {
-        return false;
-    }
-
-    @Override
-    public JavaConstant getStaticFieldBase() {
-        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    public int getInstalledLayerNum() {
+        /*
+         * GR-62500: Layered images are not yet supported for runtime compilation.
+         */
+        return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
     }
 
     @Override

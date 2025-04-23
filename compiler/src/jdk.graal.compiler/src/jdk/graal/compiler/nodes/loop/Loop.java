@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,8 +44,10 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractDeoptimizeNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -82,9 +84,34 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 /**
- * Extra loop data for the given loop. This includes data on which nodes belong to a loop, counted
+ * Extra loop data for a loop in the IR. This includes data on which nodes belong to a loop, counted
  * loop information if the compiler detects it as a counted loop. Data about induction variables,
  * parent loops and much more.
+ *
+ * A note on the relation of {@link Loop}, {@link LoopBeginNode} and {@link CFGLoop} in the Graal
+ * IR.
+ *
+ * A {@link Loop} is a data structure used by the optimizer to reason about a loop. It encapsulates
+ * machinery to compute which (floating) nodes belong to a loop as well as API to duplicate, copy,
+ * etc a loop.
+ *
+ * In contrast a {@link LoopBeginNode} is a marker node in the IR to signal the start of a loop
+ * structure. A {@link Loop} is a temporary data structure while the {@link LoopBeginNode} is
+ * permanent. One can compute multiple {@link Loop} for a given {@link LoopBeginNode} loop in the
+ * IR.
+ *
+ * A {@link CFGLoop} is an encapsulation of concepts related to a loop in the context of a
+ * {@link ControlFlowGraph}. It pulls together the {@link HIRBlock} of a loop and computes extra
+ * data like depth and child loops etc. necessary to even compute a {@link Loop} for the optimizer.
+ *
+ * IN the bigger picture a {@link LoopBeginNode} in the IR signals that a loop data structure
+ * begins. While computing a {@link ControlFlowGraph} we build the context data structure
+ * {@link CFGLoop} which is the necessary CFG abstraction to compute a {@link Loop} for the
+ * optimizer.
+ *
+ * Context data for a loop that needs to be preserved over the entire course of compilation is
+ * attached to a {@link LoopBeginNode} because that is the only permanent data storage associated
+ * with a loop.
  */
 public class Loop {
     /**
@@ -251,18 +278,43 @@ public class Loop {
         }
     }
 
+    /**
+     * Reassociates loop invariants by pushing loop variant operands further down the operand tree.
+     *
+     * <pre>
+     *    inv2  var        inv1  inv2
+     *       \  /             \  /
+     * inv1   +     =>   var   +
+     *    \  /             \  /
+     *     +                +
+     * </pre>
+     *
+     * Also ensures that loop phis are pushed down the furthest (i.e., used as late as possible) to
+     * avoid long dependency chains on register level when calculating backedge values:
+     *
+     * <pre>
+     *     inv  phi        inv   var
+     *       \  /             \  /
+     *  var   +     =>   phi   +
+     *    \  /             \  /
+     *     +                +
+     * </pre>
+     */
     public boolean reassociateInvariants() {
         int count = 0;
         StructuredGraph graph = loopBegin().graph();
         InvariantPredicate invariant = new InvariantPredicate();
         NodeBitMap newLoopNodes = graph.createNodeBitMap();
+        var phis = loopBegin().phis();
         for (BinaryArithmeticNode<?> binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
             if (!binary.mayReassociate()) {
                 continue;
             }
-            ValueNode result = BinaryArithmeticNode.reassociateMatchedValues(binary, invariant, binary.getX(), binary.getY(), NodeView.DEFAULT);
+            // pushing down loop variants will associate loop invariants at the "top"
+            ValueNode result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, n -> !invariant.apply(n), NodeView.DEFAULT);
             if (result == binary) {
-                result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, invariant, NodeView.DEFAULT);
+                // use loop phis as late as possible to shorten the register dependency chains
+                result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, n -> n instanceof PhiNode phi && phis.contains(phi), NodeView.DEFAULT);
             }
             if (result != binary) {
                 if (!result.isAlive()) {
@@ -467,8 +519,29 @@ public class Loop {
     }
 
     public EconomicMap<Node, InductionVariable> getInductionVariables() {
-        if (ivs == null) {
-            ivs = findInductionVariables();
+        return getInductionVariables(false, false);
+    }
+
+    /**
+     * Gets the collection of all {@link InductionVariable} of this loop indexed by their
+     * {@link InductionVariable#valueNode()}.
+     *
+     * If {@code forceReset==true} throws away any previously computed induction variables. The
+     * collection of the IVs uses the current data in {@link #inside} and thus can change depending
+     * on when IVs are computed.
+     *
+     * If {@code computeDeoptLoopExitIVs==true} computes a potentially broader set of IVs. It
+     * includes those that have usages outside a loop if such a usage is a framestate used by a
+     * {@link DeoptimizeNode}. That is necessary because there is concrete discrepancy in loop nodes
+     * between Java bytecode and the actual liveness. See {@link CFGLoop#getNaturalExits()} for
+     * details. Every branch leading to a deopt is already outside a loop and thus does not count as
+     * usages that drive normal IV collection. Certain optimizations still need to see all induction
+     * variables, also those with usages outside. Note that there are potentially IVs that are still
+     * not returned by this function if they have usages outside a loop but are not used by a deopt.
+     */
+    public EconomicMap<Node, InductionVariable> getInductionVariables(boolean forceReset, boolean computeDeoptLoopExitIVs) {
+        if (ivs == null || forceReset) {
+            ivs = findInductionVariables(computeDeoptLoopExitIVs);
         }
         return ivs;
     }
@@ -503,7 +576,7 @@ public class Loop {
      *
      * @return a map from node to induction variable
      */
-    private EconomicMap<Node, InductionVariable> findInductionVariables() {
+    private EconomicMap<Node, InductionVariable> findInductionVariables(boolean computeDeoptLoopExitIVs) {
         EconomicMap<Node, InductionVariable> currentIvs = EconomicMap.create(Equivalence.IDENTITY);
 
         // first find basic induction variables
@@ -529,7 +602,10 @@ public class Loop {
             ValueNode baseIvNode = baseIv.valueNode();
             for (ValueNode op : baseIvNode.usages().filter(ValueNode.class)) {
                 if (this.isOutsideLoop(op)) {
-                    continue;
+                    boolean needExitIVs = computeDeoptLoopExitIVs && hasDeoptUsage(op, this);
+                    if (!needExitIVs) {
+                        continue;
+                    }
                 }
                 if (op.hasExactlyOneUsage() && op.usages().first() == baseIvNode) {
                     /*
@@ -570,6 +646,59 @@ public class Loop {
             }
         }
         return currentIvs;
+    }
+
+    /**
+     * Maximum search depth for recursive application of deopt usage search. Used when state usages
+     * are found. See {@link #hasDeoptUsage(ValueNode, Loop)} for details.
+     */
+    private static final int MAX_DEPTH_DEOPT_USAGES = 4;
+
+    private static boolean hasDeoptUsage(ValueNode op, Loop loop) {
+        for (Node usage : op.usages()) {
+            if (hasDeoptUsage(usage, loop, 0)) {
+                return true;
+            }
+        }
+        return hasDeoptUsage(op, loop, 0);
+    }
+
+    /**
+     * Determine if the given operation denoted as {@code op} represents an induction variable that
+     * is used in a deopt path inside the loop body. With Java bytecode liveness is always a
+     * problem. There is a discrepancy between bytecode level loops and actual, natural loop exits
+     * (see {@link CFGLoop#getNaturalExits()} for details). This value might only be used in a deopt
+     * path outside the loop == a natural exit path. Still create IVs if wanted for such cases so
+     * certain optimizations can use that information.
+     *
+     * If {@code depth} is reached this method returns {@code false} indicating no usage is found.
+     * This however is imprecise. A return value of {@code false} can indicate there was no usage or
+     * the depth filter was hit and we DO NOT KNOW.
+     */
+    private static boolean hasDeoptUsage(Node usage, Loop loop, int depth) {
+        if (depth >= MAX_DEPTH_DEOPT_USAGES) {
+            return false;
+        }
+        if (usage instanceof FrameState fs) {
+            for (Node fsUsage : fs.usages()) {
+                if (fsUsage instanceof AbstractDeoptimizeNode deopt) {
+                    HIRBlock deoptBlock = loop.getCFGLoop().getHeader().getCfg().blockFor(deopt);
+                    while (deoptBlock != null) {
+                        if (loop.getCFGLoop().getBlocks().contains(deoptBlock)) {
+                            return true;
+                        }
+                        deoptBlock = deoptBlock.getDominator();
+                    }
+                } else if (fsUsage instanceof FrameState stateUsage && stateUsage.outerFrameState() == fs) {
+                    // go into recursion another level
+                    if (hasDeoptUsage(fsUsage, loop, depth + 1)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -736,7 +865,7 @@ public class Loop {
         if (op instanceof LeftShiftNode) {
             LeftShiftNode shift = (LeftShiftNode) op;
             if (shift.getX() == base && shift.getY().isConstant()) {
-                return ConstantNode.forIntegerStamp(base.stamp(NodeView.DEFAULT), 1 << shift.getY().asJavaConstant().asInt(), base.graph());
+                return ConstantNode.forIntegerStamp(base.stamp(NodeView.DEFAULT), 1L << shift.getY().asJavaConstant().asInt(), base.graph());
             }
         }
         return null;

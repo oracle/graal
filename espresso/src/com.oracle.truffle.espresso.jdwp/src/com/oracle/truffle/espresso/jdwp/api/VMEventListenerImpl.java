@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,6 +88,10 @@ public final class VMEventListenerImpl implements VMEventListener {
         this.debuggerController = control;
         this.context = jdwpContext;
         this.ids = context.getIds();
+    }
+
+    public void replaceController(DebuggerController newController) {
+        this.debuggerController = newController;
     }
 
     @Override
@@ -218,7 +222,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                 switch (hook.getKind()) {
                     case ONE_TIME:
                         if (hook.hasFired()) {
-                            method.removedMethodHook(hook);
+                            method.removeMethodHook(hook);
                         }
                         break;
                     case INDEFINITE:
@@ -244,7 +248,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                 switch (hook.getKind()) {
                     case ONE_TIME:
                         if (hook.hasFired()) {
-                            method.removedMethodHook(hook);
+                            method.removeMethodHook(hook);
                         }
                         break;
                     case INDEFINITE:

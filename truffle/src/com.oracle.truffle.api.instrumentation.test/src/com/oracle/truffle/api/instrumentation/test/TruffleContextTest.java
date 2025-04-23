@@ -240,12 +240,12 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         assertFails(() -> tc.closeCancelled(node, "testreason"), getCancelExecutionClass(), (e) -> {
             assertSame(getCancelExecutionLocation(e), node);
-            assertEquals("testreason", ((Throwable) e).getMessage());
+            assertEquals("testreason", e.getMessage());
         });
 
         assertFails(() -> tc.closeResourceExhausted(node, "testreason"), getCancelExecutionClass(), (e) -> {
             assertSame(getCancelExecutionLocation(e), node);
-            assertEquals("testreason", ((Throwable) e).getMessage());
+            assertEquals("testreason", e.getMessage());
         });
 
         tc.leave(null, prev);
@@ -574,7 +574,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         innerContext.leave(null, prev);
 
         assertFails(() -> innerContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder("foobarbazz$_", "", "").build()), IllegalArgumentException.class, (e) -> {
-            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id 'foobarbazz$_' is not installed. Installed languages are:"));
+            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id 'foobarbazz$_' is not available. Available languages are:"));
         });
         innerContext.close();
     }

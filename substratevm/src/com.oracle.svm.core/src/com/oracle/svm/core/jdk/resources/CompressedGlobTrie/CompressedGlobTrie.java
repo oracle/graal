@@ -25,21 +25,21 @@
 
 package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
 
-import static com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode.LEVEL_IDENTIFIER;
-import static com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode.STAR;
-import static com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode.STAR_STAR;
+import static com.oracle.svm.util.GlobUtils.LEVEL_IDENTIFIER;
+import static com.oracle.svm.util.GlobUtils.STAR;
+import static com.oracle.svm.util.GlobUtils.STAR_STAR;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.StringUtil;
 
 /**
@@ -48,8 +48,8 @@ import com.oracle.svm.util.StringUtil;
  *
  * The structure can be created using {@link CompressedGlobTrieBuilder#build(List)} where list
  * parameter represents list of glob patterns given in any order. At the very beginning, all given
- * globs will be validated using {@link CompressedGlobTrieBuilder#validatePattern(String)}. If all
- * globs were correct, they will be classified (with
+ * globs will be validated using {@link GlobUtils#validatePattern(String)}. If all globs were
+ * correct, they will be classified (with
  * {@link CompressedGlobTrieBuilder#classifyPatterns(List, List, List, List)}) and sorted (using
  * {@link CompressedGlobTrieBuilder#comparePatterns(GlobWithInfo, GlobWithInfo)} as the comparator
  * function). This preprocessing phase allows incremental structure build, going from the most
@@ -218,7 +218,7 @@ public class CompressedGlobTrie {
             List<String> invalidPatterns = new ArrayList<>();
             for (GlobWithInfo<C> patternWithInfo : patterns) {
                 /* validate patterns */
-                String error = validatePattern(patternWithInfo.pattern());
+                String error = GlobUtils.validatePattern(patternWithInfo.pattern());
                 if (!error.isEmpty()) {
                     invalidPatterns.add(error);
                     continue;
@@ -379,130 +379,30 @@ public class CompressedGlobTrie {
         return text.replace("*", "\\*");
     }
 
-    private static final Pattern threeConsecutiveStarsRegex = Pattern.compile(".*[*]{3,}.*");
-    private static final Pattern emptyLevelsRegex = Pattern.compile(".*/{2,}.*");
-
-    public static <C> String validatePattern(String pattern) {
-        StringBuilder sb = new StringBuilder();
-
-        if (pattern.isEmpty()) {
-            sb.append("Pattern ").append(pattern).append(" : Pattern cannot be empty. ");
-            return sb.toString();
-        }
-
-        // check if pattern contains more than 2 consecutive characters. Example: a/***/b
-        if (threeConsecutiveStarsRegex.matcher(pattern).matches()) {
-            sb.append("Pattern contains more than two consecutive * characters. ");
-        }
-
-        /* check if pattern contains empty levels. Example: a//b */
-        if (emptyLevelsRegex.matcher(pattern).matches()) {
-            sb.append("Pattern contains empty levels. ");
-        }
-
-        /* check unnecessary ** repetition */
-        if (pattern.contains("**/**")) {
-            sb.append("Pattern contains invalid sequence **/**. Valid pattern should have ** followed by something other than **. ");
-        }
-
-        /* check if there are unescaped wildcards */
-        boolean escapeMode = false;
-        for (int i = 0; i < pattern.length(); i++) {
-            char current = pattern.charAt(i);
-            if (GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS.contains(current) && !escapeMode) {
-                sb.append("Pattern contains unescaped character ").append(current).append(". ");
-            }
-
-            escapeMode = current == '\\';
-        }
-
-        // check if pattern contains ** without previous Literal parent. Example: */**/... or **/...
-        List<GlobTrieNode<C>> patternParts = getPatternParts(pattern);
-        for (GlobTrieNode<?> part : patternParts) {
-            if (part instanceof LiteralNode) {
-                break;
-            }
-
-            if (part instanceof DoubleStarNode) {
-                sb.append("Pattern contains ** without previous literal. " +
-                                "This pattern is too generic and therefore can match many resources. " +
-                                "Please make the pattern more specific by adding non-generic level before ** level.");
-            }
-        }
-
-        if (!sb.isEmpty()) {
-            sb.insert(0, "Pattern " + pattern + " : ");
-        }
-
-        return sb.toString();
-    }
-
     /**
      * Returns list of glob pattern parts that will represent nodes in final Trie. This function is
      * used as a helper function in tests as well, and therefore must remain public.
      */
     public static <C> List<GlobTrieNode<C>> getPatternParts(String glob) {
         String pattern = !glob.endsWith("/") ? glob : glob.substring(0, glob.length() - 1);
-        List<GlobTrieNode<C>> parts = new ArrayList<>();
-        /* we are splitting patterns on levels */
-        List<String> levels = Arrays.stream(pattern.split(LEVEL_IDENTIFIER)).toList();
-        for (String level : levels) {
-            if (level.equals(STAR_STAR)) {
-                DoubleStarNode<C> tmp = new DoubleStarNode<>();
-                tmp.setNewLevel();
-                parts.add(tmp);
-                continue;
+        List<List<GlobUtils.GlobToken>> tokens = GlobUtils.tokenize(pattern);
+        List<GlobTrieNode<C>> parts = new ArrayList<>(tokens.size());
+
+        for (List<GlobUtils.GlobToken> levelTokens : tokens) {
+            List<GlobTrieNode<C>> thisLevelParts = new ArrayList<>(levelTokens.size());
+            for (GlobUtils.GlobToken token : levelTokens) {
+                thisLevelParts.add(switch (token.kind()) {
+                    case STAR_STAR -> new DoubleStarNode<>();
+                    case STAR -> new StarTrieNode<>(true);
+                    case LITERAL_STAR -> new StarTrieNode<>(token.value());
+                    case LITERAL -> new LiteralNode<>(token.value());
+                });
             }
-
-            if (level.equals(STAR)) {
-                /* special case when * is alone on one level */
-                StarTrieNode<C> tmp = new StarTrieNode<>(true);
-                tmp.setNewLevel();
-                parts.add(tmp);
-                continue;
-            }
-
-            /* adding a*bc and a*dc patterns will produce: a* -> bc a* -> dc */
-            int s = level.indexOf(STAR.charAt(0));
-            if (s != -1) {
-                /*
-                 * this level contains at least one star, but maybe it has more. E.g.:
-                 * something/a*b*c*d/else
-                 */
-
-                List<GlobTrieNode<C>> thisLevelParts = new ArrayList<>();
-                StringBuilder currentPart = new StringBuilder();
-                StarCollectorMode currentMode = StarCollectorMode.NORMAL;
-                for (char c : level.toCharArray()) {
-                    currentPart.append(c);
-                    if (c == STAR.charAt(0) && currentMode == StarCollectorMode.NORMAL) {
-                        thisLevelParts.add(new StarTrieNode<>(currentPart.toString()));
-                        currentPart.setLength(0);
-                    }
-
-                    currentMode = c == '\\' ? StarCollectorMode.ESCAPE : StarCollectorMode.NORMAL;
-                }
-
-                if (!currentPart.isEmpty()) {
-                    /* this level ends with some literal node */
-                    thisLevelParts.add(new LiteralNode<>(currentPart.toString()));
-                }
-                thisLevelParts.get(0).setNewLevel();
-                parts.addAll(thisLevelParts);
-                continue;
-            }
-
-            LiteralNode<C> tmp = new LiteralNode<>(level);
-            tmp.setNewLevel();
-            parts.add(tmp);
+            thisLevelParts.getFirst().setNewLevel();
+            parts.addAll(thisLevelParts);
         }
 
         return parts;
-    }
-
-    private enum StarCollectorMode {
-        NORMAL,
-        ESCAPE
     }
 
     private static <C> void getAllPatterns(GlobTrieNode<C> node, List<GlobTrieNode<C>> parts, int i, List<GlobTrieNode<C>> matches) {
@@ -595,14 +495,14 @@ public class CompressedGlobTrie {
     }
 
     private static int getIndexOfFirstUnescapedStar(String level) {
-        StarCollectorMode currentMode = StarCollectorMode.NORMAL;
+        boolean escaped = false;
         for (int i = 0; i < level.length(); i++) {
             char c = level.charAt(i);
-            if (c == STAR.charAt(0) && currentMode == StarCollectorMode.NORMAL) {
+            if (c == STAR.charAt(0) && !escaped) {
                 return i;
             }
 
-            currentMode = c == '\\' ? StarCollectorMode.ESCAPE : StarCollectorMode.NORMAL;
+            escaped = c == '\\';
         }
 
         return -1;

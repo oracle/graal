@@ -107,6 +107,7 @@ import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatEqualsNode;
 import jdk.graal.compiler.nodes.calc.FloatLessThanNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLowerThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
@@ -749,9 +750,9 @@ public class MethodTypeFlowBuilder {
      * It only makes sense to create a local version of all instantiated if it will be guarded by a
      * predicate more precise than alwaysEnabled.
      */
-    protected TypeFlow<?> maybePatchAllInstantiated(TypeFlow<?> flow, AnalysisType declaredType, Object predicate) {
+    protected TypeFlow<?> maybePatchAllInstantiated(TypeFlow<?> flow, BytecodePosition position, AnalysisType declaredType, Object predicate) {
         if (bb.usePredicates() && flow instanceof AllInstantiatedTypeFlow && predicate != alwaysEnabled) {
-            var localFlow = new LocalAllInstantiatedFlow(declaredType);
+            var localFlow = new LocalAllInstantiatedFlow(position, declaredType);
             flowsGraph.addMiscEntryFlow(localFlow);
             flow.addUse(bb, localFlow);
             return localFlow;
@@ -817,13 +818,14 @@ public class MethodTypeFlowBuilder {
                 throw AnalysisError.shouldNotReachHere("Stamp for node " + node + " is empty.");
             }
             AnalysisType stampType = (AnalysisType) StampTool.typeOrNull(stamp, bb.getMetaAccess());
+            BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
             if (stamp.isExactType()) {
                 /*
                  * We are lucky: the stamp tells us which type the node has. Happens e.g. for a
                  * predicated boxed node.
                  */
                 return TypeFlowBuilder.create(bb, method, getPredicate(), node, SourceTypeFlow.class, () -> {
-                    SourceTypeFlow src = new SourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), stampType, !stamp.nonNull());
+                    SourceTypeFlow src = new SourceTypeFlow(position, stampType, !stamp.nonNull());
                     flowsGraph.addMiscEntryFlow(src);
                     return src;
                 });
@@ -834,9 +836,9 @@ public class MethodTypeFlowBuilder {
                  */
                 TypeFlowBuilder<?> predicate = getPredicate();
                 return TypeFlowBuilder.create(bb, method, predicate, node, TypeFlow.class, () -> {
-                    TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), stampType.getTypeFlow(bb, true));
+                    TypeFlow<?> proxy = bb.analysisPolicy().proxy(position, stampType.getTypeFlow(bb, true));
                     flowsGraph.addMiscEntryFlow(proxy);
-                    return maybePatchAllInstantiated(proxy, stampType, predicate);
+                    return maybePatchAllInstantiated(proxy, position, stampType, predicate);
                 });
             }
         }
@@ -1028,7 +1030,7 @@ public class MethodTypeFlowBuilder {
                     var y = lookup(equalsNode.getY());
                     var type = getNodeType(equalsNode);
                     result = TypeFlowBuilder.create(bb, method, getPredicate(), node, BooleanPrimitiveCheckTypeFlow.class, () -> {
-                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.EQ);
+                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.EQ, false);
                         flowsGraph.addMiscEntryFlow(flow);
                         return flow;
                     });
@@ -1037,9 +1039,10 @@ public class MethodTypeFlowBuilder {
                 } else if (node instanceof IntegerLowerThanNode lowerThan) {
                     var x = lookup(lowerThan.getX());
                     var y = lookup(lowerThan.getY());
+                    var isUnsigned = lowerThan instanceof IntegerBelowNode;
                     var type = getNodeType(lowerThan);
                     result = TypeFlowBuilder.create(bb, method, getPredicate(), node, BooleanPrimitiveCheckTypeFlow.class, () -> {
-                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.LT);
+                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.LT, isUnsigned);
                         flowsGraph.addMiscEntryFlow(flow);
                         return flow;
                     });
@@ -1311,19 +1314,37 @@ public class MethodTypeFlowBuilder {
             return returnBuilder;
         }
 
-        private void handleCompareNode(ValueNode source, CompareNode condition, PrimitiveComparison comparison) {
+        private void handleCompareNode(ValueNode source, CompareNode condition, PrimitiveComparison comparison, boolean isUnsigned) {
             var xNode = typeFlowUnproxify(condition.getX());
             var yNode = typeFlowUnproxify(condition.getY());
-            var xConstant = xNode.isConstant();
-            var yConstant = yNode.isConstant();
+            /* Ensure that if one input is constant, it is always y. */
+            PrimitiveComparison maybeFlipped;
+            if (xNode.isConstant() && !yNode.isConstant()) {
+                var tmp = xNode;
+                xNode = yNode;
+                yNode = tmp;
+                maybeFlipped = comparison.flip();
+            } else {
+                maybeFlipped = comparison;
+            }
             var xFlow = state.lookup(xNode);
-            var yFlow = state.lookup(yNode);
-            if (!xConstant) {
+            if (yNode.isConstant()) {
+                TypeState rightState = TypeState.forPrimitiveConstant(bb, yNode.asJavaConstant().asLong());
+                var builder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
+                    var flow = new PrimitiveFilterTypeFlow.ConstantFilter(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), rightState, maybeFlipped, isUnsigned);
+                    flowsGraph.addNodeFlow(source, flow);
+                    return flow;
+                });
+                builder.addUseDependency(xFlow);
+                typeFlowGraphBuilder.registerSinkBuilder(builder);
+                state.update(xNode, builder);
+                state.setPredicate(builder);
+            } else {
+                var yFlow = state.lookup(yNode);
                 var leftFlowBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
-                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), yFlow.get(), comparison);
-                    if (yConstant) {
-                        flowsGraph.addNodeFlow(source, flow);
-                    }
+                    var flow = new PrimitiveFilterTypeFlow.VariableFilter(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), yFlow.get(), maybeFlipped,
+                                    isUnsigned);
+                    flowsGraph.addNodeFlow(source, flow);
                     return flow;
                 });
                 leftFlowBuilder.addUseDependency(xFlow);
@@ -1331,13 +1352,11 @@ public class MethodTypeFlowBuilder {
                 typeFlowGraphBuilder.registerSinkBuilder(leftFlowBuilder);
                 state.update(xNode, leftFlowBuilder);
                 state.setPredicate(leftFlowBuilder);
-            }
-            if (!yConstant) {
                 var rightFlowBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
-                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), yFlow.get().declaredType, yFlow.get(), xFlow.get(), comparison.flip());
-                    flowsGraph.addNodeFlow(source, flow);
+                    var flow = new PrimitiveFilterTypeFlow.VariableFilter(AbstractAnalysisEngine.sourcePosition(source), yFlow.get().declaredType, yFlow.get(), xFlow.get(), maybeFlipped.flip(),
+                                    isUnsigned);
+                    flowsGraph.addMiscEntryFlow(flow);
                     return flow;
-
                 });
                 rightFlowBuilder.addUseDependency(yFlow);
                 rightFlowBuilder.addUseDependency(xFlow);
@@ -1359,9 +1378,10 @@ public class MethodTypeFlowBuilder {
         private void handleCondition(ValueNode source, LogicNode condition, boolean isTrue) {
             if (state.usePredicates()) {
                 if (condition instanceof IntegerLowerThanNode lowerThan) {
-                    handleCompareNode(source, lowerThan, isTrue ? PrimitiveComparison.LT : PrimitiveComparison.GE);
+                    var isUnsigned = lowerThan instanceof IntegerBelowNode;
+                    handleCompareNode(source, lowerThan, isTrue ? PrimitiveComparison.LT : PrimitiveComparison.GE, isUnsigned);
                 } else if (condition instanceof IntegerEqualsNode equalsNode) {
-                    handleCompareNode(source, equalsNode, isTrue ? PrimitiveComparison.EQ : PrimitiveComparison.NEQ);
+                    handleCompareNode(source, equalsNode, isTrue ? PrimitiveComparison.EQ : PrimitiveComparison.NEQ, false);
                 }
             }
             if (condition instanceof IsNullNode nullCheck) {
@@ -1451,9 +1471,10 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> exceptionObjectBuilder = TypeFlowBuilder.create(bb, method, predicate, node, TypeFlow.class, () -> {
                     AnalysisType analysisType = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
                     TypeFlow<?> input = analysisType.getTypeFlow(bb, false);
-                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), input);
+                    BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
+                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(position, input);
                     flowsGraph.addMiscEntryFlow(exceptionObjectFlow);
-                    return maybePatchAllInstantiated(exceptionObjectFlow, analysisType, predicate);
+                    return maybePatchAllInstantiated(exceptionObjectFlow, position, analysisType, predicate);
                 });
                 state.add(node, exceptionObjectBuilder);
 
@@ -1514,7 +1535,7 @@ public class MethodTypeFlowBuilder {
                     instanceType = bb.getObjectType();
                     TypeFlowBuilder<?> predicate = state.getPredicate();
                     instanceTypeBuilder = TypeFlowBuilder.create(bb, method, predicate, instanceType, TypeFlow.class,
-                                    () -> maybePatchAllInstantiated(instanceType.getTypeFlow(bb, false), instanceType, predicate));
+                                    () -> maybePatchAllInstantiated(instanceType.getTypeFlow(bb, false), AbstractAnalysisEngine.sourcePosition(node), instanceType, predicate));
                 }
                 TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewInstanceBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, DynamicNewInstanceTypeFlow.class, () -> {
                     DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), instanceType);
@@ -2092,15 +2113,30 @@ public class MethodTypeFlowBuilder {
         if (node.getStackKind() == JavaKind.Object) {
             TypeFlowBuilder<?> objectBuilder = state.lookup(object);
 
-            /*
-             * Use the Object type as a conservative approximation for both the receiver object type
-             * and the loaded values type.
-             */
-            var loadBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, UnsafeLoadTypeFlow.class, () -> {
-                UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), bb.getObjectType(), objectBuilder.get());
-                flowsGraph.addMiscEntryFlow(loadTypeFlow);
-                return loadTypeFlow;
-            });
+            TypeFlowBuilder<?> loadBuilder;
+            if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
+                /*
+                 * When unsafe loads are modeled conservatively they start as saturated since the
+                 * exact fields that are marked as unsafe accessed are not tracked and cannot be
+                 * used as an input to the UnsafeLoadTypeFlow. Using a pre-saturated flow will
+                 * signal the saturation to any future uses.
+                 */
+                loadBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, PreSaturatedTypeFlow.class, () -> {
+                    PreSaturatedTypeFlow preSaturated = new PreSaturatedTypeFlow(AbstractAnalysisEngine.sourcePosition(node));
+                    flowsGraph.addMiscEntryFlow(preSaturated);
+                    return preSaturated;
+                });
+            } else {
+                /*
+                 * Use the Object type as a conservative approximation for both the receiver object
+                 * type and the loaded values type.
+                 */
+                loadBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, UnsafeLoadTypeFlow.class, () -> {
+                    UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), bb.getObjectType(), objectBuilder.get());
+                    flowsGraph.addMiscEntryFlow(loadTypeFlow);
+                    return loadTypeFlow;
+                });
+            }
 
             loadBuilder.addObserverDependency(objectBuilder);
             state.add(node, loadBuilder);
@@ -2108,6 +2144,13 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processUnsafeStore(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+        if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
+            /*
+             * When unsafe writes are modeled conservatively all unsafe accessed fields contain all
+             * instantiated subtypes of their declared type, so no need to model the unsafe store.
+             */
+            return;
+        }
         /* All unsafe accessed primitive fields are always saturated. */
         if (newValueKind == JavaKind.Object) {
             TypeFlowBuilder<?> objectBuilder = state.lookup(object);

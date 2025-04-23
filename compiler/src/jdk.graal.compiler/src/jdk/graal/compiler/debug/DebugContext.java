@@ -56,7 +56,6 @@ import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -87,6 +86,7 @@ public final class DebugContext implements AutoCloseable {
      */
     public static final String DUMP_FILE_MESSAGE_REGEXP = "Dumping debug output to '(?<filename>[^']+)'";
 
+    private static final Description DISABLED_DESCRIPTION = new Description(null, "DISABLED_DESCRIPTION");
     public static final Description NO_DESCRIPTION = new Description(null, "NO_DESCRIPTION");
     public static final GlobalMetrics NO_GLOBAL_METRIC_VALUES = null;
     public static final Iterable<DebugHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
@@ -350,7 +350,7 @@ public final class DebugContext implements AutoCloseable {
     /**
      * Singleton used to represent a disabled debug context.
      */
-    private static final DebugContext DISABLED = new DebugContext(NO_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
+    private static final DebugContext DISABLED = new DebugContext(DISABLED_DESCRIPTION, null, NO_GLOBAL_METRIC_VALUES, getDefaultLogStream(), new Immutable(), NO_CONFIG_CUSTOMIZERS);
 
     /**
      * Create a DebugContext with debugging disabled.
@@ -456,17 +456,17 @@ public final class DebugContext implements AutoCloseable {
      *         ends
      */
     public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
-        CompilationAlarm.current().enterPhase(phaseName.toString());
+        CompilationAlarm.current().enterPhase(phaseName);
         if (compilationListener != null) {
             return new DecoratingCompilerPhaseScope(() -> {
-                CompilationAlarm.current().exitPhase(phaseName.toString());
+                CompilationAlarm.current().exitPhase(phaseName);
             }, enterCompilerPhase(() -> phaseName));
         }
         return new CompilerPhaseScope() {
 
             @Override
             public void close() {
-                CompilationAlarm.current().exitPhase(phaseName.toString());
+                CompilationAlarm.current().exitPhase(phaseName);
             }
         };
     }
@@ -639,6 +639,7 @@ public final class DebugContext implements AutoCloseable {
                     Immutable immutable,
                     Iterable<DebugHandlersFactory> factories, boolean disableConfig) {
         this.immutable = immutable;
+        this.invariants = Assertions.assertionsEnabled() && description != DISABLED_DESCRIPTION ? new Invariants() : null;
         this.description = description;
         this.globalMetrics = globalMetrics;
         this.compilationListener = compilationListener;
@@ -874,11 +875,7 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    /**
-     * Arbitrary threads cannot be in the image so null out {@code DebugContext.invariants} which
-     * holds onto a thread and is only used for assertions.
-     */
-    @NativeImageReinitialize private final Invariants invariants = Assertions.assertionsEnabled() ? new Invariants() : null;
+    private final Invariants invariants;
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         return thread.getStackTrace();

@@ -25,10 +25,12 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static org.graalvm.nativeimage.ImageInfo.inImageCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.ArchitectureSpecific;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -109,7 +111,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
     }
 
     protected ClassfileBytecodeProvider createBytecodeProvider(MetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection) {
-        return new ClassfileBytecodeProvider(metaAccess, snippetReflection);
+        return inRuntimeCode() ? null : new ClassfileBytecodeProvider(metaAccess, snippetReflection);
     }
 
     protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, HotSpotWordTypes wordTypes) {
@@ -134,9 +136,10 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         OptionValues options = graalRuntime.getOptions();
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
-        if (inImageCode()) {
+        if (inBuildtimeCode() || inRuntimeCode()) {
             SnippetSignature.initPrimitiveKindCache(jvmci.getMetaAccess());
         }
+
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
         TargetDescription target = codeCache.getTarget();
         MetaAccessProvider metaAccess = new HotSpotSnippetMetaAccessProvider(jvmci.getMetaAccess());
@@ -201,7 +204,9 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(target, providers, bytecodeProvider);
                 providers = replacements.getProviders();
-                replacements.maybeInitializeEncoder();
+                if (!LibGraalSupport.inLibGraalRuntime()) {
+                    replacements.maybeInitializeEncoder();
+                }
             }
             GraphBuilderConfiguration.Plugins plugins;
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {

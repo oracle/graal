@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -166,6 +168,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link DefaultTruffleRuntime}.
  */
 public final class TruffleBaseFeature implements InternalFeature {
+
+    private static final MethodHandle VERSION_GET_COMPONENT = findVersionGetComponent();
+
+    @SuppressWarnings("unchecked")
+    private static MethodHandle findVersionGetComponent() {
+        try {
+            return MethodHandles.lookup().findVirtual(Version.class, "getComponent", MethodType.methodType(int.class, int.class));
+        } catch (ReflectiveOperationException e) {
+            /*
+             * Old org.graalvm.polyglot module without Version#getComponent(int) method.
+             */
+            return null;
+        }
+    }
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
 
@@ -316,11 +332,13 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess a) {
         if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
             Version truffleVersion = getTruffleVersion(a);
+            Version truffleMajorMinorVersion = stripUpdateVersion(truffleVersion);
             Version featureVersion = getSVMFeatureVersion();
+            Version featureMajorMinorVersion = stripUpdateVersion(featureVersion);
             if (featureVersion.compareTo(NEXT_POLYGLOT_VERSION_UPDATE) >= 0) {
                 throw new AssertionError("MAX_JDK_VERSION must be updated, please contact the Truffle team!");
             }
-            if (featureVersion.compareTo(truffleVersion) > 0) {
+            if (featureMajorMinorVersion.compareTo(truffleMajorMinorVersion) > 0) {
                 // no forward compatibility
                 throw throwVersionError("""
                                 Your Java runtime '%s' with native-image feature version '%s' is incompatible with polyglot version '%s'.
@@ -394,6 +412,28 @@ public final class TruffleBaseFeature implements InternalFeature {
         } catch (IOException ioe) {
             throw VMError.shouldNotReachHere(ioe);
         }
+    }
+
+    private static Version stripUpdateVersion(Version version) {
+        if (VERSION_GET_COMPONENT != null) {
+            int major;
+            int minor;
+            try {
+                major = (int) VERSION_GET_COMPONENT.invoke(version, 0);
+                minor = (int) VERSION_GET_COMPONENT.invoke(version, 1);
+            } catch (Throwable t) {
+                throw new AssertionError(t);
+            }
+            if (major != 0 || minor != 0) {
+                return Version.create(major, minor);
+            } else {
+                /*
+                 * Version represents a pure snapshot version without any numeric component.
+                 * Continue and return the original version.
+                 */
+            }
+        }
+        return version;
     }
 
     private static RuntimeException throwVersionError(String errorFormat, Object... args) {
@@ -1350,7 +1390,7 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class, isFinal = true) //
     static ConcurrentHashMap<Object, Object> replacements;
 
-    private static class MapCleaner implements FieldValueTransformerWithAvailability {
+    private static final class MapCleaner implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isCompilationFinished();
@@ -1422,7 +1462,7 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         }
 
         JavaKind javaKind;
-        int baseOffset;
+        long baseOffset;
         int indexScale;
         int svmAlignmentCorrection;
         if (propertyType.isPrimitive()) {
@@ -1442,18 +1482,18 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         /*
          * Reverse the offset computation to find the index
          */
-        int index = (offset - baseOffset) / indexScale;
+        long index = (offset - baseOffset) / indexScale;
 
         /*
          * Find SVM array base offset and array index scale for this JavaKind
          */
-        int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
-        int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
+        long svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
+        long svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
 
         /*
          * Redo the offset computation with the SVM array base offset and array index scale
          */
-        return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
+        return Math.toIntExact(svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index);
     }
 
 }
@@ -1582,7 +1622,7 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
-    private static class OffsetComputer implements FieldValueTransformerWithAvailability {
+    private static final class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -1614,7 +1654,7 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
     @Delete private Class<?> declaringClass;
     @Delete private String name;
 
-    private static class OffsetComputer implements FieldValueTransformerWithAvailability {
+    private static final class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

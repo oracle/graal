@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -45,13 +44,14 @@ import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -113,85 +113,44 @@ public final class Resolution {
             assert accessingKlass != null;
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> klassName = thiz.getName(pool);
-            try {
-                EspressoContext context = pool.getContext();
-                Symbol<Type> type = context.getTypes().fromName(klassName);
-                Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
-                Klass checkedKlass = klass.getElementalType();
-                if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
-                    Meta meta = context.getMeta();
-                    context.getLogger().log(Level.FINE,
-                                    "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    StringBuilder errorMessage = new StringBuilder("failed to access class ");
-                    errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
-                    if (context.getJavaVersion().modulesEnabled()) {
-                        errorMessage.append(" (");
-                        if (accessingKlass.module() == checkedKlass.module()) {
-                            errorMessage.append(checkedKlass.getExternalName());
-                            errorMessage.append(" and ");
-                            ClassRegistry.classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
-                        } else {
-                            // checkedKlass is not an array type (getElementalType) nor a
-                            // primitive
-                            // type (it would have passed the access checks)
-                            ClassRegistry.classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
-                            errorMessage.append("; ");
-                            ClassRegistry.classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
-                        }
-                        errorMessage.append(")");
-                    }
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
-                }
-
-                return new ResolvedClassConstant(klass);
-
-            } catch (EspressoException e) {
-                CompilerDirectives.transferToInterpreter();
-                Meta meta = pool.getContext().getMeta();
-                if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
-                }
-                throw e;
-            } catch (VirtualMachineError e) {
-                // Comment from Hotspot:
-                // Just throw the exception and don't prevent these classes from
-                // being loaded for virtual machine errors like StackOverflow
-                // and OutOfMemoryError, etc.
-                // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
-                throw e;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public static ResolvedClassConstant resolveClassConstant(PreResolvedClassConstant thiz, @SuppressWarnings("unused") RuntimeConstantPool pool, @SuppressWarnings("unused") int thisIndex,
-                    @SuppressWarnings("unused") ObjectKlass accessingKlass) {
-        return new ResolvedClassConstant(thiz.getResolved());
-    }
-
-    public static ResolvedClassConstant resolveClassConstant(ClassConstant.WithString thiz, RuntimeConstantPool pool, @SuppressWarnings("unused") int thisIndex, ObjectKlass accessingKlass) {
-        CLASS_RESOLVE_COUNT.inc();
-        assert accessingKlass != null;
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        Symbol<Name> klassName = thiz.getName(pool);
-        try {
             EspressoContext context = pool.getContext();
-            Meta meta = context.getMeta();
-            Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
-            if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
+            Symbol<Type> type = context.getTypes().fromClassNameEntry(klassName);
+            Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
+            Klass checkedKlass = klass.getElementalType();
+            if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
+                Meta meta = context.getMeta();
                 context.getLogger().log(Level.FINE,
-                                "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
+                                "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                StringBuilder errorMessage = new StringBuilder("failed to access class ");
+                errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
+                if (context.getJavaVersion().modulesEnabled()) {
+                    errorMessage.append(" (");
+                    if (accessingKlass.module() == checkedKlass.module()) {
+                        errorMessage.append(checkedKlass.getExternalName());
+                        errorMessage.append(" and ");
+                        ClassRegistry.classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
+                    } else {
+                        // checkedKlass is not an array type (getElementalType) nor a
+                        // primitive type (it would have passed the access checks)
+                        ClassRegistry.classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
+                        errorMessage.append("; ");
+                        ClassRegistry.classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
+                    }
+                    errorMessage.append(")");
+                }
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
             }
-
-            return new ResolvedClassConstant(klass);
-
-        } catch (VirtualMachineError e) {
+            return new ResolvedFoundClassConstant(klass);
+        } catch (EspressoException e) {
+            CompilerDirectives.transferToInterpreter();
+            Meta meta = pool.getContext().getMeta();
             // Comment from Hotspot:
-            // Just throw the exception and don't prevent these classes from
-            // being loaded for virtual machine errors like StackOverflow
-            // and OutOfMemoryError, etc.
+            // Just throw the exception and don't prevent these classes from being loaded for
+            // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
             // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new ResolvedFailClassConstant(e);
+            }
             throw e;
         }
     }
@@ -207,13 +166,13 @@ public final class Resolution {
         ClassRedefinition classRedefinition = null;
         try {
             try {
-                field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                field = EspressoLinkResolver.resolveFieldSymbolOrThrow(context, accessingKlass, name, type, holderKlass, true, true);
             } catch (EspressoException e) {
                 classRedefinition = context.getClassRedefinition();
                 if (classRedefinition != null) {
                     // could be due to ongoing redefinition
                     classRedefinition.check();
-                    field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                    field = EspressoLinkResolver.resolveFieldSymbolOrThrow(context, accessingKlass, name, type, holderKlass, true, true);
                 } else {
                     throw e;
                 }
@@ -226,16 +185,7 @@ public final class Resolution {
     }
 
     public static Klass getResolvedHolderKlass(MemberRefConstant.Indexes thiz, RuntimeConstantPool pool, ObjectKlass accessingKlass) {
-        return pool.resolvedKlassAt(accessingKlass, thiz.getClassIndex());
-    }
-
-    @TruffleBoundary
-    public static void memberDoAccessCheck(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
-        assert accessingKlass != null && resolvedKlass != null && member != null : "pre-conditions failed.";
-        if (!memberCheckAccess(accessingKlass, resolvedKlass, member)) {
-            String message = "Class " + accessingKlass.getExternalName() + " cannot access method " + resolvedKlass.getExternalName() + "#" + member.getName();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(message));
-        }
+        return pool.resolvedKlassAt(accessingKlass, thiz.getHolderIndex());
     }
 
     /**
@@ -254,12 +204,12 @@ public final class Resolution {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
+    public static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }
         Klass memberKlass = member.getDeclaringKlass();
-        if (member instanceof Method && Name.clone.equals(member.getName()) && memberKlass.isJavaLangObject()) {
+        if (member instanceof Method && Names.clone.equals(member.getName()) && memberKlass.isJavaLangObject()) {
             if (resolvedKlass.isArray()) {
                 return true;
             }
@@ -491,30 +441,20 @@ public final class Resolution {
         return new ResolvedClassMethodRefConstant(method);
     }
 
-    static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
-        Symbol<Type> rt = Signatures.returnType(signature);
-        int pcount = Signatures.parameterCount(signature);
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
+        Symbol<Type> rt = SignatureSymbols.returnType(signature);
+        int pcount = SignatureSymbols.parameterCount(signature);
 
         StaticObject[] ptypes = new StaticObject[pcount];
         StaticObject rtype;
-        try {
-            for (int i = 0; i < pcount; i++) {
-                Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
-            }
-        } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getGuestMessage());
-            }
-            throw e;
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
+            ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
         }
         try {
             rtype = meta.resolveSymbolAndAccessCheck(rt, accessingKlass).mirror();
         } catch (EspressoException e) {
             EspressoException rethrow = e;
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                rethrow = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getGuestMessage()), meta);
-            }
             if (failWithBME) {
                 rethrow = EspressoException.wrap(Meta.initExceptionWithCause(meta.java_lang_BootstrapMethodError, rethrow.getGuestException()), meta);
             }
@@ -621,7 +561,14 @@ public final class Resolution {
                 throw e;
             }
         } catch (EspressoException e) {
-            return new ResolvedFailDynamicConstant(e);
+            // Comment from Hotspot:
+            // Just throw the exception and don't prevent these classes from being loaded for
+            // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
+            // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new ResolvedFailDynamicConstant(e);
+            }
+            throw e;
         }
     }
 
@@ -653,7 +600,7 @@ public final class Resolution {
              * have an interface as declaring klass however if the refKind is invokeVirtual, it
              * would be illegal to use the interface type
              */
-            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getClassIndex());
+            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getHolderIndex());
             refName = target.getName();
         } else {
             assert refTag == Tag.FIELD_REF;
@@ -679,17 +626,16 @@ public final class Resolution {
 
         Tag refTag = pool.tagAt(thiz.getRefIndex());
         if (refTag == Tag.METHOD_REF || refTag == Tag.INTERFACE_METHOD_REF) {
-            MethodRefConstant ref = pool.methodAt(thiz.getRefIndex());
+            MethodRefConstant.Indexes ref = pool.methodAt(thiz.getRefIndex());
             Symbol<Signature> signature = ref.getSignature(pool);
             Symbol<Type>[] parsed = meta.getSignatures().parsed(signature);
 
             mtype = signatureToMethodType(parsed, accessingKlass, false, meta);
-            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getClassIndex());
+            mklass = pool.resolvedKlassAt(accessingKlass, ref.getHolderIndex());
             refName = ref.getName(pool);
         } else {
             assert refTag == Tag.FIELD_REF;
-            assert pool.fieldAt(thiz.getRefIndex()) instanceof FieldRefConstant.Indexes;
-            FieldRefConstant.Indexes ref = (FieldRefConstant.Indexes) pool.fieldAt(thiz.getRefIndex());
+            FieldRefConstant.Indexes ref = pool.fieldAt(thiz.getRefIndex());
 
             Symbol<Type> type = ref.getType(pool);
             mtype = meta.resolveSymbolAndAccessCheck(type, accessingKlass).mirror();

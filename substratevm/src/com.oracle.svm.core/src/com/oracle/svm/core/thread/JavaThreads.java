@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -62,6 +61,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -209,6 +209,7 @@ public final class JavaThreads {
      * Indicates whether the current thread is <em>truly</em> virtual (see {@link #isVirtual}) and
      * currently pinned to its carrier thread.
      */
+    @NeverInline("Prevent a reference to the current carrier thread from leaking into the caller frame.")
     public static boolean isCurrentThreadVirtualAndPinned() {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         return carrier != null && carrier.vthread != null && Target_jdk_internal_vm_Continuation.isPinned(carrier.cont.getScope());
@@ -438,7 +439,11 @@ public final class JavaThreads {
     public static long getCurrentThreadId() {
         long id = currentVThreadId.get();
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(id != 0 && id == getThreadId(Thread.currentThread()), "ids must match");
+            // The condition may throw so we must manually wrap the assert in this if, otherwise the
+            // compiler is not allowed to remove the evaluation
+            if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                ReplacementsUtil.dynamicAssert(id != 0 && id == getThreadId(Thread.currentThread()), "ids must match");
+            }
         } else {
             assert id != 0 && id == getThreadId(Thread.currentThread());
         }

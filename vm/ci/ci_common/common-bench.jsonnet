@@ -8,15 +8,22 @@ local vm_common = import '../ci_common/common.jsonnet';
 local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
 {
-  vm_bench_common: {
-    result_file:: 'results.json',
-    upload:: ['bench-uploader.py', self.result_file],
-    upload_and_wait_for_indexing:: self.upload + ['--wait-for-indexing'],
-    capabilities+: ['tmpfs25g', 'e3'],
-    timelimit: '1:30:00',
-  },
+  vm_bench_base(machine_name=null)::
+    {
+      result_file:: 'results.json',
+      upload:: ['bench-uploader.py', self.result_file],
+      upload_and_wait_for_indexing:: self.upload + ['--wait-for-indexing'],
+      timelimit: '1:30:00',
+      capabilities+: if std.objectHasAll(self, 'machine_name') then [self.machine_name] else [],
+    } +
+    (if machine_name != null then {
+      machine_name:: machine_name,
+      capabilities+: [machine_name]
+    } else {}),
 
-  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_21 + vm_common.svm_common + vm_common.sulong + vm.custom_vm + self.vm_bench_common + {
+  vm_bench_common: self.vm_bench_base(machine_name='x52') + { capabilities+: ['tmpfs25g'] },
+
+  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm.custom_vm + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}'],
     setup+: [
@@ -26,14 +33,18 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ],
     run+:
       if (bench_suite != null) then [
-        self.cmd_base + [bench_suite + ':*', '--'] + self.config_base + ['--jvm-config=jvm'],
+        self.cmd_base + [bench_suite + ':*', '--'] + self.config_base + ['--jvm-config=jvm', '--vm.Xss24m'],
         $.vm_bench_common.upload,
         self.cmd_base + [bench_suite + ':*', '--'] + self.config_base + ['--jvm-config=native'],
         $.vm_bench_common.upload,
       ] else [],
   },
 
-  polybench_hpc_linux_common: {
+  polybench_hpc_linux_common(shape=null):
+    (if shape != null then {
+      machine_name:: shape,
+      capabilities+: [shape],
+    } else {}) + {
     packages+: {
       'papi': '==5.5.1',
     },
@@ -41,15 +52,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ENABLE_POLYBENCH_HPC: 'yes',
       POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
       POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
-      LIBPFM_FORCE_PMU: 'amd64'
-    },
+    } + if !std.objectHasAll(self, 'machine_name') then {} else if self.machine_name  == 'e3' ||  self.machine_name  == 'e4_36_256' then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
   },
 
   vm_bench_polybenchmarks_base(env): {
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
   },
 
-  vm_bench_polybenchmarks_linux_build: vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
+  vm_bench_polybenchmarks_linux_build: vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
     setup+: [
       self.base_cmd + ['sforceimports'],
     ],
@@ -69,7 +79,8 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit: '1:00:00',
   },
 
-  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common + vm_common.truffleruby + vm.custom_vm + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
+  # TODO (GR-60584): re-enable espresso polybench jobs once polybench is unchained
+  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:~r[.*jar]', shape=null): vm_common.svm_common + vm_common.truffleruby + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape=shape) + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
       self.base_cmd + ['sforceimports'],
@@ -82,21 +93,22 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       dir: '..',
     }],
     run+: if (is_gate) then  [
-      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=native', '--gate'],
-      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=jvm',    '--gate'],
-      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=native', '--gate'],
-      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=jvm',    '--gate'],
+      # TODO (GR-60584): re-enable espresso polybench jobs once polybench is unchained
+      self.bench_cmd + ['polybenchmarks-awfy:~r[.*jar]',    '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=native', '--gate'],
+      self.bench_cmd + ['polybenchmarks-awfy:~r[.*jar]',    '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=jvm',    '--gate'],
+      self.bench_cmd + ['polybenchmarks-default:~r[.*jar]', '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=native', '--gate'],
+      self.bench_cmd + ['polybenchmarks-default:~r[.*jar]', '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=jvm',    '--gate'],
     ] else [
       self.bench_cmd + ['polybenchmarks-' + suite, '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=' + vm_config],
     ],
     notify_emails+: if (is_gate) then [] else [ 'boris.spasojevic@oracle.com' ],
     teardown+:      if (is_gate) then [] else [ $.vm_bench_common.upload ],
     timelimit:      if (is_gate) then '1:00:00' else '1:30:00',
-  },
+  } + (if is_gate then self.vm_bench_base(machine_name=null) else self.vm_bench_common),
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + self.vm_bench_common + vm_common.wasm {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm_common.wasm {
     base_cmd:: ['mx', '--env', env],
-    bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
+    bench_cmd:: self.base_cmd + ['benchmark'] + (if (fail_fast) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +
         (if std.startsWith(vmConfig, 'jvm-') && self.jdk_version >= 22 then
             ['polybench:~r[(compiler/.*)|(warmup/.*)]']
@@ -113,15 +125,13 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench'],
   },
 
-  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.vm_bench_polybench_linux_common(env=env) + self.polybench_hpc_linux_common + {
-    local machine_name = "e3",     // restricting ourselves to specific hardware to ensure performance counters work there
+  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybench_linux_common(env=env, fail_fast=false, skip_machine=true) + {
     machine_name_prefix:: "gate-",
-    capabilities+: [machine_name],
     run+: [
       self.base_cmd + ['benchmark', 'polybench:'+benchmarks,
                        '--fork-count-file', 'ci/ci_includes/polybench-hpc.json',
                        '--results-file', self.result_file,
-                       '--machine-name', self.machine_name_prefix + machine_name,
+                       '--machine-name', self.machine_name_prefix + self.machine_name,
                        '--',
                        '--metric=' + metric,
                        '--polybench-vm=graalvm-${VM_ENV}',
@@ -130,7 +140,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ],
   },
 
-  vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common() + vm.vm_java_21 + {
+  vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common() + vm.vm_java_Latest + {
     run+: [
       self.interpreter_bench_cmd(vmConfig='jvm-interpreter'),
       self.upload,
@@ -140,7 +150,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit: '2:30:00',
   },
 
-  vm_bench_polybench_linux_compiler: self.vm_bench_polybench_linux_common() + vm.vm_java_21 + {
+  vm_bench_polybench_linux_compiler: self.vm_bench_polybench_linux_common() + vm.vm_java_Latest + {
     compiler_bench_cmd(vmConfig):: super.compiler_bench_cmd(vmConfig) + ['-w', '0', '-i', '10'],
     run+: [
       self.compiler_bench_cmd(vmConfig='jvm-standard') + ['--metric=compilation-time'],
@@ -154,7 +164,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ],
   },
 
-  vm_bench_polybench_linux_context_init: self.vm_bench_polybench_linux_common() + vm.vm_java_21 + {
+  vm_bench_polybench_linux_context_init: self.vm_bench_polybench_linux_common() + vm.vm_java_Latest + {
     bench_cmd:: super.base_cmd + ['benchmark', '--fork-count-file', 'ci/ci_common/benchmark-forks.json', 'polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]', '--results-file', self.result_file, '--', '-w', '0', '-i', '0', '--polybench-vm=graalvm-${VM_ENV}'],
     run+: [
       self.bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=none'],
@@ -164,14 +174,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ],
   },
 
-  vm_bench_polybench_linux_warmup: self.vm_bench_polybench_linux_common() + vm.vm_java_21 + {
+  vm_bench_polybench_linux_warmup: self.vm_bench_polybench_linux_common() + vm.vm_java_Latest + {
     run+: [
       self.warmup_bench_cmd(vmConfig='native-standard') + ['--metric=one-shot'],
       self.upload,
     ],
   },
 
-  vm_bench_polybench_linux_memory: self.vm_bench_polybench_linux_common() + vm.vm_java_21 + {
+  vm_bench_polybench_linux_memory: self.vm_bench_polybench_linux_common() + vm.vm_java_Latest + {
     run+: [
       self.interpreter_bench_cmd(vmConfig='jvm-standard') + ['--metric=metaspace-memory'],
       self.upload,
@@ -190,7 +200,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit: '4:00:00',
   },
 
-  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common(is_gate=true) + vm.vm_java_21 + {
+  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common(fail_fast=true, skip_machine=true) + vm.vm_java_Latest + {
     interpreter_bench_cmd(vmConfig):: super.interpreter_bench_cmd(vmConfig) + ['-w', '1', '-i', '1'],
     compiler_bench_cmd(vmConfig):: super.compiler_bench_cmd(vmConfig) + ['-w', '0', '-i', '1'],
     warmup_bench_cmd(vmConfig):: super.warmup_bench_cmd(vmConfig) + ['-w', '1', '-i', '1'],
@@ -248,6 +258,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ] + xms + xmx + [
         "--experimental-options",
         "--engine.CompilationFailureAction=ExitVM",
+        "--engine.MaximumCompilations=200", # GR-61670
         "-Djdk.graal.DumpOnError=true",
         "-Djdk.graal.PrintGraph=File",
         "--js-vm=graal-js",
@@ -268,37 +279,38 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   local builds = [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('octane')     + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream2') + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('micro')      + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('v8js')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('misc')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('npm-regex')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-java' + self.jdk_version + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('octane')     + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream2') + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('micro')      + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('v8js')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('misc')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('npm-regex')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-' + utils.jdk_and_hardware(self)},
 
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64', notify_groups:: ['polybench'] },
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench'] },
 
     # Produces the graalvm-with-polybench artifact
-    vm_common.vm_base('linux', 'amd64', 'ondemand') + self.vm_bench_polybenchmarks_linux_build + {name: 'ondemand-vm-build-' + vm.vm_setup.short_name + '-with-polybench-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'ondemand') + self.vm_bench_polybenchmarks_linux_build + {name: 'ondemand-vm-build-' + vm.vm_setup.short_name + '-with-polybench-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
 
     # Consume the graalvm-with-polybench artifact
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')                           + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-jvm-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-native-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-jvm-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-native-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-jvm-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-native-linux-amd64', notify_groups:: ['polybench']},
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-jvm-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')                           + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-jvm-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-native-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-jvm-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-native-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-jvm-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    # TODO (GR-60584): re-enable espresso polybench jobs once polybench is unchained
+    # vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-native-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
+    # vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-jvm-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
 
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_21 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java21-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_Latest + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-jdk-latest-' + utils.jdk_and_hardware(self), notify_groups:: ['polybench']},
 
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(true) + vm.vm_java_21 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-java' + self.jdk_version + '-linux-amd64' },
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(false) + vm.vm_java_21 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java' + self.jdk_version + '-linux-amd64' },
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(true) + vm.vm_java_Latest + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-' + utils.jdk_and_hardware(self) },
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(false) + vm.vm_java_Latest + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-' + utils.jdk_and_hardware(self) },
 
     vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_js_linux_amd64() + {
       # Override `self.vm_bench_js_linux_amd64.run`
@@ -309,12 +321,12 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         $.vm_bench_common.upload,
       ],
       timelimit: '45:00',
-      name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java' + self.jdk_version + '-linux-amd64',
+      name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-' + utils.jdk_and_hardware(self),
       notify_groups:: ['javascript'],
     },
 
-    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_bench_polybenchmarks_linux_common(is_gate=true)    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_bench_polybenchmarks_linux_common(is_gate=true, shape='e4_36_256')    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-' + utils.jdk_and_hardware(self)},
   ],
 
   builds: utils.add_defined_in(builds, std.thisFile),

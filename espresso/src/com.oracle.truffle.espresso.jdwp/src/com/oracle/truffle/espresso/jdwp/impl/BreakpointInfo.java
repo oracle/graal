@@ -58,4 +58,8 @@ public interface BreakpointInfo {
     void addSuspendPolicy(byte suspendPolicy);
 
     byte getSuspendPolicy();
+
+    default void dispose() {
+        // do nothing by default
+    }
 }

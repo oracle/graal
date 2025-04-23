@@ -622,7 +622,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
     }
 
-    private class RuntimeCompilationParsingSupport implements SVMParsingSupport {
+    private final class RuntimeCompilationParsingSupport implements SVMParsingSupport {
         RuntimeCompilationInlineBeforeAnalysisPolicy runtimeInlineBeforeAnalysisPolicy = null;
 
         @Override
@@ -966,7 +966,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         return (T) runtimeMethod;
     }
 
-    private class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
+    private final class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
 
         @Override
         public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow) {

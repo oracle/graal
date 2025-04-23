@@ -94,6 +94,11 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  */
 @RunWith(Parameterized.class)
 public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
+
+    public BasicInterpreterTest(TestRun run) {
+        super(run);
+    }
+
     private record ExpectedArgument(String name, Argument.Kind kind, Object value) {
     }
 
@@ -1715,10 +1720,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.constant",
                         "c.CreateClosure",
                         "load.argument",
-                        "load.variadic_1",
+                        "create.variadic",
                         "c.Invoke",
                         "pop",
-                        "load.local$Long$unboxed", // load BE'd
+                        "load.local$Long$unboxed",
                         "load.constant$Long",
                         "c.Add$AddLongs",
                         "return");
@@ -1733,7 +1738,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.constant",
                         "c.CreateClosure",
                         "load.argument",
-                        "load.variadic_1",
+                        "create.variadic",
                         "c.Invoke",
                         "pop$generic",
                         "load.local$Long$unboxed", // load is not affected by long store.
@@ -1751,7 +1756,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.constant",
                         "c.CreateClosure",
                         "load.argument",
-                        "load.variadic_1",
+                        "create.variadic",
                         "c.Invoke",
                         "pop$generic",
                         "load.local$generic", // load unquickens.
@@ -1857,15 +1862,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicZeroVarargs() {
-        // return veryComplex(7);
+        // return variadicOperation(7);
 
         RootCallTarget root = parse("variadicZeroVarargs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1876,16 +1881,16 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicOneVarargs() {
-        // return veryComplex(7, "foo");
+        // return variadicOperation(7, "foo");
 
         RootCallTarget root = parse("variadicOneVarargs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
             b.emitLoadConstant("foo");
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1896,18 +1901,18 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicFewVarargs() {
-        // return veryComplex(7, "foo", "bar", "baz");
+        // return variadicOperation(7, "foo", "bar", "baz");
 
         RootCallTarget root = parse("variadicFewVarargs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
             b.emitLoadConstant("foo");
             b.emitLoadConstant("bar");
             b.emitLoadConstant("baz");
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1918,18 +1923,18 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicManyVarargs() {
-        // return veryComplex(7, [1330 args]);
+        // return variadicOperation(7, [1330 args]);
 
         RootCallTarget root = parse("variadicManyVarArgs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
             for (int i = 0; i < 1330; i++) {
                 b.emitLoadConstant("test");
             }
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1938,15 +1943,36 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(1337L, root.call());
     }
 
+    public void testVariadicFallback() {
+        // return variadicOperation(arg0, arg1, arg2);
+
+        RootCallTarget root = parse("variadicFallback", b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginVariadicOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endVariadicOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call(40L, "foo", "bar"));
+        assertEquals(2L, root.call("foo", "bar", "baz"));
+    }
+
     @Test
     public void testVariadicTooFewArguments() {
-        assertThrowsWithMessage("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation VariadicOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("variadicTooFewArguments", b -> {
                 b.beginRoot();
 
                 b.beginReturn();
-                b.beginVeryComplexOperation();
-                b.endVeryComplexOperation();
+                b.beginVariadicOperation();
+                b.endVariadicOperation();
                 b.endReturn();
 
                 b.endRoot();
@@ -2559,6 +2585,69 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(24L, node.getCallTarget().call(24L)); // 24 back edges + 1 return
         assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
         assertEquals(24L, node.getCallTarget().call(24L));
+    }
+
+    @Test
+    public void testTransitionToCachedRecursive() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedRecursive", b -> {
+            // function f(x) { return 0 < x ? x + f(x-1) : 0 }
+            b.beginRoot();
+            b.beginIfThenElse();
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadArgument(0);
+            b.endLess();
+
+            b.beginReturn();
+            b.beginAdd();
+            b.emitLoadArgument(0);
+            b.beginInvokeRecursive();
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadArgument(0);
+            b.endAddConstantOperation();
+            b.endInvokeRecursive();
+            b.endAdd();
+            b.endReturn();
+
+            b.beginReturn();
+            b.emitLoadConstant(0L);
+            b.endReturn();
+
+            b.endIfThenElse();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(22);
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        assertEquals(20 * 21 / 2L, node.getCallTarget().call(20L)); // 21 calls
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        node.getBytecodeNode().setUncachedThreshold(21);
+        assertEquals(20 * 21 / 2L, node.getCallTarget().call(20L)); // 21 calls
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+    }
+
+    @Test
+    public void testTransitionToCachedYield() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedYield", b -> {
+            b.beginRoot();
+            for (int i = 0; i < 20; i++) {
+                b.beginYield();
+                b.emitLoadNull();
+                b.endYield();
+            }
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(16);
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        ContinuationResult cont = (ContinuationResult) node.getCallTarget().call();
+        for (int i = 1; i < 16; i++) {
+            assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+            cont = (ContinuationResult) cont.continueWith(null);
+        }
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
     }
 
     @Test
@@ -3194,6 +3283,26 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(3L, root.call());
+    }
+
+    @Test
+    public void testPrepareForCall() {
+        assertThrows(IllegalStateException.class, () -> parse("getCallTargetDuringParse", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            BasicInterpreter root = b.endRoot();
+            root.getCallTarget();
+        }));
+
+        assertTrue(parse("getCallTargetAfterParse", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        }) != null);
     }
 
     @Test
