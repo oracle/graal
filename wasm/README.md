@@ -164,12 +164,6 @@ You can also use the WASI SDK toolchain to compile C programs into WebAssembly m
 
 GraalWasm is licensed under the [Universal Permissive License](https://oss.oracle.com/licenses/upl/).
 
-## Related Documentation
-
-- [GraalWasm Options](../docs/reference-manual/wasm/Options.md)
-- [Interoperability with WebAssembly Modules](../docs/reference-manual/wasm/Interoperability.md)
-- [Embedding Languages documentation](../docs/reference-manual/embedding/embed-languages.md)
-
 ### Documentation for Contributors
 
 - [Building GraalWasm](docs/contributor/Building.md)
