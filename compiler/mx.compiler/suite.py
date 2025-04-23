@@ -484,6 +484,7 @@ suite = {
       "sourceDirs" : ["src"],
       "workingSets" : "Graal",
       "javaCompliance" : "21+",
+      "checkstyle" : "jdk.graal.compiler",
       "dependencies" : [
         "GRAAL",
         "GRAAL_MANAGEMENT",
