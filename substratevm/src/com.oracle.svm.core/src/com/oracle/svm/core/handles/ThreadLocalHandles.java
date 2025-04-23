@@ -26,9 +26,9 @@ package com.oracle.svm.core.handles;
 
 import java.util.Arrays;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -46,7 +46,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <U extends SignedWord> U nullHandle() {
-        return WordFactory.signed(0);
+        return Word.signed(0);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -109,7 +109,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         int index = top;
         objects[index] = obj;
         top++;
-        return WordFactory.signed(index);
+        return Word.signed(index);
     }
 
     @SuppressWarnings("unchecked")

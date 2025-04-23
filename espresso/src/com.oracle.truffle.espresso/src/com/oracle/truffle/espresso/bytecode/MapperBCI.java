@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 
@@ -101,6 +102,17 @@ public class MapperBCI extends EspressoNode {
         throw EspressoError.shouldNotReachHere();
     }
 
+    /**
+     * Lookup the index of the largest element which is smaller or equal to {@code targetBCI}.
+     */
+    public int lookupBucket(int targetBCI) {
+        int res = slowLookup(targetBCI, 0, length);
+        if (res >= 0) {
+            return res;
+        }
+        return -res - 1;
+    }
+
     public int lookup(int curIndex, int curBCI, int targetBCI) {
         int res;
         int start;
@@ -116,7 +128,7 @@ public class MapperBCI extends EspressoNode {
         if (res >= 0) {
             return res;
         }
-        return -res - 2;
+        return -res - 1;
     }
 
     public int checkNext(int curIndex, int targetBCI) {
@@ -127,20 +139,20 @@ public class MapperBCI extends EspressoNode {
     }
 
     /**
-     * inlined binary search. No bounds checks.
+     * Inlined binary search. No bounds checks.
      * 
      * @see Arrays#binarySearch(int[], int, int, int)
+     * @return either the index of the element that is equal to {@code targetBCI} or a negative
+     *         number {@code -(i + 1)} where i is the index of the largest element which is smaller
+     *         than {@code targetBCI}.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     private int slowLookup(int targetBCI, int start, int end) {
-        // Our usage should not see an out of bounds
         int low = start;
         int high = end - 1;
-
         while (low <= high) {
             int mid = (low + high) >>> 1;
             int midVal = bcis[mid];
-
             if (midVal < targetBCI) {
                 low = mid + 1;
             } else if (midVal > targetBCI) {
@@ -149,7 +161,7 @@ public class MapperBCI extends EspressoNode {
                 return mid;
             }
         }
-        return -(low + 1);  // key not found.
+        return -low;
     }
 
 }

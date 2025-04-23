@@ -60,6 +60,8 @@ process_vm_arg() {
         for e in "${classpath_array[@]}"; do
             absolute_cp+=("$e")
         done
+    elif [[ "$vm_arg" == @* ]]; then
+        jvm_args+=("$vm_arg")
     else
         jvm_args+=("-$vm_arg")
     fi

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,38 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import java.util.Map;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.WriteBarrierNode;
@@ -63,6 +75,9 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     /** A LocationIdentity to distinguish card locations from other locations. */
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
 
+    private static final SnippetRuntime.SubstrateForeignCallDescriptor POST_WRITE_BARRIER = SnippetRuntime.findForeignCall(BarrierSnippets.class, "postWriteBarrierStub",
+                    NO_SIDE_EFFECT, CARD_REMEMBERED_SET_LOCATION);
+
     private final SnippetInfo postWriteBarrierSnippet;
 
     BarrierSnippets(OptionValues options, Providers providers) {
@@ -78,26 +93,45 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         lowerings.put(SerialArrayRangeWriteBarrierNode.class, lowering);
     }
 
-    @Snippet
-    public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean verifyOnly) {
-        Object fixedObject = FixedValueAnchorNode.getObject(object);
-        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider provider) {
+        provider.register(POST_WRITE_BARRIER);
+    }
 
-        if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void postWriteBarrierStub(Object object) {
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        UnsignedWord objectHeader = oh.readHeaderFromObject(object);
+        if (ObjectHeaderImpl.isUnalignedHeader(objectHeader)) {
+            RememberedSet.get().dirtyCardForUnalignedObject(object, false);
+        } else {
+            RememberedSet.get().dirtyCardForAlignedObject(object, false);
+        }
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void callPostWriteBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
+
+    @Snippet
+    public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean shouldOutline, @ConstantParameter boolean alwaysAlignedChunk, @ConstantParameter boolean eliminated) {
+        boolean shouldVerify = SerialGCOptions.VerifyWriteBarriers.getValue();
+        if (!shouldVerify && eliminated) {
+            return;
+        }
+
+        Object fixedObject = FixedValueAnchorNode.getObject(object);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        UnsignedWord objectHeader = oh.readHeaderFromObject(fixedObject);
+
+        if (shouldVerify && alwaysAlignedChunk) {
             /*
              * To increase verification coverage, we do the verification before checking if a
-             * barrier is needed at all. And in addition to verifying that the object is in an
-             * aligned chunk, we also verify that it is not an array at all because most arrays are
-             * small and therefore in an aligned chunk.
+             * barrier is needed at all.
              */
-
             if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, ObjectHeaderImpl.isUnalignedHeader(objectHeader))) {
                 BreakpointNode.breakpoint();
             }
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object == null)) {
-                BreakpointNode.breakpoint();
-            }
-            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object.getClass().isArray())) {
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, fixedObject == null)) {
                 BreakpointNode.breakpoint();
             }
         }
@@ -107,15 +141,20 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
+        if (shouldOutline && !eliminated) {
+            callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject);
+            return;
+        }
+
         if (!alwaysAlignedChunk) {
             boolean unaligned = ObjectHeaderImpl.isUnalignedHeader(objectHeader);
             if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, unaligned)) {
-                RememberedSet.get().dirtyCardForUnalignedObject(fixedObject, verifyOnly);
+                RememberedSet.get().dirtyCardForUnalignedObject(fixedObject, eliminated);
                 return;
             }
         }
 
-        RememberedSet.get().dirtyCardForAlignedObject(fixedObject, verifyOnly);
+        RememberedSet.get().dirtyCardForAlignedObject(fixedObject, eliminated);
     }
 
     private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrierNode> {
@@ -143,15 +182,28 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             boolean alwaysAlignedChunk = baseType != null && !baseType.isArray() && !baseType.isJavaLangObject() && !baseType.isInterface();
 
             args.add("object", address.getBase());
-            args.addConst("alwaysAlignedChunk", alwaysAlignedChunk);
-            args.addConst("verifyOnly", getVerifyOnly(barrier));
+            args.add("shouldOutline", shouldOutline(barrier));
+            args.add("alwaysAlignedChunk", alwaysAlignedChunk);
+            args.add("eliminated", tryEliminate(barrier));
 
             template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
-        private static boolean getVerifyOnly(WriteBarrierNode barrier) {
-            if (barrier instanceof SerialWriteBarrierNode) {
-                return ((SerialWriteBarrierNode) barrier).getVerifyOnly();
+        private static boolean shouldOutline(WriteBarrierNode barrier) {
+            if (SerialGCOptions.OutlineWriteBarriers.getValue() != null) {
+                return SerialGCOptions.OutlineWriteBarriers.getValue();
+            }
+            if (GraalOptions.ReduceCodeSize.getValue(barrier.getOptions())) {
+                return true;
+            }
+            // Newly allocated objects are likely young, so we can outline the execution after
+            // checking hasRememberedSet
+            return barrier instanceof SerialWriteBarrierNode serialBarrier && serialBarrier.getBaseStatus().likelyYoung();
+        }
+
+        private static boolean tryEliminate(WriteBarrierNode barrier) {
+            if (barrier instanceof SerialWriteBarrierNode serialBarrier) {
+                return serialBarrier.isEliminated() || serialBarrier.getBaseStatus() == SerialWriteBarrierNode.BaseStatus.NO_LOOP_OR_SAFEPOINT;
             }
             return false;
         }

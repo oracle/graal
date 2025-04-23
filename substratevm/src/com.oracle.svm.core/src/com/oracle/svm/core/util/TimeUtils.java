@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.util;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -69,8 +71,19 @@ public class TimeUtils {
     }
 
     /** Nanoseconds since a previous {@link System#nanoTime()} call. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long nanoSecondsSince(long startNanos) {
-        return (System.nanoTime() - startNanos);
+        return System.nanoTime() - startNanos;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long millisSinceNanos(long startNanos) {
+        return millisSinceNanos(System.nanoTime(), startNanos);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long millisSinceNanos(long nowNanos, long startNanos) {
+        return roundNanosToMillis(nowNanos - startNanos);
     }
 
     /**
@@ -105,6 +118,7 @@ public class TimeUtils {
     }
 
     /** Round the number of nanoseconds to milliseconds. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long roundNanosToMillis(long nanos) {
         return roundedDivide(nanos, nanosPerMilli);
     }
@@ -120,6 +134,7 @@ public class TimeUtils {
     }
 
     /* Divide, rounding to the nearest long. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long roundedDivide(long numerator, long denominator) {
         final long halfStep = denominator / 2L;
         final long addition = addOrMaxValue(numerator, halfStep);
@@ -135,7 +150,7 @@ public class TimeUtils {
 
     /** Weight a nanosecond value by a percentage between 0 and 100. */
     public static long weightedNanos(int percent, long nanos) {
-        final UnsignedWord unweightedNanos = WordFactory.unsigned(nanos);
+        final UnsignedWord unweightedNanos = Word.unsigned(nanos);
         return unweightedNanos.unsignedDivide(100).multiply(percent).rawValue();
     }
 
@@ -200,5 +215,14 @@ public class TimeUtils {
             }
         }
         return false;
+    }
+
+    /**
+     * For measuring elapsed time, {@link System#nanoTime()} should be used because
+     * {@link System#currentTimeMillis()} is affected by adjustment of the system time.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long currentTimeMillis() {
+        return System.currentTimeMillis();
     }
 }

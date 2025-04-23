@@ -46,7 +46,10 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.word.WordFactory;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -72,24 +75,32 @@ public class SeparatedClassLoadersTest {
 
     @Test
     public void sdkAndTruffleAPIInSeparateClassLoaders() throws Exception {
-        final ProtectionDomain sdkDomain = Engine.class.getProtectionDomain();
-        Assume.assumeNotNull(sdkDomain);
-        Assume.assumeNotNull(sdkDomain.getCodeSource());
-        URL sdkURL = sdkDomain.getCodeSource().getLocation();
-        Assume.assumeNotNull(sdkURL);
+        final ProtectionDomain polyglotDomain = Engine.class.getProtectionDomain();
+        Assume.assumeNotNull(polyglotDomain);
+        Assume.assumeNotNull(polyglotDomain.getCodeSource());
+        URL polyglotURL = polyglotDomain.getCodeSource().getLocation();
+        Assume.assumeNotNull(polyglotURL);
+
+        URL collectionsURL = EconomicMap.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(collectionsURL);
+
+        URL wordURL = WordFactory.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(wordURL);
+
+        URL nativeURL = ImageInfo.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(nativeURL);
 
         URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(truffleURL);
 
         ClassLoader parent = Engine.class.getClassLoader().getParent();
 
-        URLClassLoader sdkLoader = new URLClassLoader(new URL[]{sdkURL}, parent);
+        URLClassLoader sdkLoader = new URLClassLoader(new URL[]{collectionsURL, wordURL, nativeURL, polyglotURL}, parent);
         URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
         Thread.currentThread().setContextClassLoader(truffleLoader);
 
         Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());
         Object engine = engineClass.getMethod("create").invoke(null);
-
         assertNotNull("Engine has been created", engine);
     }
 

@@ -27,11 +27,11 @@ package com.oracle.svm.hosted.reflect;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.TypeResult;
 
 public class NativeImageConditionResolver implements ConfigurationConditionResolver<ConfigurationCondition> {
     private final ImageClassLoader classLoader;
@@ -52,9 +52,6 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
              * reachability checks.
              */
             var runtimeChecked = !classInitializationSupport.isAlwaysReached(type) && unresolvedCondition.isRuntimeChecked();
-            if (runtimeChecked) {
-                classInitializationSupport.addForTypeReachedTracking(type);
-            }
             return ConfigurationCondition.create(type, runtimeChecked);
         });
     }

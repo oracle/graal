@@ -317,18 +317,29 @@ public final class TypeDescriptor {
     public static final TypeDescriptor INSTANTIABLE_ANY = new TypeDescriptor(new InstantiableImpl(ExecutableImpl.Kind.TOP, null, true, Collections.emptyList()));
 
     /**
-     * Represents all types. It's an intersection of no type.
+     * Represents any type. It's a union of all types.
      *
      * @since 0.30
      */
     public static final TypeDescriptor ANY = new TypeDescriptor(new UnionImpl(new HashSet<>(Arrays.asList(
-                    NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl, EXECUTABLE_ANY.impl, INSTANTIABLE_ANY.impl,
-                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl, HASH.impl))));
+                    NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl,
+                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl, HASH.impl,
+                    EXECUTABLE_ANY.impl, INSTANTIABLE_ANY.impl))));
+
+    /**
+     * Represents all types. It's an intersection of all types.
+     *
+     * @since 24.2
+     */
+    public static final TypeDescriptor ALL = new TypeDescriptor(intersectionImpl(Arrays.asList(
+                    NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl,
+                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, ITERABLE.impl, ITERATOR.impl, EXCEPTION.impl, HASH.impl,
+                    EXECUTABLE.impl, INSTANTIABLE.impl)));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
-                    NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, META_OBJECT, EXCEPTION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY,
-                    INSTANTIABLE, ITERABLE, ITERATOR, HASH,
-                    INSTANTIABLE_ANY, ANY
+                    NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY,
+                    DATE, TIME, TIME_ZONE, DURATION, META_OBJECT, ITERABLE, ITERATOR, EXCEPTION, HASH,
+                    EXECUTABLE_ANY, EXECUTABLE, INSTANTIABLE_ANY, INSTANTIABLE, ANY, ALL
     };
 
     private final TypeDescriptorImpl impl;
@@ -987,9 +998,7 @@ public final class TypeDescriptor {
         }
         switch (contentTypes.size()) {
             case 0:
-                return intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT,
-                                ARRAY, EXECUTABLE, INSTANTIABLE, ITERABLE, ITERATOR, DATE, TIME, TIME_ZONE, DURATION,
-                                META_OBJECT, EXCEPTION, HASH);
+                return ALL;
             case 1:
                 return contentTypes.iterator().next();
             default:
@@ -1370,7 +1379,7 @@ public final class TypeDescriptor {
                 if (typeParameter == null) {
                     sb.append("<any>");
                 } else {
-                    sb.append(typeParameter.toString());
+                    sb.append(typeParameter);
                 }
             }
             sb.append(">");
@@ -1608,6 +1617,9 @@ public final class TypeDescriptor {
 
         @Override
         public String toString() {
+            if (this == ALL.impl) {
+                return "<all>";
+            }
             return types.isEmpty() ? "<none>" : types.stream().map(Object::toString).collect(Collectors.joining(" & ", "[", "]"));
         }
     }
@@ -1709,6 +1721,9 @@ public final class TypeDescriptor {
 
         @Override
         public String toString() {
+            if (this == ANY.impl) {
+                return "<any>";
+            }
             return types.stream().map(Object::toString).collect(Collectors.joining(" | ", "[", "]"));
         }
     }

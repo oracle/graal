@@ -33,7 +33,6 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -55,7 +54,6 @@ import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardPhiNode;
 import jdk.graal.compiler.nodes.IfNode;
@@ -92,6 +90,7 @@ import jdk.graal.compiler.nodes.util.IntegerHelper;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public abstract class LoopTransformations {
 
@@ -250,7 +249,7 @@ public abstract class LoopTransformations {
      * for the exit that can later be duplicated cleanly.
      */
     public static void ensureExitsHaveUniqueStates(Loop loop) {
-        if (loop.loopBegin().graph().getGuardsStage() == GuardsStage.AFTER_FSA) {
+        if (loop.loopBegin().graph().getGuardsStage().areFrameStatesAtDeopts()) {
             return;
         }
         for (LoopExitNode lex : loop.loopBegin().loopExits()) {
@@ -568,8 +567,9 @@ public abstract class LoopTransformations {
     }
 
     private static void rewirePreToMainPhis(LoopBeginNode preLoopBegin, LoopFragment mainLoop, LoopFragment preLoop, LoopExitNode preLoopCountedExit, boolean inverted) {
-        // Update the main loop phi initialization to carry from the pre loop
-        for (PhiNode prePhiNode : preLoopBegin.phis()) {
+        // Update the main loop phi initialization to carry from the pre loop, use a snapshot
+        // because guard prox nodes can reference the loop begin and change usage lists
+        for (PhiNode prePhiNode : preLoopBegin.phis().snapshot()) {
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
             rewirePhi(prePhiNode, mainPhiNode, preLoopCountedExit, preLoop, inverted);
         }
@@ -660,7 +660,7 @@ public abstract class LoopTransformations {
          */
         LoopBeginNode preLoopBegin = preLoop.loopBegin();
         StructuredGraph graph = preLoopBegin.graph();
-        for (PhiNode prePhiNode : preLoopBegin.phis()) {
+        for (PhiNode prePhiNode : preLoopBegin.phis().snapshot()) {
             PhiNode postPhiNode = postLoop.getDuplicatedNode(prePhiNode);
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
 
@@ -787,7 +787,7 @@ public abstract class LoopTransformations {
         final int bits = ((IntegerStamp) loop.counted().getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT)).getBits();
         long stride = loop.counted().getLimitCheckedIV().constantStride();
         try {
-            NumUtil.addExact(stride, stride, bits);
+            LoopUtility.addExact(bits, stride, stride);
             return false;
         } catch (ArithmeticException ae) {
             return true;
@@ -795,7 +795,10 @@ public abstract class LoopTransformations {
     }
 
     public static boolean isUnrollableLoop(Loop loop) {
-        if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
+        if (LoopUtility.excludeLoopFromOptimizer(loop)) {
+            return false;
+        }
+        if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.getCFGLoop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled, inverted loops cannot be unrolled without
             // protecting their first iteration
@@ -825,10 +828,10 @@ public abstract class LoopTransformations {
             // Flow-less loops to partial unroll for now. 3 blocks corresponds to an if that either
             // exits or continues the loop. There might be fixed and floating work within the loop
             // as well.
-            if (loop.loop().getBlocks().size() < 3) {
+            if (loop.getCFGLoop().getBlocks().size() < 3) {
                 return true;
             }
-            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s too large to unroll %s ", loopBegin, loop.loop().getBlocks().size());
+            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s too large to unroll %s ", loopBegin, loop.getCFGLoop().getBlocks().size());
         }
         return false;
     }

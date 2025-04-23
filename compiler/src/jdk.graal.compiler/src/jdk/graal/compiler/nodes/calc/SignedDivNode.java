@@ -175,7 +175,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         if (c == -1) {
             return NegateNode.create(forX, view);
         }
-        long abs = Math.abs(c);
+        if (NumUtil.absOverflows(c, IntegerStamp.getBits(forX.stamp(view)))) {
+            return null;
+        }
+        long abs = NumUtil.safeAbs(c, forX);
         if (CodeUtil.isPowerOf2(abs) && forX.stamp(view) instanceof IntegerStamp) {
             IntegerStamp stampX = (IntegerStamp) forX.stamp(view);
             ValueNode dividend = forX;

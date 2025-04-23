@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,9 +65,9 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L6177-L6311",
-          sha1 = "84b96e679b2ff5dc836da5c28fbbc779b5320a2b")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp#L285-L691",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/03105fc92505e9e367354e763b99cbe02bf473d6/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7733-L7869",
+          sha1 = "e385b7b468c17a8a20a214415d878d732cab6d39")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp#L284-L690",
           sha1 = "1cd41d8f202ebe127aa31053ab3c6851f3900034")
 // @formatter:on
 public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {

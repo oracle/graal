@@ -33,8 +33,6 @@ import static jdk.graal.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.printf;
 import static org.graalvm.word.LocationIdentity.any;
 
-import org.graalvm.word.WordFactory;
-
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -120,7 +118,7 @@ public class ExceptionHandlerStub extends SnippetStub {
                 // This thread-local is only cleared in DEBUG builds of the VM
                 // (see OptoRuntime::generate_exception_blob)
                 Word currentExceptionPc = HotSpotReplacementsUtil.readExceptionPc(thread);
-                if (currentExceptionPc.notEqual(WordFactory.zero())) {
+                if (currentExceptionPc.notEqual(Word.zero())) {
                     fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
                 }
             }

@@ -26,12 +26,12 @@ package jdk.graal.compiler.core.test;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.DebugOptions;
 import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.nodes.EndNode;
@@ -40,8 +40,10 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
+import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -78,7 +80,7 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
             test(opt, "snippet01");
             Assert.fail("Should have detected that the phase in this class does not retain the mustNotSafepoint flag of a loop begin");
         } catch (Throwable t) {
-            assert t.getMessage().contains("previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true");
+            assert t.toString().contains("previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true") : t;
         }
     }
 
@@ -97,8 +99,8 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
             @Override
             protected void run(StructuredGraph graph, HighTierContext context) {
                 for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
-                    lb.disableSafepoint();
-                    lb.disableGuestSafepoint();
+                    lb.setLoopEndSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                    lb.setGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
                 }
             }
 
@@ -144,6 +146,9 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
 
                 LoopBeginNode oldLoopBegin = lex.loopBegin();
                 EndNode fwd = oldLoopBegin.forwardEnd();
+                for (LoopExitNode exit : oldLoopBegin.loopExits().snapshot()) {
+                    exit.setLoopBegin(lb);
+                }
 
                 FixedNode next = oldLoopBegin.next();
                 oldLoopBegin.setNext(null);
@@ -153,10 +158,8 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
                 lb.addForwardEnd(fwdEnd);
 
                 FixedWithNextNode fwn = (FixedWithNextNode) fwd.predecessor();
-                fwn.setNext(null);
-                GraphUtil.killCFG(fwd);
                 fwn.setNext(fwdEnd);
-
+                GraphUtil.killCFG(fwd);
             }
 
         });

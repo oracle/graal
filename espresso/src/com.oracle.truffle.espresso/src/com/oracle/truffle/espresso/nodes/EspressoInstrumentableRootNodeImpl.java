@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,11 +48,6 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
     }
 
     @Override
-    boolean isTrivial() {
-        return false;
-    }
-
-    @Override
     public boolean canSplit() {
         return false;
     }
@@ -83,7 +78,7 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
     }
 
     public final Source getSource() {
-        return getMethodVersion().getSource();
+        return getMethodVersion().getMethod().getSource();
     }
 
     @Override

@@ -37,31 +37,26 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.Word;
 
 public final class ImageClassLoader {
-
-    static {
-        /*
-         * ImageClassLoader is one of the first classes used during image generation, so early
-         * enough to ensure that we can use the Word type.
-         */
-        Word.ensureInitialized();
-    }
 
     public final Platform platform;
     public final NativeImageClassLoaderSupport classLoaderSupport;
@@ -71,6 +66,8 @@ public final class ImageClassLoader {
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
+    /** Modules containing all {@code svm.core} and {@code svm.hosted} classes. */
+    private Set<Module> builderModules;
 
     ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
@@ -96,7 +93,7 @@ public final class ImageClassLoader {
                 }
             }
         }
-        classLoaderSupport.reportBuilderClassesInApplication();
+        classLoaderSupport.allClassesLoaded();
     }
 
     private void findSystemElements(Class<?> systemClass) {
@@ -408,8 +405,8 @@ public final class ImageClassLoader {
         return classLoaderSupport.getClassLoader();
     }
 
-    public Optional<String> getMainClassFromModule(Object module) {
-        return classLoaderSupport.getMainClassFromModule(module);
+    public static Optional<String> getMainClassFromModule(Object module) {
+        return NativeImageClassLoaderSupport.getMainClassFromModule(module);
     }
 
     public Optional<Module> findModule(String moduleName) {
@@ -438,5 +435,18 @@ public final class ImageClassLoader {
 
     public boolean noEntryForURI(EconomicSet<String> set) {
         return classLoaderSupport.noEntryForURI(set);
+    }
+
+    public Set<Module> getBuilderModules() {
+        assert builderModules != null : "Builder modules not yet initialized.";
+        return builderModules;
+    }
+
+    public void initBuilderModules() {
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished() && ImageSingletons.contains(VMFeature.class),
+                        "Querying builder modules is only possible after feature registration is finished.");
+        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
+        Module m1 = SVMHost.class.getModule();
+        builderModules = m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
     }
 }

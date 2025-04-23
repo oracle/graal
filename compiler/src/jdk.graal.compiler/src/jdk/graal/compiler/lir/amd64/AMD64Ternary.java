@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,15 +29,16 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorInstruction;
-
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
@@ -73,7 +74,8 @@ public class AMD64Ternary {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(crb, masm, result, x);
+            AMD64SIMDInstructionEncoding simdEncoding = AMD64SIMDInstructionEncoding.forFeatures(masm.getFeatures());
+            new AMD64VectorMove.MoveToRegOp(result, x, simdEncoding).emitCode(crb, masm);
             if (isRegister(z)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(y), asRegister(z));
             } else {

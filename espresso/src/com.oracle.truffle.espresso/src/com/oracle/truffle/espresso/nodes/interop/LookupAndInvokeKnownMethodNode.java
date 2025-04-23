@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -34,8 +33,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * This node is a shortcut for implementing behaviors that require doing a virtual/interface lookup

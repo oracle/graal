@@ -62,9 +62,6 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     @Override
     public void extraImports(AbstractProcessor processor, Set<String> imports) {
         imports.add("jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext");
-        if (needsReplacement(processor)) {
-            imports.add("jdk.graal.compiler.core.common.type.Stamp");
-        }
     }
 
     protected abstract List<? extends VariableElement> getParameters();
@@ -87,7 +84,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
 
         for (int i = 0; i < signature.length; i++, idx++) {
             if (processor.getAnnotation(intrinsicMethod.getParameters().get(i), processor.getType(NodeIntrinsicHandler.CONSTANT_NODE_PARAMETER_CLASS_NAME)) != null) {
-                String argName = constantArgument(processor, out, deps, idx, signature[i], i, false);
+                String argName = constantArgument(processor, out, deps, idx, signature[i], i, true);
                 verifyConstantArgument(out, argName, signature[i]);
             } else {
                 if (signature[i].equals(processor.getType(NodeIntrinsicHandler.VALUE_NODE_CLASS_NAME))) {
@@ -199,7 +196,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     }
 
     @Override
-    protected void createOtherClasses(AbstractProcessor processor, PrintWriter out) {
+    protected void createOtherClasses(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps) {
         if (needsReplacement(processor)) {
             if (isWithExceptionReplacement(processor)) {
                 /*
@@ -212,11 +209,10 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
                 out.printf("@ExcludeFromJacocoGeneratedReport(\"deferred plugin support that is only called in libgraal\")\n");
                 out.printf("final class %s implements PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction {\n", name);
                 out.printf("    static PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction FUNCTION = new %s();\n", name);
-                InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);
                 createHelpers(processor, out, deps);
                 out.printf("}\n");
             } else {
-                super.createOtherClasses(processor, out);
+                super.createOtherClasses(processor, out, deps);
             }
         }
     }
@@ -241,13 +237,15 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     }
 
     @Override
-    protected void createHelpers(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps) {
+    protected void createHelpers(AbstractProcessor processor, PrintWriter out, InjectedDependencies originalDeps) {
         if (!needsReplacement(processor)) {
             return;
         }
+        // In this context all values must be retrieved from the injection argument
+        InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);
         out.printf("\n");
         out.printf("    @Override\n");
-        out.printf("    public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, Stamp stamp, NodeInputList<ValueNode> args) {\n");
+        out.printf("    public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, ValueNode[] args) {\n");
 
         List<? extends VariableElement> params = getParameters();
 
@@ -263,12 +261,12 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
 
         for (int i = 0; i < signature.length; i++, idx++) {
             if (processor.getAnnotation(intrinsicMethod.getParameters().get(i), processor.getType(NodeIntrinsicHandler.CONSTANT_NODE_PARAMETER_CLASS_NAME)) != null) {
-                constantArgument(processor, out, deps, idx, signature[i], i, true);
+                constantArgument(processor, out, deps, idx, signature[i], i, false);
             } else {
                 if (signature[i].equals(processor.getType(NodeIntrinsicHandler.VALUE_NODE_CLASS_NAME))) {
-                    out.printf("        ValueNode arg%d = args.get(%d);\n", idx, i);
+                    out.printf("        ValueNode arg%d = args[%d];\n", idx, i);
                 } else {
-                    out.printf("        %s arg%d = (%s) args.get(%d);\n", signature[i], idx, signature[i], i);
+                    out.printf("        %s arg%d = (%s) args[%d];\n", signature[i], idx, signature[i], i);
                 }
             }
         }

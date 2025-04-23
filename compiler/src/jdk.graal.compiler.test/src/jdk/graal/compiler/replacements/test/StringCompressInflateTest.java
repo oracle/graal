@@ -381,7 +381,7 @@ public final class StringCompressInflateTest extends HotSpotGraalCompilerTest {
         }
 
         StructuredGraph replacementGraph() {
-            return getReplacements().getInlineSubstitution(javamethod, 0, Invoke.InlineControl.Normal, false, null, testgraph.allowAssumptions(), getInitialOptions());
+            return getReplacements().getInlineSubstitution(javamethod, 0, false, Invoke.InlineControl.Normal, false, null, testgraph.allowAssumptions(), getInitialOptions());
         }
 
         StructuredGraph testMethodGraph() {

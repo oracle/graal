@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.substitutions;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 
 import jdk.vm.ci.code.Architecture;
@@ -38,6 +39,7 @@ import jdk.vm.ci.code.Architecture;
  * <p>
  * Implementations are responsible for checking the architecture if needed.
  */
+@LibGraalService
 public interface GraphBuilderInvocationPluginProvider {
 
     void registerInvocationPlugins(InvocationPlugins plugins, KnownTruffleTypes types, Providers providers, Architecture architecture, boolean canDelayIntrinsification);

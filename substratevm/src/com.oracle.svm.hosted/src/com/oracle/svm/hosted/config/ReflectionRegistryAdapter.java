@@ -27,24 +27,28 @@ package com.oracle.svm.hosted.config;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 
-import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+import com.oracle.svm.util.TypeResult;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
     private final ProxyRegistry proxyRegistry;
+    private final RuntimeSerializationSupport<ConfigurationCondition> serializationSupport;
 
-    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
+    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
+                    ImageClassLoader classLoader) {
         super(reflectionSupport, classLoader);
         this.reflectionSupport = reflectionSupport;
         this.proxyRegistry = proxyRegistry;
+        this.serializationSupport = serializationSupport;
     }
 
     @Override
@@ -125,5 +129,10 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
         reflectionSupport.registerAllDeclaredConstructorsQuery(condition, queriedOnly, type);
+    }
+
+    @Override
+    public void registerAsSerializable(ConfigurationCondition condition, Class<?> clazz) {
+        serializationSupport.register(condition, clazz);
     }
 }

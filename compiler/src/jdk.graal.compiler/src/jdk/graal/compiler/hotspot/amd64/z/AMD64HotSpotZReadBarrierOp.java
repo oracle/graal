@@ -59,7 +59,7 @@ public class AMD64HotSpotZReadBarrierOp extends AMD64HotSpotZLoadBarrieredOp {
             crb.recordImplicitException(masm.position(), state);
         }
         final Register resultReg = asRegister(result);
-        MOV.emit(masm, AMD64BaseAssembler.OperandSize.QWORD, resultReg, loadAddress.toAddress());
+        MOV.emit(masm, AMD64BaseAssembler.OperandSize.QWORD, resultReg, loadAddress.toAddress(masm));
         emitLoadBarrier(crb, masm, isNotStrong);
     }
 }

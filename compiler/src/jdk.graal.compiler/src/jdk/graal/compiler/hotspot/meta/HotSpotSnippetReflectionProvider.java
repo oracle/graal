@@ -31,9 +31,11 @@ import java.lang.reflect.Field;
 import java.util.Objects;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.SnippetObjectConstant;
 import jdk.graal.compiler.word.WordTypes;
 
@@ -61,6 +63,11 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
 
     @Override
     public JavaConstant forObject(Object object) {
+        if (LibGraalSupport.inLibGraalRuntime()) {
+            HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(object.getClass());
+            // This can only be a compiler object when in libgraal.
+            return new SnippetObjectConstant(object);
+        }
         return constantReflection.forObject(object);
     }
 
@@ -69,12 +76,10 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         if (constant.isNull()) {
             return null;
         }
-        if (constant instanceof HotSpotObjectConstant) {
-            HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
+        if (constant instanceof HotSpotObjectConstant hsConstant) {
             return hsConstant.asObject(type);
         }
-        if (constant instanceof SnippetObjectConstant) {
-            SnippetObjectConstant snippetObject = (SnippetObjectConstant) constant;
+        if (constant instanceof SnippetObjectConstant snippetObject) {
             return snippetObject.asObject(type);
         }
         return null;

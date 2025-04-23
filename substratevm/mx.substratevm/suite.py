@@ -1,8 +1,8 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.28.0",
+    "mxversion": "7.38.0",
     "name": "substratevm",
-    "version" : "24.2.0",
+    "version" : "25.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -202,6 +202,16 @@ suite = {
             "path": "mx.substratevm/jar-with-space-in-resource-dir.jar",
             "digest": "sha512:270bffd158c92b04b16db147f4ef336dcb4d830bf3503cc25be1227b351597a3254544b3c4a5183dcc53f2f3ab10b282722dbf7f1b5e9d9a2741878a7057eb40",
         },
+
+        "CAPNPROTO_RUNTIME": {
+            "digest" : "sha512:94a7776511c344da60a1acdc346c133522a43c239d067d0d5d86c21291e0252a19bd4fa74e4b1d3a93e75dadd41af6557a5d118a1584e39d34c092485ce065b2",
+            "sourceDigest" : "sha512:a458654e16c4a723508130dfd33d2d410a1d346949fc2f8203b3188f78c01c1850b334394f654536652f9ea6d73b8ce0d308d46f877a944208c3a248249fba77",
+            "maven" : {
+                "groupId" : "org.capnproto",
+                "artifactId" : "runtime",
+                "version" : "0.1.16",
+            },
+        },
     },
 
     "projects": {
@@ -210,6 +220,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:NATIVEIMAGE",
+                "sdk:NATIVEIMAGE_LIBGRAAL",
                 "compiler:GRAAL",
             ],
             "requiresConcealed" : {
@@ -244,6 +255,62 @@ suite = {
             "jacoco" : "include",
         },
 
+        # Shade Cap'n Proto Runtime
+        "com.oracle.svm.shaded.org.capnproto": {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugsIgnoresGenerated" : True,
+            "shadedDependencies" : [
+                "CAPNPROTO_RUNTIME",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.capnproto" : "com.oracle.svm.shaded.org.capnproto",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "**/package.html",
+                ],
+            },
+            "description" : "Capn Proto Runtime library shaded for Native Image.",
+            "forceJavac" : "true",
+            "javac.lint.overrides" : "none",
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
+        },
+
+        # This shaded ASM project is just a quickfix.
+        # Eventually, we should migrate to the Classfile API [JDK-8294982] (GR-61102).
+        "com.oracle.svm.shaded.org.objectweb.asm": {
+            # Shadowed ASM libraries (org.ow2.asm:asm,asm-tree)
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugsIgnoresGenerated" : True,
+            "shadedDependencies" : [
+                "compiler:ASM_9.7.1",
+                "compiler:ASM_TREE_9.7.1",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.objectweb.asm" : "com.oracle.svm.shaded.org.objectweb.asm",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "**/package.html",
+                ],
+            },
+            "description" : "ASM library shadowed for Native Iamge.",
+            # We need to force javac because the generated sources in this project produce warnings in JDT.
+            "forceJavac" : "true",
+            "javac.lint.overrides" : "none",
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
+        },
+
         "com.oracle.svm.processor" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -268,12 +335,15 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.common",
+                "com.oracle.svm.shaded.org.objectweb.asm",
+                "SVM_CONFIGURE",
             ],
             "requires" : [
                 "java.compiler",
                 "jdk.jfr",
                 "jdk.management",
                 "jdk.zipfs",
+                "java.instrument",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -291,6 +361,7 @@ suite = {
                     "sun.security.util",
                     "sun.text.spi",
                     "sun.util",
+                    "sun.util.locale",
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
@@ -305,8 +376,8 @@ suite = {
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
+                    "jdk.internal.vm.annotation",
                     "jdk.internal.util",
-                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -324,10 +395,18 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.riscv64",
+                    "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.services"
                 ],
             },
             "javaCompliance" : "21+",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -349,6 +428,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base": [
+                    "jdk.internal.misc",
                     "sun.nio.ch",
                 ],
                 "java.management": [
@@ -356,6 +436,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -377,6 +458,9 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -397,6 +481,9 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -417,6 +504,9 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.riscv64"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -460,7 +550,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.hosted",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.graal.riscv64",
             ],
@@ -471,6 +561,9 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.riscv64"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -488,12 +581,13 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.hosted",
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.amd64"
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -523,6 +617,8 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.runtime"
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -546,6 +642,9 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.hotspot",
+                    "jdk.vm.ci.meta"
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -610,12 +709,15 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core",
-                "com.oracle.graal.reachability"
+                "com.oracle.graal.reachability",
+                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.shaded.org.capnproto",
+                "SVM_CONFIGURE",
             ],
             "requires" : [
                 "jdk.jfr",
                 "jdk.management",
+                "java.instrument",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -625,7 +727,6 @@ suite = {
                     "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
-                    "jdk.internal.org.objectweb.asm",
                     "sun.net.www",
                     "sun.reflect.annotation",
                     "sun.security.jca",
@@ -651,6 +752,10 @@ suite = {
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.hotspot",
                     "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.riscv64"
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
@@ -662,7 +767,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "21+",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -682,15 +787,22 @@ suite = {
             ],
             "requiresConcealed": {
                 "java.base": [
-                    "jdk.internal.loader",
-                    "jdk.internal.reflect",
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64",
                     "jdk.internal.foreign.abi.x64.sysv",
                     "jdk.internal.foreign.abi.x64.windows",
+                    "jdk.internal.foreign.abi.aarch64",
+                    "jdk.internal.foreign.abi.aarch64.macos",
+                    "jdk.internal.foreign.abi.aarch64.linux",
+                    "jdk.internal.loader",
+                    "jdk.internal.reflect",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "javaCompliance" : "22+",
@@ -702,7 +814,8 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
-            "jacoco" : "include",
+            # disable coverage as long it cannot run on JDK latest [GR-59586]
+            "jacoco" : "exclude",
             # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
             "spotbugs" : "false",
         },
@@ -712,15 +825,28 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.configure",
                 "com.oracle.svm.core.foreign"
+            ],
+            "distDependencies": [
+                "SVM_CONFIGURE"
             ],
             "requiresConcealed": {
                 "java.base": [
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
+                    "jdk.internal.foreign.abi.x64.windows",
+                    "jdk.internal.foreign.abi.x64.sysv",
+                    "jdk.internal.foreign.abi.aarch64",
+                    "jdk.internal.foreign.abi.aarch64.macos",
+                    "jdk.internal.foreign.abi.aarch64.linux",
+                    "jdk.internal.foreign.layout",
                 ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.code"
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.amd64",
                 ],
             },
             "javaCompliance" : "22+",
@@ -732,7 +858,8 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
-            "jacoco" : "include",
+            # disable coverage as long it cannot run on JDK latest [GR-59586]
+            "jacoco" : "exclude",
             # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
             "spotbugs" : "false",
         },
@@ -755,10 +882,10 @@ suite = {
                     "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
                 },
                 "linux": {
-                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                 },
                 "<others>": {
-                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                 },
             },
             "jacoco" : "exclude",
@@ -816,7 +943,7 @@ suite = {
                     "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                 },
                 "linux": {
-                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
+                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
                 },
                 "<others>": {
                     "ignore": "only darwin and linux are supported",
@@ -918,6 +1045,9 @@ suite = {
                 "java.base" : [
                     "jdk.internal.jimage",
                 ],
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                ],
             },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -981,6 +1111,7 @@ suite = {
                 "jdk.jfr",
                 "java.management",
                 "jdk.management.jfr",
+                "java.instrument",
                 "java.rmi",
             ],
             "requiresConcealed" : {
@@ -990,7 +1121,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.test",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1080,6 +1211,9 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
@@ -1107,6 +1241,11 @@ suite = {
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.hotspot",
+                    "jdk.vm.ci.meta"
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1194,6 +1333,8 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.stack"
                 ]
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1289,100 +1430,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.graal.hotspot" : {
-            "subDir": "src",
-            "sourceDirs" : [
-                "src"
-            ],
-            "dependencies": [
-                "sdk:JNIUTILS",
-                "compiler:GRAAL",
-                "SVM",
-            ],
-            "requiresConcealed" : {
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.services",
-                    "jdk.vm.ci.runtime",
-                ],
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "workingSets" : "SVM",
-            "jacoco" : "exclude",
-        },
-
-        "com.oracle.svm.graal.hotspot.guestgraal" : {
-            "subDir": "src",
-            "sourceDirs" : [
-                "src",
-                "resources",
-            ],
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot",
-                "sdk:NATIVEIMAGE",
-                "sdk:NATIVEBRIDGE",
-                "compiler:GRAAL",
-                "SVM",
-            ],
-            "requires": [
-                "java.management",
-                "jdk.management",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.jimage",
-                    "jdk.internal.misc",
-                ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.services",
-                    "jdk.vm.ci.runtime",
-                ],
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "workingSets" : "SVM",
-            "jacoco" : "exclude",
-        },
-
-        "com.oracle.svm.graal.hotspot.libgraal" : {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot",
-                "com.oracle.svm.graal",
-                "compiler:GRAAL",
-                "sdk:NATIVEBRIDGE",
-            ],
-            "requires" : [
-            	"jdk.management"
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.misc",
-                ],
-                "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.hotspot",
-                ]
-            },
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "annotationProcessors": [
-                "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "defaultBuild": False,
-            "jacoco" : "exclude",
-        },
-
         "com.oracle.svm.configure": {
             "subDir": "src",
             "sourceDirs": [
@@ -1390,7 +1437,10 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.util",
+                "compiler:GRAAL",
+                "sdk:NATIVEIMAGE",
+                "sdk:COLLECTIONS",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
@@ -1464,7 +1514,6 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
-                    "jdk.internal.org.objectweb.asm",
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1484,6 +1533,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
                 "truffle:TRUFFLE_RUNTIME",
+                "sdk:NATIVEIMAGE",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
@@ -1501,6 +1551,127 @@ suite = {
             "javaCompliance" : "21+",
             "jacoco" : "exclude",
             "graalCompilerSourceEdition": "ignore",
+        },
+
+        "com.oracle.svm.interpreter.metadata": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+                "com.oracle.graal.pointsto",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "javaCompliance": "21+",
+            "workingSets": "SVM",
+            "jacoco": "exclude",
+        },
+
+        "com.oracle.svm.interpreter": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.interpreter.metadata",
+                "com.oracle.svm.core.graal.aarch64",
+                "com.oracle.svm.graal",
+            ],
+            "requires" : [
+                "java.base"
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                ],
+                "java.base" : [
+                    "jdk.internal.misc", # Unsafe
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "javaCompliance": "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "substratevm:SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "jacoco": "exclude",
+        },
+
+        # Common project both jdwp.server and jdwp.resident.
+        "com.oracle.svm.jdwp.bridge": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "javaCompliance": "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "substratevm:SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "jacoco": "exclude",
+        },
+
+        # JDWP server, should run on HotSpot and as a shared library e.g. libsvmjdwp.so
+        "com.oracle.svm.jdwp.server": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.interpreter.metadata",
+                "com.oracle.svm.jdwp.bridge",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ],
+                "java.base" : [
+                    "jdk.internal.misc", # Signal
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "javaCompliance": "21+",
+            "annotationProcessors": [
+                "substratevm:SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "jacoco": "exclude",
+        },
+
+        # JDWP implementation bits that are included in the application.
+        "com.oracle.svm.jdwp.resident": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.interpreter",
+                "com.oracle.svm.jdwp.bridge",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                ],
+                "java.base" : [
+                    "jdk.internal.misc", # Signal
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "javaCompliance": "21+",
+            "annotationProcessors": [
+                "substratevm:SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "jacoco": "exclude",
         },
     },
 
@@ -1532,13 +1703,16 @@ suite = {
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
+                "com.oracle.svm.jdwp.resident",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
                 "OBJECTFILE",
                 "POINTSTO",
+                "SVM_CAPNPROTO_RUNTIME",
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
+                "SVM_CONFIGURE",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -1547,7 +1721,6 @@ suite = {
                     """* to org.graalvm.nativeimage.base,
                             jdk.graal.compiler,
                             org.graalvm.nativeimage.driver,
-                            org.graalvm.nativeimage.configure,
                             org.graalvm.nativeimage.librarysupport,
                             org.graalvm.nativeimage.junitsupport,
                             org.graalvm.nativeimage.llvm,
@@ -1561,12 +1734,15 @@ suite = {
                             org.graalvm.extraimage.librarysupport,
                             com.oracle.svm.extraimage_enterprise,
                             org.graalvm.nativeimage.foreign,
-                            com.oracle.svm.enterprise.jdwp.common,
-                            com.oracle.svm.enterprise.jdwp.server,
-                            com.oracle.svm.enterprise.jdwp.resident,
+                            com.oracle.svm.jdwp.server,
                             org.graalvm.truffle.runtime.svm,
                             com.oracle.truffle.enterprise.svm""",
                     "com.oracle.svm.hosted.c.libc to com.oracle.graal.sandbox",
+                    "com.oracle.svm.jdwp.bridge                        to com.oracle.svm.jdwp.server",
+                    "com.oracle.svm.jdwp.bridge.nativebridge           to com.oracle.svm.jdwp.server",
+                    "com.oracle.svm.jdwp.bridge.jniutils               to com.oracle.svm.jdwp.server",
+                    "com.oracle.svm.interpreter.metadata               to com.oracle.svm.jdwp.server",
+                    "com.oracle.svm.interpreter.metadata.serialization to com.oracle.svm.jdwp.server",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.graal.compiler",
@@ -1576,7 +1752,6 @@ suite = {
                     "com.oracle.svm.hosted.fieldfolding           to jdk.graal.compiler",
                     "com.oracle.svm.hosted.phases                 to jdk.graal.compiler",
                     "com.oracle.svm.hosted.reflect                to jdk.graal.compiler",
-                    "com.oracle.svm.core.thread                   to com.oracle.svm.enterprise.jdwp.resident",
                 ],
                 "requires": [
                     "java.management",
@@ -1587,11 +1762,14 @@ suite = {
                     "transitive org.graalvm.nativeimage.pointsto",
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
+                    "org.graalvm.nativeimage.configure",
+                    "org.graalvm.nativeimage.libgraal"
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
                     "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
                 ],
@@ -1620,7 +1798,6 @@ suite = {
                         "sun.security.ssl",
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
-                        "jdk.internal.org.objectweb.asm",
                         "sun.util.locale.provider",
                         "sun.util.cldr",
                         "sun.util.resources",
@@ -1632,6 +1809,27 @@ suite = {
                     ],
                 },
             },
+            "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
+        "SVM_CAPNPROTO_RUNTIME" : {
+            "subDir" : "src",
+            "description" : "Capn Proto Runtime shaded module.",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "dependencies" : [
+                "com.oracle.svm.shaded.org.capnproto",
+            ],
+             "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.shaded.capnproto",
+                 "exports" : [
+                    "com.oracle.svm.shaded.org.capnproto",
+                 ]
+            },
+            "allowsJavadocWarnings" : True,
             "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
@@ -1803,14 +2001,6 @@ suite = {
                     "org.graalvm.polyglot",
                     "org.graalvm.truffle.compiler",
                 ],
-                "uses" : [
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-                    "com.oracle.truffle.api.provider.TruffleLanguageProvider",
-                    "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",                   # Deprecated
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
-                ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
                         "jdk.vm.ci.common",
@@ -1849,41 +2039,6 @@ suite = {
             "native-image.properties" : "file:mx.substratevm/macro-truffle-svm.properties",
           },
           "maven" : False,
-        },
-
-        "GRAAL_HOTSPOT_LIBRARY": {
-            "subDir": "src",
-            "description" : "SubstrateVM HotSpot Graal library support",
-            "javaCompliance" : "21+",
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot.libgraal",
-            ],
-            "overlaps" : [
-                "LIBRARY_SUPPORT",
-                "GUESTGRAAL_LIBRARY"
-            ],
-            "distDependencies": [
-                "SVM",
-                "sdk:JNIUTILS",
-                "sdk:NATIVEBRIDGE",
-            ],
-            "defaultBuild": False,
-            "maven": False,
-        },
-
-        "GUESTGRAAL_LIBRARY": {
-            "subDir": "src",
-            "description" : "GuestGraal HotSpot Graal library support",
-            "javaCompliance" : "21+",
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot.guestgraal",
-            ],
-            "distDependencies": [
-                "SVM",
-                "sdk:JNIUTILS",
-                "sdk:NATIVEBRIDGE",
-            ],
-            "maven": False,
         },
 
         #
@@ -1970,13 +2125,16 @@ suite = {
             "description" : "SubstrateVM native-image-agent library",
             "dependencies": [
                 "com.oracle.svm.agent",
-                "com.oracle.svm.configure",
             ],
             "distDependencies": [
                 "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
-                "SVM_CONFIGURE"
+                "SVM_CONFIGURE",
+                "NATIVE_IMAGE_BASE",
+                "compiler:GRAAL",
+                "sdk:NATIVEIMAGE",
+                "sdk:COLLECTIONS",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.agent.tracing",
@@ -1992,6 +2150,7 @@ suite = {
                   "jdk.graal.compiler",
                   "org.graalvm.collections",
                   "org.graalvm.nativeimage.builder",
+                  "org.graalvm.nativeimage.configure",
                 ],
             },
             # vm: included as binary, tool descriptor intentionally not copied
@@ -2028,22 +2187,25 @@ suite = {
                 "com.oracle.svm.configure",
             ],
             "distDependencies": [
-                "LIBRARY_SUPPORT",
+                "NATIVE_IMAGE_BASE"
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.configure",
                 "exports" : [
                     "* to org.graalvm.nativeimage.agent.tracing",
                     "com.oracle.svm.configure",
+                    "com.oracle.svm.configure.config",
+                    "com.oracle.svm.configure.config.conditional",
                     "com.oracle.svm.configure.command",
                 ],
                 "requires": [
                   "jdk.graal.compiler",
                   "org.graalvm.collections",
-                  "org.graalvm.nativeimage.builder",
                 ],
             },
-            "maven": False,
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "NATIVE_IMAGE_BASE": {
@@ -2056,6 +2218,7 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "sdk:NATIVEIMAGE",
+                "sdk:NATIVEIMAGE_LIBGRAAL",
             ],
             "exclude": [
             ],
@@ -2068,9 +2231,37 @@ suite = {
                     "org.graalvm.collections",
                 ],
                 "exports" : [
-                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,com.oracle.svm.enterprise.jdwp.resident,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
-                    "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
-                    "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    """com.oracle.svm.util to org.graalvm.nativeimage.pointsto,
+                           org.graalvm.nativeimage.builder,
+                           org.graalvm.nativeimage.configure,
+                           org.graalvm.nativeimage.librarysupport,
+                           org.graalvm.nativeimage.driver,
+                           org.graalvm.nativeimage.llvm,
+                           org.graalvm.nativeimage.agent.jvmtibase,
+                           org.graalvm.nativeimage.agent.tracing,
+                           org.graalvm.nativeimage.agent.diagnostics,
+                           org.graalvm.nativeimage.junitsupport,
+                           com.oracle.svm.svm_enterprise,
+                           com.oracle.svm_enterprise.ml_dataset,
+                           org.graalvm.extraimage.builder,
+                           com.oracle.svm.extraimage_enterprise,
+                           org.graalvm.extraimage.librarysupport,
+                           org.graalvm.nativeimage.foreign,
+                           org.graalvm.truffle.runtime.svm,
+                           com.oracle.truffle.enterprise.svm""",
+                    """com.oracle.svm.common.meta to org.graalvm.nativeimage.pointsto,
+                           org.graalvm.nativeimage.builder,
+                           org.graalvm.nativeimage.llvm,
+                           org.graalvm.extraimage.builder,
+                           org.graalvm.nativeimage.foreign,
+                           org.graalvm.truffle.runtime.svm,
+                           com.oracle.truffle.enterprise.svm""",
+                    """com.oracle.svm.common.option to org.graalvm.nativeimage.pointsto,
+                           org.graalvm.nativeimage.builder,
+                           org.graalvm.nativeimage.driver,
+                           org.graalvm.nativeimage.foreign,
+                           org.graalvm.truffle.runtime.svm,
+                           com.oracle.truffle.enterprise.svm""",
                 ],
             },
             "noMavenJavadoc": True,
@@ -2315,15 +2506,6 @@ suite = {
             },
         },
 
-        "NATIVE_IMAGE_JUNITCP_SUPPORT" : {
-            "native" : True,
-            "description" : "Native-image based junit testing support but with running image-builder on classpath",
-            "layout" : {
-                "native-image.properties" : "file:mx.substratevm/macro-junitcp.properties",
-                "svm-junit.packages" : "file:mx.substratevm/svm-junit.packages",
-            },
-        },
-
         "SVM_FOREIGN": {
             "subDir": "src",
             "description" : "SubstrateVM support for the Foreign API",
@@ -2337,7 +2519,8 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.foreign",
                 "requires" : [
-                    "org.graalvm.nativeimage.builder"
+                    "org.graalvm.nativeimage.builder",
+                    "org.graalvm.collections",
                 ],
                 "exports" : [
                     "* to org.graalvm.nativeimage.builder"
@@ -2347,6 +2530,7 @@ suite = {
                         "jdk.vm.ci.meta",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.amd64",
+                        "jdk.vm.ci.aarch64",
                     ],
                     "java.base": [
                         "jdk.internal.foreign",
@@ -2354,6 +2538,9 @@ suite = {
                         "jdk.internal.foreign.abi.x64",
                         "jdk.internal.foreign.abi.x64.sysv",
                         "jdk.internal.foreign.abi.x64.windows",
+                        "jdk.internal.foreign.abi.aarch64",
+                        "jdk.internal.foreign.abi.aarch64.macos",
+                        "jdk.internal.foreign.abi.aarch64.linux",
                     ],
                 },
             },
@@ -2395,5 +2582,20 @@ suite = {
                 "tag": ["default", "public"],
             },
         },
+
+        "SVM_JDWP_SERVER": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.jdwp.server",
+            ],
+            "distDependencies": [
+                "substratevm:SVM",
+            ],
+            "moduleInfo" : {
+                "name" : "com.oracle.svm.jdwp.server",
+            },
+            "maven" : False,
+        },
+
     },
 }

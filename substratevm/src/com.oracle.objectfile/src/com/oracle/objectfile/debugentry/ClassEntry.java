@@ -30,14 +30,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.objectfile.debugentry.range.PrimaryRange;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debugentry.range.SubRange;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.debug.DebugContext;
-
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
@@ -46,6 +43,10 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Track debug info associated with a Java class.
@@ -287,8 +288,8 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     @Override
-    protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
+    protected FieldEntry createField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        FieldEntry fieldEntry = super.createField(debugFieldInfo, debugInfoBase, debugContext);
         return fieldEntry;
     }
 

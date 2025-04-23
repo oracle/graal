@@ -28,15 +28,16 @@ import java.util.Set;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public class ConstantPoolPatcher {
     public static void getDirectInnerAnonymousClassNames(Symbol<Name> fileSystemName, byte[] bytes, Set<Symbol<Name>> innerNames, EspressoContext context)
-                    throws ClassFormatError {
+                    throws ParserException.ClassFormatError {
         ClassfileStream stream = new ClassfileStream(bytes, null);
         // skip magic and version - 8 bytes
         stream.skip(8);
@@ -88,7 +89,7 @@ public class ConstantPoolPatcher {
                     stream.readU2();
                     break;
                 default:
-                    throw new ClassFormatError();
+                    throw new ParserException.ClassFormatError("Unexpected tag: " + tag);
             }
             i++;
         }
@@ -114,7 +115,7 @@ public class ConstantPoolPatcher {
         return '0' <= c && c <= '9';
     }
 
-    public static byte[] patchConstantPool(byte[] bytes, Map<Symbol<Name>, Symbol<Name>> rules, EspressoContext context) throws ClassFormatError {
+    public static byte[] patchConstantPool(byte[] bytes, Map<Symbol<Name>, Symbol<Name>> rules, EspressoContext context) throws ParserException.ClassFormatError {
         byte[] result = Arrays.copyOf(bytes, bytes.length);
         ClassfileStream stream = new ClassfileStream(bytes, null);
 
@@ -194,7 +195,7 @@ public class ConstantPoolPatcher {
                     stream.readU2();
                     break;
                 default:
-                    throw new ClassFormatError();
+                    throw new ParserException.ClassFormatError("Unexpected tag: " + tag);
             }
             i++;
         }

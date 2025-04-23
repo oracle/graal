@@ -33,8 +33,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
+import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -76,31 +76,26 @@ public class ReflectionOptionDescriptors implements OptionDescriptors {
 
     private final EconomicMap<String, OptionDescriptor> descriptors = EconomicMap.create();
 
-    // SVM expects a default constructor here.
-    public ReflectionOptionDescriptors() {
+    private final OptionsContainer container;
+
+    @Override
+    public OptionsContainer getContainer() {
+        return container;
     }
 
     public ReflectionOptionDescriptors(Class<?> declaringClass, String... fieldsAndHelp) {
+        this.container = OptionsContainer.asContainer(declaringClass);
         assert fieldsAndHelp.length % 2 == 0;
         for (int i = 0; i < fieldsAndHelp.length; i += 2) {
             String fieldName = fieldsAndHelp[i];
             String help = fieldsAndHelp[i + 1];
-            addOption(declaringClass, fieldName, help);
+            addOption(fieldName, help);
         }
     }
 
-    public ReflectionOptionDescriptors(Class<?> declaringClass, EconomicMap<String, String> fieldsAndHelp) {
-        MapCursor<String, String> cursor = fieldsAndHelp.getEntries();
-        while (cursor.advance()) {
-            String fieldName = cursor.getKey();
-            String help = cursor.getValue();
-            addOption(declaringClass, fieldName, help);
-        }
-    }
-
-    private void addOption(Class<?> declaringClass, String fieldName, String help) {
+    private void addOption(String fieldName, String help) {
         try {
-            Field f = declaringClass.getDeclaredField(fieldName);
+            Field f = container.declaringClass().getDeclaredField(fieldName);
             if (!OptionKey.class.isAssignableFrom(f.getType())) {
                 throw new IllegalArgumentException(String.format("Option field must be of type %s: %s", OptionKey.class.getName(), f));
             }
@@ -109,14 +104,13 @@ public class ReflectionOptionDescriptors implements OptionDescriptors {
             }
             f.setAccessible(true);
             Type declaredType = f.getAnnotatedType().getType();
-            if (!(declaredType instanceof ParameterizedType)) {
+            if (!(declaredType instanceof ParameterizedType pt)) {
                 throw new IllegalArgumentException(String.format("Option field must have a parameterized type: %s", f));
             }
-            ParameterizedType pt = (ParameterizedType) declaredType;
             Type[] actualTypeArguments = pt.getActualTypeArguments();
             assert actualTypeArguments.length == 1;
             Class<?> optionValueType = (Class<?>) actualTypeArguments[0];
-            descriptors.put(fieldName, OptionDescriptor.create(fieldName, OptionType.Debug, optionValueType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
+            descriptors.put(fieldName, OptionDescriptor.create(fieldName, OptionType.Debug, optionValueType, help, container, fieldName, (OptionKey<?>) f.get(null)));
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalArgumentException(e);
         }

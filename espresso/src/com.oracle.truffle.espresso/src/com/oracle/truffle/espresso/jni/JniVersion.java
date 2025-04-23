@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 public enum JniVersion {
     JNI_VERSION_1_1(0x00010001),

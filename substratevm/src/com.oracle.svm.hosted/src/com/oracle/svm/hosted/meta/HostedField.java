@@ -24,16 +24,17 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import static com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -48,6 +49,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     private final HostedType type;
 
     protected int location;
+    private int installedLayerNum;
 
     static final int LOC_UNMATERIALIZED_STATIC_CONSTANT = -10;
 
@@ -56,6 +58,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         this.holder = holder;
         this.type = type;
         this.location = LOC_UNINITIALIZED;
+        this.installedLayerNum = LAYER_NUM_UNINSTALLED;
     }
 
     @Override
@@ -63,15 +66,37 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped;
     }
 
-    protected void setLocation(int location) {
+    public void setLocation(int newLocation, int newInstallLayerNum) {
         assert this.location == LOC_UNINITIALIZED;
-        assert location >= 0;
-        this.location = location;
+        assert newLocation >= 0 || newLocation == LOC_UNMATERIALIZED_STATIC_CONSTANT;
+
+        if (newLocation != LOC_UNMATERIALIZED_STATIC_CONSTANT) {
+            wrapped.checkGuaranteeFolded();
+        }
+        this.location = newLocation;
+
+        setInstalledLayerNum(newInstallLayerNum);
     }
 
-    protected void setUnmaterializedStaticConstant() {
-        assert this.location == LOC_UNINITIALIZED && isStatic();
-        this.location = LOC_UNMATERIALIZED_STATIC_CONSTANT;
+    private void setInstalledLayerNum(int newInstallLayerNum) {
+        assert this.installedLayerNum == LAYER_NUM_UNINSTALLED;
+        assert newInstallLayerNum != LAYER_NUM_UNINSTALLED;
+        if (wrapped.isStatic()) {
+            assert ImageLayerBuildingSupport.buildingImageLayer() ? newInstallLayerNum >= 0 : newInstallLayerNum == MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        } else {
+            assert newInstallLayerNum == MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
+        }
+        this.installedLayerNum = newInstallLayerNum;
+    }
+
+    protected void setUnmaterializedStaticConstant(int newInstalledLayerNum) {
+        assert isStatic();
+        if (location == LOC_UNMATERIALIZED_STATIC_CONSTANT) {
+            // already set via prior layer
+            assert installedLayerNum != newInstalledLayerNum;
+            return;
+        }
+        setLocation(LOC_UNMATERIALIZED_STATIC_CONSTANT, newInstalledLayerNum);
     }
 
     public boolean isUnmaterialized() {
@@ -177,19 +202,13 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return wrapped;
     }
 
-    @Override
-    public boolean isInBaseLayer() {
-        return wrapped.isInBaseLayer();
+    public boolean hasInstalledLayerNum() {
+        return !(installedLayerNum == LAYER_NUM_UNINSTALLED || installedLayerNum == MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER);
     }
 
     @Override
-    public JavaConstant getStaticFieldBase() {
-        AnalysisUniverse universe = type.wrapped.getUniverse();
-        boolean primitive = getStorageKind().isPrimitive();
-        if (isInBaseLayer()) {
-            ImageLayerLoader imageLayerLoader = universe.getImageLayerLoader();
-            return primitive ? imageLayerLoader.getBaseLayerStaticPrimitiveFields() : imageLayerLoader.getBaseLayerStaticObjectFields();
-        }
-        return universe.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+    public int getInstalledLayerNum() {
+        VMError.guarantee(hasInstalledLayerNum(), "Bad installed layer value: %s %s", installedLayerNum, this);
+        return installedLayerNum;
     }
 }

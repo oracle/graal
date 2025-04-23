@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -66,13 +67,20 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.descriptors.Names;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.ClasspathEntry;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
@@ -83,41 +91,40 @@ import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
-import com.oracle.truffle.espresso.perf.DebugCloseable;
-import com.oracle.truffle.espresso.perf.DebugTimer;
-import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
-import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
+import com.oracle.truffle.espresso.shared.meta.KnownTypes;
+import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
+import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext {
-
+public final class EspressoContext
+                implements RuntimeAccess<Klass, Method, Field> {
     // MaxJavaStackTraceDepth is 1024 by default
     public static final int DEFAULT_STACK_SIZE = 32;
-    public static final StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
     private static final DebugTimer SPAWN_VM = DebugTimer.create("spawnVM");
     private static final DebugTimer SYSTEM_INIT = DebugTimer.create("system init", SPAWN_VM);
@@ -142,7 +149,7 @@ public final class EspressoContext {
     // endregion Runtime
 
     // region Helpers
-    @CompilationFinal private ThreadsAccess threads;
+    @CompilationFinal private ThreadAccess threads;
     @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
     @CompilationFinal private EspressoShutdownHandler shutdownManager;
     // endregion Helpers
@@ -162,8 +169,7 @@ public final class EspressoContext {
     @CompilationFinal private ClassLoadingEnv classLoadingEnv;
     // endregion InitControl
 
-    // region JDWP
-    private ClassRedefinition classRedefinition;
+    private @CompilationFinal ClassRedefinition classRedefinition;
     private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
@@ -184,7 +190,9 @@ public final class EspressoContext {
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private AgentLibraries agents;
+    @CompilationFinal private JavaAgents javaAgents;
     @CompilationFinal private NativeAccess nativeAccess;
+    @CompilationFinal private JNIHandles handles;
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -275,6 +283,10 @@ public final class EspressoContext {
         return startupClockNanos;
     }
 
+    public JavaAgents getJavaAgents() {
+        return javaAgents;
+    }
+
     public EspressoLanguageCache getLanguageCache() {
         return getLanguage().getLanguageCache();
     }
@@ -293,12 +305,13 @@ public final class EspressoContext {
         return bootClasspath;
     }
 
-    public ClassLoadingEnv getClassLoadingEnv() {
-        return classLoadingEnv;
+    @TruffleBoundary
+    public void appendBootClasspath(ClasspathEntry entry) {
+        bootClasspath = getBootClasspath().append(entry);
     }
 
-    public void setBootClassPath(Classpath classPath) {
-        this.bootClasspath = classPath;
+    public ClassLoadingEnv getClassLoadingEnv() {
+        return classLoadingEnv;
     }
 
     public EspressoProperties getVmProperties() {
@@ -401,6 +414,7 @@ public final class EspressoContext {
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(espressoEnv.getTimers())) {
+                this.handles = new JNIHandles();
                 this.jniEnv = JniEnv.create(this); // libnespresso
                 this.vm = VM.create(this.jniEnv); // libjvm
                 vm.attachThread(Thread.currentThread());
@@ -416,9 +430,9 @@ public final class EspressoContext {
 
             if (getJavaVersion().modulesEnabled()) {
                 registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
+                registries.getBootClassRegistry().initUnnamedModule(null);
             }
-
+            javaAgentsOnLoad();
             initializeAgents();
 
             try (DebugCloseable metaInit = META_INIT.scope(espressoEnv.getTimers())) {
@@ -426,7 +440,7 @@ public final class EspressoContext {
             }
             this.classLoadingEnv.setMeta(meta);
             this.metaInitialized = true;
-            this.threads = new ThreadsAccess(meta);
+            this.threads = new ThreadAccess(meta);
             this.blockingSupport = BlockingSupport.create(threads);
             this.shutdownManager = new EspressoShutdownHandler(this, espressoEnv.getThreadRegistry(), espressoEnv.getReferenceDrainer(), espressoEnv.SoftExit);
 
@@ -434,19 +448,19 @@ public final class EspressoContext {
             this.lazyCaches = new LazyContextCaches(this);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
-                initializeKnownClass(Type.java_lang_Object);
+                initializeKnownClass(Types.java_lang_Object);
                 for (Symbol<Type> type : Arrays.asList(
-                                Type.java_lang_String,
-                                Type.java_lang_System,
-                                Type.java_lang_Class, // JDK-8069005
-                                Type.java_lang_ThreadGroup,
-                                Type.java_lang_Thread)) {
+                                Types.java_lang_String,
+                                Types.java_lang_System,
+                                Types.java_lang_Class, // JDK-8069005
+                                Types.java_lang_ThreadGroup,
+                                Types.java_lang_Thread)) {
                     initializeKnownClass(type);
                 }
             }
 
             if (meta.jdk_internal_misc_UnsafeConstants != null) {
-                initializeKnownClass(Type.jdk_internal_misc_UnsafeConstants);
+                initializeKnownClass(Types.jdk_internal_misc_UnsafeConstants);
                 UnsafeAccess.initializeGuestUnsafeConstants(meta);
             }
 
@@ -455,8 +469,8 @@ public final class EspressoContext {
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 for (Symbol<Type> type : Arrays.asList(
-                                Type.java_lang_reflect_Method,
-                                Type.java_lang_ref_Finalizer)) {
+                                Types.java_lang_reflect_Method,
+                                Types.java_lang_ref_Finalizer)) {
                     initializeKnownClass(type);
                 }
             }
@@ -466,18 +480,18 @@ public final class EspressoContext {
             try (DebugCloseable systemInit = SYSTEM_INIT.scope(espressoEnv.getTimers())) {
                 // Call guest initialization
                 if (getJavaVersion().java8OrEarlier()) {
-                    meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+                    meta.java_lang_System_initializeSystemClass.invokeDirectStatic();
                 } else {
                     assert getJavaVersion().java9OrLater();
-                    meta.java_lang_System_initPhase1.invokeDirect(null);
+                    meta.java_lang_System_initPhase1.invokeDirectStatic();
                     for (Symbol<Type> type : Arrays.asList(
-                                    Type.java_lang_invoke_MethodHandle,
-                                    Type.java_lang_invoke_MemberName,
-                                    Type.java_lang_invoke_MethodHandleNatives)) {
-                        // Type.java_lang_invoke_ResolvedMethodName is not used atm
+                                    Types.java_lang_invoke_MethodHandle,
+                                    Types.java_lang_invoke_MemberName,
+                                    Types.java_lang_invoke_MethodHandleNatives)) {
+                        // Types.java_lang_invoke_ResolvedMethodName is not used atm
                         initializeKnownClass(type);
                     }
-                    int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, logger.isLoggable(Level.FINE));
+                    int e = (int) meta.java_lang_System_initPhase2.invokeDirectStatic(false, logger.isLoggable(Level.FINE));
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
                     }
@@ -485,25 +499,21 @@ public final class EspressoContext {
                     getVM().getJvmti().postVmStart();
 
                     modulesInitialized = true;
-                    meta.java_lang_System_initPhase3.invokeDirect(null);
+                    meta.java_lang_System_initPhase3.invokeDirectStatic();
                 }
             }
-
-            getVM().getJvmti().postVmInit();
-
-            meta.postSystemInit();
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 // System exceptions.
                 for (Symbol<Type> type : Arrays.asList(
-                                Type.java_lang_OutOfMemoryError,
-                                Type.java_lang_NullPointerException,
-                                Type.java_lang_ClassCastException,
-                                Type.java_lang_ArrayStoreException,
-                                Type.java_lang_ArithmeticException,
-                                Type.java_lang_StackOverflowError,
-                                Type.java_lang_IllegalMonitorStateException,
-                                Type.java_lang_IllegalArgumentException)) {
+                                Types.java_lang_OutOfMemoryError,
+                                Types.java_lang_NullPointerException,
+                                Types.java_lang_ClassCastException,
+                                Types.java_lang_ArrayStoreException,
+                                Types.java_lang_ArithmeticException,
+                                Types.java_lang_StackOverflowError,
+                                Types.java_lang_IllegalMonitorStateException,
+                                Types.java_lang_IllegalArgumentException)) {
                     initializeKnownClass(type);
                 }
             }
@@ -519,13 +529,25 @@ public final class EspressoContext {
 
             this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance, meta);
             this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance, meta);
-            meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
-            meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+            meta.java_lang_StackOverflowError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
+            meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
+            meta.postSystemInit();
+
+            // class redefinition will be enabled if debug mode or if any redefine or retransform
+            // capable java agent is present
+            if (espressoEnv.JDWPOptions != null || (javaAgents != null && javaAgents.shouldEnableRedefinition())) {
+                classRedefinition = getClassRedefinition();
+            }
+
+            getVM().getJvmti().postVmInit();
+            if (javaAgents != null) {
+                javaAgents.startJavaAgents();
+            }
             // Create application (system) class loader.
             StaticObject systemClassLoader = null;
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(espressoEnv.getTimers())) {
-                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
             }
             bindingsLoader = createBindingsLoader(systemClassLoader);
             topBindings = new EspressoBindings(
@@ -596,7 +618,7 @@ public final class EspressoContext {
 
             List<Symbol<Type>> additionalClasslist = readClasslist(userClasslistPath);
 
-            StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
             for (Symbol<Type> type : additionalClasslist) {
                 Klass klass = getMeta().loadKlassOrNull(type, systemClassLoader, StaticObject.NULL);
                 if (Objects.isNull(klass)) {
@@ -614,8 +636,8 @@ public final class EspressoContext {
             List<Symbol<Type>> classlist = Files.readAllLines(classlistFilePath) //
                             .stream() //
                             .filter(line -> !line.isBlank() && !line.startsWith("#") && !line.startsWith("@")) //
-                            .map(Types::internalFromClassName) //
-                            .map(t -> getTypes().getOrCreate(t)) //
+                            .map(TypeSymbols::internalFromClassName) //
+                            .map(t -> getTypes().getOrCreateValidType(t)) //
                             .filter(Objects::nonNull) //
                             .collect(Collectors.toList());
             return classlist;
@@ -629,16 +651,16 @@ public final class EspressoContext {
         if (!getEspressoEnv().UseBindingsLoader) {
             return systemClassLoader;
         }
-        Klass k = getMeta().loadKlassOrNull(Type.java_net_URLClassLoader, StaticObject.NULL, StaticObject.NULL);
+        Klass k = getMeta().loadKlassOrNull(Types.java_net_URLClassLoader, StaticObject.NULL, StaticObject.NULL);
         if (k == null) {
             return systemClassLoader;
         }
-        Method init = k.lookupDeclaredMethod(Name._init_, Signature._void_URL_array_ClassLoader);
+        Method init = k.lookupDeclaredMethod(Names._init_, Signatures._void_URL_array_ClassLoader);
         if (init == null) {
             return systemClassLoader;
         }
         StaticObject loader = k.allocateInstance();
-        init.invokeDirect(loader,
+        init.invokeDirectSpecial(loader,
                         /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
                         /* parent */ systemClassLoader);
         return loader;
@@ -673,6 +695,12 @@ public final class EspressoContext {
         throw abort("Cannot find native backend '" + nativeBackend + "'. Available backends: " + available);
     }
 
+    private void javaAgentsOnLoad() {
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
+            javaAgents = JavaAgents.createJavaAgents(this, getEnv().getOptions().get(EspressoOptions.JavaAgent));
+        }
+    }
+
     private void initializeAgents() {
         agents = new AgentLibraries(this);
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
@@ -681,10 +709,7 @@ public final class EspressoContext {
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentPath)) {
             agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentPath), true);
         }
-        if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
-            agents.registerAgent("instrument", getEnv().getOptions().get(EspressoOptions.JavaAgent), false);
-        }
-        if (espressoEnv.EnableAgents) {
+        if (espressoEnv.EnableNativeAgents) {
             agents.initialize();
         } else {
             if (!agents.isEmpty()) {
@@ -764,20 +789,36 @@ public final class EspressoContext {
         return espressoEnv.JDWPOptions != null;
     }
 
-    public Types getTypes() {
+    public TypeSymbols getTypes() {
         return getLanguage().getTypes();
     }
 
-    public Signatures getSignatures() {
+    public SignatureSymbols getSignatures() {
         return getLanguage().getSignatures();
     }
 
+    public JNIHandles getHandles() {
+        return handles;
+    }
+
     public JniEnv getJNI() {
-        if (jniEnv == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jniEnv = JniEnv.create(this);
-        }
         return jniEnv;
+    }
+
+    private volatile JniEnv fallbackJniEnv;
+
+    public JniEnv getJNI(TruffleObject symbol) {
+        if (nativeAccess.isFallbackSymbol(symbol)) {
+            if (fallbackJniEnv == null) {
+                synchronized (this) {
+                    if (fallbackJniEnv == null) {
+                        fallbackJniEnv = JniEnv.createFallback(this);
+                    }
+                }
+            }
+            return fallbackJniEnv;
+        }
+        return getJNI();
     }
 
     public void disposeContext() {
@@ -805,7 +846,7 @@ public final class EspressoContext {
         this.meta = meta;
     }
 
-    public Names getNames() {
+    public NameSymbols getNames() {
         return getLanguage().getNames();
     }
 
@@ -855,9 +896,9 @@ public final class EspressoContext {
 
     // region Agents
 
-    public TruffleObject bindToAgent(Method method, String mangledName) {
-        if (espressoEnv.EnableAgents) {
-            return agents.bind(method, mangledName);
+    public TruffleObject lookupAgentSymbol(String mangledName) {
+        if (espressoEnv.EnableNativeAgents) {
+            return agents.lookupSymbol(mangledName);
         }
         return null;
     }
@@ -866,7 +907,7 @@ public final class EspressoContext {
 
     // region Thread management
 
-    public ThreadsAccess getThreadAccess() {
+    public ThreadAccess getThreadAccess() {
         return threads;
     }
 
@@ -905,7 +946,7 @@ public final class EspressoContext {
                 getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName + ". Called from thread: " + Thread.currentThread());
                 return;
             }
-            if (vm.DetachCurrentThread(this) != JNI_OK) {
+            if (vm.DetachCurrentThread(this, getLanguage()) != JNI_OK) {
                 throw new RuntimeException("Could not detach thread correctly");
             }
         } finally {
@@ -1102,14 +1143,14 @@ public final class EspressoContext {
         espressoEnv.getEventListener().onContendedMonitorEntered(obj);
     }
 
-    public boolean reportOnMethodEntry(Method.MethodVersion method, Object scope) {
+    public boolean reportOnMethodEntry(Method.MethodVersion methodVersion, Object scope) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodEntry(method, scope);
+        return espressoEnv.getEventListener().onMethodEntry(methodVersion.getMethod(), scope);
     }
 
-    public boolean reportOnMethodReturn(Method.MethodVersion method, Object returnValue) {
+    public boolean reportOnMethodReturn(Method.MethodVersion methodVersion, Object returnValue) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodReturn(method, returnValue);
+        return espressoEnv.getEventListener().onMethodReturn(methodVersion.getMethod(), returnValue);
     }
 
     public boolean reportOnFieldModification(Field field, StaticObject receiver, Object value) {
@@ -1123,14 +1164,6 @@ public final class EspressoContext {
     }
     // endregion VM event reporting
 
-    public void registerExternalHotSwapHandler(StaticObject handler) {
-        espressoEnv.getJdwpContext().registerExternalHotSwapHandler(handler);
-    }
-
-    public void rerunclinit(ObjectKlass oldKlass) {
-        espressoEnv.getJdwpContext().rerunclinit(oldKlass);
-    }
-
     private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
 
     /**
@@ -1140,14 +1173,10 @@ public final class EspressoContext {
         return REFERENCE.get(node);
     }
 
-    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler, DebuggerController controller) {
-        if (classRedefinition == null) {
-            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler, controller);
-        }
-        return classRedefinition;
-    }
-
     public ClassRedefinition getClassRedefinition() {
+        if (classRedefinition == null) {
+            classRedefinition = new ClassRedefinition(this);
+        }
         return classRedefinition;
     }
 
@@ -1188,6 +1217,10 @@ public final class EspressoContext {
         return getEspressoEnv().getPolyglotTypeMappings();
     }
 
+    public boolean isGenericTypeHintsEnabled() {
+        return getEspressoEnv().isGenericTypeHintsEnabled();
+    }
+
     public EspressoForeignProxyGenerator.GeneratedProxyBytes getProxyBytesOrNull(String metaName) {
         if (getEspressoEnv().getProxyCache() != null) {
             return getEspressoEnv().getProxyCache().get(metaName);
@@ -1222,5 +1255,82 @@ public final class EspressoContext {
 
     public Path getEspressoRuntime() {
         return EspressoLanguage.getEspressoRuntime(getEnv());
+    }
+
+    public boolean isJavaBase(ModuleTable.ModuleEntry m) {
+        return m == getRegistries().getJavaBaseModule();
+    }
+
+    // RuntimeAccess impl
+
+    @Override
+    @TruffleBoundary
+    public RuntimeException throwError(ErrorType error, String messageFormat, Object... args) {
+        ObjectKlass exType = errorTypeToExceptionKlass(error);
+        if (exType == null) {
+            throw fatal(messageFormat, args);
+        }
+        throw meta.throwExceptionWithMessage(exType, String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    @Override
+    public RuntimeException fatal(String messageFormat, Object... args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere(String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    @Override
+    public RuntimeException fatal(Throwable t, String messageFormat, Object... args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere(String.format(Locale.ENGLISH, messageFormat, args), t);
+    }
+
+    @Override
+    public KnownTypes<Klass, Method, Field> getKnownTypes() {
+        return meta;
+    }
+
+    @Override
+    public Klass lookupOrLoadType(Symbol<Type> type, Klass accessingClass) {
+        return getMeta().loadKlassOrFail(type, accessingClass.getDefiningClassLoader(), accessingClass.protectionDomain());
+    }
+
+    @Override
+    public SymbolPool getSymbolPool() {
+        return getLanguage();
+    }
+
+    private ObjectKlass errorTypeToExceptionKlass(ErrorType errorType) {
+        return switch (errorType) {
+            case IllegalAccessError -> meta.java_lang_IllegalAccessError;
+            case NoSuchFieldError -> meta.java_lang_NoSuchFieldError;
+            case NoSuchMethodError -> meta.java_lang_NoSuchMethodError;
+            case IncompatibleClassChangeError -> meta.java_lang_IncompatibleClassChangeError;
+            case LinkageError -> meta.java_lang_LinkageError;
+        };
+    }
+
+    @Override
+    public ErrorType getErrorType(Throwable error) {
+        if (!(error instanceof EspressoException espressoException)) {
+            return null;
+        }
+        Klass klass = espressoException.getGuestException().getKlass();
+        if (klass == meta.java_lang_IllegalAccessError) {
+            return ErrorType.IllegalAccessError;
+        }
+        if (klass == meta.java_lang_NoSuchFieldError) {
+            return ErrorType.NoSuchFieldError;
+        }
+        if (klass == meta.java_lang_NoSuchMethodError) {
+            return ErrorType.NoSuchMethodError;
+        }
+        if (klass == meta.java_lang_IncompatibleClassChangeError) {
+            return ErrorType.IncompatibleClassChangeError;
+        }
+        if (klass == meta.java_lang_LinkageError) {
+            return ErrorType.LinkageError;
+        }
+        return null;
     }
 }

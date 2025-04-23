@@ -34,8 +34,9 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 
 /**
@@ -112,18 +113,82 @@ public interface NativeAccess {
     @Pointer
     TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeSignature nativeSignature);
 
-    Object getCallableSignature(NativeSignature nativeSignature, boolean fromJava);
+    /**
+     * Prepares a signature object that can be used for calling a symbol later using
+     * {@link #callSignature}. This is useful when the symbol that will be called is not know yet.
+     *
+     * @param nativeSignature a description of the signature that this object should be able to
+     *            call.
+     * @param forFallbackSymbol whether the symbols that will be called with this signature are
+     *            {@linkplain #isFallbackSymbol fallback symbols} or not.
+     */
+    Object getCallableSignature(NativeSignature nativeSignature, boolean forFallbackSymbol);
+
+    /**
+     * Checks whether this native access can ever return true for
+     * {@link #isFallbackSymbol(TruffleObject)}.
+     */
+    boolean hasFallbackSymbols();
+
+    /**
+     * Determines if the symbol is a fallback symbol.
+     * <p>
+     * Some implementations might not be able to load native libraries in the mode they expect
+     * (e.g., the sulong native access might not be able to find bitcode in a library). When that
+     * happens the libraries will still work but return fallback symbols (e.g., in that case sulong
+     * would return libffi symbols). Callable signatures for such symbols must be prepared specially
+     * by passing <code>true</code> to the <code>forFallbackSymbol</code> parameter of
+     * {@link #getCallableSignature} because signature only work for a specific type of symbol
+     * (GR-37607).
+     *
+     * @param symbol a symbol obtained from {@link #lookupSymbol}.
+     */
+    boolean isFallbackSymbol(TruffleObject symbol);
+
+    /**
+     * If the current native access has a {@link #isFallbackSymbol fallback mode}, this provides a
+     * native access that works like the fallback mode.
+     * <p>
+     * This can be used to load a {@link com.oracle.truffle.espresso.jni.NativeEnv} with the
+     * fallback access in case it is necessary to provide a fallback environment for libraries with
+     * fallback symbols. This is necessary when a native env containing variadic function pointers
+     * is passed to a fallback symbol (see libffi/libffi#388).
+     *
+     * @return a native access that corresponds to the way fallback symbols are implemented if the
+     *         current native access {@linkplain #hasFallbackSymbols() has fallback symbols},
+     *         <code>null</code> otherwise.
+     */
+    NativeAccess getFallbackAccess();
 
     Object callSignature(Object signature, @Pointer TruffleObject symbol, Object... args) throws UnsupportedMessageException, UnsupportedTypeException, ArityException;
 
-    SignatureCallNode createSignatureCall(NativeSignature nativeSignature, boolean fromJava);
+    SignatureCallNode createSignatureCall(NativeSignature nativeSignature);
 
     default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeSignature nativeSignature) {
+        return lookupAndBindSymbol(library, symbolName, nativeSignature, false, false);
+    }
+
+    default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeSignature nativeSignature, boolean allowFallback, boolean allowMissing) {
         @Pointer
         TruffleObject symbol = lookupSymbol(library, symbolName);
         if (symbol == null) {
+            if (!allowMissing) {
+                throw EspressoError.shouldNotReachHere("Failed to locate required symbol: " + symbolName);
+            }
             // not found
             return null;
+        }
+        if (!allowFallback && isFallbackSymbol(symbol)) {
+            String message = "Unexpected fallback symbol: " + symbolName + "\n" +
+                            "A likely explanation is that a core espresso library was expected to contain bitcode but it doesn't.\n" +
+                            "Core JDK libraries with LLVM bitcode are currently only available on linux-amd64 and darwin-amd64.\n" +
+                            "On linux-aarch64 you could instead try to set `java.NativeBackend` to `nfi-dlmopen`.";
+            if (EspressoOptions.RUNNING_ON_SVM) {
+                message += "\nIn a native-image, if a single espresso context is used, it's recommended to use the `nfi-native` backend.";
+            } else {
+                message += "\nOn other platforms, you can try to run your embedding of espresso as a native-image if a single espresso context is used.";
+            }
+            throw EspressoError.shouldNotReachHere(message);
         }
         return bindSymbol(symbol, nativeSignature);
     }

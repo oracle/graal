@@ -88,6 +88,13 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
+    protected void onFlowEnabled(PointsToAnalysis bb) {
+        if (getReceiver().isFlowEnabled()) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
+    }
+
+    @Override
     public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         throw AnalysisError.shouldNotReachHere("The VirtualInvokeTypeFlow should not be updated directly.");
     }
@@ -124,6 +131,6 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
 
     @Override
     public String toString() {
-        return "VirtualInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
+        return "VirtualInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getStateDescription();
     }
 }

@@ -150,6 +150,7 @@ import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -621,7 +622,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
     }
 
-    private class RuntimeCompilationParsingSupport implements SVMParsingSupport {
+    private final class RuntimeCompilationParsingSupport implements SVMParsingSupport {
         RuntimeCompilationInlineBeforeAnalysisPolicy runtimeInlineBeforeAnalysisPolicy = null;
 
         @Override
@@ -965,7 +966,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         return (T) runtimeMethod;
     }
 
-    private class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
+    private final class RuntimeCompilationAnalysisPolicy implements HostVM.MultiMethodAnalysisPolicy {
 
         @Override
         public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow invokeFlow) {
@@ -1140,6 +1141,16 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean canVirtualize(ResolvedJavaType instanceType) {
         return true;
+    }
+
+    @Override
+    public ResolvedJavaField getStaticFieldForAccess(JavaConstant base, long offset, JavaKind accessKind) {
+        /*
+         * The base of unsafe static field accesses is not constant until low tier for SVM. See
+         * com.oracle.svm.core.StaticFieldsSupport for details on the static field base during
+         * analysis, compilation, and JIT compilation.
+         */
+        return null;
     }
 }
 

@@ -46,7 +46,7 @@ Install GraalVM from an archive (_.tar.gz_) for the current user into any locati
 
 3. Move the downloaded package to its proper location, the _/Library/Java/JavaVirtualMachines/_ directory. Since this is a system directory, `sudo` is required:
     ```bash
-    sudo mv graalvm-jdk-<version>_macos-<architecture> /Library/Java/JavaVirtualMachines
+    sudo mv graalvm-jdk-<version> /Library/Java/JavaVirtualMachines
     ```
     To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
@@ -79,6 +79,14 @@ curl https://download.oracle.com/java/<version>/archive/jdk-<version>_macos-<arc
 ```
 
 For other installation options, visit the [GraalVM Downloads page](https://www.graalvm.org/downloads/){:target="_blank"}.
+
+## Prerequisites for Native Image on macOS
+
+Native Image requires the Xcode command line tools.
+To install them, run:
+```shell
+xcode-select --install
+```
 
 ## Installation Notes
 

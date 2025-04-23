@@ -27,13 +27,13 @@ package com.oracle.svm.core.jdk.localization.substitutions;
 import java.util.Locale;
 import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport.AdaptersByClassKey;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.util.VMError;
 
@@ -47,7 +47,7 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter_OptimizedLocal
     public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
         OptimizedLocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport();
         for (Locale candidateLocale : support.control.getCandidateLocales("", locale)) {
-            LocaleProviderAdapter result = support.adaptersByClass.get(Pair.create(providerClass, candidateLocale));
+            LocaleProviderAdapter result = support.adaptersByClass.get(new AdaptersByClassKey(providerClass, candidateLocale));
             if (result != null) {
                 return result;
             }

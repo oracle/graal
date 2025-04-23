@@ -52,7 +52,9 @@ public enum DwarfForm {
     DW_FORM_data1(0x0b),
     DW_FORM_flag(0xc),
     DW_FORM_strp(0xe),
-    DW_FORM_expr_loc(0x18);
+    DW_FORM_expr_loc(0x18),
+    DW_FORM_ref_sig8(0x20),
+    DW_FORM_loclistx(0x22);
 
     private final int value;
 

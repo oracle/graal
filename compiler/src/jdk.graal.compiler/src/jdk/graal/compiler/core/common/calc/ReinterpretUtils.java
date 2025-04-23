@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -167,7 +167,7 @@ public class ReinterpretUtils {
 
         if ((stamp.mustBeSet() & exponentMask) == exponentMask && (stamp.mustBeSet() & significandMask) != 0) {
             // if all exponent bits and at least one significand bit are set, the result is NaN
-            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+            return FloatStamp.createNaN(bits);
         }
 
         double upperBound;
@@ -179,7 +179,7 @@ public class ReinterpretUtils {
             }
         } else if (stamp.upperBound() < 0) {
             if (stamp.lowerBound() > negativeInfinity) {
-                return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+                return FloatStamp.createNaN(bits);
             } else if (stamp.lowerBound() == negativeInfinity) {
                 upperBound = Double.NEGATIVE_INFINITY;
             } else if (stamp.lowerBound() > negativeZero) {
@@ -197,7 +197,7 @@ public class ReinterpretUtils {
 
         double lowerBound;
         if (stamp.lowerBound() > positiveInfinity) {
-            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+            return FloatStamp.createNaN(bits);
         } else if (stamp.lowerBound() == positiveInfinity) {
             lowerBound = Double.POSITIVE_INFINITY;
         } else if (stamp.lowerBound() > 0) {
@@ -218,6 +218,6 @@ public class ReinterpretUtils {
             nonNaN = !negativeNaNBlock && !positiveNaNBlock;
         }
 
-        return new FloatStamp(bits, lowerBound, upperBound, nonNaN);
+        return FloatStamp.create(bits, lowerBound, upperBound, nonNaN);
     }
 }

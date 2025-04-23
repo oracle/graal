@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -40,6 +41,19 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
 public final class Target_java_lang_Module {
+
+    /**
+     * {@link Alias} to make {@code Module.layer} non-final. The actual run-time value is set via
+     * reflection in {@code ModuleLayerFeatureUtils#patchModuleLayerField}, which is called after
+     * analysis. Thus, we cannot leave it {@code final}, because the analysis might otherwise
+     * constant-fold the initial {@code null} value. Ideally, we would make it {@code @Stable}, but
+     * our substitution system currently does not allow this (GR-60154).
+     */
+    @Alias //
+    @RecomputeFieldValue(isFinal = false, kind = RecomputeFieldValue.Kind.None)
+    // @Stable (no effect currently GR-60154)
+    private ModuleLayer layer;
+
     @Substitute
     @TargetElement(onlyWith = ForeignDisabled.class)
     @SuppressWarnings("static-method")
@@ -53,10 +67,10 @@ public final class Target_java_lang_Module {
 
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)
-    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
+    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni);
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L275-L479")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/classfile/modules.cpp#L279-L478")
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         ModuleNative.defineModule(module, isOpen, pns);
     }

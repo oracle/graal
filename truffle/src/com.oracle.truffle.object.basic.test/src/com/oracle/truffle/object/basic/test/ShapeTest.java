@@ -40,18 +40,42 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
+@RunWith(Parameterized.class)
 public class ShapeTest {
+
+    @Parameters(name = "{0}")
+    public static List<Boolean> data() {
+        return Arrays.asList(Boolean.FALSE, Boolean.TRUE);
+    }
+
+    @Parameter public boolean useLookup;
+
+    private Shape makeRootShape() {
+        if (useLookup) {
+            return Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).allowImplicitCastIntToLong(true).build();
+        } else {
+            return Shape.newBuilder().layout(TestDynamicObjectDefault.class).allowImplicitCastIntToLong(true).build();
+        }
+    }
 
     @Test
     public void testToString() {
-        ShapeImpl rootShape = (ShapeImpl) Shape.newBuilder().layout(TestDynamicObjectDefault.class).allowImplicitCastIntToLong(true).build();
+        ShapeImpl rootShape = (ShapeImpl) makeRootShape();
         DOTestAsserts.assertShape(new String[]{}, rootShape);
 
         ShapeImpl aInt = rootShape.defineProperty("a", 1, 0);

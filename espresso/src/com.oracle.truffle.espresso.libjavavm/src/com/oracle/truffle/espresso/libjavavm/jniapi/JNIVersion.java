@@ -44,14 +44,20 @@ public class JNIVersion {
     @CConstant
     public static native int JNI_VERSION_1_8();
 
-    // Unfortunately those are not always available and "default" values are not supported
-    // @CConstant
-    // public static native int JNI_VERSION_9();
-    public static int JNI_VERSION_9 = 0x00090000;
+    @CConstant
+    public static native int JNI_VERSION_9();
 
-    // @CConstant
-    // public static native int JNI_VERSION_10();
-    public static int JNI_VERSION_10 = 0x000A0000;
+    @CConstant
+    public static native int JNI_VERSION_10();
+
+    @CConstant
+    public static native int JNI_VERSION_19();
+
+    @CConstant
+    public static native int JNI_VERSION_20();
+
+    @CConstant
+    public static native int JNI_VERSION_21();
 
     // Checkstyle: resume
 
@@ -66,10 +72,16 @@ public class JNIVersion {
             return "1.6";
         } else if (version == JNI_VERSION_1_8()) {
             return "1.8";
-        } else if (version == JNI_VERSION_9) {
+        } else if (version == JNI_VERSION_9()) {
             return "9";
-        } else if (version == JNI_VERSION_10) {
+        } else if (version == JNI_VERSION_10()) {
             return "10";
+        } else if (version == JNI_VERSION_19()) {
+            return "19";
+        } else if (version == JNI_VERSION_20()) {
+            return "20";
+        } else if (version == JNI_VERSION_21()) {
+            return "21";
         }
         return "unknown";
     }
@@ -85,10 +97,16 @@ public class JNIVersion {
             return 6;
         } else if (version == JNI_VERSION_1_8()) {
             return 8;
-        } else if (version == JNI_VERSION_9) {
+        } else if (version == JNI_VERSION_9()) {
             return 9;
-        } else if (version == JNI_VERSION_10) {
+        } else if (version == JNI_VERSION_10()) {
             return 10;
+        } else if (version == JNI_VERSION_19()) {
+            return 19;
+        } else if (version == JNI_VERSION_20()) {
+            return 20;
+        } else if (version == JNI_VERSION_21()) {
+            return 21;
         }
         return -1;
     }

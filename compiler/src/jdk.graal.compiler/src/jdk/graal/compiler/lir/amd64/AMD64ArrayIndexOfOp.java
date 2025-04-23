@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64MacroAssembler.ExtendMode.ZERO_EXTEND;
 import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
@@ -33,7 +34,6 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.asm.amd64.AMD64MacroAssembler.ExtendMode.ZERO_EXTEND;
 
 import java.util.EnumSet;
 
@@ -56,7 +56,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -352,15 +351,15 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             case MatchAny:
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 for (int i = 0; i < nValues; i++) {
-                    cmpqAndJcc(crb, asm, cmpResult, searchValue[i], elementWiseFound, ConditionFlag.Equal, true);
+                    cmplAndJcc(crb, asm, cmpResult, searchValue[i], elementWiseFound, ConditionFlag.Equal, true);
                 }
                 break;
             case MatchRange:
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 for (int i = 0; i < nValues; i += 2) {
                     Label noMatch = new Label();
-                    cmpqAndJcc(crb, asm, cmpResult, searchValue[i], noMatch, ConditionFlag.Below, true);
-                    cmpqAndJcc(crb, asm, cmpResult, searchValue[i + 1], elementWiseFound, ConditionFlag.BelowEqual, true);
+                    cmplAndJcc(crb, asm, cmpResult, searchValue[i], noMatch, ConditionFlag.Below, true);
+                    cmplAndJcc(crb, asm, cmpResult, searchValue[i + 1], elementWiseFound, ConditionFlag.BelowEqual, true);
                     asm.bind(noMatch);
                 }
                 break;
@@ -431,8 +430,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         asm.addq(index, bulkSize);
 
         boolean bulkLoopShortJmp = !((variant == LIRGeneratorTool.ArrayIndexOfVariant.MatchRange && nValues == 4 || variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) && stride.value > 1);
-        // check if there are enough array slots remaining for the bulk loop
-        asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, skipBulkVectorLoop, bulkLoopShortJmp);
+        /*
+         * Check if there are enough array slots remaining for the bulk loop. Note: The alignment
+         * following the cmpAndJcc can lead to a jump distance > 127. This prevents safely using a
+         * short jump.
+         */
+        asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, skipBulkVectorLoop, false);
 
         asm.align(preferredLoopAlignment(crb));
         asm.bind(bulkVectorLoop);
@@ -507,11 +510,11 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static void cmpqAndJcc(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register src1, Value src2, Label branchTarget, ConditionFlag cc, boolean isShortJmp) {
+    private static void cmplAndJcc(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register src1, Value src2, Label branchTarget, ConditionFlag cc, boolean isShortJmp) {
         if (isStackSlot(src2)) {
-            asm.cmpqAndJcc(src1, (AMD64Address) crb.asAddress(src2), cc, branchTarget, isShortJmp);
+            asm.cmplAndJcc(src1, (AMD64Address) crb.asAddress(src2), cc, branchTarget, isShortJmp);
         } else {
-            asm.cmpqAndJcc(src1, asRegister(src2), cc, branchTarget, isShortJmp);
+            asm.cmplAndJcc(src1, asRegister(src2), cc, branchTarget, isShortJmp);
         }
     }
 
@@ -804,10 +807,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         if (asm.supports(CPUFeature.AVX)) {
             switch (targetVectorSize) {
                 case DWORD:
-                    VexMoveOp.VMOVD.emit(asm, AVXSize.DWORD, vecDst, src);
+                    // Move a dword into an XMM register
+                    VexMoveOp.VMOVD.emit(asm, AVXSize.XMM, vecDst, src);
                     break;
                 case QWORD:
-                    VexMoveOp.VMOVQ.emit(asm, AVXSize.QWORD, vecDst, src);
+                    // Move a qword into an XMM register
+                    VexMoveOp.VMOVQ.emit(asm, AVXSize.XMM, vecDst, src);
                     break;
                 case XMM:
                 case YMM:

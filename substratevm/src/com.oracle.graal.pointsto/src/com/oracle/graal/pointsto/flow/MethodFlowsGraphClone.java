@@ -127,7 +127,8 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         assert !(original instanceof FieldTypeFlow) : "Trying to clone a field type flow";
         assert !(original instanceof ArrayElementsTypeFlow) : "Trying to clone an mixed elements type flow";
 
-        if (original instanceof AllInstantiatedTypeFlow || original instanceof AllSynchronizedTypeFlow || original instanceof AnyPrimitiveSourceTypeFlow) {
+        if (original instanceof AllInstantiatedTypeFlow || original instanceof AllSynchronizedTypeFlow || (original instanceof AnyPrimitiveSourceTypeFlow && original.getSource() == null) ||
+                        original instanceof ConstantPrimitiveSourceTypeFlow) {
             /* These flows are not cloneable. */
             return original;
         }

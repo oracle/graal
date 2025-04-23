@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.util.Map;
-import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,39 +32,42 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.services.Services;
 
-final class IsNotLibgraal implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return !SubstrateUtil.isBuildingLibgraal();
-    }
-}
-
-/**
- * In libgraal the saved properties are initialized by copying them from the HotSpot heap.
- */
-@TargetClass(value = Services.class, onlyWith = IsNotLibgraal.class)
+@TargetClass(jdk.vm.ci.services.Services.class)
 final class Target_jdk_vm_ci_services_Services {
-    @Delete //
-    static Map<String, String> savedProperties;
 
+    /**
+     * Ensure field returns true if seen by the analysis.
+     */
+    // Checkstyle: stop
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    public static boolean IS_IN_NATIVE_IMAGE = true;
+    // Checkstyle: resume
+
+    /**
+     * Redirect to {@link SystemPropertiesSupport#singleton()}.
+     */
     @Substitute
     public static Map<String, String> getSavedProperties() {
-        return SystemPropertiesSupport.singleton().getSavedProperties();
+        return SystemPropertiesSupport.singleton().getInitialProperties();
     }
+
+    @Delete //
+    static Map<String, String> savedProperties;
 }
 
 /**
  * Allow updating the value backing {@link AMD64#getLargestStorableKind}.
  */
 @Platforms(Platform.AMD64.class)
-@TargetClass(value = AMD64.class, onlyWith = IsNotLibgraal.class)
+@TargetClass(value = AMD64.class)
 final class Target_jdk_vm_ci_amd64_AMD64 {
     @Alias AMD64Kind largestKind;
 

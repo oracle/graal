@@ -26,6 +26,7 @@ package jdk.graal.compiler.util.json;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.file.Path;
 
 /**
  * Subclass of {@link JsonWriter} that pretty-prints its output. More specifically, a newline will
@@ -42,6 +43,10 @@ public final class JsonPrettyWriter extends JsonWriter {
         super(writer);
     }
 
+    public JsonPrettyWriter(Path path) throws IOException {
+        super(path);
+    }
+
     @Override
     public JsonWriter appendObjectStart() throws IOException {
         return super.appendObjectStart().indent().newline();
@@ -51,6 +56,17 @@ public final class JsonPrettyWriter extends JsonWriter {
     public JsonWriter appendObjectEnd() throws IOException {
         unindent().newline();
         return super.appendObjectEnd();
+    }
+
+    @Override
+    public JsonWriter appendArrayStart() throws IOException {
+        return super.appendArrayStart().indent().newline();
+    }
+
+    @Override
+    public JsonWriter appendArrayEnd() throws IOException {
+        unindent().newline();
+        return super.appendArrayEnd();
     }
 
     @Override

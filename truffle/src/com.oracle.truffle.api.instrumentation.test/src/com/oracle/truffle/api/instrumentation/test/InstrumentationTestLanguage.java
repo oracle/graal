@@ -45,6 +45,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.util.AbstractSet;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -231,7 +232,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final Set<String> TAG_NAMES = Set.of("EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
                     "VARIABLE", "ARGUMENT", "READ_VAR", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION",
                     "MATERIALIZE_CHILD_STMT_AND_EXPR", "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN", "INVOKE_MEMBER", "CALL_SPLIT", "ASYNC_CALL", "ASYNC_RESUME");
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN", "INVOKE_MEMBER", "CALL_SPLIT", "ASYNC_CALL", "ASYNC_RESUME", "COND_LOOP");
 
     public InstrumentationTestLanguage() {
     }
@@ -520,6 +521,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new CallWithNode(idents[0], parseIdent(idents[1]), childArray);
                 case "LOOP":
                     return new WhileLoopNode(parseIdent(idents[0]), childArray);
+                case "COND_LOOP":
+                    return new WhileLoopNode(childArray);
                 case "BLOCK":
                     return new BlockNode(childArray);
                 case "BLOCK_NO_SOURCE_SECTION":
@@ -801,13 +804,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         public WrapperNode createWrapper(ProbeNode probe) {
-            throw CompilerDirectives.shouldNotReachHere();
+            return null;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            throw CompilerDirectives.shouldNotReachHere();
+            return null;
         }
+
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -1584,13 +1588,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @ExportLibrary(InteropLibrary.class)
         public static class TestLanguageException extends AbstractTruffleException {
 
-            private static final long serialVersionUID = 2709459650157465163L;
+            @Serial private static final long serialVersionUID = 2709459650157465163L;
 
             private final String type;
+            private final transient Object metaObject;
 
             TestLanguageException(String type, String message, ThrowNode throwNode) {
                 super(message, throwNode);
                 this.type = type;
+                this.metaObject = new InstrumentationMetaObject(this, type);
             }
 
             @ExportMessage
@@ -1606,6 +1612,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             @ExportMessage
             ExceptionType getExceptionType() {
                 return ExceptionType.RUNTIME_ERROR;
+            }
+
+            @ExportMessage
+            boolean hasMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMetaObject() {
+                return metaObject;
             }
 
             @ExportMessage
@@ -3126,12 +3142,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @CompilationFinal Integer loopIndexSlot;
         @CompilationFinal Integer loopResultSlot;
 
+        WhileLoopNode(BaseNode[] children) {
+            this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(true, children));
+        }
+
         WhileLoopNode(Object loopCount, BaseNode[] children) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, children));
         }
 
-        WhileLoopNode(int loopCount, boolean infinite, BaseNode[] children) {
-            this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, infinite, children));
+        WhileLoopNode(int loopCount, boolean infinite, boolean cond, BaseNode[] children) {
+            this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, infinite, cond, children));
         }
 
         Integer getLoopIndex() {
@@ -3183,13 +3203,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             LoopConditionNode repeatingNode = (LoopConditionNode) loop.getRepeatingNode();
-            return new WhileLoopNode(repeatingNode.loopCount, repeatingNode.infinite, cloneUninitialized(repeatingNode.children, materializedTags));
+            return new WhileLoopNode(repeatingNode.loopCount, repeatingNode.infinite, repeatingNode.cond, cloneUninitialized(repeatingNode.children, materializedTags));
         }
 
         final class LoopConditionNode extends InstrumentedNode implements RepeatingNode {
 
             private final int loopCount;
             private final boolean infinite;
+
+            private final boolean cond;
 
             LoopConditionNode(Object loopCount, BaseNode[] children) {
                 super(children);
@@ -3199,18 +3221,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                         inf = true;
                     }
                     this.loopCount = ((Double) loopCount).intValue();
+                    this.cond = false;
                 } else if (loopCount instanceof Integer) {
                     this.loopCount = (int) loopCount;
+                    this.cond = false;
+                } else if (loopCount instanceof Boolean) {
+                    this.loopCount = 0;
+                    this.cond = true;
                 } else {
                     throw new LanguageError("Invalid loop count " + loopCount);
                 }
                 this.infinite = inf;
             }
 
-            LoopConditionNode(int loopCount, boolean infinite, BaseNode[] children) {
+            LoopConditionNode(int loopCount, boolean infinite, boolean cond, BaseNode[] children) {
                 super(children);
                 this.loopCount = loopCount;
                 this.infinite = infinite;
+                this.cond = cond;
             }
 
             @Override
@@ -3226,7 +3254,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(e);
                 }
-                if (infinite || i < loopCount) {
+                if (infinite || i < loopCount || (cond && (Boolean) children[0].execute(frame))) {
                     Object resultValue = super.execute(frame);
                     frame.setAuxiliarySlot(loopIndexSlot, i + 1);
                     frame.setAuxiliarySlot(loopResultSlot, resultValue);
@@ -3765,7 +3793,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
-    private static class StringBuilderWrapper {
+    private static final class StringBuilderWrapper {
         private final StringBuilder delegate = new StringBuilder();
 
         @TruffleBoundary
@@ -3842,7 +3870,7 @@ class InstrumentContext {
         return REFERENCE.get(node);
     }
 
-    private static class WeakSet<T> extends AbstractSet<T> {
+    private static final class WeakSet<T> extends AbstractSet<T> {
 
         private final Map<T, Void> map = new WeakHashMap<>();
 

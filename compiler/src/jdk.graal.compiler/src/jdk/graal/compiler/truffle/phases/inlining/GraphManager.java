@@ -79,7 +79,7 @@ final class GraphManager {
             // the guest scope represents the guest language method of truffle
             try (AutoCloseable guestScope = rootContext.debug.scope("Truffle", new TruffleDebugJavaMethod(rootContext.task, truffleAST))) {
                 final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-                final TruffleTierContext context = newContext(truffleAST, false);
+                final TruffleTierContext context = rootContext.createInlineContext(truffleAST);
                 try (Scope hostScope = context.debug.scope("CreateGraph", context.graph);
                                 Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
                     partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
@@ -97,19 +97,6 @@ final class GraphManager {
             irCache.put(truffleAST, entry);
         }
         return entry;
-    }
-
-    private TruffleTierContext newContext(TruffleCompilable truffleAST, boolean finalize) {
-        return new TruffleTierContext(
-                        partialEvaluator,
-                        rootContext.compilerOptions,
-                        rootContext.debug,
-                        truffleAST,
-                        finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        rootContext.compilationId,
-                        rootContext.log,
-                        rootContext.task,
-                        rootContext.handler);
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {
@@ -135,7 +122,7 @@ final class GraphManager {
     }
 
     void finalizeGraph(Invoke invoke, TruffleCompilable truffleAST) {
-        final TruffleTierContext context = newContext(truffleAST, true);
+        final TruffleTierContext context = rootContext.createFinalizationContext(truffleAST);
         partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {

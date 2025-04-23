@@ -49,7 +49,10 @@ public abstract class EspressoInstrumentableRootNode extends EspressoInstrumenta
 
     abstract EspressoInstrumentableRootNode split();
 
-    abstract boolean isTrivial();
+    // this shouldn't be delegated so that wrappers are not considered trivial
+    boolean isTrivial() {
+        return false;
+    }
 
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {

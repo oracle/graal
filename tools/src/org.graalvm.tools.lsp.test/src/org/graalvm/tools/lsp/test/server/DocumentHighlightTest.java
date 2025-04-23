@@ -31,6 +31,8 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+
 import org.junit.Test;
 
 import org.graalvm.tools.lsp.server.types.DocumentHighlight;
@@ -42,6 +44,7 @@ public class DocumentHighlightTest extends TruffleLSPTest {
 
     @Test
     public void variablesHighlightTest() throws InterruptedException, ExecutionException {
+        assumeFalse("Bytecode DSL interpreter cannot identify locals associated with a node (GR-59649)", useBytecode);
         URI uri = createDummyFileUriForSL();
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         futureOpen.get();

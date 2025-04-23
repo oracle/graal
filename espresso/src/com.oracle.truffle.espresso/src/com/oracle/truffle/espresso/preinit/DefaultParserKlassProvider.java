@@ -22,19 +22,17 @@
  */
 package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public final class DefaultParserKlassProvider implements ParserKlassProvider {
+
     @Override
-    public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
-        boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
-        return ClassfileParser.parse(env, new ClassfileStream(bytes, null), verifiable, typeOrNull, info);
+    public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
+        return ParserKlassProvider.parseKlass(info, env, loader, typeOrNull, bytes);
     }
 }

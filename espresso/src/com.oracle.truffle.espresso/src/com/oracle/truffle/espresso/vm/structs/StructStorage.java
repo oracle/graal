@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.vm.structs;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jni.JNIHandles;
 
 /**
  * Commodity class that stores native structs sizes, along with member offsets. See documentation
@@ -38,11 +37,11 @@ public abstract class StructStorage<T extends StructWrapper> {
         this.structSize = structSize;
     }
 
-    public abstract T wrap(JniEnv jni, TruffleObject structPtr);
+    public abstract T wrap(JNIHandles handles, TruffleObject structPtr);
 
-    public T allocate(NativeAccess nativeAccess, JniEnv jni) {
+    public T allocate(NativeAccess nativeAccess, JNIHandles handles) {
         TruffleObject pointer = nativeAccess.allocateMemory(structSize);
-        return wrap(jni, pointer);
+        return wrap(handles, pointer);
     }
 
     public long structSize() {

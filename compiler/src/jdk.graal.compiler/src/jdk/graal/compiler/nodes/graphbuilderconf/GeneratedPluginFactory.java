@@ -24,7 +24,22 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
+
+/**
+ * Interface implemented by a (generated) class that can register a set of
+ * {@link GeneratedInvocationPlugin}s. The set of plugins are typically for the
+ * {@link NodeIntrinsic} and {@link Fold} methods in a single top-level class.
+ */
+@LibGraalService
 public interface GeneratedPluginFactory {
 
+    /**
+     * Registers a set of {@link InvocationPlugin}s with {@code plugins}.
+     *
+     * @param injection provides values for injected parameters
+     */
     void registerPlugins(InvocationPlugins plugins, GeneratedPluginInjectionProvider injection);
 }

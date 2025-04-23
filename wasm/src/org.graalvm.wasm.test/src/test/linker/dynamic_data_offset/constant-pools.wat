@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 (module
   (import "runtime" "heap" (memory (;0;) 4))
   (import "runtime" "heap_base" (global $heap_base i32))
-  (global $string_constants_offset (export "string_constants_offset") i32 (i32.const 72))
+  (import "constant-pools-globals" "string_constants_offset" (global $string_constants_offset i32))
+  (export "string_constants_offset" (global $string_constants_offset))
   (data (offset (i32.add (global.get $heap_base) (global.get $string_constants_offset))) "\59\4f\21\20\42\45\20\43\4f\4f\4c\2e")
 )

@@ -27,9 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.ImageHeap;
@@ -37,6 +35,9 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 class ChunkedImageHeapAllocator {
     /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
@@ -195,7 +196,7 @@ class ChunkedImageHeapAllocator {
 
     public long allocateUnalignedChunkForObject(ImageHeapObject obj, boolean writable) {
         assert currentAlignedChunk == null;
-        UnsignedWord objSize = WordFactory.unsigned(obj.getSize());
+        UnsignedWord objSize = Word.unsigned(obj.getSize());
         long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objSize).rawValue();
         long chunkBegin = allocateRaw(chunkSize);
         unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable));
@@ -287,5 +288,10 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
     @Override
     public long getSize() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isFiller() {
+        return true;
     }
 }

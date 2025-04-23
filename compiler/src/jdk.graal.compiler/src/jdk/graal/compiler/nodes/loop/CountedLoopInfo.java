@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
-import static java.lang.Math.abs;
-
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -57,8 +55,10 @@ import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
 import jdk.graal.compiler.nodes.util.IntegerHelper;
 import jdk.graal.compiler.nodes.util.SignedIntegerHelper;
 import jdk.graal.compiler.nodes.util.UnsignedIntegerHelper;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
@@ -151,6 +151,40 @@ public class CountedLoopInfo {
     }
 
     /**
+     * See {@link InductionVariable#structuralIntegrityValid()}.
+     */
+    public boolean countedIntegrityValid() {
+        return limitCheckedIV.structuralIntegrityValid() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
+    }
+
+    /**
+     * Returns the induction variable compared against the limit node. For a loop like
+     *
+     * <pre>
+     * for (int i = 0; i < limit; i++) {
+     *     body();
+     * }
+     * </pre>
+     *
+     * The induction variable {@code i} is the limit checked one, {@code limit} will be the limit
+     * node. In the case where the {@link #getLimitCheckedIV()} is a {@link BasicInductionVariable}
+     * {@link #getLimitCheckedIV()} equals {@link #getBodyIV()}. Note that for other loop shapes the
+     * limit checked IV can be a {@link DerivedInductionVariable}.
+     *
+     * For a loop like
+     *
+     * <pre>
+     * for (int i = 0; (i + 5) < limit; i++) {
+     *     body();
+     * }
+     * </pre>
+     *
+     * the limit checked IV will be a {@link DerivedOffsetInductionVariable} with the constant
+     * offset {@code 5}. In this case the {@link CountedLoopInfo#getBodyIV()} will be the
+     * {@link DerivedOffsetInductionVariable#getBase()} of the {@link #getLimitCheckedIV()}. This is
+     * the regular IV {@code i}. Most {@link #isInverted()} inverted loops have a shape where the
+     * limit checked IV is a {@link DerivedInductionVariable}.
+     *
      * @return the {@link InductionVariable} compared ({@link CompareNode}) to
      *         {@link CountedLoopInfo#getLimit()}. If this loop is
      *         {@link CountedLoopInfo#isInverted()} returns to next iteration iv based on
@@ -165,9 +199,49 @@ public class CountedLoopInfo {
      *         {@link CountedLoopInfo#isInverted()} returns {@code false} this returns the same as
      *         {@link CountedLoopInfo#getLimitCheckedIV()}.
      */
-    public InductionVariable getBodyIV() {
+    protected InductionVariable getBodyIV() {
         assert !isInverted() && getLimitCheckedIV() == limitCheckedIV : "Only inverted loops must have different body ivs.";
         return limitCheckedIV;
+    }
+
+    /**
+     * @return the {@link InductionVariable#extremumNode()} for the {@link #getBodyIV()}.
+     */
+    public ValueNode getBodyIVExtremum() {
+        return getBodyIV().extremumNode(true, StampFactory.forKind(JavaKind.Long));
+    }
+
+    /**
+     * @return the {@link InductionVariable#exitValueNode()} for the {@link #getBodyIV()}.
+     */
+    public ValueNode getBodyIVExitValue() {
+        return getBodyIV().exitValueNode();
+    }
+
+    /**
+     * @return {@code true} iff {@link #getBodyIV()} equals {@link #getLimitCheckedIV()}.
+     */
+    public boolean getBodyIVEqualsLimitCheckedIV() {
+        return getBodyIV() == getLimitCheckedIV();
+    }
+
+    /**
+     * Returns the {@link InductionVariable#entryTripValue()} for the
+     * {@link DerivedInductionVariable#getBase()} if {@link #getLimitCheckedIV()} is a
+     * {@link DerivedInductionVariable} else returns its
+     * {@link InductionVariableHelper#previousIteration(InductionVariable)} entry value. That is,
+     * the entry value of the {@link #getBodyIV()} if its an {@link #isInverted()} (because that is
+     * the limit checked IV's based) else the previous iteration of the regular
+     * {@link #getLimitCheckedIV()}.
+     */
+    public ValueNode limitCheckedPreviousOrRootEntryValue() {
+        if (getBodyIVEqualsLimitCheckedIV()) {
+            InductionVariable limitCheckedIVDuplicated = InductionVariableHelper.previousIteration(getLimitCheckedIV()).duplicate();
+            return limitCheckedIVDuplicated.entryTripValue();
+        } else {
+            InductionVariable limitCheckedIVDuplicated = loop.counted().getBodyIV().duplicate();
+            return limitCheckedIVDuplicated.entryTripValue();
+        }
     }
 
     /**
@@ -245,7 +319,8 @@ public class CountedLoopInfo {
 
     protected ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper) {
         assertNoOverflow();
-        return maxTripCountNode(assumeLoopEntered, integerHelper, getBodyIV().initNode(), getTripCountLimit());
+        // we use body IV init as that is the init of the derived IV if limitCheckedIV != getBodyIV
+        return maxTripCountNode(assumeLoopEntered, integerHelper, getBodyIVStart(), getTripCountLimit());
     }
 
     /**
@@ -266,20 +341,20 @@ public class CountedLoopInfo {
      */
     public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
         assertNoOverflow();
-        StructuredGraph graph = getBodyIV().valueNode().graph();
-        Stamp stamp = getBodyIV().valueNode().stamp(NodeView.DEFAULT);
+        StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
+        Stamp stamp = getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
 
         ValueNode max;
         ValueNode min;
         ValueNode absStride;
-        final InductionVariable.Direction direction = getBodyIV().direction();
+        final InductionVariable.Direction direction = getLimitCheckedIV().direction();
         if (direction == InductionVariable.Direction.Up) {
-            absStride = getBodyIV().strideNode();
+            absStride = getLimitCheckedIV().strideNode();
             max = tripCountLimit;
             min = initNode;
         } else {
             assert direction == InductionVariable.Direction.Down : "direction must be down if its not up - else loop should not be counted " + direction;
-            absStride = NegateNode.create(getBodyIV().strideNode(), NodeView.DEFAULT);
+            absStride = NegateNode.create(getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
             max = initNode;
             min = tripCountLimit;
         }
@@ -367,22 +442,26 @@ public class CountedLoopInfo {
      * @return false if the loop can definitely not be entered, true otherwise
      */
     public boolean loopMightBeEntered() {
-        Stamp stamp = getBodyIV().valueNode().stamp(NodeView.DEFAULT);
+        Stamp stamp = getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
 
         ValueNode max;
         ValueNode min;
-        if (getBodyIV().direction() == InductionVariable.Direction.Up) {
+        if (getLimitCheckedIV().direction() == InductionVariable.Direction.Up) {
             max = getTripCountLimit();
-            min = getBodyIV().initNode();
+            // use the init of the body - if the limit checked IV is offset from the body by one
+            // iteration for entering the loop we want to know min max for the init of the body IV
+            min = getBodyIVStart();
         } else {
-            assert getBodyIV().direction() == Direction.Down : Assertions.errorMessage(getBodyIV());
-            max = getBodyIV().initNode();
+            assert getLimitCheckedIV().direction() == Direction.Down : Assertions.errorMessage(getLimitCheckedIV());
+            // use the init of the body - if the limit checked IV is offset from the body by one
+            // iteration for entering the loop we want to know min max for the init of the body IV
+            max = getBodyIVStart();
             min = getTripCountLimit();
         }
         if (isLimitIncluded) {
             // Ensure the constant is value numbered in the graph. Don't add other nodes to the
             // graph, they will be dead code.
-            StructuredGraph graph = getBodyIV().valueNode().graph();
+            StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
             max = BinaryArithmeticNode.add(max, ConstantNode.forIntegerStamp(stamp, 1, graph), NodeView.DEFAULT);
         }
 
@@ -400,7 +479,7 @@ public class CountedLoopInfo {
      * @return true if the loop has constant bounds.
      */
     public boolean isConstantMaxTripCount() {
-        return getTripCountLimit() instanceof ConstantNode && getBodyIV().isConstantInit() && getBodyIV().isConstantStride();
+        return getTripCountLimit() instanceof ConstantNode && getLimitCheckedIV().isConstantInit() && getLimitCheckedIV().isConstantStride();
     }
 
     public UnsignedLong constantMaxTripCount() {
@@ -412,25 +491,27 @@ public class CountedLoopInfo {
      * Compute the raw value of the trip count for this loop. THIS IS AN UNSIGNED VALUE;
      */
     private long rawConstantMaxTripCount() {
-        assert getBodyIV().direction() != null;
+        assert getLimitCheckedIV().direction() != null;
         long endValue = getTripCountLimit().asJavaConstant().asLong();
-        long initValue = getBodyIV().constantInit();
+        // use the init of the body - if the limit checked IV is offset from the body by one
+        // iteration we want to know min max for the init of the body IV
+        long initValue = getBodyIVStart().asJavaConstant().asLong();
         long range;
         long absStride;
         IntegerHelper helper = getCounterIntegerHelper(64);
-        if (getBodyIV().direction() == InductionVariable.Direction.Up) {
+        if (getLimitCheckedIV().direction() == InductionVariable.Direction.Up) {
             if (helper.compare(endValue, initValue) < 0) {
                 return 0;
             }
-            range = endValue - getBodyIV().constantInit();
-            absStride = getBodyIV().constantStride();
+            range = endValue - getLimitCheckedIV().constantInit();
+            absStride = getLimitCheckedIV().constantStride();
         } else {
-            assert getBodyIV().direction() == Direction.Down : Assertions.errorMessage(getBodyIV());
+            assert getLimitCheckedIV().direction() == Direction.Down : Assertions.errorMessage(getLimitCheckedIV());
             if (helper.compare(initValue, endValue) < 0) {
                 return 0;
             }
-            range = getBodyIV().constantInit() - endValue;
-            absStride = -getBodyIV().constantStride();
+            range = getLimitCheckedIV().constantInit() - endValue;
+            absStride = -getLimitCheckedIV().constantStride();
         }
         if (isLimitIncluded) {
             range += 1;
@@ -440,7 +521,7 @@ public class CountedLoopInfo {
     }
 
     public IntegerHelper getCounterIntegerHelper() {
-        IntegerStamp stamp = (IntegerStamp) getBodyIV().valueNode().stamp(NodeView.DEFAULT);
+        IntegerStamp stamp = (IntegerStamp) getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
         return getCounterIntegerHelper(stamp.getBits());
     }
 
@@ -455,7 +536,7 @@ public class CountedLoopInfo {
     }
 
     public boolean isExactTripCount() {
-        return loop.loop().getNaturalExits().size() == 1;
+        return loop.getCFGLoop().getNaturalExits().size() == 1;
     }
 
     public ValueNode exactTripCountNode() {
@@ -478,8 +559,8 @@ public class CountedLoopInfo {
     @Override
     public String toString() {
         return (isInverted() ? "Inverted " : "") + "iv=" + getLimitCheckedIV() + " until " + getTripCountLimit() +
-                        (isLimitIncluded ? getBodyIV().direction() == InductionVariable.Direction.Up ? "+1" : "-1" : "") +
-                        " bodyIV=" + getBodyIV();
+                        (isLimitIncluded ? getLimitCheckedIV().direction() == InductionVariable.Direction.Up ? "+1" : "-1" : "") +
+                        " bodyIV=" + getLimitCheckedIV();
     }
 
     /**
@@ -542,62 +623,90 @@ public class CountedLoopInfo {
         if (loop.loopBegin().canNeverOverflow()) {
             return true;
         }
-        if (!isLimitIncluded && getBodyIV().isConstantStride() && abs(getBodyIV().constantStride()) == 1) {
+        return ivCanNeverOverflow(getLimitCheckedIV());
+    }
+
+    public boolean ivCanNeverOverflow(InductionVariable iv) {
+        if (iv != getLimitCheckedIV()) {
+            /*
+             * All non-limit checked IVs: This IV is not compared against limit and thus we cannot
+             * play the trick comparing against the end stamp. We have to compute (if possible) the
+             * extremum value and use that.
+             */
+            if (iv.isConstantInit() && isConstantMaxTripCount() && iv.isConstantStride()) {
+                try {
+                    final int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
+                    long tripCountMinus1 = LoopUtility.subtractExact(bits, LoopUtility.tripCountSignedExact(this), 1);
+                    long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), tripCountMinus1);
+                    @SuppressWarnings("unused")
+                    long extremum = LoopUtility.addExact(bits, stripTimesTripCount, iv.initNode().asJavaConstant().asLong());
+                    return true;
+                } catch (ArithmeticException e) {
+                    // overflow
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        // BELOW: limitCheckedIV case
+
+        if (!isLimitIncluded && iv.isConstantStride() && Loop.absStrideIsOne(iv)) {
             return true;
         }
         if (loop.loopBegin().isProtectedNonOverflowingUnsigned()) {
             return true;
         }
         // @formatter:off
-        /*
-         * Following comment reasons about the simplest possible loop form:
-         *
-         *              for(i = 0;i < end;i += stride)
-         *
-         * The problem is we want to create an overflow guard for the loop that can be hoisted
-         * before the loop, i.e., the overflow guard must not have loop variant inputs else it must
-         * be scheduled inside the loop. This means we cannot refer explicitly to the induction
-         * variable's phi but must establish a relation between end, stride and max (max integer
-         * range for a given loop) that is sufficient for most cases.
-         *
-         * We know that a head counted loop with a stride > 1 may overflow if the stride is big
-         * enough that end + stride will be > MAX, i.e. it overflows into negative value range.
-         *
-         * It is important that "end" in this context is the checked value of the loop condition:
-         * i.e., an arbitrary value. There is no relation between end and MAX established except
-         * that based on the integer representation we know that end <= MAX.
-         *
-         * A loop can overflow if the last checked value of the iv allows an overflow in the next
-         * iteration: the value range for which an overflow can happen is [MAX-(stride-1),MAX] e.g.
-         *
-         * MAX=10, stride = 3, overflow if number > 10
-         *  end = MAX -> 10 -> 10 + 3 = 13 -> overflow
-         *  end = MAX-1 -> 9 -> 9 + 3 = 12 -> overflow
-         *  end = MAX-2 -> 8 -> 8 + 3 = 11 -> overflow
-         *  end = MAX-3 -> 7 -> 7 + 3 = 10 -> No overflow at MAX - stride
-         *
-         * Note that this guard is pessimistic, i.e., it marks loops as potentially overflowing that
-         * are actually not overflowing. Consider the following loop:
-         *
-         * <pre>
-         *    for(i = MAX-56; i < MAX, i += 8)
-         * </pre>
-         *
-         *  where i in last loop body visit = MAX - 8, i after = MAX, no overflow
-         *
-         * which is wrongly detected as overflowing since "end" is element of [MAX-(stride-1),MAX]
-         * which is [MAX-7,MAX] and end is MAX. We handle such cases with a speculation and disable
-         * counted loop detection on subsequent compilations. We can only avoid such false positive
-         * detections by actually computing the number of iterations with a division, however we try
-         * to avoid that since that may be part of the fast path.
-         *
-         * And additional backup strategy could be to actually emit the precise guard inside the
-         * loop if the deopt already failed, but we refrain from this for now for simplicity
-         * reasons.
-         */
-        // @formatter:on
+           /*
+            * Following comment reasons about the simplest possible loop form:
+            *
+            *              for(i = 0;i < end;i += stride)
+            *
+            * The problem is we want to create an overflow guard for the loop that can be hoisted
+            * before the loop, i.e., the overflow guard must not have loop variant inputs else it must
+            * be scheduled inside the loop. This means we cannot refer explicitly to the induction
+            * variable's phi but must establish a relation between end, stride and max (max integer
+            * range for a given loop) that is sufficient for most cases.
+            *
+            * We know that a head counted loop with a stride > 1 may overflow if the stride is big
+            * enough that end + stride will be > MAX, i.e. it overflows into negative value range.
+            *
+            * It is important that "end" in this context is the checked value of the loop condition:
+            * i.e., an arbitrary value. There is no relation between end and MAX established except
+            * that based on the integer representation we know that end <= MAX.
+            *
+            * A loop can overflow if the last checked value of the iv allows an overflow in the next
+            * iteration: the value range for which an overflow can happen is [MAX-(stride-1),MAX] e.g.
+            *
+            * MAX=10, stride = 3, overflow if number > 10
+            *  end = MAX -> 10 -> 10 + 3 = 13 -> overflow
+            *  end = MAX-1 -> 9 -> 9 + 3 = 12 -> overflow
+            *  end = MAX-2 -> 8 -> 8 + 3 = 11 -> overflow
+            *  end = MAX-3 -> 7 -> 7 + 3 = 10 -> No overflow at MAX - stride
+            *
+            * Note that this guard is pessimistic, i.e., it marks loops as potentially overflowing that
+            * are actually not overflowing. Consider the following loop:
+            *
+            * <pre>
+            *    for(i = MAX-56; i < MAX, i += 8)
+            * </pre>
+            *
+            *  where i in last loop body visit = MAX - 8, i after = MAX, no overflow
+            *
+            * which is wrongly detected as overflowing since "end" is element of [MAX-(stride-1),MAX]
+            * which is [MAX-7,MAX] and end is MAX. We handle such cases with a speculation and disable
+            * counted loop detection on subsequent compilations. We can only avoid such false positive
+            * detections by actually computing the number of iterations with a division, however we try
+            * to avoid that since that may be part of the fast path.
+            *
+            * And additional backup strategy could be to actually emit the precise guard inside the
+            * loop if the deopt already failed, but we refrain from this for now for simplicity
+            * reasons.
+            */
+           // @formatter:on
         IntegerStamp endStamp = (IntegerStamp) getTripCountLimit().stamp(NodeView.DEFAULT);
-        ValueNode strideNode = getBodyIV().strideNode();
+        ValueNode strideNode = getLimitCheckedIV().strideNode();
         IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
         IntegerHelper integerHelper = getCounterIntegerHelper();
         if (getDirection() == InductionVariable.Direction.Up) {
@@ -617,12 +726,12 @@ public class CountedLoopInfo {
             return overflowGuard;
         }
         try (DebugCloseable position = loop.loopBegin().withNodeSourcePosition()) {
-            StructuredGraph graph = getBodyIV().valueNode().graph();
+            StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
             LogicNode cond = createOverflowGuardCondition();
             SpeculationLog speculationLog = graph.getSpeculationLog();
             SpeculationLog.Speculation speculation = SpeculationLog.NO_SPECULATION;
             if (speculationLog != null) {
-                SpeculationLog.SpeculationReason speculationReason = LoopBeginNode.LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), getBodyIV().loop.loopBegin().stateAfter().bci);
+                SpeculationLog.SpeculationReason speculationReason = LoopBeginNode.LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), getLimitCheckedIV().loop.loopBegin().stateAfter().bci);
                 if (speculationLog.maySpeculate(speculationReason)) {
                     speculation = speculationLog.speculate(speculationReason);
                     LoopBeginNode.overflowSpeculationTaken.increment(graph.getDebug());
@@ -639,23 +748,23 @@ public class CountedLoopInfo {
     }
 
     public LogicNode createOverflowGuardCondition() {
-        StructuredGraph graph = getBodyIV().valueNode().graph();
+        StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
         if (counterNeverOverflows()) {
             return LogicConstantNode.contradiction(graph);
         }
-        IntegerStamp stamp = (IntegerStamp) getBodyIV().valueNode().stamp(NodeView.DEFAULT);
+        IntegerStamp stamp = (IntegerStamp) getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
         IntegerHelper integerHelper = getCounterIntegerHelper();
         LogicNode cond; // we use a negated guard with a < condition to achieve a >=
         ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
-        if (getBodyIV().direction() == InductionVariable.Direction.Up) {
-            ValueNode v1 = BinaryArithmeticNode.sub(ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue()), BinaryArithmeticNode.sub(getBodyIV().strideNode(), one));
+        if (getLimitCheckedIV().direction() == InductionVariable.Direction.Up) {
+            ValueNode v1 = BinaryArithmeticNode.sub(ConstantNode.forIntegerStamp(stamp, integerHelper.maxValue()), BinaryArithmeticNode.sub(getLimitCheckedIV().strideNode(), one));
             if (isLimitIncluded) {
                 v1 = BinaryArithmeticNode.sub(v1, one);
             }
             cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(v1, getTripCountLimit(), NodeView.DEFAULT));
         } else {
-            assert getBodyIV().direction() == Direction.Down : Assertions.errorMessage(getBodyIV());
-            ValueNode v1 = BinaryArithmeticNode.add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), BinaryArithmeticNode.sub(one, getBodyIV().strideNode()));
+            assert getLimitCheckedIV().direction() == Direction.Down : Assertions.errorMessage(getLimitCheckedIV());
+            ValueNode v1 = BinaryArithmeticNode.add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), BinaryArithmeticNode.sub(one, getLimitCheckedIV().strideNode()));
             if (isLimitIncluded) {
                 v1 = BinaryArithmeticNode.add(v1, one);
             }
@@ -665,7 +774,7 @@ public class CountedLoopInfo {
     }
 
     public IntegerStamp getStamp() {
-        return (IntegerStamp) getBodyIV().valueNode().stamp(NodeView.DEFAULT);
+        return (IntegerStamp) getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
     }
 
     public boolean isInverted() {

@@ -28,8 +28,6 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -44,7 +42,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import java.lang.reflect.Array;
 
@@ -96,7 +93,7 @@ public class DeoptState {
                 return valueInfo.getValue();
             case StackSlot:
             case Register:
-                return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
+                return readConstant(sourceSp, Word.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
             case ReservedRegister:
                 if (ReservedRegisters.singleton().getThreadRegister() != null && ReservedRegisters.singleton().getThreadRegister().number == valueInfo.getData()) {
                     return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), targetThread.rawValue());
@@ -158,14 +155,12 @@ public class DeoptState {
             } catch (InstantiationException ex) {
                 throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
             }
-            curOffset = WordFactory.unsigned(objectLayout.getFirstFieldOffset());
+            curOffset = Word.unsigned(objectLayout.getFirstFieldOffset());
             curIdx = 1;
         }
 
         materializedObjects[virtualObjectId] = obj;
-        if (Deoptimizer.testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
-        }
+        Deoptimizer.maybeTestGC();
 
         while (curIdx < encodings.length) {
             FrameInfoQueryResult.ValueInfo value = encodings[curIdx];

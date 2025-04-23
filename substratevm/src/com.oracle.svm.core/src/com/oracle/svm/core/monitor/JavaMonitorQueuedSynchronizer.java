@@ -35,12 +35,13 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Unsafe;
 
 /**
  * {@link JavaMonitorQueuedSynchronizer} is based on the code of
- * {@link java.util.concurrent.locks.AbstractQueuedLongSynchronizer} as of JDK 21+26. This class
+ * {@link java.util.concurrent.locks.AbstractQueuedLongSynchronizer} as of JDK 24+11. This class
  * could be merged with {@link JavaMonitor} but we keep it separate because that way diffing against
  * the JDK sources is easier.
  *
@@ -59,7 +60,7 @@ import jdk.internal.misc.Unsafe;
  */
 @BasedOnJDKClass(AbstractQueuedLongSynchronizer.class)
 abstract class JavaMonitorQueuedSynchronizer {
-    // Node.status field values
+    // Node status bits, also used as argument and return values
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
@@ -70,38 +71,38 @@ abstract class JavaMonitorQueuedSynchronizer {
     // see AbstractQueuedLongSynchronizer.Node
     @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "Node")
     abstract static class Node {
-        volatile Node prev;
-        volatile Node next;
-        Thread waiter;
-        volatile int status;
+        volatile Node prev; // initially attached via casTail
+        volatile Node next; // visibly nonnull when signallable
+        Thread waiter; // visibly nonnull when enqueued
+        volatile int status; // written by owner, atomic bit ops by others
 
         // see AbstractQueuedLongSynchronizer.Node.casPrev(Node, Node)
-        final boolean casPrev(Node c, Node v) {
+        final boolean casPrev(Node c, Node v) { // for cleanQueue
             return U.weakCompareAndSetReference(this, PREV, c, v);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.casNext(Node, Node)
-        final boolean casNext(Node c, Node v) {
+        final boolean casNext(Node c, Node v) { // for cleanQueue
             return U.weakCompareAndSetReference(this, NEXT, c, v);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.getAndUnsetStatus(int)
-        final int getAndUnsetStatus(int v) {
+        final int getAndUnsetStatus(int v) { // for signalling
             return U.getAndBitwiseAndInt(this, STATUS, ~v);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.setPrevRelaxed(Node)
-        final void setPrevRelaxed(Node p) {
+        final void setPrevRelaxed(Node p) { // for off-queue assignment
             U.putReference(this, PREV, p);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.setStatusRelaxed(int)
-        final void setStatusRelaxed(int s) {
+        final void setStatusRelaxed(int s) { // for off-queue assignment
             U.putInt(this, STATUS, s);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.clearStatus()
-        final void clearStatus() {
+        final void clearStatus() { // for reducing unneeded signals
             U.putIntOpaque(this, STATUS, 0);
         }
 
@@ -118,7 +119,7 @@ abstract class JavaMonitorQueuedSynchronizer {
     // see AbstractQueuedLongSynchronizer.ConditionNode
     @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "ConditionNode")
     static final class ConditionNode extends Node {
-        ConditionNode nextWaiter;
+        ConditionNode nextWaiter; // link to next waiting node
         Thread notifierJfr;
 
         // see AbstractQueuedLongSynchronizer.ConditionNode.isReleasable()
@@ -152,16 +153,17 @@ abstract class JavaMonitorQueuedSynchronizer {
 
     // see AbstractQueuedLongSynchronizer.setState(long)
     protected final void setState(long newState) {
-        this.state = newState;
+        state = newState;
     }
 
     /**
-     * For {@linkplain JavaMonitorConditionObject#await conditional waiting}, returns the number of
-     * acquisitions, which is subsequently passed to {@link #tryRelease} to entirely release
-     * ownership, and later to {@link #tryAcquire} to regain ownership after waiting.
+     * Used for {@linkplain JavaMonitorConditionObject#await conditional waiting}. Returns the
+     * number of acquisitions, which is subsequently passed to {@link #tryRelease} to entirely
+     * release ownership, and later to {@link #tryAcquire} to regain ownership after waiting.
      *
-     * While {@code AbstractQueuedLongSynchronizer} calls {@link #getState()} assuming that it
-     * encodes the acquisition count, this method allows for more flexibility in implementations.
+     * Note that {@code AbstractQueuedLongSynchronizer} calls {@link #getState()} instead, assuming
+     * that the state encodes the acquisition count. This method allows for more flexibility in
+     * implementations.
      */
     protected abstract long getAcquisitions();
 
@@ -204,13 +206,13 @@ abstract class JavaMonitorQueuedSynchronizer {
             boolean unpark = false;
             for (Node t;;) {
                 if ((t = tail) == null && (t = tryInitializeHead()) == null) {
-                    unpark = true;             // wake up to spin on OOME
+                    unpark = true; // wake up to spin on OOME
                     break;
                 }
-                node.setPrevRelaxed(t);        // avoid unnecessary fence
+                node.setPrevRelaxed(t); // avoid unnecessary fence
                 if (casTail(t, node)) {
                     t.next = node;
-                    if (t.status < 0) {        // wake up to clean link
+                    if (t.status < 0) { // wake up to clean link
                         unpark = true;
                     }
                     break;
@@ -278,14 +280,54 @@ abstract class JavaMonitorQueuedSynchronizer {
         return (1 << parks) - 1;
     }
 
-    // see AbstractQueuedLongSynchronizer.acquire(Node, long, boolean, boolean, boolean, long)
+    // see AbstractQueuedLongSynchronizer.reacquire(Node, long)
+    private void reacquire(Node node, long arg) {
+        try {
+            acquire(node, arg);
+        } catch (Error | RuntimeException firstEx) {
+            // While we currently do not emit an JFR events in this situation, mainly
+            // because the conditions under which this happens are such that it
+            // cannot be presumed to be possible to actually allocate an event, and
+            // using a preconstructed one would have limited value in serviceability.
+            // Having said that, the following place would be the more appropriate
+            // place to put such logic:
+            // emit JFR event
+
+            for (long nanos = 1L;;) {
+                U.park(false, nanos); // must use Unsafe park to sleep
+                if (nanos < 1L << 30) {           // max about 1 second
+                    nanos <<= 1;
+                }
+                try {
+                    acquire(node, arg);
+                } catch (Error | RuntimeException ignored) {
+                    continue;
+                }
+
+                throw firstEx;
+            }
+        }
+    }
+
+    // see AbstractQueuedLongSynchronizer.acquire(Node, long, false, false, false, 0L)
     @SuppressWarnings("all")
-    final int acquire(Node node, long arg) {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/share/runtime/objectMonitor.cpp#L982-L1017")
+    private int acquire(Node node, long arg) {
         Thread current = Thread.currentThread();
+        /* Spinning logic is SVM-specific. */
         int parks = 0;
         int spins = getSpinAttempts(parks);
         boolean first = false;
-        Node pred = null;
+        Node pred = null; // predecessor of node when enqueued
+        long recheckNanos = -1;
+        if (JavaThreads.isCurrentThreadVirtualAndPinned()) {
+            /*
+             * Do not park indefinitely and instead periodically retry acquiring the monitor. This
+             * avoids liveness trouble when all carrier threads have virtual threads pinned to them
+             * and so a queued successor cannot be scheduled when it is unparked.
+             */
+            recheckNanos = 1_000_000;
+        }
 
         for (;;) {
             if (!first && (pred = (node == null) ? null : node.prev) != null && !(first = (head == pred))) {
@@ -301,6 +343,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 boolean acquired;
                 try {
                     if (spins > 0) {
+                        /* Spinning logic is SVM-specific. */
                         spins = trySpinAcquire(spins, arg);
                         acquired = (spins == SPIN_SUCCESS);
                         assert !acquired || isHeldExclusively();
@@ -322,11 +365,11 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             }
             Node t;
-            if ((t = tail) == null) {           // initialize queue
+            if ((t = tail) == null) { // initialize queue
                 if (tryInitializeHead() == null) {
                     return acquireOnOOME(arg);
                 }
-            } else if (node == null) {          // allocate; retry before enqueue
+            } else if (node == null) { // allocate; retry before enqueue
                 try {
                     node = new ExclusiveNode();
                 } catch (OutOfMemoryError oome) {
@@ -345,22 +388,37 @@ abstract class JavaMonitorQueuedSynchronizer {
             } else if (node.status == 0) {
                 node.status = WAITING; // enable signal and recheck
             } else {
+                /* Spinning logic is SVM-specific. */
                 parks++;
                 spins = getSpinAttempts(parks);
-                LockSupport.park(this);
+                try {
+                    if (recheckNanos == -1) {
+                        LockSupport.park(this);
+                    } else {
+                        LockSupport.parkNanos(this, recheckNanos);
+                        if (tryAcquire(arg)) {
+                            cancelAcquire(node);
+                            return 1;
+                        }
+                        recheckNanos = Math.min(recheckNanos << 3, 1_000_000_000);
+                    }
+                } catch (Error | RuntimeException ex) {
+                    cancelAcquire(node); // cancel & rethrow
+                    throw ex;
+                }
                 node.clearStatus();
             }
         }
     }
 
-    // see AbstractQueuedLongSynchronizer.acquireOnOOME(boolean, long)
+    // see AbstractQueuedLongSynchronizer.acquireOnOOME(false, long)
     private int acquireOnOOME(long arg) {
         for (long nanos = 1L;;) {
             if (tryAcquire(arg)) {
                 return 1;
             }
-            U.park(false, nanos);               // must use Unsafe park to sleep
-            if (nanos < 1L << 30) {             // max about 1 second
+            U.park(false, nanos); // must use Unsafe park to sleep
+            if (nanos < 1L << 30) { // max about 1 second
                 nanos <<= 1;
             }
         }
@@ -400,7 +458,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    // see AbstractQueuedLongSynchronizer.cancelAcquire(Node, boolean, boolean)
+    // see AbstractQueuedLongSynchronizer.cancelAcquire(Node, false, false)
     private int cancelAcquire(Node node) {
         if (node != null) {
             node.waiter = null;
@@ -445,23 +503,29 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         static final long OOME_COND_WAIT_DELAY = 10L * 1000L * 1000L; // 10 ms
 
+        JavaMonitorConditionObject() {
+        }
+
         // see AbstractQueuedLongSynchronizer.ConditionObject.doSignal(ConditionNode, boolean)
         @SuppressWarnings("all")
         private void doSignal(ConditionNode first, boolean all) {
             while (first != null) {
                 ConditionNode next = first.nextWaiter;
+
                 if ((firstWaiter = next) == null) {
                     lastWaiter = null;
                 } else {
                     first.nextWaiter = null; // GC assistance
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
+                    /* JFR-related code is SVM-specific. */
                     first.notifierJfr = Thread.currentThread();
                     enqueue(first);
                     if (!all) {
                         break;
                     }
                 }
+
                 first = next;
             }
         }
@@ -542,7 +606,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedLongSynchronizer.ConditionObject.newConditionNode()
         private ConditionNode newConditionNode() {
-            long savedState;
+            long savedAcquisitions;
             if (tryInitializeHead() != null) {
                 try {
                     return new ConditionNode();
@@ -550,17 +614,18 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             }
             // fall through if encountered OutOfMemoryError
-            if (!isHeldExclusively() || !release(savedState = getState())) {
+            if (!isHeldExclusively() || !release(savedAcquisitions = getAcquisitions())) {
                 throw new IllegalMonitorStateException();
             }
             U.park(false, OOME_COND_WAIT_DELAY);
-            acquireOnOOME(savedState);
+            acquireOnOOME(savedAcquisitions);
             return null;
         }
 
         // see AbstractQueuedLongSynchronizer.ConditionObject.await()
         @SuppressWarnings("all")
         public void await(Object obj) throws InterruptedException {
+            /* JFR-related code is SVM-specific. */
             long startTicks = JfrTicks.elapsedTicks();
             if (Thread.interrupted()) {
                 JavaMonitorWaitEvent.emit(startTicks, obj, null, 0L, false);
@@ -587,7 +652,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfr, 0L, false);
-            acquire(node, savedAcquisitions);
+            reacquire(node, savedAcquisitions);
             if (interrupted) {
                 if (cancelled) {
                     unlinkCancelledWaiters(node);
@@ -600,6 +665,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         // see AbstractQueuedLongSynchronizer.ConditionObject.await(long, TimeUnit)
         @SuppressWarnings("all")
         public boolean await(Object obj, long time, TimeUnit unit) throws InterruptedException {
+            /* JFR-related code is SVM-specific. */
             long startTicks = JfrTicks.elapsedTicks();
             long nanosTimeout = unit.toNanos(time);
             if (Thread.interrupted()) {
@@ -627,7 +693,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfr, time, cancelled);
-            acquire(node, savedAcquisitions);
+            reacquire(node, savedAcquisitions);
             if (cancelled) {
                 unlinkCancelledWaiters(node);
                 if (interrupted) {
@@ -642,7 +708,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
     // Unsafe
     private static final Unsafe U = Unsafe.getUnsafe();
-    static final long STATE = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "state");
+    private static final long STATE = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "state");
     private static final long HEAD = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "head");
     private static final long TAIL = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "tail");
 }

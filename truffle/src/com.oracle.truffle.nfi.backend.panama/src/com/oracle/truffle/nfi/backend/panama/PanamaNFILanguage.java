@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -57,15 +56,15 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIState;
 
 @TruffleLanguage.Registration(id = "internal/nfi-panama", name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
-public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
+public class PanamaNFILanguage extends TruffleLanguage<AbstractPanamaNFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/panama";
 
-    @CompilationFinal private PanamaNFIBackend backend;
+    @CompilationFinal private NFIBackend backend;
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("panama backend single context");
 
-    public final ContextThreadLocal<ErrorContext> errorContext = createErrorContext();
+    public final ContextThreadLocal<AbstractErrorContext> errorContext = createErrorContext();
 
     @CompilationFinal private ContextThreadLocal<NFIState> state;
 
@@ -84,7 +83,7 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     }
 
     @Override
-    protected PanamaNFIContext createContext(Env env) {
+    protected AbstractPanamaNFIContext createContext(Env env) {
         env.registerService(new NFIBackendFactory() {
 
             @Override
@@ -94,83 +93,73 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
             @Override
             public NFIBackend createBackend(ContextThreadLocal<NFIState> newState) {
-                if (backend == null) {
-                    /*
-                     * Make sure there is exactly one backend instance per engine. That way we can
-                     * use identity equality on the backend object for caching decisions.
-                     */
-                    backend = new PanamaNFIBackend(PanamaNFILanguage.this);
-                    state = newState;
+                if (PanamaAccessor.isSupported()) {
+                    if (backend == null) {
+                        /*
+                         * Make sure there is exactly one backend instance per engine. That way we
+                         * can use identity equality on the backend object for caching decisions.
+                         */
+                        backend = PanamaAccessor.createNFIBackend(PanamaNFILanguage.this);
+                        state = newState;
+                    }
+                    return backend;
+                } else {
+                    return null;
                 }
-                return backend;
             }
         });
-        try {
-            return new PanamaNFIContext(this, env);
-        } catch (UnsupportedClassVersionError e) {
-            /*
-             * We're missing the --enable-preview flag. Fail gracefully here, this is only a problem
-             * if we're actually being used.
-             */
+
+        if (PanamaAccessor.isSupported()) {
+            return PanamaAccessor.createPanamaNFIContext(this, env);
+        } else {
+            // JDK < 22, Panama is not available. Fail gracefully here to give a proper
+            // NFIParserException later.
             return null;
         }
     }
 
-    public final ContextThreadLocal<ErrorContext> createErrorContext() {
-        try {
-            return locals.createContextThreadLocal(ErrorContext::new);
-        } catch (UnsupportedClassVersionError e) {
-            /*
-             * We're missing the --enable-preview flag. Fail gracefully here, this is only a problem
-             * if we're actually being used.
-             */
+    public final ContextThreadLocal<AbstractErrorContext> createErrorContext() {
+        if (PanamaAccessor.isSupported()) {
+            return locals.createContextThreadLocal((ctx, thread) -> PanamaAccessor.createErrorContext());
+        } else {
+            // JDK < 22, Panama is not available. Fail gracefully here to give a proper
+            // NFIParserException later.
             return null;
         }
     }
 
     @Override
-    protected void initializeContext(PanamaNFIContext context) throws Exception {
-        context.initialize();
-        errorContext.get().initialize();
+    protected void initializeContext(AbstractPanamaNFIContext context) throws Exception {
+        if (PanamaAccessor.isSupported()) {
+            context.initialize();
+            errorContext.get().initialize();
+        }
     }
 
     @Override
-    protected void initializeThread(PanamaNFIContext context, Thread thread) {
-        ErrorContext ctx = errorContext.get(context.env.getContext(), thread);
-        if (thread == Thread.currentThread()) {
+    protected void initializeThread(AbstractPanamaNFIContext context, Thread thread) {
+        if (PanamaAccessor.isSupported()) {
+            assert thread == Thread.currentThread();
             // we need to get the thread-local errno pointer
             // this is only possible on the correct thread
-            ctx.initialize();
-        } else {
-            // submit as thread-local action on the correct thread
-            context.env.submitThreadLocal(new Thread[]{thread}, new ThreadLocalAction(false, false) {
-
-                @Override
-                protected void perform(Access access) {
-                    assert access.getThread() == thread;
-                    ctx.initialize();
-                }
-            });
+            errorContext.get().initialize();
         }
     }
 
     @Override
-    protected boolean patchContext(PanamaNFIContext context, Env newEnv) {
-        context.patchEnv(newEnv);
-        context.initialize();
+    protected boolean patchContext(AbstractPanamaNFIContext context, Env newEnv) {
+        if (PanamaAccessor.isSupported()) {
+            context.patchEnv(newEnv);
+            context.initialize();
+        }
         return true;
     }
 
     @Override
-    protected void disposeContext(PanamaNFIContext context) {
-        if (context == null) {
-            /*
-             * This means we hit the UnsupportedClassVersionError before in createContext. Since
-             * initializeContext was never called, we're fine here, just ignore this.
-             */
-            return;
+    protected void disposeContext(AbstractPanamaNFIContext context) {
+        if (PanamaAccessor.isSupported()) {
+            context.dispose();
         }
-        context.dispose();
     }
 
     @Override

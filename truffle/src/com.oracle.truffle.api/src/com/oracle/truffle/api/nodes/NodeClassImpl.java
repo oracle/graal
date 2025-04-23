@@ -190,7 +190,9 @@ final class NodeClassImpl extends NodeClass {
 
     @Override
     public Iterator<Node> makeIterator(Node node) {
-        assert clazz.isInstance(node);
+        if (!clazz.isInstance(node)) {
+            throw new ClassCastException();
+        }
         return new NodeIterator(this, node, fields);
     }
 
@@ -278,14 +280,14 @@ final class NodeClassImpl extends NodeClass {
         }
 
         public void putObject(Node receiver, Object value) {
+            if (type.isPrimitive() || !type.isInstance(value)) {
+                throw illegalArgumentException(value);
+            }
             assert validateAccess(receiver, value);
             UNSAFE.putObject(receiver, getOffset(), value);
         }
 
         private boolean validateAccess(Node receiver, Object value) {
-            if (type.isPrimitive() || !type.isInstance(value)) {
-                throw illegalArgumentException(value);
-            }
             if (kind != NodeFieldKind.CHILD) {
                 Object oldValue = getObject(receiver);
                 if (oldValue == null || value == null) {

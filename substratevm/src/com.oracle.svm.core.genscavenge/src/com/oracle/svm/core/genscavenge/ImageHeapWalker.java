@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
@@ -150,15 +149,10 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     }
 
     @Override
-    public UnsignedWord getStart(ImageHeapInfo info) {
-        return Word.objectToUntrackedPointer(getFirstObject(info));
-    }
-
-    @Override
     public UnsignedWord getSize(ImageHeapInfo info) {
         Pointer firstStart = Word.objectToUntrackedPointer(getFirstObject(info));
         if (firstStart.isNull()) { // no objects
-            return WordFactory.zero();
+            return Word.zero();
         }
         Pointer lastEnd = LayoutEncoding.getImageHeapObjectEnd(getLastObject(info));
         return lastEnd.subtract(firstStart);
@@ -184,10 +178,6 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
         boolean alignedChunks = !consistsOfHugeObjects;
         return ImageHeapWalker.walkPartition(getFirstObject(region), getLastObject(region), visitor, alignedChunks);
     }
-
-    protected abstract Object getFirstObject(ImageHeapInfo info);
-
-    protected abstract Object getLastObject(ImageHeapInfo info);
 }
 
 final class ReadOnlyRegularMemoryWalkerAccess extends MemoryWalkerAccessBase {

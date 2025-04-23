@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 
 @TargetClass(value = Executable.class)
@@ -62,7 +63,9 @@ public final class Target_java_lang_reflect_Executable {
          * We want the decoder to throw this exception. Our caller Executable.parameterData catches
          * it and converts it to a class format error.
          */
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
+        Executable executable = SubstrateUtil.cast(this, Executable.class);
+        DynamicHub declaringClass = DynamicHub.fromClass(executable.getDeclaringClass());
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReflectParameters(executable, rawParameters, declaringClass);
     }
 
     @Substitute

@@ -53,6 +53,7 @@ import jdk.vm.ci.meta.Value;
  */
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/c5f1dcccfce7b943c1a91aa65709576038098e91/src/hotspot/cpu/x86/gc/g1/g1BarrierSetAssembler_x86.cpp#L163-L264",
+          ignore = "GR-58685",
           sha1 = "34e794bbd45946013b84c5a4838b5b80d3b8a131")
 // @formatter:on
 public class AMD64G1PreWriteBarrierOp extends AMD64LIRInstruction {
@@ -84,7 +85,7 @@ public class AMD64G1PreWriteBarrierOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        AMD64Address storeAddress = ((AMD64AddressValue) this.address).toAddress();
+        AMD64Address storeAddress = ((AMD64AddressValue) this.address).toAddress(masm);
         Register thread = tool.getThread(masm);
         Register tmp = asRegister(temp);
         Register previousValue = expectedObject.equals(Value.ILLEGAL) ? asRegister(temp2) : asRegister(expectedObject);

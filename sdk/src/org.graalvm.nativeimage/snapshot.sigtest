@@ -99,7 +99,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
@@ -224,6 +224,15 @@ meth public abstract void fatalError()
 meth public abstract void flush()
 meth public abstract void log(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 
+CLSS public final org.graalvm.nativeimage.MissingJNIRegistrationError
+cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.String)
+meth public java.lang.Class<?> getDeclaringClass()
+meth public java.lang.Class<?> getElementType()
+meth public java.lang.String getElementName()
+meth public java.lang.String getSignature()
+supr java.lang.Error
+hfds declaringClass,elementName,elementType,serialVersionUID,signature
+
 CLSS public final org.graalvm.nativeimage.MissingReflectionRegistrationError
 cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
 meth public java.lang.Class<?> getDeclaringClass()
@@ -232,15 +241,6 @@ meth public java.lang.Class<?>[] getParameterTypes()
 meth public java.lang.String getElementName()
 supr java.lang.Error
 hfds declaringClass,elementName,elementType,parameterTypes,serialVersionUID
-
-CLSS public final org.graalvm.nativeimage.MissingJNIRegistrationError
-cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.String)
-meth public java.lang.Class<?> getDeclaringClass()
-meth public java.lang.Class<?> getElementType()
-meth public java.lang.String getSignature()
-meth public java.lang.String getElementName()
-supr java.lang.Error
-hfds declaringClass,elementName,elementType,signature,serialVersionUID
 
 CLSS public abstract interface org.graalvm.nativeimage.ObjectHandle
 intf org.graalvm.word.ComparableWord
@@ -453,6 +453,7 @@ meth public static java.lang.String getExecutableName()
 meth public static java.lang.String getObjectFile(java.lang.String)
 meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.function.CEntryPointLiteral<?>)
 meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
 meth public static long getProcessID()
 meth public static long getProcessID(java.lang.Process)
 meth public static void exec(java.nio.file.Path,java.lang.String[],java.util.Map<java.lang.String,java.lang.String>)
@@ -552,6 +553,7 @@ meth public abstract !hasdefault java.lang.String value()
 CLSS public final static org.graalvm.nativeimage.c.constant.CConstant$ValueAccess
  outer org.graalvm.nativeimage.c.constant.CConstant
 meth public static <%0 extends java.lang.Object> {%%0} get(java.lang.Class<?>,java.lang.String,java.lang.Class<{%%0}>)
+meth public static <%0 extends java.lang.Object> {%%0} get(java.lang.Enum<?>,java.lang.String)
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.constant.CEnum
@@ -1050,6 +1052,7 @@ CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$Dur
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 meth public abstract void registerObjectReplacer(java.util.function.Function<java.lang.Object,java.lang.Object>)
+meth public abstract void registerObjectReachabilityHandler(java.util.function.Consumer<T>,java.lang.Class<T>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$FeatureAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -1077,6 +1080,7 @@ meth public abstract java.util.Set<java.lang.reflect.Executable> reachableMethod
 
 CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformer
 meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)
+meth public boolean isAvailable()
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void initializeAtBuildTime(java.lang.Class<?>[])
@@ -1086,6 +1090,7 @@ meth public !varargs static void initializeAtRunTime(java.lang.String[])
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeForeignAccess
+meth public !varargs static void registerForDirectUpcall(java.lang.invoke.MethodHandle,java.lang.Object,java.lang.Object[])
 meth public !varargs static void registerForDowncall(java.lang.Object,java.lang.Object[])
 meth public !varargs static void registerForUpcall(java.lang.Object,java.lang.Object[])
 supr java.lang.Object
@@ -1141,6 +1146,7 @@ meth public !varargs static void registerProxyClass(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerLambdaCapturingClass(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSystemProperties

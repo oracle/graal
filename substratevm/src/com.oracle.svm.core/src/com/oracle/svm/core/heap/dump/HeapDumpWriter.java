@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -72,6 +71,9 @@ import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldName;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldNameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
@@ -81,10 +83,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -399,6 +402,7 @@ public class HeapDumpWriter {
     private static final int HEAP_DUMP_SEGMENT_TARGET_SIZE = 1 * 1024 * 1024;
 
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("HeapDumpWriter", false);
+    private final ReplaceDotWithSlash dotWithSlashReplacer = new ReplaceDotWithSlash();
     private final DumpStackFrameVisitor dumpStackFrameVisitor = new DumpStackFrameVisitor();
     private final DumpObjectsVisitor dumpObjectsVisitor = new DumpObjectsVisitor();
     private final CodeMetadataVisitor codeMetadataVisitor = new CodeMetadataVisitor();
@@ -417,7 +421,7 @@ public class HeapDumpWriter {
 
     public boolean dumpHeap(RawFileDescriptor fd) {
         assert VMOperation.isInProgressAtSafepoint();
-        assert ThreadingSupportImpl.isRecurringCallbackPaused();
+        assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
 
         noAllocationVerifier.open();
         try {
@@ -458,7 +462,7 @@ public class HeapDumpWriter {
 
         assert f.isNull() || error || file().getUnflushedDataSize(f) == 0;
         file().free(f);
-        this.f = WordFactory.nullPointer();
+        this.f = Word.nullPointer();
 
         this.topLevelRecordBegin = -1;
         this.subRecordBegin = -1;
@@ -504,7 +508,7 @@ public class HeapDumpWriter {
         writeUTF8("JAVA PROFILE 1.0.2");
         writeByte((byte) 0);
         writeInt(wordSize());
-        writeLong(System.currentTimeMillis());
+        writeLong(TimeUtils.currentTimeMillis());
     }
 
     private void startTopLevelRecord(HProfTopLevelRecord tag) {
@@ -546,22 +550,26 @@ public class HeapDumpWriter {
         for (int i = 0; i < metadata.getClassInfoCount(); i++) {
             ClassInfo classInfo = metadata.getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
-                writeSymbol(classInfo.getHub().getName());
+                writeSymbol(classInfo.getHub().getName(), dotWithSlashReplacer);
             }
         }
     }
 
     private void writeSymbol(String value) {
+        writeSymbol(value, null);
+    }
+
+    private void writeSymbol(String value, CharReplacer replacer) {
         startTopLevelRecord(HProfTopLevelRecord.UTF8);
         writeObjectId(value);
-        writeUTF8(value);
+        writeUTF8(value, replacer);
         endTopLevelRecord();
     }
 
     private void writeSymbol(FieldName fieldName) {
         startTopLevelRecord(HProfTopLevelRecord.UTF8);
         writeFieldNameId(fieldName);
-        write((Pointer) FieldNameAccess.getChars(fieldName), WordFactory.unsigned(FieldNameAccess.getLength(fieldName)));
+        write((Pointer) FieldNameAccess.getChars(fieldName), Word.unsigned(FieldNameAccess.getLength(fieldName)));
         endTopLevelRecord();
     }
 
@@ -686,9 +694,9 @@ public class HeapDumpWriter {
 
     private static Object getStaticFieldDataHolder(HProfType type) {
         if (type == HProfType.NORMAL_OBJECT) {
-            return StaticFieldsSupport.getStaticObjectFields();
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
-            return StaticFieldsSupport.getStaticPrimitiveFields();
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         }
     }
 
@@ -773,7 +781,7 @@ public class HeapDumpWriter {
             writeLargeObjects(largeObjects);
         } finally {
             GrowableWordArrayAccess.freeData(largeObjects);
-            largeObjects = WordFactory.nullPointer();
+            largeObjects = Word.nullPointer();
         }
     }
 
@@ -967,8 +975,8 @@ public class HeapDumpWriter {
      */
     private static int calculateMaxArrayLength(Object array, int elementSize, int recordHeaderSize) {
         int length = ArrayLengthNode.arrayLength(array);
-        UnsignedWord lengthInBytes = WordFactory.unsigned(length).multiply(elementSize);
-        UnsignedWord maxBytes = WordFactory.unsigned(MAX_UNSIGNED_INT).subtract(recordHeaderSize);
+        UnsignedWord lengthInBytes = Word.unsigned(length).multiply(elementSize);
+        UnsignedWord maxBytes = Word.unsigned(MAX_UNSIGNED_INT).subtract(recordHeaderSize);
 
         if (lengthInBytes.belowOrEqual(maxBytes)) {
             return length;
@@ -992,7 +1000,7 @@ public class HeapDumpWriter {
 
     private void writeU1ArrayData(Object array, int length, int arrayBaseOffset) {
         Pointer data = getArrayData(array, arrayBaseOffset);
-        write(data, WordFactory.unsigned(length));
+        write(data, Word.unsigned(length));
     }
 
     private void writeU2ArrayData(Object array, int length, int arrayBaseOffset) {
@@ -1108,7 +1116,11 @@ public class HeapDumpWriter {
     }
 
     private void writeUTF8(String value) {
-        boolean success = file().writeUTF8(f, value);
+        writeUTF8(value, null);
+    }
+
+    private void writeUTF8(String value, CharReplacer replacer) {
+        boolean success = file().writeUTF8(f, value, replacer);
         handleError(success);
     }
 
@@ -1376,10 +1388,10 @@ public class HeapDumpWriter {
                     elementSize = wordSize();
                 }
                 int length = ArrayLengthNode.arrayLength(obj);
-                return WordFactory.unsigned(length).multiply(elementSize);
+                return Word.unsigned(length).multiply(elementSize);
             } else {
                 ClassInfo classInfo = metadata.getClassInfo(obj.getClass());
-                return WordFactory.unsigned(classInfo.getInstanceFieldsDumpSize());
+                return Word.unsigned(classInfo.getInstanceFieldsDumpSize());
             }
         }
     }
@@ -1438,6 +1450,6 @@ public class HeapDumpWriter {
         }
     }
 
-    private static class UnknownClass {
+    private static final class UnknownClass {
     }
 }

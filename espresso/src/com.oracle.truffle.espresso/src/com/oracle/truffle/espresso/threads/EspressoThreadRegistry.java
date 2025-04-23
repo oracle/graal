@@ -36,7 +36,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -285,13 +286,13 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             assert getThreadAccess().getCurrentGuestThread() != null;
 
             if (name == null) {
-                meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, effectiveThreadGroup, StaticObject.NULL);
+                meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirectSpecial(guestThread, effectiveThreadGroup, StaticObject.NULL);
             } else {
-                meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(guestThread, effectiveThreadGroup, meta.toGuestString(name));
+                meta.java_lang_Thread_init_ThreadGroup_String.invokeDirectSpecial(guestThread, effectiveThreadGroup, meta.toGuestString(name));
             }
 
             if (getJavaVersion().java17OrEarlier()) {
-                meta.java_lang_ThreadGroup_add.invokeDirect(effectiveThreadGroup, guestThread);
+                meta.java_lang_ThreadGroup_add.invokeDirectVirtual(effectiveThreadGroup, guestThread);
             }
 
             getThreadAccess().setState(guestThread, State.RUNNABLE.value);
@@ -328,7 +329,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         registerMainThread(hostThread, mainThread);
 
         // Guest Thread.currentThread() must work as this point.
-        meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(mainThread,
+        meta.java_lang_Thread_init_ThreadGroup_String.invokeDirectSpecial(mainThread,
                         /* group */ mainThreadGroup,
                         /* name */ meta.toGuestString("main"));
 
@@ -345,14 +346,14 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     private void createMainThreadGroup(Meta meta) {
         assert mainThreadGroup == null;
         StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
-        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
+        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Names._init_, Signatures._void) // private
                         // ThreadGroup()
-                        .invokeDirect(systemThreadGroup);
+                        .invokeDirectSpecial(systemThreadGroup);
 
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThreadGroup,
+                        .lookupDeclaredMethod(Names._init_, Signatures._void_ThreadGroup_String) //
+                        .invokeDirectSpecial(mainThreadGroup,
                                         /* parent */ systemThreadGroup,
                                         /* name */ meta.toGuestString("main"));
     }
@@ -483,7 +484,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         synchronized (activeThreadLock) {
             // see ThreadService::find_deadlocks_at_safepoint
             // in share/services/threadService.cpp
-            ThreadsAccess threadAccess = getThreadAccess();
+            ThreadAccess threadAccess = getThreadAccess();
             StaticObject[] threads = activeThreads();
             for (StaticObject thread : threads) {
                 if (!threadAccess.isVirtualOrCarrierThread(thread)) {

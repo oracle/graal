@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,11 +32,11 @@ import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -112,7 +112,7 @@ public class GraalHotSpotVMConfigAccess {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
-    public static final int JDK = Runtime.version().feature();
+    public static final int JDK = JavaVersionUtil.JAVA_SPEC;
     public static final JVMCIVersionCheck.Version JVMCI_VERSION;
     public static final boolean JVMCI;
     public static final boolean JDK_PRERELEASE;
@@ -207,11 +207,6 @@ public class GraalHotSpotVMConfigAccess {
 
     static void reportError(String rawErrorMessage) {
         String value = getSavedProperty(JVMCI_CONFIG_CHECK_PROP_NAME);
-        if (!JVMCI && value == null) {
-            // We cannot control when VM config updates are made in non-JVMCI
-            // JDKs so disable this check by default.
-            value = "ignore";
-        }
         if ("ignore".equals(value)) {
             return;
         }
@@ -263,22 +258,6 @@ public class GraalHotSpotVMConfigAccess {
             return access.getConstant(name, type, notPresent);
         }
         return notPresent;
-    }
-
-    /**
-     * Verifies that if the constant described by {@code name} and {@code type} is defined by the
-     * VM, it has the value {@code expect}.
-     *
-     * @return {@code expect}
-     */
-    public <T> T verifyConstant(String name, Class<T> type, T expect) {
-        if (vmConstants.containsKey(name)) {
-            T value = access.getConstant(name, type, expect);
-            if (!Objects.equals(value, expect)) {
-                recordError(name, unexpected, String.valueOf(value));
-            }
-        }
-        return expect;
     }
 
     /**

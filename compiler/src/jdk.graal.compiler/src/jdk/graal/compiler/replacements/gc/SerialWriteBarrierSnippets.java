@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,8 +74,9 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
 
         int cardShift = cardTableShift();
         Word cardTableAddress = cardTableAddress();
-        Word start = cardTableAddress.add(getPointerToFirstArrayElement(address, length, elementStride).unsignedShiftRight(cardShift));
-        Word end = cardTableAddress.add(getPointerToLastArrayElement(address, length, elementStride).unsignedShiftRight(cardShift));
+        Word addr = Word.fromAddress(address);
+        Word start = cardTableAddress.add(getPointerToFirstArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
+        Word end = cardTableAddress.add(getPointerToLastArrayElement(addr, length, elementStride).unsignedShiftRight(cardShift));
 
         Word cur = start;
         do {
@@ -124,8 +125,8 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
                 OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
                 args.add("object", address.getBase());
             }
-            args.addConst("counters", counters);
-            args.addConst("verifyOnly", barrier.getVerifyOnly());
+            args.add("counters", counters);
+            args.add("verifyOnly", barrier.isEliminated());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -134,7 +135,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
-            args.addConst("elementStride", barrier.getElementStride());
+            args.add("elementStride", barrier.getElementStride());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }

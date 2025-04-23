@@ -176,7 +176,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         }
         try {
             @Pointer
-            TruffleObject address = (TruffleObject) uncachedInterop.execute(malloc, size);
+            TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(malloc, size);
             if (InteropLibrary.getUncached().isNull(address)) {
                 // malloc returned NULL
                 return null;
@@ -192,7 +192,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     public void freeMemory(@Pointer TruffleObject buffer) {
         assert InteropLibrary.getUncached().isPointer(buffer);
         try {
-            uncachedInterop.execute(free, buffer);
+            UNCACHED_INTEROP.execute(free, buffer);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
@@ -207,7 +207,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         assert InteropLibrary.getUncached().isPointer(buffer);
         try {
             @Pointer
-            TruffleObject address = (TruffleObject) uncachedInterop.execute(realloc, buffer, newSize);
+            TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(realloc, buffer, newSize);
             if (InteropLibrary.getUncached().isNull(address)) {
                 // realloc returned NULL
                 return null;
@@ -222,7 +222,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     @Override
     public void prepareThread() {
         try {
-            uncachedInterop.execute(ctypeInit);
+            UNCACHED_INTEROP.execute(ctypeInit);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);

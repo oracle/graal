@@ -19,32 +19,32 @@ You can install and use Oracle GraalVM in DevOps Build Pipelines using the YUM p
 ### Prerequisites
 
 - [DevOps project](https://docs.oracle.com/en-us/iaas/Content/devops/using/create_project.htm#create_a_project)
-- [OCI Notification Topic](https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/managingtopicsandsubscriptions.htm#createTopic)
+- [OCI Notification Topic](https://docs.oracle.com/en-us/iaas/Content/Notification/Tasks/create-topic.htm#top)
 - [OCI DevOps Build Pipeline](https://docs.oracle.com/en-us/iaas/Content/devops/using/create_buildpipeline.htm)
 
 To work with a Build Pipeline, add statements to a [build specification file](https://docs.oracle.com/en-us/iaas/Content/devops/using/build_specs.htm), _build-spec.yml_. 
 The DevOps CI/CD platform reads the file and runs the commands one by one. 
 You do not need to run a YUM package manager command manually.
 
-RPMs for Oracle GraalVM are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-23-native-image`. 
+RPMs for Oracle GraalVM are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-24-native-image`. 
 Each package includes the JDK and the Native Image tool.
 
 To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 
-1. Add a command to install Oracle GraalVM for JDK 23 with Native Image and Java Development Kit (JDK):
+1. Add a command to install Oracle GraalVM for JDK 24 with Native Image and Java Development Kit (JDK):
     ```yml
     steps:
     - type: Command
-        name: "Install Oracle GraalVM for JDK 23"
+        name: "Install Oracle GraalVM for JDK 24"
         command: |
-        yum -y install graalvm-23-native-image
+        yum -y install graalvm-24-native-image
     ```
 
-2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 23:
+2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 24:
     ```yml
     env:
     variables:
-        "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-java23"
+        "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-java24"
     ```
 
 3. Add the command to set the value of the `PATH` environment variable:
@@ -61,13 +61,13 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
         export PATH=$JAVA_HOME/bin:$PATH
     ```
 
-Here is an example of a complete [build specification file](https://github.com/oracle-devrel/oci-devops-examples/blob/main/oci-build-examples/oci_devops_build_with_graalenterprise/build_spec_oracle_graalvm_jdk20.yaml).
+Here is an example of a complete [build specification file](https://github.com/oracle-devrel/oci-devops-examples/blob/main/oci-build-examples/oci_devops_build_with_graalenterprise/build_spec_oracle_graalvm_jdk17.yaml).
 
 Oracle GraalVM provides more features, each of which can be installed as an add-on.
 Use the `yum list` command to get a list of the available RPMs for your installation.
-For instance, for Oracle GraalVM for JDK 23, run:
+For instance, for Oracle GraalVM for JDK 24, run:
 ```bash
-yum list graalvm-23*
+yum list graalvm-24*
 ...
 ```
 

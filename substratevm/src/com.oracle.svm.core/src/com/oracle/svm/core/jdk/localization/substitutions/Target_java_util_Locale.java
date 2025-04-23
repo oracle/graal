@@ -24,31 +24,41 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
-
 import java.util.Locale;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(java.util.Locale.class)
 final class Target_java_util_Locale {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = DefaultLocaleComputer.class) //
+    @Alias @InjectAccessors(DefaultLocaleAccessors.class) //
     private static Locale defaultLocale;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = DefaultLocaleComputer.class) //
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Locale defaultDisplayLocale;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = DefaultLocaleComputer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Locale defaultFormatLocale;
 
-    @Substitute
-    private static Locale initDefault() {
-        throw VMError.shouldNotReachHere("The default Locale must be initialized during image generation");
-    }
+    @Alias
+    private static native Locale initDefault();
 
-    @Substitute
-    private static Locale initDefault(Locale.Category category) {
-        throw VMError.shouldNotReachHere("The default Locale must be initialized during image generation: " + category);
+    @SuppressWarnings("unused")
+    private static final class DefaultLocaleAccessors {
+        static Locale get() {
+            if (Util_java_util_Locale.injectedDefaultLocale == null) {
+                Util_java_util_Locale.injectedDefaultLocale = Target_java_util_Locale.initDefault();
+            }
+            return Util_java_util_Locale.injectedDefaultLocale;
+        }
+
+        static void set(Locale defaultLocale) {
+            Util_java_util_Locale.injectedDefaultLocale = defaultLocale;
+        }
     }
+}
+
+final class Util_java_util_Locale {
+    static Locale injectedDefaultLocale;
 }

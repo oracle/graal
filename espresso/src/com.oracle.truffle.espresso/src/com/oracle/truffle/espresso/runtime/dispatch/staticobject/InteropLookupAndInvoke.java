@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -28,6 +27,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -65,7 +65,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  */
 public abstract class InteropLookupAndInvoke extends EspressoNode {
     public abstract Object execute(StaticObject receiver, Klass klass, Object[] arguments, String member)
-                    throws ArityException, UnsupportedTypeException;
+                    throws ArityException, UnsupportedTypeException, UnknownIdentifierException;
 
     @GenerateUncached
     public abstract static class Virtual extends InteropLookupAndInvoke {
@@ -75,7 +75,7 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
                         @Cached SelectAndInvokeNode selectAndInvoke,
                         @Cached InlinedBranchProfile error,
                         @Cached InlinedBranchProfile exception)
-                        throws ArityException, UnsupportedTypeException {
+                        throws ArityException, UnsupportedTypeException, UnknownIdentifierException {
             assert receiver != null;
             Method[] candidates = lookup.execute(klass, member, arguments.length);
             if (candidates != null) {
@@ -94,7 +94,7 @@ public abstract class InteropLookupAndInvoke extends EspressoNode {
                         @Cached SelectAndInvokeNode selectAndInvoke,
                         @Cached InlinedBranchProfile error,
                         @Cached InlinedBranchProfile exception)
-                        throws ArityException, UnsupportedTypeException {
+                        throws ArityException, UnsupportedTypeException, UnknownIdentifierException {
             boolean isStatic = receiver == null;
             Method[] candidates = lookup.execute(klass, member, true, isStatic, arguments.length);
             if (candidates != null) {

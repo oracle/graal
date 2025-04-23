@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Agent-Class: com.oracle.svm.test.javaagent.agent1.TestJavaAgent1
+Can-Redefine-Classes: true
+Can-Retransform-Classes: true
+Premain-Class: com.oracle.svm.test.javaagent.agent1.TestJavaAgent1

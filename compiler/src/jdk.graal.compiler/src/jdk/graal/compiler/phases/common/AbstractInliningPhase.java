@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,10 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 
@@ -41,4 +43,24 @@ public abstract class AbstractInliningPhase extends BasePhase<HighTierContext> {
                         NotApplicable.unlessRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
                         NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState));
     }
+
+    @Override
+    protected final void run(StructuredGraph graph, HighTierContext context) {
+        Graph.Mark mark = graph.getMark();
+        runInlining(graph, context);
+        if (!mark.isCurrent() && graph.getSpeculationLog() != null && graph.hasLoops()) {
+            /*
+             * We may have inlined new loops. We must make sure that counted loops are checked for
+             * overflow before we apply the next loop optimization phase. Inlining may run multiple
+             * times in different versions, possibly after some loop optimizations, and even on
+             * demand (i.e., without explicitly appearing in the phase plan). For such phases the
+             * stage flag mechanism isn't strong enough to express the constraint that we must run
+             * DisableOverflownCountedLoops before the next loop phase. Therefore, run it
+             * explicitly.
+             */
+            new DisableOverflownCountedLoopsPhase().run(graph);
+        }
+    }
+
+    protected abstract void runInlining(StructuredGraph graph, HighTierContext context);
 }

@@ -33,6 +33,12 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_MONT_MUL_BY_CONSTANT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_NTT_MULT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
@@ -64,7 +70,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
-import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC.X;
 import static jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC.Z;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK;
@@ -96,9 +101,8 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.EnumMap;
@@ -106,6 +110,7 @@ import java.util.EnumMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -142,6 +147,7 @@ import jdk.graal.compiler.replacements.nodes.ArrayCompareToForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsWithMaskForeignCalls;
+import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
@@ -186,23 +192,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                     void.class, Word.class);
 
     /*
-     * Functions from XBarrierSetRuntime. The weak_ prefix refers to AS_NO_KEEPALIVE while the extra
-     * word before oop_field part refers to java.lang.Reference subclass and corresponds to
-     * ON_WEAK_OOP_REF/ON_PHANTOM_OOP_REF in HotSpot decorator terminology.
-     */
-    public static final HotSpotForeignCallDescriptor X_FIELD_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "load_barrier_on_oop_field_preloaded",
-                    long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
-                    "load_barrier_on_weak_oop_field_preloaded",
-                    long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
-                    "weak_load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_PHANTOM_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
-                    "weak_load_barrier_on_phantom_oop_field_preloaded", long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor X_ARRAY_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "load_barrier_on_oop_array",
-                    void.class, long.class, long.class);
-
-    /*
      * Functions from ZBarrierSetRuntime.
      */
 
@@ -225,6 +214,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     // oopDesc* load_barrier_on_weak_oop_field_preloaded(oopDesc* o, oop* p);
     public static final HotSpotForeignCallDescriptor Z_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
                     "ZBarrierSetRuntime::load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
+
+    // void no_keepalive_store_barrier_on_oop_field_without_healing(oop* p);
+    public static final HotSpotForeignCallDescriptor Z_REFERENCE_CLEAR_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
+                    "ZBarrierSetRuntime::no_keepalive_store_barrier_on_oop_field_without_healing", void.class, long.class);
 
     // oopDesc* no_keepalive_load_barrier_on_weak_oop_field_preloaded(oopDesc* o, oop* p);
     public static final HotSpotForeignCallDescriptor Z_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
@@ -376,7 +369,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
 
-        if (!IS_IN_NATIVE_IMAGE) {
+        if (!LibGraalSupport.inLibGraalRuntime()) {
             /*
              * These functions are only used for testing purposes but their registration also
              * ensures that libgraal has support for InvokeJavaMethodStub built into the image,
@@ -561,24 +554,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(NOTIFY, c.notifyAddress, NativeCall);
         registerForeignCall(NOTIFY_ALL, c.notifyAllAddress, NativeCall);
 
-        if (c.nmethodEntryBarrier != 0) {
-            registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);
-        } else if (IS_BUILDING_NATIVE_IMAGE) {
-            // Ensure this is known to libgraal
-            register(NMETHOD_ENTRY_BARRIER.getSignature());
-        }
-
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_FIELD_BARRIER, c.xBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_REFERENCE_GET_BARRIER, c.xBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_WEAK_REFERS_TO_BARRIER, c.xBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_PHANTOM_REFERS_TO_BARRIER, c.xBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded, DONT_PREPEND_THREAD);
-        linkStackOnlyForeignCall(c.gc == X, options, providers, X_ARRAY_BARRIER, c.xBarrierSetRuntimeLoadBarrierOnOopArray, DONT_PREPEND_THREAD);
+        registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);
 
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_LOAD_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_WITHOUT_HEALING, c.zBarrierSetRuntimeStoreBarrierOnOopFieldWithoutHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_WITH_HEALING, c.zBarrierSetRuntimeStoreBarrierOnOopFieldWithHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_STORE_BARRIER_NATIVE, c.zBarrierSetRuntimeStoreBarrierOnNativeOopFieldWithoutHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_REFERENCE_GET_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
+        linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_REFERENCE_CLEAR_BARRIER, c.zBarrierSetRuntimeNoKeepaliveStoreBarrierOnOopFieldWithoutHealing, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_WEAK_REFERS_TO_BARRIER, c.zBarrierSetRuntimeNoKeepaliveLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_PHANTOM_REFERS_TO_BARRIER, c.zBarrierSetRuntimeNoKeepaliveLoadBarrierOnPhantomOopFieldPreloaded, DONT_PREPEND_THREAD);
         linkStackOnlyForeignCall(c.gc == Z, options, providers, Z_ARRAY_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopArray, DONT_PREPEND_THREAD);
@@ -592,7 +575,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD);
         linkForeignCall(options, providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD);
+        if (!c.g1LowLatencyPostWriteBarrierSupport) {
+            linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD);
+        }
         linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD);
 
         linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD);
@@ -681,6 +666,24 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.intpolyAssign != 0L) {
             registerForeignCall(INTPOLY_ASSIGN, c.intpolyAssign, NativeCall);
         }
+        if (c.stubDoubleKeccak != 0L) {
+            registerForeignCall(DOUBLE_KECCAK, c.stubDoubleKeccak, NativeCall);
+        }
+        if (c.stubDilithiumAlmostNtt != 0L) {
+            registerForeignCall(DILITHIUM_ALMOST_NTT, c.stubDilithiumAlmostNtt, NativeCall);
+        }
+        if (c.stubDilithiumAlmostInverseNtt != 0L) {
+            registerForeignCall(DILITHIUM_ALMOST_INVERSE_NTT, c.stubDilithiumAlmostInverseNtt, NativeCall);
+        }
+        if (c.stubDilithiumNttMult != 0L) {
+            registerForeignCall(DILITHIUM_NTT_MULT, c.stubDilithiumNttMult, NativeCall);
+        }
+        if (c.stubDilithiumMontMulByConstant != 0L) {
+            registerForeignCall(DILITHIUM_MONT_MUL_BY_CONSTANT, c.stubDilithiumMontMulByConstant, NativeCall);
+        }
+        if (c.stubDilithiumDecomposePoly != 0L) {
+            registerForeignCall(DILITHIUM_DECOMPOSE_POLY, c.stubDilithiumDecomposePoly, NativeCall);
+        }
 
         registerSnippetStubs(providers, options);
         registerStubCallFunctions(options, providers, runtime.getVMConfig());
@@ -695,10 +698,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(createDescriptor(LOG.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticLogAddress, NativeCall);
         registerForeignCall(createDescriptor(LOG10.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticLog10Address, NativeCall);
         registerForeignCall(createDescriptor(POW.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticPowAddress, NativeCall);
+        if (hotSpotVMConfig.arithmeticTanhAddress != 0L) {
+            registerForeignCall(createDescriptor(TANH.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticTanhAddress, NativeCall);
+        }
     }
 
     private void registerSnippetStubs(HotSpotProviders providers, OptionValues options) {
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayIndexOfForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayFillNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsWithMaskForeignCalls.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCompareToForeignCalls.STUBS);

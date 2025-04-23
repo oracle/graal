@@ -27,7 +27,7 @@ package com.oracle.svm.core.jdk;
 public class UnsupportedFeatureError extends Error {
     private static final long serialVersionUID = -2281164998442235179L;
 
-    UnsupportedFeatureError(String message) {
+    public UnsupportedFeatureError(String message) {
         super(message);
     }
 }

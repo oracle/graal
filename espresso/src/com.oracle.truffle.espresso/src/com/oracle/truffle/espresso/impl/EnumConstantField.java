@@ -24,8 +24,8 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class EnumConstantField extends Field {
@@ -34,7 +34,7 @@ public final class EnumConstantField extends Field {
 
     public EnumConstantField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool) {
         super(holder, linkedField, pool);
-        assert Types.isReference(linkedField.getType());
+        assert TypeSymbols.isReference(linkedField.getType());
     }
 
     @Override

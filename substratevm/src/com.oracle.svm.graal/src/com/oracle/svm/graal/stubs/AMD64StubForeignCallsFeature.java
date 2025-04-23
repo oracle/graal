@@ -61,6 +61,7 @@ import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
@@ -97,6 +98,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase im
                         new StubDescriptor(BigIntegerSquareToLenNode.STUB, BASELINE, BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64),
                         new StubDescriptor(SHA1Node.STUB, SHA1Node.minFeaturesAMD64(), SHA1Node.minFeaturesAMD64()),
                         new StubDescriptor(SHA256Node.STUB, SHA256Node.minFeaturesAMD64(), SHA256Node.minFeaturesAMD64()),
+                        new StubDescriptor(SHA3Node.STUB, SHA3Node.minFeaturesAMD64(), SHA3Node.minFeaturesAMD64()),
                         new StubDescriptor(SHA512Node.STUB, SHA512Node.minFeaturesAMD64(), SHA512Node.minFeaturesAMD64()),
                         new StubDescriptor(MD5Node.STUB, BASELINE, BASELINE),
         });

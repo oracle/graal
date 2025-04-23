@@ -33,14 +33,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.EmbeddedResourcesInfo.SourceAndOrigin;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
@@ -49,7 +48,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class EmbeddedResourceExporter {
 
-    public record SourceSizePair(String source, int size) {
+    public record SourceSizePair(String source, Object origin, int size) {
     }
 
     public record ResourceReportEntry(Module module, String resourceName, List<SourceSizePair> entries, boolean isDirectory, boolean isMissing) {
@@ -63,41 +62,34 @@ public class EmbeddedResourceExporter {
     }
 
     private static void resourceReportElement(ResourceReportEntry p, JsonWriter w) throws IOException {
-        w.indent().newline();
-        w.appendObjectStart().newline();
+        w.appendObjectStart();
         w.appendKeyValue("name", p.resourceName()).appendSeparator();
-        w.newline();
         if (p.module() != null) {
             w.appendKeyValue("module", p.module().getName()).appendSeparator();
-            w.newline();
         }
 
         if (p.isDirectory()) {
             w.appendKeyValue("is_directory", true).appendSeparator();
-            w.newline();
         }
 
         if (p.isMissing()) {
             w.appendKeyValue("is_missing", true).appendSeparator();
-            w.newline();
         }
 
-        w.quote("entries").append(":");
+        w.quote("entries").appendFieldSeparator();
         JsonPrinter.printCollection(w, p.entries(), Comparator.comparing(SourceSizePair::source), EmbeddedResourceExporter::sourceElement);
-        w.unindent().newline().appendObjectEnd();
+        w.appendObjectEnd();
     }
 
     private static void sourceElement(SourceSizePair p, JsonWriter w) throws IOException {
-        w.indent().newline();
-        w.appendObjectStart().newline();
+        w.appendObjectStart();
         w.appendKeyValue("origin", p.source()).appendSeparator();
-        w.newline();
+        w.appendKeyValue("registration_origin", p.origin()).appendSeparator();
         w.appendKeyValue("size", p.size());
-        w.newline().appendObjectEnd();
-        w.unindent();
+        w.appendObjectEnd();
     }
 
-    private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> collection) {
+    private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<SourceAndOrigin>> collection) {
         if (collection.isEmpty()) {
             LogUtils.warning("Attempting to write information about resources without data being collected. " +
                             "Either the GenerateEmbeddedResourcesFile hosted option is disabled " +
@@ -107,13 +99,12 @@ public class EmbeddedResourceExporter {
         }
 
         List<ResourceReportEntry> resourceInfoList = new ArrayList<>();
-        EconomicMap<Resources.ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> resourceStorage = Resources.singleton().getResourceStorage();
-        resourceStorage.getKeys().forEach(key -> {
+        Resources.currentLayer().forEachResource((key, value) -> {
             Module module = key.module();
             String resourceName = key.resource();
 
-            ResourceStorageEntryBase storageEntry = resourceStorage.get(key).getValueUnconditionally();
-            List<String> registeredEntrySources = collection.get(key);
+            ResourceStorageEntryBase storageEntry = value.getValueUnconditionally();
+            List<SourceAndOrigin> registeredEntrySources = collection.get(key);
 
             if (registeredEntrySources == null && storageEntry != NEGATIVE_QUERY_MARKER) {
                 throw VMError.shouldNotReachHere("Resource: " + resourceName +
@@ -128,9 +119,9 @@ public class EmbeddedResourceExporter {
 
             List<EmbeddedResourceExporter.SourceSizePair> sources = new ArrayList<>();
             for (int i = 0; i < registeredEntrySources.size(); i++) {
-                String source = registeredEntrySources.get(i);
+                SourceAndOrigin sourceAndOrigin = registeredEntrySources.get(i);
                 int size = storageEntry.getData().get(i).length;
-                sources.add(new SourceSizePair(source, size));
+                sources.add(new SourceSizePair(sourceAndOrigin.source(), sourceAndOrigin.origin(), size));
             }
 
             boolean isDirectory = storageEntry.isDirectory();

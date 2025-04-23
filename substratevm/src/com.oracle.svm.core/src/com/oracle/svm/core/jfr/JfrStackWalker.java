@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -34,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
@@ -156,7 +156,7 @@ public final class JfrStackWalker {
                 } else {
                     /* Both the top frame and its caller are probably Java frames. */
                     if (isSPAligned(sp)) {
-                        UnsignedWord topFrameSize = WordFactory.unsigned(CodeInfoQueryResult.getTotalFrameSize(topFrameEncodedSize));
+                        UnsignedWord topFrameSize = Word.unsigned(CodeInfoQueryResult.getTotalFrameSize(topFrameEncodedSize));
                         if (SubstrateOptions.hasFramePointer() && !hasValidCaller(sp, topFrameSize, topFrameIsEntryPoint, anchor)) {
                             /*
                              * If we have a frame pointer, then the stack pointer can be aligned
@@ -249,7 +249,7 @@ public final class JfrStackWalker {
 
         while (JavaStackWalker.advance(walk, thread)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
-            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "JIT compilation is not supported");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "JIT compilation is not supported");
 
             if (JavaFrames.isUnknownFrame(frame) || isAsync && !hasValidCaller(walk, frame)) {
                 /* Most likely, the stack walk already started with a wrong SP or IP. */
@@ -372,7 +372,7 @@ public final class JfrStackWalker {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isSPAligned(Pointer sp) {
-        return PointerUtils.isAMultiple(sp, WordFactory.unsigned(ConfigurationValues.getTarget().stackAlignment));
+        return PointerUtils.isAMultiple(sp, Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

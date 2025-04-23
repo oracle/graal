@@ -250,7 +250,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         if (isEntryPoint) {
             builder.addAlias(SubstrateUtil.mangleName(functionName));
 
-            Object entryPointData = ((HostedMethod) method).getWrapped().getEntryPointData();
+            Object entryPointData = ((HostedMethod) method).getWrapped().getNativeEntryPointData();
             if (entryPointData instanceof CEntryPointData) {
                 CEntryPointData cEntryPointData = (CEntryPointData) entryPointData;
                 if (cEntryPointData.getPublishAs() != CEntryPoint.Publish.NotPublished) {
@@ -1145,6 +1145,11 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     @Override
     public void emitInstructionSynchronizationBarrier() {
         throw unimplemented("the LLVM backend doesn't support instruction synchronization"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public void emitExitMethodAddressResolution(Value ip) {
+        throw unimplemented("the LLVM backend doesn't support PLT/GOT"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

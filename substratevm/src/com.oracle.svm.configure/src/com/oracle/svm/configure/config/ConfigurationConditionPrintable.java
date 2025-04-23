@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.CONDITIONAL_KEY;
+import static com.oracle.svm.configure.ConditionalConfigurationParser.CONDITIONAL_KEY;
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
 import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
@@ -35,11 +35,15 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 final class ConfigurationConditionPrintable {
-    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {
+    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer, boolean combinedFile) throws IOException {
         if (!condition.isAlwaysTrue()) {
-            writer.quote(CONDITIONAL_KEY).append(":{");
-            writer.quote(condition.isRuntimeChecked() ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
-            writer.append("},").newline();
+            writer.quote(CONDITIONAL_KEY).appendFieldSeparator().appendObjectStart();
+            /*
+             * typeReachable conditions are emitted as typeReached in reachability-metadata.json.
+             * typeReached conditions are emitted as typeReachable in resource-config.json
+             */
+            writer.quote(combinedFile ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).appendFieldSeparator().quote(condition.getTypeName());
+            writer.appendObjectEnd().appendSeparator();
         }
     }
 }

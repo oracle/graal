@@ -26,20 +26,18 @@ package com.oracle.svm.core.fieldvaluetransformer;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.config.ConfigurationValues;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public final class ArrayIndexScaleFieldValueTransformer extends BoxingTransformer implements FieldValueTransformer {
-    private final Class<?> targetClass;
-
-    public ArrayIndexScaleFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) {
-        super(returnKind);
-        this.targetClass = targetClass;
-    }
+/**
+ * Implements the field value transformation semantics of {@link Kind#ArrayIndexScale}.
+ */
+public record ArrayIndexScaleFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) implements FieldValueTransformer {
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        return box(ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.fromJavaClass(targetClass.getComponentType())));
+        return FieldOffsetFieldValueTransformer.box(returnKind, ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.fromJavaClass(targetClass.getComponentType())));
     }
 }

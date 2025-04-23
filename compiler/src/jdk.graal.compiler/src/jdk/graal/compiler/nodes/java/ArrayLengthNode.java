@@ -187,7 +187,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
      */
     public static ValueNode maybeAddPositivePi(ValueNode length, FixedWithNextNode insertionPosition) {
         StructuredGraph graph = insertionPosition.graph();
-        ValueNode localLength = graph.addOrUnique(length);
+        ValueNode localLength = graph.addOrUniqueWithInputs(length);
         ValueNode replacement = localLength;
         if (!localLength.isConstant() && localLength.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
             ValueAnchorNode g = graph.add(new ValueAnchorNode());

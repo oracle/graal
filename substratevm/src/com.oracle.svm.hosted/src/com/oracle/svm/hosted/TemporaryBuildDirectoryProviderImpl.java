@@ -33,6 +33,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirectoryProvider, AutoCloseable {
@@ -49,7 +50,7 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
                     tempDirectory = Files.createTempDirectory("SVM-");
                     deleteTempDirectory = true;
                 } else {
-                    tempDirectory = tempName.get().resolve("SVM-" + System.currentTimeMillis());
+                    tempDirectory = tempName.get().resolve("SVM-" + TimeUtils.currentTimeMillis());
                     assert !Files.exists(tempDirectory);
                     Files.createDirectories(tempDirectory);
                 }

@@ -41,10 +41,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 public class SerializationSupport implements SerializationRegistry {
 
@@ -92,7 +94,7 @@ public class SerializationSupport implements SerializationRegistry {
         }
     }
 
-    private final Constructor<?> stubConstructor;
+    private Constructor<?> stubConstructor;
 
     public static final class SerializationLookupKey {
         private final Class<?> declaringClass;
@@ -133,13 +135,20 @@ public class SerializationSupport implements SerializationRegistry {
     private final EconomicMap<SerializationLookupKey, Object> constructorAccessors;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SerializationSupport(Constructor<?> stubConstructor) {
-        constructorAccessors = ImageHeapMap.create();
+    public SerializationSupport() {
+        constructorAccessors = ImageHeapMap.create("constructorAccessors");
+    }
+
+    public void setStubConstructor(Constructor<?> stubConstructor) {
+        VMError.guarantee(this.stubConstructor == null, "Cannot reset stubConstructor");
         this.stubConstructor = stubConstructor;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public Object addConstructorAccessor(Class<?> declaringClass, Class<?> targetConstructorClass, Object constructorAccessor) {
+        if (JavaVersionUtil.JAVA_SPEC > 21) {
+            VMError.guarantee(constructorAccessor instanceof SubstrateConstructorAccessor, "Not a SubstrateConstructorAccessor: %s", constructorAccessor);
+        }
         SerializationLookupKey key = new SerializationLookupKey(declaringClass, targetConstructorClass);
         return constructorAccessors.putIfAbsent(key, constructorAccessor);
     }
@@ -153,6 +162,29 @@ public class SerializationSupport implements SerializationRegistry {
             }
         }
         return null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isGeneratedSerializationClassLoader(ClassLoader classLoader) {
+        var constructorAccessorsCursor = constructorAccessors.getEntries();
+        while (constructorAccessorsCursor.advance()) {
+            if (constructorAccessorsCursor.getValue().getClass().getClassLoader() == classLoader) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getClassLoaderSerializationLookupKey(ClassLoader classLoader) {
+        var constructorAccessorsCursor = constructorAccessors.getEntries();
+        while (constructorAccessorsCursor.advance()) {
+            if (constructorAccessorsCursor.getValue().getClass().getClassLoader() == classLoader) {
+                var key = constructorAccessorsCursor.getKey();
+                return key.declaringClass.getName() + key.targetConstructorClass.getName();
+            }
+        }
+        throw VMError.shouldNotReachHere("No constructor accessor uses the class loader %s", classLoader);
     }
 
     private final EconomicMap<Class<?>, RuntimeConditionSet> classes = EconomicMap.create();
@@ -191,6 +223,7 @@ public class SerializationSupport implements SerializationRegistry {
             declaringClass = SerializedLambda.class;
         }
 
+        VMError.guarantee(stubConstructor != null, "Called too early, no stub constructor yet.");
         Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
 

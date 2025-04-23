@@ -40,15 +40,43 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import org.graalvm.polyglot.HostAccess.Implementable;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.Proxy;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERATOR;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -71,35 +99,13 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERATOR;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.Value.StringEncoding;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.proxy.Proxy;
 
 public class ValueAssert {
 
@@ -520,6 +526,21 @@ public class ValueAssert {
                         assertEquals(stringValue.charAt(0), (char) value.as(Character.class));
                         assertEquals(stringValue.charAt(0), (char) value.as(char.class));
                     }
+                    Charset charSet = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? Charset.forName("UTF-16LE") : Charset.forName("UTF-16BE");
+                    byte[] expectedBytes = value.asString().getBytes(charSet);
+                    assertArrayEquals(expectedBytes, value.asStringBytes(StringEncoding.UTF_16));
+
+                    try {
+                        charSet = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? Charset.forName("UTF-32LE") : Charset.forName("UTF-32BE");
+                        expectedBytes = value.asString().getBytes(charSet);
+                        assertArrayEquals(expectedBytes, value.asStringBytes(StringEncoding.UTF_32));
+                    } catch (UnsupportedCharsetException e) {
+                        // expected for JDK 21
+                    }
+
+                    charSet = StandardCharsets.UTF_8;
+                    expectedBytes = value.asString().getBytes(charSet);
+                    assertArrayEquals(expectedBytes, value.asStringBytes(StringEncoding.UTF_8));
                     break;
                 case NUMBER:
                     assertValueNumber(value);
@@ -838,6 +859,11 @@ public class ValueAssert {
                 value.writeBufferDouble(ByteOrder.LITTLE_ENDIAN, i, result);
             }
         }
+
+        byte[] dest = new byte[(int) value.getBufferSize()];
+        value.readBuffer(0, dest, 0, (int) value.getBufferSize());
+        value.as(ByteSequence.class).toByteArray();
+        value.as(byte[].class);
     }
 
     private static void assertCollectionEqualValues(Collection<? extends Object> expected, Collection<? extends Object> actual) {

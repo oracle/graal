@@ -377,6 +377,18 @@ class TestPrintCollections(unittest.TestCase):
         self.assertIn('[3] = java.util.ArrayList(0) = {...}', exec_string)
         self.assertTrue(exec_string.endswith('}'))
 
+
+class TestSpecial(unittest.TestCase):
+    @classmethod
+    def setUp(cls):
+        set_up_test()
+        set_up_gdb_debughelpers()
+
+    @classmethod
+    def tearDown(cls):
+        gdb_delete_breakpoints()
+        gdb_kill()
+
     def test_lambda_type(self):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testLambda")
         gdb_run()
@@ -391,6 +403,31 @@ class TestPrintCollections(unittest.TestCase):
         except Exception:
             self.fail("Lambda runtime type names do not match lambda type symbol names")
 
+    def test_class_type(self):
+        self.maxDiff = None
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testClassType")
+        gdb_run()
+        # check if class type field and hub field are printed correctly
+        # if not, it would most likely not find the correct class name
+        self.assertIn('name = "java.lang.String"', gdb_output("clazz"))
+        self.assertIn('name = "java.lang.Class"', gdb_output("clazz.hub"))
+
+        gdb_set_param("svm-print-depth", "2")
+        self.assertEqual(gdb_output("clazz"), gdb_output("dyn.c"))
+        self.assertEqual(gdb_output("clazz"), gdb_output("dyn.o"))
+        self.assertEqual(gdb_output("clazz.hub"), gdb_output("dyn.c.hub"))
+        self.assertEqual(gdb_output("clazz.hub"), gdb_output("dyn.o.hub"))
+
+    def test_static_field(self):
+        self.maxDiff = None
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testClassType")
+        gdb_run()
+        gdb_set_param("svm-print-depth", "2")
+        self.assertEqual(gdb_output("dyn"), gdb_output("'com.oracle.svm.test.debug.helper.PrettyPrinterTest::staticHolder'"))
+
+
 
 # redirect unittest output to terminal
-unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__))
+result = unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__), exit=False)
+# close gdb
+gdb_quit(0 if result.result.wasSuccessful() else 1)

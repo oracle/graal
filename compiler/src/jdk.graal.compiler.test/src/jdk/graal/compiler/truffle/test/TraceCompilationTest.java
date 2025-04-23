@@ -40,12 +40,6 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-
-import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
-import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,6 +49,12 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
+import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 
 public class TraceCompilationTest extends TestWithPolyglotOptions {
 
@@ -107,6 +107,14 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
                         Collections.singletonMap("engine.TraceCompilationDetails", "true"),
                         Arrays.asList("opt queued", "opt start", "opt failed"),
                         Arrays.asList("opt done"));
+    }
+
+    @Test
+    public void testCompilationId() throws Exception {
+        testHelper(() -> RootNode.createConstantNode(true),
+                        Collections.singletonMap("engine.TraceCompilation", "true"),
+                        Arrays.asList("CompId "),
+                        Arrays.asList("CompId n/a"));
     }
 
     @Test
@@ -252,7 +260,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
                     Pattern p = it.next();
                     if (p.matcher(lr.getMessage()).matches()) {
                         it.remove();
-                        return;
+                        break;
                     }
                 }
                 for (Pattern p : unexpected) {

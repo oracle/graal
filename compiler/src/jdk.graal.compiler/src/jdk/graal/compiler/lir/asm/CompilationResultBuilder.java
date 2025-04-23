@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
@@ -448,6 +449,11 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
         int[] order = lir.codeEmittingOrder();
+        if (currentBlockIndex >= order.length) {
+            // we are in a slow path stub
+            return false;
+        }
+
         assert order[currentBlockIndex] == edge.getSourceBlock().getId() : Assertions.errorMessage(order[currentBlockIndex], edge, edge.getSourceBlock());
         BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
@@ -693,7 +699,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         Integer instructionPosition = lirPositions.get(instruction);
         if (labelPosition != null && instructionPosition != null) {
             /* If both LIR positions are known, then check distance between instructions. */
-            return Math.abs(labelPosition - instructionPosition) < maxLIRDistance;
+            return NumUtil.safeAbs(labelPosition - instructionPosition) < maxLIRDistance;
         } else {
             /* Otherwise, it is not possible to make an estimation. */
             return false;

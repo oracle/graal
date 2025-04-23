@@ -32,7 +32,7 @@ import jdk.graal.compiler.jtt.JTTTest;
 
 public class Object_toString01 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         @Override
         public String toString() {
             return string;

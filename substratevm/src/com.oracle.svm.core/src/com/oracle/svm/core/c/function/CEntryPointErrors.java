@@ -36,12 +36,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -96,6 +96,9 @@ public final class CEntryPointErrors {
 
     @Description("The image heap does not fit in the available address space.") //
     public static final int INSUFFICIENT_ADDRESS_SPACE = 802;
+
+    @Description("The operating system does not support mremap.") //
+    public static final int MREMAP_NOT_SUPPORTED = 803;
 
     @Description("Setting the protection of the heap memory failed.") //
     public static final int PROTECT_HEAP_FAILED = 9;
@@ -216,7 +219,7 @@ public final class CEntryPointErrors {
             }
             offset++;
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     private static final String[] DESCRIPTIONS;

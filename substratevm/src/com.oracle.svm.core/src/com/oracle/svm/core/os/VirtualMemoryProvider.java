@@ -25,12 +25,12 @@
 package com.oracle.svm.core.os;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 /**
  * Primitive operations for low-level virtual memory management.
@@ -90,7 +90,7 @@ public interface VirtualMemoryProvider {
      * @param alignment The alignment in bytes of the start of the address range to be reserved.
      * @param code whether the memory may store instructions (see {@link Access#FUTURE_EXECUTE}).
      * @return An {@linkplain #getAlignment aligned} pointer to the beginning of the reserved
-     *         address range, or {@link WordFactory#nullPointer()} in case of an error.
+     *         address range, or {@link Word#nullPointer()} in case of an error.
      */
     Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean code);
 
@@ -102,17 +102,17 @@ public interface VirtualMemoryProvider {
      * visible through the mapping.
      *
      * @param start The start of the address range to contain the mapping, which must be a multiple
-     *            of the {@linkplain #getGranularity() granularity}, or
-     *            {@link WordFactory#nullPointer() null} to select an available (unreserved,
-     *            uncommitted) address range in an arbitrary location.
+     *            of the {@linkplain #getGranularity() granularity}, or {@link Word#nullPointer()
+     *            null} to select an available (unreserved, uncommitted) address range in an
+     *            arbitrary location.
      * @param nbytes The size in bytes of the file region to be mapped, which need not be a multiple
      *            of the {@linkplain #getGranularity() granularity}. This value must not be 0.
      * @param fileHandle A platform-specific open file handle.
      * @param offset The offset in bytes of the region within the file to be mapped, which must be a
      *            multiple of the {@linkplain #getGranularity() granularity}.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
-     * @return The start of the mapped address range, or {@link WordFactory#nullPointer()} in case
-     *         of an error.
+     * @return The start of the mapped address range, or {@link Word#nullPointer()} in case of an
+     *         error.
      */
     Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access);
 
@@ -126,21 +126,21 @@ public interface VirtualMemoryProvider {
      * ranges. If the provided range covers addresses outside of such ranges, or from multiple
      * independently reserved ranges, undefined effects can occur.
      * <p>
-     * Alternatively, {@link WordFactory#nullPointer() NULL} can be passed for the start address, in
-     * which case an available (unreserved, uncommitted) address range in an arbitrary but
+     * Alternatively, {@link Word#nullPointer() NULL} can be passed for the start address, in which
+     * case an available (unreserved, uncommitted) address range in an arbitrary but
      * {@linkplain #getAlignment aligned} location will be selected, reserved and committed in one
      * step.
      *
      * @param start The start of the address range to be committed, which must be a multiple of the
-     *            {@linkplain #getGranularity() granularity}, or {@link WordFactory#nullPointer()
-     *            NULL} to select an available (unreserved, uncommitted) address range in an
-     *            arbitrary but {@linkplain #getAlignment aligned} location.
+     *            {@linkplain #getGranularity() granularity}, or {@link Word#nullPointer() NULL} to
+     *            select an available (unreserved, uncommitted) address range in an arbitrary but
+     *            {@linkplain #getAlignment aligned} location.
      * @param nbytes The size in bytes of the address range to be committed, which will be rounded
      *            up to a multiple of the {@linkplain #getGranularity() granularity}. This value
      *            must not be 0.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
-     * @return The start of the committed address range, or {@link WordFactory#nullPointer()} in
-     *         case of an error, such as inadequate physical memory.
+     * @return The start of the committed address range, or {@link Word#nullPointer()} in case of an
+     *         error, such as inadequate physical memory.
      */
     Pointer commit(PointerBase start, UnsignedWord nbytes, int access);
 

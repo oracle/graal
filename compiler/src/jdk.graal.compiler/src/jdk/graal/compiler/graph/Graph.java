@@ -200,11 +200,7 @@ public class Graph implements EventCounter {
 
     @Override
     public String eventCounterToString() {
-        return toString() + " eventCounter=" + eventCounter;
-    }
-
-    public int getEventCounter() {
-        return eventCounter;
+        return this + " eventCounter=" + eventCounter;
     }
 
     public int getCompressions() {
@@ -278,6 +274,7 @@ public class Graph implements EventCounter {
      */
     public void getDebugProperties(Map<Object, Object> properties) {
         properties.put("graph", toString());
+        properties.put("nodeIdCount", nodeIdCount());
     }
 
     /**
@@ -317,8 +314,8 @@ public class Graph implements EventCounter {
      */
     public Graph(String name, OptionValues options, DebugContext debug, boolean trackNodeSourcePosition) {
         nodes = new Node[INITIAL_NODES_SIZE];
-        iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
-        iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
+        iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterableIds());
+        iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterableIds());
         this.name = name;
         this.options = options;
         this.trackNodeSourcePosition = trackNodeSourcePosition || trackNodeSourcePositionDefault(options, debug);
@@ -632,7 +629,7 @@ public class Graph implements EventCounter {
 
     }
 
-    private AddInputsFilter addInputsFilter = new AddInputsFilter();
+    private final AddInputsFilter addInputsFilter = new AddInputsFilter();
 
     private <T extends Node> void addInputs(T node, NodePredicate predicate) {
         if (predicate == null) {
@@ -969,7 +966,6 @@ public class Graph implements EventCounter {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
     public <T extends Node> T findDuplicate(T node) {
         return findDuplicate(node, null);
     }
@@ -1040,8 +1036,7 @@ public class Graph implements EventCounter {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Mark) {
-                Mark other = (Mark) obj;
+            if (obj instanceof Mark other) {
                 return other.getValue() == getValue() && other.getGraph() == getGraph();
             }
             return false;
@@ -1249,7 +1244,7 @@ public class Graph implements EventCounter {
          */
         iterableNodesFirst.set(iterableId, start);
         if (start == null) {
-            iterableNodesLast.set(iterableId, start);
+            iterableNodesLast.set(iterableId, null);
         }
         return start;
     }
@@ -1393,9 +1388,7 @@ public class Graph implements EventCounter {
                 try {
                     try {
                         assert node.verify(verifyInputs);
-                    } catch (AssertionError t) {
-                        throw new GraalError(t);
-                    } catch (RuntimeException t) {
+                    } catch (AssertionError | RuntimeException t) {
                         throw new GraalError(t);
                     }
                 } catch (GraalError e) {
@@ -1486,10 +1479,14 @@ public class Graph implements EventCounter {
 
     private static final TimerKey DuplicateGraph = DebugContext.timer("DuplicateGraph");
 
-    @SuppressWarnings({"all", "try"})
     public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
+        return addDuplicates(newNodes, oldGraph, estimatedNodeCount, replacements, true);
+    }
+
+    @SuppressWarnings({"all", "try"})
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements, boolean applyGVN) {
         try (DebugCloseable s = DuplicateGraph.start(getDebug())) {
-            return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
+            return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements, applyGVN);
         }
     }
 

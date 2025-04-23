@@ -40,11 +40,9 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.core.common.Fields;
-import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
@@ -62,6 +60,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -200,14 +199,6 @@ public abstract class Node implements Cloneable, Formattable {
          * which the annotated method is declared.
          */
         Class<?> value() default NodeIntrinsic.class;
-
-        /**
-         * If {@code true}, the factory method or constructor selected by the annotation must have
-         * an {@linkplain InjectedNodeParameter injected} {@link Stamp} parameter. Calling
-         * {@link AbstractPointerStamp#nonNull()} on the injected stamp is guaranteed to return
-         * {@code true}.
-         */
-        boolean injectedStampIsNonNull() default false;
 
         /**
          * If {@code true} then this is lowered into a node that has side effects.
@@ -651,6 +642,50 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
         return false;
+    }
+
+    /**
+     * Removes (at most) an expected number of occurrences of a given node from this node's
+     * {@linkplain #usages() usages}. This is significantly faster than repeated execution of
+     * {@link #removeUsage(Node)} of the same usage from this node, since the usages have to be
+     * traversed only once.
+     *
+     * @param node the node to remove from the usages
+     * @param limit the number of matching usages to remove (at most)
+     * @return the number of actually removed usages
+     */
+    public int removeUsageNTimes(Node node, int limit) {
+        if (limit == 0) {
+            return 0;
+        } else if (limit == 1) {
+            return removeUsage(node) ? 1 : 0;
+        }
+        // requires iteration from back to front to check nodes prior to being moved to the front
+        int removedUsages = 0;
+        for (int i = extraUsagesCount - 1; i >= 0; i--) {
+            if (extraUsages[i] == node) {
+                movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
+                if (++removedUsages == limit) {
+                    return removedUsages;
+                }
+            }
+        }
+        if (usage1 == node) {
+            movUsageFromEndToIndexOne();
+            incUsageModCount();
+            if (++removedUsages == limit) {
+                return removedUsages;
+            }
+        }
+        if (usage0 == node) {
+            movUsageFromEndToIndexZero();
+            incUsageModCount();
+            if (++removedUsages == limit) {
+                return removedUsages;
+            }
+        }
+        return removedUsages;
     }
 
     /**
@@ -1405,10 +1440,15 @@ public abstract class Node implements Cloneable, Formattable {
      *            list for an edge list)
      * @return the copy of {@code this}
      */
+
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
+        return clone(into, edgesToCopy, true);
+    }
+
+    final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy, boolean gvn) {
         final NodeClass<? extends Node> nodeClassTmp = getNodeClass();
         boolean useIntoLeafNodeCache = false;
-        if (into != null) {
+        if (into != null && gvn) {
             if (nodeClassTmp.valueNumberable() && nodeClassTmp.isLeafNode()) {
                 useIntoLeafNodeCache = true;
                 Node otherNode = into.findNodeInCache(this);

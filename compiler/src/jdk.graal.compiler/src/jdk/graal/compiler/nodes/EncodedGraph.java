@@ -30,7 +30,6 @@ import java.util.Objects;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -107,6 +106,22 @@ public class EncodedGraph {
                         sourceGraph.trackNodeSourcePosition());
     }
 
+    public EncodedGraph(EncodedGraph original) {
+        this(original.encoding,
+                        original.startOffset,
+                        original.objects,
+                        original.types,
+                        original.assumptions,
+                        original.inlinedMethods,
+                        original.hasUnsafeAccess,
+                        original.trackNodeSourcePosition);
+        /*
+         * The nodeStartOffsets is only used as a cache for decoding, so it is not copied to ensure
+         * not having inconsistent caching information in the new EncodedGraph.
+         */
+        this.nodeStartOffsets = null;
+    }
+
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods,
                     boolean hasUnsafeAccess, boolean trackNodeSourcePosition) {
         this.encoding = encoding;
@@ -137,6 +152,10 @@ public class EncodedGraph {
 
     public Object getObject(int i) {
         return objects[i];
+    }
+
+    public void setObject(int i, Object object) {
+        objects[i] = object;
     }
 
     public NodeClass<?>[] getNodeClasses() {

@@ -256,7 +256,7 @@ final class PolyglotLimits {
             if (onEvent == null) {
                 return null;
             }
-            Object event = engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api);
+            Object event = engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.getContextAPI());
             try {
                 onEvent.accept(event);
             } catch (Throwable t) {

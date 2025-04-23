@@ -48,8 +48,11 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
         return new FormalReceiverTypeFlow(this, methodFlows);
     }
 
+    /**
+     * Filters the incoming type state using the declared type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the incoming value using the receiver's
          * declared type.
@@ -75,10 +78,21 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
-         * The saturation of the actual receiver doesn't result in the saturation of the formal
-         * receiver; some callees, depending how low in the type hierarchies they are, may only see
-         * a number of types smaller than the saturation cut-off limit.
+         * Note that in open world analysis the formal receiver of all callees linked to a context
+         * insensitive invoke will be notified of saturation.
+         * 
+         * For a formal receiver with a closed declared type (which corresponds to the declaring
+         * class of its method) the saturation of the actual receiver doesn't result in the
+         * saturation of the formal receiver; some callees, depending on how low in the type
+         * hierarchies they are, may only see a number of types smaller than the saturation cut-off
+         * limit.
+         * 
+         * If the declared type is open we cannot make any assumptions and simply propagate the
+         * saturation stamp.
          */
+        if (!bb.isClosed(declaredType)) {
+            super.onInputSaturated(bb, input);
+        }
     }
 
     public boolean addReceiverState(PointsToAnalysis bb, TypeState add) {
@@ -90,7 +104,7 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
     public String format(boolean withState, boolean withSource) {
         return "Formal receiver of " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
-                        (withState ? " with state <" + getState() + ">" : "");
+                        (withState ? " with state <" + getStateDescription() + ">" : "");
     }
 
 }

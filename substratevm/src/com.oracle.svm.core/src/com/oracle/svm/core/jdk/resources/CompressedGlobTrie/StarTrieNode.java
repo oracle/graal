@@ -25,7 +25,9 @@
 
 package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
 
-final class StarTrieNode extends GlobTrieNode {
+import com.oracle.svm.util.GlobUtils;
+
+final class StarTrieNode<C> extends GlobTrieNode<C> {
     private final boolean matchingWholeLevel;
 
     StarTrieNode(String content) {
@@ -34,7 +36,7 @@ final class StarTrieNode extends GlobTrieNode {
     }
 
     StarTrieNode(boolean matchesWholeLevel) {
-        super(STAR);
+        super(GlobUtils.STAR);
         this.matchingWholeLevel = matchesWholeLevel;
     }
 

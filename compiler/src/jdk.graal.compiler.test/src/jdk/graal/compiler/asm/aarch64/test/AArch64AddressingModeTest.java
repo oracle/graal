@@ -32,6 +32,7 @@ import java.util.EnumSet;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.aarch64.test.AArch64TestMacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.test.GraalTest;
 import org.junit.Assert;
@@ -74,9 +75,9 @@ public class AArch64AddressingModeTest extends GraalTest {
     @Before
     public void setupEnvironment() {
         TargetDescription target = createTarget();
-        masm = new AArch64MacroAssembler(target);
+        masm = new AArch64TestMacroAssembler(target);
         asm = new TestProtectedAssembler(target);
-        base = AArch64.r10;
+        base = AArch64.r11;
         index = AArch64.r13;
         scratch = AArch64.r15;
     }

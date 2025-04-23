@@ -27,14 +27,13 @@ package com.oracle.svm.core.hub;
 import java.util.function.IntConsumer;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.Pod;
@@ -101,10 +100,8 @@ public class InteriorObjRefWalker {
             throw new IllegalArgumentException("Unsupported hub type: " + objHub.getHubType());
         }
 
-        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
-        long referenceMapIndex = objHub.getReferenceMapIndex();
-
-        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), referenceMapEncoding, referenceMapIndex, new ObjectReferenceVisitor() {
+        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
+        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(Word.zero(), referenceMap, new ObjectReferenceVisitor() {
             @Override
             public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
                 offsetConsumer.accept((int) objRef.rawValue());
@@ -116,18 +113,16 @@ public class InteriorObjRefWalker {
     @AlwaysInline("Performance critical version")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
-        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
-        long referenceMapIndex = objHub.getReferenceMapIndex();
-
         // Visit Object reference in the fields of the Object.
-        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor, obj);
+        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
+        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMap, visitor, obj);
     }
 
     @AlwaysInline("Performance critical version")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkReferenceInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         long discoveredOffset = ReferenceInternals.getNextDiscoveredFieldOffset();
-        Pointer objRef = objPointer.add(WordFactory.unsigned(discoveredOffset));
+        Pointer objRef = objPointer.add(Word.unsigned(discoveredOffset));
 
         // The Object reference at the discovered offset needs to be visited separately as it is not
         // part of the reference map.
@@ -167,7 +162,7 @@ public class InteriorObjRefWalker {
         boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
 
         Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
-        Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
+        Pointer end = pos.add(Word.unsigned(referenceSize).multiply(length));
         while (pos.belowThan(end)) {
             final boolean visitResult = callVisitor(obj, visitor, isCompressed, pos);
             if (!visitResult) {

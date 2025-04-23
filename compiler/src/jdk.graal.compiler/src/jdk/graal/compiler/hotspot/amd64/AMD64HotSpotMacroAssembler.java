@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -37,6 +36,7 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Register;
@@ -108,25 +108,28 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
 
         if (!nonNull) {
             // first null check the value
-            testAndJcc(compressed ? DWORD : QWORD, value, value, AMD64Assembler.ConditionFlag.Zero, ok, true);
+            testAndJcc(compressed ? DWORD : QWORD, value, value, ConditionFlag.Zero, ok, true);
         }
 
-        AMD64Address hubAddress;
+        Register object = value;
         if (compressed) {
             CompressEncoding encoding = config.getOopEncoding();
             Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? providers.getRegisters().getHeapBaseRegister() : Register.None;
             movq(tmp, value);
             AMD64Move.UncompressPointerOp.emitUncompressCode(this, tmp, encoding.getShift(), heapBaseRegister, true);
-            hubAddress = new AMD64Address(tmp, config.hubOffset);
-        } else {
-            hubAddress = new AMD64Address(value, config.hubOffset);
+            object = tmp;
         }
 
-        // Load the klass
+        // Load the klass into tmp
         if (config.useCompressedClassPointers) {
-            AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, hubAddress, config);
+            if (config.useCompactObjectHeaders) {
+                loadCompactClassPointer(tmp, object);
+            } else {
+                movl(tmp, new AMD64Address(object, config.hubOffset));
+            }
+            AMD64HotSpotMove.decodeKlassPointer(this, tmp, tmp2, config);
         } else {
-            movq(tmp, hubAddress);
+            movq(tmp, new AMD64Address(object, config.hubOffset));
         }
         // Klass::_super_check_offset
         movl(tmp2, new AMD64Address(tmp, config.superCheckOffsetOffset));
@@ -136,11 +139,15 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
         // Load the klass from the primary supers
         movq(tmp2, new AMD64Address(tmp, tmp2, Stride.S1));
         // the Klass* should be equal
-        cmpqAndJcc(tmp2, tmp, AMD64Assembler.ConditionFlag.Equal, ok, true);
+        cmpqAndJcc(tmp2, tmp, ConditionFlag.Equal, ok, true);
         illegal();
         bind(ok);
     }
 
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/assembler_x86.cpp#L233-L267",
+              sha1 = "7e213e437f5d3e7740874d69457de4ffebbee1c5")
+    // @formatter:on
     @Override
     protected final int membarOffset() {
         // All usable chips support "locked" instructions which suffice
@@ -170,5 +177,16 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
             offset = -128;
         }
         return offset;
+    }
+
+    @Override
+    public Register getZeroValueRegister() {
+        return providers.getRegisters().getZeroValueRegister(config);
+    }
+
+    public void loadCompactClassPointer(Register result, Register receiver) {
+        GraalError.guarantee(config.useCompactObjectHeaders, "Load class pointer from markWord only when UseCompactObjectHeaders is on");
+        movq(result, new AMD64Address(receiver, config.markOffset));
+        shrq(result, config.markWordKlassShift);
     }
 }

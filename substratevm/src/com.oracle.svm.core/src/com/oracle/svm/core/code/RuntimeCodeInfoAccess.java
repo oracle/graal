@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.code;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -70,11 +70,11 @@ public final class RuntimeCodeInfoAccess {
 
         CodeInfoImpl impl = cast(info);
         impl.setCodeStart((CodePointer) codeStart);
-        impl.setCodeEntryPointOffset(WordFactory.unsigned(entryPointOffset));
-        impl.setCodeSize(WordFactory.unsigned(codeSize));
-        impl.setDataOffset(WordFactory.unsigned(dataOffset));
-        impl.setDataSize(WordFactory.unsigned(dataSize));
-        impl.setCodeAndDataMemorySize(WordFactory.unsigned(codeAndDataMemorySize));
+        impl.setCodeEntryPointOffset(Word.unsigned(entryPointOffset));
+        impl.setCodeSize(Word.unsigned(codeSize));
+        impl.setDataOffset(Word.unsigned(dataOffset));
+        impl.setDataSize(Word.unsigned(dataSize));
+        impl.setCodeAndDataMemorySize(Word.unsigned(codeAndDataMemorySize));
         impl.setTier(tier);
         impl.setCodeObserverHandles(observerHandles);
         impl.setAllObjectsAreInImageHeap(allObjectsAreInImageHeap);
@@ -219,20 +219,20 @@ public final class RuntimeCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
-    static void markAsInvalidated(CodeInfo info) {
+    static void markAsRemovedFromCodeCache(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
+        assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE : "unexpected state (probably already released)";
         /* We can't free any data because only the GC is allowed to free CodeInfo data. */
-        CodeInfoAccess.setState(info, CodeInfo.STATE_INVALIDATED);
+        CodeInfoAccess.setState(info, CodeInfo.STATE_REMOVED_FROM_CODE_CACHE);
     }
 
     public static CodePointer allocateCodeMemory(UnsignedWord size) {
-        return (CodePointer) CommittedMemoryProvider.get().allocateExecutableMemory(size, WordFactory.unsigned(SubstrateOptions.codeAlignment()));
+        return (CodePointer) CommittedMemoryProvider.get().allocateExecutableMemory(size, Word.unsigned(SubstrateOptions.codeAlignment()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
-        CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()));
+        CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, Word.unsigned(SubstrateOptions.codeAlignment()));
     }
 
     public static void makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {

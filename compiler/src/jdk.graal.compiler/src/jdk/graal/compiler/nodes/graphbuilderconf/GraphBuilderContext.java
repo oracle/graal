@@ -472,6 +472,14 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         return !StrictDeoptInsertionChecks.getValue(getOptions());
     }
 
+    /**
+     * Returns {@code true} if {@link #invokeFallback} can be called without throwing an
+     * unconditional error.
+     */
+    default boolean canInvokeFallback() {
+        return false;
+    }
+
     @SuppressWarnings("all")
     default Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
         throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
@@ -584,7 +592,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * Determine if the given basic block is inside a {@code try} block of an exception handler
      * catching {@link OutOfMemoryError} exceptions.
      */
-    default boolean currentBlockCatchesOOM() {
+    default boolean currentBlockCatchesOOME() {
         return false;
     }
 }

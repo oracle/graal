@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
+import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,8 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.Instrumentation;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -51,13 +54,13 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.services.Services;
 
 /**
  * A factory that creates the {@link CompilerConfiguration} the compiler will use. Each factory must
  * have a unique {@link #name} and {@link #autoSelectionPriority}. The latter imposes a total
  * ordering between factories for the purpose of auto-selecting the factory to use.
  */
+@LibGraalService
 public abstract class CompilerConfigurationFactory implements Comparable<CompilerConfigurationFactory> {
 
     public enum ShowConfigurationLevel {
@@ -201,7 +204,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     // Ensures ShowConfiguration output is printed once per VM process.
-    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong("SHOWN_CONFIGURATION", 0L);
 
     /**
      * Selects and instantiates a {@link CompilerConfigurationFactory}. The selection algorithm is
@@ -272,23 +275,23 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * loaded from.
      */
     private Object getLoadedFromLocation(boolean verbose) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
-            if (nativeImageLocationQualifier != null) {
-                return "a " + nativeImageLocationQualifier + " Native Image shared library";
+        if (LibGraalSupport.inLibGraalRuntime()) {
+            String justification = "properties initialized via org.graalvm.nativeimage.hosted.RuntimeSystemProperties " +
+                            "are not accessible via GraalServices.getSavedProperties()";
+            String settings = GraalServices.getSystemProperties(justification).entrySet().stream()//
+                            .filter(e -> e.getKey().toString().startsWith(LIBGRAAL_SETTING_PROPERTY_PREFIX))//
+                            .map(e -> {
+                                String key = e.getKey().toString().substring(LIBGRAAL_SETTING_PROPERTY_PREFIX.length());
+                                String val = e.getValue().toString();
+                                return val.isEmpty() ? key : key + "=" + val;
+                            })//
+                            .collect(Collectors.joining(", "));
+            if (!settings.isEmpty()) {
+                return "a Native Image shared library (" + settings + ")";
             }
             return "a Native Image shared library";
         }
         return verbose ? getClass().getResource(getClass().getSimpleName() + ".class") : "class files";
-    }
-
-    private static String nativeImageLocationQualifier;
-
-    /**
-     * Records a qualifier for the libgraal library (e.g., "PGO optimized").
-     */
-    public static void setNativeImageLocationQualifier(String s) {
-        GraalError.guarantee(nativeImageLocationQualifier == null, "Native image location qualifier is already set to %s", nativeImageLocationQualifier);
-        nativeImageLocationQualifier = s;
     }
 
     private static void printConfigInfo(CompilerConfigurationFactory factory) {

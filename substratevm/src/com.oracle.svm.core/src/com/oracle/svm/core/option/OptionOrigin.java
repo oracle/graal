@@ -25,21 +25,25 @@
 
 package com.oracle.svm.core.option;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-
+import com.oracle.svm.core.option.OptionUtils.MacroOptionKind;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 public abstract class OptionOrigin {
 
@@ -152,7 +156,20 @@ public abstract class OptionOrigin {
 
     static List<String> getRedirectionValuesFromPath(Path normalizedRedirPath) throws IOException {
         if (Files.isReadable(normalizedRedirPath)) {
-            return Files.readAllLines(normalizedRedirPath);
+            try (BufferedReader reader = Files.newBufferedReader(normalizedRedirPath)) {
+                List<String> values = new ArrayList<>();
+                while (true) {
+                    String line = reader.readLine();
+                    if (line == null) {
+                        break;
+                    }
+                    if (line.isEmpty() || line.startsWith("#")) {
+                        continue;
+                    }
+                    values.add(line);
+                }
+                return values;
+            }
         }
         throw new FileNotFoundException("Unable to read file from " + normalizedRedirPath.toUri());
     }
@@ -264,7 +281,7 @@ final class MacroOptionOrigin extends OptionOrigin {
 
     @Override
     public boolean commandLineLike() {
-        return OptionUtils.MacroOptionKind.Macro.equals(kind);
+        return MacroOptionKind.Macro.equals(kind);
     }
 
     @Override
@@ -337,17 +354,24 @@ final class JarOptionOrigin extends URIOptionOrigin {
     public List<String> getRedirectionValues(Path valuesFile) throws IOException {
         URI jarFileURI = URI.create("jar:" + container());
         FileSystem probeJarFS;
+        boolean cleanup = false;
         try {
-            probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
-        } catch (UnsupportedOperationException e) {
-            probeJarFS = null;
+            probeJarFS = FileSystems.getFileSystem(jarFileURI);
+        } catch (FileSystemNotFoundException e) {
+            probeJarFS = FileSystems.newFileSystem(jarFileURI, Map.of());
+            cleanup = true;
         }
         if (probeJarFS == null) {
             throw new IOException("Unable to create jar file system for " + jarFileURI);
         }
-        try (FileSystem fs = probeJarFS) {
+        try {
             var normalizedRedirPath = location().getParent().resolve(valuesFile).normalize();
-            return getRedirectionValuesFromPath(normalizedRedirPath);
+            List<String> values = getRedirectionValuesFromPath(probeJarFS.getPath("/", normalizedRedirPath.toString()));
+            return values;
+        } finally {
+            if (cleanup) {
+                probeJarFS.close();
+            }
         }
     }
 }

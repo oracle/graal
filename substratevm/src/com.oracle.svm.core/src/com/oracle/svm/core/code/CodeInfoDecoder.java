@@ -25,6 +25,7 @@
 package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -39,6 +40,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -224,6 +226,9 @@ public final class CodeInfoDecoder {
                 codeInfo.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
                 codeInfo.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
                 codeInfo.frameInfo = loadFrameInfo(info, entryOffset, entryFlags, constantAccess);
+                if (LazyDeoptimization.getValue()) {
+                    codeInfo.deoptReturnValueIsObject = loadDeoptReturnValueIsObject(info, entryOffset, entryFlags) != 0;
+                }
                 assert codeInfo.frameInfo.isDeoptEntry() && codeInfo.frameInfo.getCaller() == null : "Deoptimization entry must not have inlined frames";
                 return entryIP;
             }
@@ -274,6 +279,16 @@ public final class CodeInfoDecoder {
     static int loadEntryFlags(CodeInfo info, long curOffset) {
         counters().loadEntryFlagsCount.inc();
         return NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), curOffset);
+    }
+
+    private static int loadDeoptReturnValueIsObject(CodeInfo info, long entryOffset, int entryFlags) {
+        /*
+         * The byte which encodes whether a return value is an object is stored at the end of the
+         * codeInfo and is only present for deopt entry points if lazy deoptimization is enabled.
+         */
+        assert LazyDeoptimization.getValue() : "must have lazy deoptimization enabled to have this information in the code info";
+        long rvoOffset = getU1(AFTER_FI_OFFSET, entryFlags);
+        return NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), entryOffset + rvoOffset);
     }
 
     public static final int INVALID_SIZE_ENCODING = 0;
@@ -548,23 +563,28 @@ public final class CodeInfoDecoder {
     private static final byte[] EX_OFFSET;
     private static final byte[] RM_OFFSET;
     private static final byte[] FI_OFFSET;
-    private static final byte[] MEM_SIZE;
+    private static final byte[] AFTER_FI_OFFSET;
 
     static {
         assert TOTAL_BITS <= Byte.SIZE;
         int maxFlag = 1 << TOTAL_BITS;
 
+        /*
+         * With lazy deoptimization, we have an extra byte in the code info, which keeps track of
+         * whether each infopoint is at a call that returns an object. This byte is stored after the
+         * FI (frameInfo) section. It is accounted for by the advanceOffset() method.
+         */
         IP_OFFSET = 1;
         FS_OFFSET = 2;
         EX_OFFSET = new byte[maxFlag];
         RM_OFFSET = new byte[maxFlag];
         FI_OFFSET = new byte[maxFlag];
-        MEM_SIZE = new byte[maxFlag];
+        AFTER_FI_OFFSET = new byte[maxFlag];
         for (int i = 0; i < maxFlag; i++) {
             EX_OFFSET[i] = TypeConversion.asU1(FS_OFFSET + FS_MEM_SIZE[extractFS(i)]);
             RM_OFFSET[i] = TypeConversion.asU1(EX_OFFSET[i] + EX_MEM_SIZE[extractEX(i)]);
             FI_OFFSET[i] = TypeConversion.asU1(RM_OFFSET[i] + RM_MEM_SIZE[extractRM(i)]);
-            MEM_SIZE[i] = TypeConversion.asU1(FI_OFFSET[i] + FI_MEM_SIZE[extractFI(i)]);
+            AFTER_FI_OFFSET[i] = TypeConversion.asU1(FI_OFFSET[i] + FI_MEM_SIZE[extractFI(i)]);
         }
     }
 
@@ -626,7 +646,11 @@ public final class CodeInfoDecoder {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long advanceOffset(long entryOffset, int entryFlags) {
         counters().advanceOffset.inc();
-        return entryOffset + getU1(MEM_SIZE, entryFlags);
+        long returnValueIsObjectSize = 0;
+        if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4) {
+            returnValueIsObjectSize = Byte.BYTES;
+        }
+        return entryOffset + getU1(AFTER_FI_OFFSET, entryFlags) + returnValueIsObjectSize;
     }
 
     @Fold
@@ -758,7 +782,7 @@ public final class CodeInfoDecoder {
         }
     }
 
-    private static class SingleShotFrameInfoQueryResultAllocator implements FrameInfoDecoder.FrameInfoQueryResultAllocator {
+    private static final class SingleShotFrameInfoQueryResultAllocator implements FrameInfoDecoder.FrameInfoQueryResultAllocator {
         private final FrameInfoQueryResult frameInfoQueryResult = new FrameInfoQueryResult();
         private boolean fired;
 

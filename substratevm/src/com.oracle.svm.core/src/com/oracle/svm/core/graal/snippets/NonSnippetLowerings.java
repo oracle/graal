@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
@@ -41,7 +40,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -114,6 +112,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -236,7 +235,7 @@ public abstract class NonSnippetLowerings {
         return descriptor;
     }
 
-    private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
+    private final class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
@@ -257,7 +256,7 @@ public abstract class NonSnippetLowerings {
         }
     }
 
-    private class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
+    private final class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
         @Override
         public void lower(ThrowBytecodeExceptionNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
@@ -280,7 +279,7 @@ public abstract class NonSnippetLowerings {
         }
     }
 
-    private static class GetClassLowering implements NodeLoweringProvider<GetClassNode> {
+    private static final class GetClassLowering implements NodeLoweringProvider<GetClassNode> {
         @Override
         public void lower(GetClassNode node, LoweringTool tool) {
             StampProvider stampProvider = tool.getStampProvider();
@@ -295,11 +294,13 @@ public abstract class NonSnippetLowerings {
         protected final RuntimeConfiguration runtimeConfig;
         protected final boolean verifyTypes;
         protected final KnownOffsets knownOffsets;
+        private final boolean isClosedTypeWorld;
 
         public InvokeLowering(RuntimeConfiguration runtimeConfig, boolean verifyTypes, KnownOffsets knownOffsets) {
             this.runtimeConfig = runtimeConfig;
             this.verifyTypes = verifyTypes;
             this.knownOffsets = knownOffsets;
+            isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
         }
 
         @Override
@@ -368,7 +369,7 @@ public abstract class NonSnippetLowerings {
                 }
 
                 CallTargetNode loweredCallTarget;
-                if (invokeKind.isDirect() || implementations.length == 1) {
+                if (invokeKind.isDirect() || (implementations.length == 1 && (isClosedTypeWorld || method.canBeStaticallyBound()))) {
                     SharedMethod targetMethod = method;
                     if (!invokeKind.isDirect()) {
                         /*
@@ -376,6 +377,7 @@ public abstract class NonSnippetLowerings {
                          * emit a direct call to the unique implementation.
                          */
                         targetMethod = implementations[0];
+                        assert targetMethod != null : "Expecting a unique callee for target method " + method;
                     }
 
                     if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
@@ -384,10 +386,10 @@ public abstract class NonSnippetLowerings {
                          * address offset of the text section start and then add in the offset for
                          * this specific method.
                          */
-                        Pair<CGlobalDataInfo, Integer> methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
+                        var methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
                         AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(
-                                        new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.getLeft()),
-                                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.getRight())));
+                                        new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.base()),
+                                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.offset())));
                         loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, methodPointerAddress);
                     } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
@@ -423,7 +425,7 @@ public abstract class NonSnippetLowerings {
                                         address, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
                         graph.addBeforeFixed(node, codeStart);
                     }
-                } else if (implementations.length == 0) {
+                } else if (implementations.length == 0 && isClosedTypeWorld) {
                     /*
                      * We are calling an abstract method with no implementation, i.e., the
                      * closed-world analysis showed that there is no concrete receiver ever
@@ -439,7 +441,7 @@ public abstract class NonSnippetLowerings {
                     LoadHubNode hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
                     nodesToLower.add(hub);
 
-                    if (SubstrateOptions.closedTypeWorld()) {
+                    if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                         int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
 
                         AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), vtableEntryOffset, graph)));
@@ -493,8 +495,8 @@ public abstract class NonSnippetLowerings {
 
         protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, JavaType[] signature,
                         CallingConvention.Type callType, InvokeKind invokeKind, ValueNode entry) {
-            return graph.add(new SubstrateIndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind,
-                            ((SubstrateMethodCallTargetNode) callTarget).getMethodProfile()));
+            JavaMethodProfile methodProfile = callTarget instanceof SubstrateMethodCallTargetNode substrateCallTarget ? substrateCallTarget.getMethodProfile() : null;
+            return graph.add(new SubstrateIndirectCallTargetNode(entry, parameters.toArray(ValueNode.EMPTY_ARRAY), callTarget.returnStamp(), signature, method, callType, invokeKind, methodProfile));
         }
 
         private static CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature,

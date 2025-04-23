@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ package com.oracle.svm.core.jdk;
 import java.io.File;
 import java.net.URL;
 import java.security.ProtectionDomain;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
-import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -42,8 +42,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
@@ -65,7 +68,7 @@ public final class Target_java_lang_ClassLoader {
      * invoked by the VM to record every loaded class with this loader".
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
-    private Vector<Class<?>> classes;
+    private ArrayList<Class<?>> classes;
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstanceWhenNotNull, declClass = ConcurrentHashMap.class)//
     private ConcurrentHashMap<String, Object> parallelLockMap;
@@ -148,6 +151,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     @SuppressWarnings("unused")
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
     }
 
@@ -165,7 +169,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
-        return ClassForNameSupport.singleton().forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
+        return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     /**
@@ -242,9 +246,10 @@ public final class Target_java_lang_ClassLoader {
     private static native void registerNatives();
 
     /**
-     * Ignores {@code loader}, as {@link Target_java_lang_ClassLoader#loadLibrary}.
+     * Ignores {@code loader}, like {@link Target_java_lang_ClassLoader#loadLibrary} does.
      */
     @Substitute
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static long findNative(@SuppressWarnings("unused") ClassLoader loader, String entryName) {
         return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
     }
@@ -252,39 +257,40 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(byte[] b, int off, int len) throws ClassFormatError {
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), null, b, off, len, null);
+        return defineClass(null, b, off, len);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(String name, byte[] b, int off, int len) throws ClassFormatError {
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, null);
+        return defineClass(name, b, off, len, null);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
+        return ClassLoaderHelper.defineClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
-        if (!PredefinedClassesSupport.hasBytecodeClasses()) {
-            throw PredefinedClassesSupport.throwNoBytecodeClasses(name);
+        // only bother extracting the bytes if it has a chance to work
+        if (PredefinedClassesSupport.hasBytecodeClasses() || RuntimeClassLoading.isSupported()) {
+            byte[] array;
+            int off;
+            int len = b.remaining();
+            if (b.hasArray()) {
+                array = b.array();
+                off = b.position() + b.arrayOffset();
+            } else {
+                array = new byte[len];
+                b.get(array);
+                off = 0;
+            }
+            return ClassLoaderHelper.defineClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
         }
-        byte[] array;
-        int off;
-        int len = b.remaining();
-        if (b.hasArray()) {
-            array = b.array();
-            off = b.position() + b.arrayOffset();
-        } else {
-            array = new byte[len];
-            b.get(array);
-            off = 0;
-        }
-        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
+        throw PredefinedClassesSupport.throwNoBytecodeClasses(name);
     }
 
     @Substitute
@@ -315,6 +321,17 @@ public final class Target_java_lang_ClassLoader {
 
     @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
+}
+
+final class ClassLoaderHelper {
+    private static final String ERROR_MSG = SubstrateOptionsParser.commandArgument(RuntimeClassLoading.Options.SupportRuntimeClassLoading, "+") + " is not yet supported.";
+
+    public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
+        if (PredefinedClassesSupport.hasBytecodeClasses()) {
+            return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
+        }
+        throw VMError.unimplemented(ERROR_MSG);
+    }
 }
 
 @TargetClass(className = "java.lang.AssertionStatusDirectives") //

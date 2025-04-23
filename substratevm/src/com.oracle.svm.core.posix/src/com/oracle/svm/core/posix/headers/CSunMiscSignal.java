@@ -24,50 +24,52 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.c.CContext;
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CLibrary;
 
-/**
- * The interface that Java code needs to the C sun.miscSignal handler.
- *
- * With renames to translate C underscores to Java dots.
- */
-@CContext(PosixDirectives.class)
+/** See cSunMiscSignal.c for the C implementation. */
+@CLibrary(value = "libchelper", requireStatic = true)
 public class CSunMiscSignal {
-
-    /* Open the C signal handler mechanism. */
+    /**
+     * Open the Java signal handler mechanism. Multiple isolates may execute this method in parallel
+     * but only a single isolate may claim ownership.
+     *
+     * @return 0 on success, 1 if the signal handler mechanism was already claimed by another
+     *         isolate, or some other value if an error occurred during initialization.
+     */
     @CFunction("cSunMiscSignal_open")
     public static native int open();
 
-    /* Close the C signal handler mechanism. */
-    @CFunction("cSunMiscSignal_close")
+    /**
+     * Close the Java signal handler mechanism.
+     *
+     * @return 0 on success, or some non-zero value if an error occurred.
+     */
+    @CFunction(value = "cSunMiscSignal_close", transition = NO_TRANSITION)
     public static native int close();
 
-    /* Wait for a notification on the semaphore. */
-    @CFunction("cSunMiscSignal_await")
-    public static native int await();
+    /** Wait for a notification on the semaphore. Prone to spurious wake-ups. */
+    @CFunction("cSunMiscSignal_awaitSemaphore")
+    public static native int awaitSemaphore();
 
-    /* Notify a thread waiting on the semaphore. */
-    @CFunction("cSunMiscSignal_post")
-    public static native int post();
+    /** Notify a thread waiting on the semaphore. */
+    @CFunction(value = "cSunMiscSignal_signalSemaphore", transition = NO_TRANSITION)
+    public static native int signalSemaphore();
 
-    /* Returns 1 if the signal is in the range of the counters, 0 otherwise. */
-    @CFunction("cSunMiscSignal_signalRangeCheck")
-    public static native int signalRangeCheck(int signal);
+    /** Returns true if the signal is in the range of the counters. */
+    @CFunction(value = "cSunMiscSignal_signalRangeCheck", transition = NO_TRANSITION)
+    public static native boolean signalRangeCheck(int signal);
 
-    /* Return the count of outstanding signals. Returns -1 if the signal is out of bounds. */
-    @CFunction("cSunMiscSignal_getCount")
-    public static native long getCount(int signal);
-
-    /*
-     * Decrement a counter towards zero, given a signal number. Returns the previous value, or -1 if
-     * the signal is out of bounds.
+    /**
+     * Returns the number of the first pending signal, or -1 if no signal is pending. May only be
+     * called by a single thread (i.e., the signal dispatcher thread).
      */
-    @CFunction("cSunMiscSignal_decrementCount")
-    public static native long decrementCount(int signal);
+    @CFunction(value = "cSunMiscSignal_checkPendingSignal", transition = NO_TRANSITION)
+    public static native int checkPendingSignal();
 
-    /* Return the address of the counting signal handler. */
-    @CFunction("cSunMiscSignal_countingHandlerFunctionPointer")
-    public static native Signal.SignalDispatcher countingHandlerFunctionPointer();
-
+    /** Returns a function pointer to the C signal handler. */
+    @CFunction(value = "cSunMiscSignal_signalHandlerFunctionPointer", transition = NO_TRANSITION)
+    public static native Signal.SignalDispatcher signalHandlerFunctionPointer();
 }

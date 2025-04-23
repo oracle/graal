@@ -29,7 +29,6 @@ import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
@@ -85,15 +84,15 @@ public class ForeignCallSnippets implements Snippets {
     @Snippet(allowMissingProbabilities = true)
     public static Object verifyObject(Object object) {
         if (HotSpotReplacementsUtil.verifyOops(GraalHotSpotVMConfig.INJECTED_VMCONFIG)) {
-            Word verifyOopCounter = WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopCounterAddress(GraalHotSpotVMConfig.INJECTED_VMCONFIG));
+            Word verifyOopCounter = Word.unsigned(HotSpotReplacementsUtil.verifyOopCounterAddress(GraalHotSpotVMConfig.INJECTED_VMCONFIG));
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
             Pointer oop = Word.objectToTrackedPointer(object);
             if (object != null) {
                 GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'
-                if (!oop.and(WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopMask(GraalHotSpotVMConfig.INJECTED_VMCONFIG))).equal(
-                                WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopBits(GraalHotSpotVMConfig.INJECTED_VMCONFIG)))) {
+                if (!oop.and(Word.unsigned(HotSpotReplacementsUtil.verifyOopMask(GraalHotSpotVMConfig.INJECTED_VMCONFIG))).equal(
+                                Word.unsigned(HotSpotReplacementsUtil.verifyOopBits(GraalHotSpotVMConfig.INJECTED_VMCONFIG)))) {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
@@ -104,16 +103,6 @@ public class ForeignCallSnippets implements Snippets {
             }
         }
         return object;
-    }
-
-    @Fold
-    static long verifyOopMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.verifyOopMask;
-    }
-
-    @Fold
-    static long verifyOopBits(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.verifyOopBits;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -41,7 +41,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -103,6 +102,16 @@ public class AMD64HotSpotMove {
         @Override
         public AllocatableValue getResult() {
             return result;
+        }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            /*
+             * This is slightly too lenient, formally we would also need to check if the target
+             * allows inlining objects. In practice that is always true, and we do not have access
+             * to the relevant information here.
+             */
+            return input.isCompressed();
         }
     }
 
@@ -167,11 +176,19 @@ public class AMD64HotSpotMove {
         public AllocatableValue getResult() {
             return result;
         }
+
+        @Override
+        public boolean canRematerializeToStack() {
+            return input.isCompressed();
+        }
     }
 
-    public static void decodeKlassPointer(AMD64MacroAssembler masm, Register register, Register scratch, AMD64Address address, GraalHotSpotVMConfig config) {
+    /**
+     * Decode compressed class pointer stored in {@code register}. The content in {@code scratch}
+     * might be destroyed.
+     */
+    public static void decodeKlassPointer(AMD64MacroAssembler masm, Register register, Register scratch, GraalHotSpotVMConfig config) {
         CompressEncoding encoding = config.getKlassEncoding();
-        masm.movl(register, address);
         if (encoding.getShift() != 0) {
             masm.shlq(register, encoding.getShift());
         }

@@ -135,8 +135,7 @@ public final class EspressoBindings implements TruffleObject {
         }
         Meta meta = context.getMeta();
         try {
-            StaticObject clazz = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null,
-                            meta.toGuestString(member), false, context.getBindingsLoader());
+            StaticObject clazz = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirectStatic(meta.toGuestString(member), false, context.getBindingsLoader());
             return clazz.getMirrorKlass(meta);
         } catch (EspressoException e) {
             error.enter();

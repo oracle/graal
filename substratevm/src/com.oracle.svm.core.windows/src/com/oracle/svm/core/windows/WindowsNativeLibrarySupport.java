@@ -26,13 +26,13 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
@@ -85,6 +85,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         WindowsUtils.setHandle(FileDescriptor.err, FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE()));
     }
 
+    @SuppressWarnings("restricted")
     private static void loadNetLibrary() {
         if (Isolates.isCurrentFirst()) {
             WinSock.init();
@@ -109,7 +110,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     @Override
     public PointerBase findBuiltinSymbol(String name) {
         try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-            HMODULE builtinHandle = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
+            HMODULE builtinHandle = LibLoaderAPI.GetModuleHandleA(Word.nullPointer());
             return LibLoaderAPI.GetProcAddress(builtinHandle, symbol.get());
         }
     }
@@ -151,7 +152,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             }
             assert dlhandle.isNonNull();
             if (LibLoaderAPI.FreeLibrary(dlhandle) != 0) {
-                dlhandle = WordFactory.nullPointer();
+                dlhandle = Word.nullPointer();
                 return true;
             } else {
                 return false;

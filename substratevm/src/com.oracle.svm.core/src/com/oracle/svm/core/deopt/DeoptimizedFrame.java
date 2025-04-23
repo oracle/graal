@@ -26,10 +26,10 @@ package com.oracle.svm.core.deopt;
 
 import java.lang.ref.WeakReference;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -47,8 +47,11 @@ import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * The handle to a deoptimized frame. It contains all stack entries which are written to the frame
@@ -246,7 +249,7 @@ public final class DeoptimizedFrame {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void write(Deoptimizer.TargetContent targetContent, Pointer newSp) {
-            targetContent.writeWord(offset, newSp.add(WordFactory.unsigned(valueRelativeToNewSp)));
+            targetContent.writeWord(offset, newSp.add(Word.unsigned(valueRelativeToNewSp)));
         }
     }
 
@@ -267,9 +270,9 @@ public final class DeoptimizedFrame {
     }
 
     protected static DeoptimizedFrame factory(int targetContentSize, long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
-                    RelockObjectData[] relockedObjects, CodePointer sourcePC) {
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException, boolean isEagerDeopt) {
         final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getTarget().arch.getByteOrder());
-        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC);
+        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC, rethrowException, isEagerDeopt);
     }
 
     private final long sourceEncodedFrameSize;
@@ -280,19 +283,28 @@ public final class DeoptimizedFrame {
     private final PinnedObject pin;
     private final CodePointer sourcePC;
     private final char[] completedMessage;
+    /**
+     * This flag indicates this DeoptimizedFrame corresponds to a state where
+     * {@link FrameState#rethrowException()} is set. Within the execution, this marks a spot where
+     * we have an exception and are now starting to walk the exceptions handlers to see if execution
+     * should continue in a matching handler or unwind.
+     */
+    private final boolean rethrowException;
 
     private DeoptimizedFrame(long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame, Deoptimizer.TargetContent targetContent,
-                    RelockObjectData[] relockedObjects, CodePointer sourcePC) {
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException, boolean isEagerDeopt) {
         this.sourceEncodedFrameSize = sourceEncodedFrameSize;
         this.topFrame = topFrame;
         this.targetContent = targetContent;
         this.relockedObjects = relockedObjects;
         this.sourceInstalledCode = sourceInstalledCode == null ? null : new WeakReference<>(sourceInstalledCode);
         this.sourcePC = sourcePC;
-        this.pin = PinnedObject.create(this);
+        // We assume that the frame will be pinned if and only if we are deoptimizing eagerly
+        this.pin = isEagerDeopt ? PinnedObject.create(this) : null;
         StringBuilderLog sbl = new StringBuilderLog();
-        sbl.string("deoptStub: completed for DeoptimizedFrame at ").hex(pin.addressOfObject()).newline();
+        sbl.string("deoptStub: completed ").string(isEagerDeopt ? "eagerly" : "lazily").string(" for DeoptimizedFrame at ").hex(Word.objectToUntrackedPointer(this)).newline();
         this.completedMessage = sbl.getResult().toCharArray();
+        this.rethrowException = rethrowException;
     }
 
     /**
@@ -337,12 +349,15 @@ public final class DeoptimizedFrame {
     }
 
     /**
-     * Returns the {@link PinnedObject} that ensures that this {@link DeoptimizedFrame} is not moved
-     * by the GC. The {@link DeoptimizedFrame} is accessed during GC when walking the stack.
+     * Releases the {@link PinnedObject} that ensures that this {@link DeoptimizedFrame} is not
+     * moved by the GC after eager deoptimization. The {@link DeoptimizedFrame} is accessed during
+     * GC when walking the stack after being installed during eager deoptimization. For lazy
+     * deoptimization, the pin is not needed, and in that case this method must not be called.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public PinnedObject getPin() {
-        return pin;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void unpin() {
+        assert pin != null;
+        pin.close();
     }
 
     /**
@@ -352,7 +367,7 @@ public final class DeoptimizedFrame {
         return sourcePC;
     }
 
-    @Uninterruptible(reason = "Called from Deoptimizer.deoptStub.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     char[] getCompletedMessage() {
         return completedMessage;
     }
@@ -393,8 +408,15 @@ public final class DeoptimizedFrame {
      * the deoptimization target.
      */
     public void takeException() {
+        if (rethrowException) {
+            /*
+             * This frame already corresponds to the start of an execution handler walk. Nothing
+             * needs to be done.
+             */
+            return;
+        }
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
-        CodePointer ip = WordFactory.pointer(firstAddressEntry.returnAddress);
+        CodePointer ip = Word.pointer(firstAddressEntry.returnAddress);
         CodeInfo info = CodeInfoTable.getImageCodeInfo(ip);
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         CodeInfoAccess.lookupCodeInfo(info, ip, codeInfoQueryResult);
@@ -409,7 +431,7 @@ public final class DeoptimizedFrame {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Printing out error and then crashing.")
     private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
         CodeInfoQueryResult detailedQueryResult = new CodeInfoQueryResult();
-        CodeInfoAccess.lookupCodeInfo(info, WordFactory.pointer(firstAddressEntry.returnAddress), detailedQueryResult);
+        CodeInfoAccess.lookupCodeInfo(info, Word.pointer(firstAddressEntry.returnAddress), detailedQueryResult);
         FrameInfoQueryResult frameInfo = detailedQueryResult.getFrameInfo();
         throw Deoptimizer.fatalDeoptimizationError("No exception handler registered for deopt target", frameInfo);
     }

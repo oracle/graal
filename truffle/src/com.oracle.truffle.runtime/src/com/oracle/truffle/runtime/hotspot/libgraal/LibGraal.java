@@ -58,22 +58,19 @@ import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by
- * GraalVM Native Image. The libgraal library is only available if:
- * <ul>
- * <li>the {@linkplain #inLibGraal() current runtime} is libgraal, or</li>
- * <li>the HotSpot {@code UseJVMCINativeLibrary} flag is true and the current runtime includes the
- * relevant JVMCI API additions for accessing libgraal.</li>
- * </ul>
+ * GraalVM Native Image. The libgraal library is only available if the HotSpot
+ * {@code UseJVMCINativeLibrary} flag is true and the current runtime includes the relevant JVMCI
+ * API additions for accessing libgraal.
  *
  * The {@link #isAvailable()} method is provided to test these conditions. It must be used to guard
  * usage of all other methods in this class. In addition, only the following methods can be called
  * from within libgraal:
  * <ul>
  * <li>{@link #isAvailable()}</li>
- * <li>{@link #inLibGraal()}</li>
  * <li>{@link #translate(Object)}</li>
  * <li>{@link #unhand(Class, long)}</li>
  * </ul>
@@ -109,7 +106,7 @@ public class LibGraal {
      * Determines if libgraal is available for use.
      */
     public static boolean isAvailable() {
-        return inLibGraal() || available;
+        return available;
     }
 
     /**
@@ -120,23 +117,14 @@ public class LibGraal {
     }
 
     /**
-     * Determines if the current runtime is libgraal.
-     */
-    public static boolean inLibGraal() {
-        return Services.IS_IN_NATIVE_IMAGE;
-    }
-
-    /**
      * Links each native method in {@code clazz} to a {@link CEntryPoint} in libgraal.
      *
-     * This cannot be called from {@linkplain #inLibGraal() within} libgraal.
      *
      * @throws NullPointerException if {@code clazz == null}
      * @throws UnsupportedOperationException if libgraal is not enabled (i.e.
      *             {@code -XX:-UseJVMCINativeLibrary})
      * @throws IllegalArgumentException if {@code clazz} is {@link Class#isPrimitive()}
-     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
-     *             {@link #inLibGraal()} returns true
+     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable}
      * @throws UnsatisfiedLinkError if there's a problem linking a native method in {@code clazz}
      *             (no matching JNI symbol or the native method is already linked to a different
      *             address)
@@ -145,7 +133,7 @@ public class LibGraal {
         if (clazz.isPrimitive()) {
             throw new IllegalArgumentException();
         }
-        if (inLibGraal() || !isAvailable()) {
+        if (!isAvailable()) {
             throw new IllegalStateException();
         }
         try {
@@ -219,7 +207,7 @@ public class LibGraal {
         }
     }
 
-    static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final long initialIsolate = ImageInfo.inImageBuildtimeCode() ? 0L : initializeLibgraal();
     static final boolean available = initialIsolate != 0L;
 
     /**

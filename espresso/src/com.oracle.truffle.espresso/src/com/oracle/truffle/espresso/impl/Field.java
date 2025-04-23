@@ -22,27 +22,35 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.function.Function;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 
 /**
  * Represents a resolved Espresso field.
@@ -73,7 +81,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
  * assigned the underlying field as a Compatible Field.
  */
-public class Field extends Member<Type> implements FieldRef {
+public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, Method, Field> {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
@@ -123,7 +131,7 @@ public class Field extends Member<Type> implements FieldRef {
             if (attr == null) {
                 genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
-                genericSignature = pool.symbolAt(attr.getSignatureIndex());
+                genericSignature = pool.symbolAtUnsafe(attr.getSignatureIndex());
             }
         }
         return genericSignature;
@@ -144,7 +152,11 @@ public class Field extends Member<Type> implements FieldRef {
 
     @Override
     public final int getModifiers() {
-        return linkedField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
+        return getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
+    }
+
+    public final int getFlags() {
+        return linkedField.getFlags();
     }
 
     @Override
@@ -206,9 +218,21 @@ public class Field extends Member<Type> implements FieldRef {
         return target;
     }
 
-    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
+    @Override
+    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
+        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2, errorHandler);
     }
+
+    // region FieldAccess impl
+
+    @Override
+    public final boolean shouldEnforceInitializerCheck() {
+        return (getDeclaringKlass().getMeta().getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT) ||
+                        // HotSpot enforces this only for >= Java 9 (v53) .class files.
+                        getDeclaringClass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
+    }
+
+    // endregion FieldAccess impl
 
     // region Field accesses
 
@@ -480,6 +504,13 @@ public class Field extends Member<Type> implements FieldRef {
     public final void setHiddenObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert isHidden() : this + " is not hidden, use setObject";
         setObjectHelper(obj, value, forceVolatile);
+    }
+
+    public Object compareAndExchangeHiddenObject(StaticObject obj, Object before, Object after) {
+        obj.checkNotForeign();
+        assert isHidden() : this + " is not hidden";
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+        return linkedField.compareAndExchangeObject(obj, before, after);
     }
     // endregion Hidden Object
     // endregion Object
@@ -841,7 +872,7 @@ public class Field extends Member<Type> implements FieldRef {
     // region jdwp-specific
     @Override
     public final byte getTagConstant() {
-        return getKind().toTagConstant();
+        return TagConstants.toTagConstant(getKind());
     }
 
     @Override
@@ -925,9 +956,14 @@ public class Field extends Member<Type> implements FieldRef {
                     // remove index 1, but keep info at index 0
                     temp[0] = infos[0];
                     infos = temp;
-                    return;
                 }
         }
+    }
+
+    @Override
+    public void disposeFieldBreakpoint() {
+        hasActiveBreakpoints.set(false);
+        infos = null;
     }
 
     public void setCompatibleField(@SuppressWarnings("unused") Field field) {
@@ -946,17 +982,17 @@ public class Field extends Member<Type> implements FieldRef {
     public StaticObject makeMirror(Meta meta) {
         StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(meta.getContext());
 
-        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Names.RuntimeVisibleAnnotations);
         StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
                         : StaticObject.NULL;
 
-        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Names.RuntimeVisibleTypeAnnotations);
         StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                         : StaticObject.NULL;
         if (meta.getJavaVersion().java15OrLater()) {
-            meta.java_lang_reflect_Field_init.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),
@@ -967,7 +1003,7 @@ public class Field extends Member<Type> implements FieldRef {
                             /* signature */ meta.toGuestString(getGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         } else {
-            meta.java_lang_reflect_Field_init.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),
@@ -980,6 +1016,16 @@ public class Field extends Member<Type> implements FieldRef {
         meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
         meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
+    }
+
+    public int getConstantValueIndex() {
+        ConstantValueAttribute a = (ConstantValueAttribute) getAttribute(Names.ConstantValue);
+        if (a == null) {
+            return 0;
+        }
+        int constantValueIndex = a.getConstantValueIndex();
+        assert constantValueIndex != 0;
+        return constantValueIndex;
     }
 
     /**

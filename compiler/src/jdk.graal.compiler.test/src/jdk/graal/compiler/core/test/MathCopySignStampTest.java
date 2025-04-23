@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,13 +70,13 @@ public class MathCopySignStampTest extends GraalCompilerTest {
     @Test
     public void testFloatCopySign() throws InvalidInstalledCodeException {
         for (float f1 : floatValues) {
-            FloatStamp s1 = new FloatStamp(32, f1, f1, !Float.isNaN(f1));
+            FloatStamp s1 = FloatStamp.create(32, f1, f1, !Float.isNaN(f1));
             for (float f2 : floatValues) {
-                FloatStamp s2 = new FloatStamp(32, f2, f2, !Float.isNaN(f2));
+                FloatStamp s2 = FloatStamp.create(32, f2, f2, !Float.isNaN(f2));
                 for (float f3 : floatValues) {
-                    FloatStamp s3 = new FloatStamp(32, f3, f3, !Float.isNaN(f3));
+                    FloatStamp s3 = FloatStamp.create(32, f3, f3, !Float.isNaN(f3));
                     for (float f4 : floatValues) {
-                        FloatStamp s4 = new FloatStamp(32, f4, f4, !Float.isNaN(f4));
+                        FloatStamp s4 = FloatStamp.create(32, f4, f4, !Float.isNaN(f4));
                         stampsToBind = new Stamp[]{s1.meet(s2), s3.meet(s4)};
                         InstalledCode code = getCode(getResolvedJavaMethod("floatCopySign"), null, true);
                         Assert.assertEquals(floatCopySign(f1, f3), (float) code.executeVarargs(f1, f3), 0);
@@ -125,13 +125,13 @@ public class MathCopySignStampTest extends GraalCompilerTest {
     @Test
     public void testDoubleCopySign() throws InvalidInstalledCodeException {
         for (double d1 : doubleValues) {
-            FloatStamp s1 = new FloatStamp(64, d1, d1, !Double.isNaN(d1));
+            FloatStamp s1 = FloatStamp.create(64, d1, d1, !Double.isNaN(d1));
             for (double d2 : doubleValues) {
-                FloatStamp s2 = new FloatStamp(64, d2, d2, !Double.isNaN(d2));
+                FloatStamp s2 = FloatStamp.create(64, d2, d2, !Double.isNaN(d2));
                 for (double d3 : doubleValues) {
-                    FloatStamp s3 = new FloatStamp(64, d3, d3, !Double.isNaN(d3));
+                    FloatStamp s3 = FloatStamp.create(64, d3, d3, !Double.isNaN(d3));
                     for (double d4 : doubleValues) {
-                        FloatStamp s4 = new FloatStamp(64, d4, d4, !Double.isNaN(d4));
+                        FloatStamp s4 = FloatStamp.create(64, d4, d4, !Double.isNaN(d4));
                         stampsToBind = new Stamp[]{s1.meet(s2), s3.meet(s4)};
                         InstalledCode code = getCode(getResolvedJavaMethod("doubleCopySign"), null, true);
                         Assert.assertEquals(doubleCopySign(d1, d3), (double) code.executeVarargs(d1, d3), 0);

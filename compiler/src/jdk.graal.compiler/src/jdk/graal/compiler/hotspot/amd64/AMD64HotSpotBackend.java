@@ -131,9 +131,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     public class HotSpotFrameContext implements FrameContext {
 
         final boolean isStub;
+        private final EntryPointDecorator entryPointDecorator;
 
-        HotSpotFrameContext(boolean isStub) {
+        HotSpotFrameContext(boolean isStub, EntryPointDecorator entryPointDecorator) {
             this.isStub = isStub;
+            this.entryPointDecorator = entryPointDecorator;
         }
 
         @Override
@@ -162,10 +164,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
             assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
-            if (!isStub && config.nmethodEntryBarrier != 0) {
+            if (!isStub) {
                 emitNmethodEntryBarrier(crb, asm);
             } else {
                 crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
+            }
+
+            if (entryPointDecorator != null) {
+                entryPointDecorator.emitEntryPoint(crb, false);
             }
 
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
@@ -259,7 +265,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenRen, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
@@ -274,7 +281,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         Stub stub = gen.getStub();
         AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, getProviders(), config.CPU_HAS_INTEL_JCC_ERRATUM);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, entryPointDecorator);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
@@ -309,7 +316,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         emitCodePrefix(installedCodeOwner, crb, asm, regConfig);
 
         if (entryPointDecorator != null) {
-            entryPointDecorator.emitEntryPoint(crb);
+            entryPointDecorator.emitEntryPoint(crb, true);
         }
 
         // Emit code for the LIR
@@ -330,7 +337,6 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             JavaType[] parameterTypes = {providers.getMetaAccess().lookupJavaType(Object.class)};
             CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, parameterTypes, this);
             Register receiver = asRegister(cc.getArgument(0));
-            AMD64Address src = new AMD64Address(receiver, config.hubOffset);
             int before;
             if (config.icSpeculatedKlassOffset == Integer.MAX_VALUE) {
                 crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
@@ -340,18 +346,23 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 if (config.useCompressedClassPointers) {
                     Register register = r10;
                     Register heapBase = providers.getRegisters().getHeapBaseRegister();
-                    AMD64HotSpotMove.decodeKlassPointer(asm, register, heapBase, src, config);
+                    if (config.useCompactObjectHeaders) {
+                        ((AMD64HotSpotMacroAssembler) asm).loadCompactClassPointer(register, receiver);
+                    } else {
+                        asm.movl(register, new AMD64Address(receiver, config.hubOffset));
+                    }
+                    AMD64HotSpotMove.decodeKlassPointer(asm, register, heapBase, config);
                     if (config.narrowKlassBase != 0) {
                         // The heap base register was destroyed above, so restore it
                         if (config.narrowOopBase == 0L) {
-                            asm.xorq(heapBase, heapBase);
+                            asm.xorl(heapBase, heapBase);
                         } else {
                             asm.movq(heapBase, config.narrowOopBase);
                         }
                     }
                     before = asm.cmpqAndJcc(inlineCacheKlass, register, ConditionFlag.NotEqual, null, false);
                 } else {
-                    before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
+                    before = asm.cmpqAndJcc(inlineCacheKlass, new AMD64Address(receiver, config.hubOffset), ConditionFlag.NotEqual, null, false);
                 }
                 crb.recordDirectCall(before, asm.position(), getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), null);
             } else {
@@ -369,6 +380,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                      */
                     inlineCacheCheckSize += 3 + 3;
                 }
+                if (config.useCompactObjectHeaders) {
+                    // 4 bytes for extra shift instruction, 1 byte less for 0-displacement address
+                    inlineCacheCheckSize += 3;
+                }
                 asm.align(config.codeEntryAlignment, asm.position() + inlineCacheCheckSize);
 
                 int startICCheck = asm.position();
@@ -377,10 +392,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
                 AMD64BaseAssembler.OperandSize size;
                 if (config.useCompressedClassPointers) {
-                    asm.movl(temp, src);
+                    if (config.useCompactObjectHeaders) {
+                        ((AMD64HotSpotMacroAssembler) asm).loadCompactClassPointer(temp, receiver);
+                    } else {
+                        asm.movl(temp, new AMD64Address(receiver, config.hubOffset));
+                    }
                     size = AMD64BaseAssembler.OperandSize.DWORD;
                 } else {
-                    asm.movptr(temp, src);
+                    asm.movptr(temp, new AMD64Address(receiver, config.hubOffset));
                     size = AMD64BaseAssembler.OperandSize.QWORD;
                 }
                 before = asm.cmpAndJcc(size, temp, icSpeculatedKlass, ConditionFlag.NotEqual, null, false);

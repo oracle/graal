@@ -80,6 +80,8 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -87,17 +89,17 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -106,6 +108,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
@@ -165,8 +168,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
                         Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
                         KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
-                        KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
+                        KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            // JDK-8338411: Implement JEP 486: Permanently Disable the Security Manager
+            classList.add(Policy.class);
+        }
 
         if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
@@ -211,6 +218,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private ProviderList cachedProviders;
 
     private Class<?> jceSecurityClass;
+
+    private AnnotationSubstitutionProcessor substitutionProcessor;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -330,13 +339,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
 
+        substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+
         access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+            /*
+             * We must wait until all providers have been registered before filtering the list.
+             */
             @Override
-            public ValueAvailability valueAvailability() {
-                /*
-                 * We must wait until all providers have been registered before filtering the list.
-                 */
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override
@@ -361,12 +372,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         });
 
         access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
+            /*
+             * We must wait until all providers have been registered before filtering the list.
+             */
             @Override
-            public ValueAvailability valueAvailability() {
-                /*
-                 * We must wait until all providers have been registered before filtering the list.
-                 */
-                return ValueAvailability.AfterAnalysis;
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
             }
 
             @Override
@@ -420,6 +431,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         if (usedProviders.contains(p)) {
             return false;
+        }
+        if (substitutionProcessor.isDeleted(p.getClass())) {
+            return true;
         }
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }
@@ -633,6 +647,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
+            VMError.guarantee(services != null);
             for (Service service : services) {
                 registerService(access, service);
             }

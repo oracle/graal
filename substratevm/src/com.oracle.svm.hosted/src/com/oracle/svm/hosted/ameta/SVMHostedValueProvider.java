@@ -42,7 +42,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -69,13 +68,11 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
             return ValueSupplier.eagerValue(doReadValue(field, receiver));
         }
         /*
-         * Return a lazy value. First, this applies to fields annotated with
-         * RecomputeFieldValue.Kind.FieldOffset and RecomputeFieldValue.Kind.Custom whose value
-         * becomes available during hosted universe building and is installed by calling
-         * ComputedValueField.processSubstrate() or ComputedValueField.readValue(). Secondly, this
-         * applies to fields annotated with @UnknownObjectField whose value is set directly either
-         * during analysis or in a later phase. Attempts to materialize the value before it becomes
-         * available will result in an error.
+         * Return a lazy value. First, this applies to fields that have a
+         * FieldValueTransformerWithAvailability. Secondly, this applies to fields annotated
+         * with @UnknownObjectField whose value is set directly either during analysis or in a later
+         * phase. Attempts to materialize the value before it becomes available will result in an
+         * error.
          */
         return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> fieldValueInterceptionSupport.isValueAvailable(field));
     }
@@ -135,9 +132,9 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      * object from ImageHeapInfo we reference a {@link ImageHeapConstant} which allows using
      * simulated constant as partition limits. However, since the original
      * {@link ConstantReflectionProvider} is not aware of {@link ImageHeapConstant} it always treats
-     * them as hosted objects and wraps them into a {@link HotSpotObjectConstant}. Therefore, we
-     * need intercept the {@link HotSpotObjectConstant} and if it wraps an {@link ImageHeapConstant}
-     * unwrap it and return the original constant.</li>
+     * them as hosted objects and wraps them into a host {@link JavaConstant}. Therefore, we need
+     * intercept the host {@link JavaConstant} and if it wraps an {@link ImageHeapConstant} unwrap
+     * it and return the original constant.</li>
      * <li>Second, intercept {@link WordBase} constants. See {@link #interceptWordType(Object)} for
      * details.</li>
      * </ul>

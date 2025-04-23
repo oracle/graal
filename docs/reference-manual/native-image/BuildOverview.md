@@ -60,3 +60,5 @@ If you are new to GraalVM Native Image or have little experience using it, see t
 For more tweaks and how to properly configure the `native-image` tool, see [Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
 
 Native Image outputs the progress and various statistics when building a native binary. To learn more about the output, and the different build phases, see [Build Output](BuildOutput.md).
+
+For more detailed information about the build process, its phases, and the contents of a produced native binary, see [Build Report](BuildReport.md).

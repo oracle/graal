@@ -441,6 +441,10 @@ class GraalVMSvmMacro(GraalVmComponent):
     pass
 
 
+class GraalVmSvmTool(GraalVmComponent):
+    pass
+
+
 class GraalVmJdkComponent(GraalVmComponent):
     pass
 
@@ -833,11 +837,23 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 if default_to_jvmci == 'lib':
                     vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
-                if 'jdk.graal.compiler' in non_synthetic_modules:
+                import mx_sdk_vm_impl
+                if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
+                    # If libgraal is absent, jargraal is used by default.
+                    # Use of jargraal requires exporting jdk.internal.misc to
+                    # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
+                    # about unknown modules (e.g. in `-Xint` mode), the export target
+                    # modules must be explicitly added to the root set with `--add-modules`.
                     if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
-                        vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'])
+                        vm_options.extend([
+                            '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
+                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
+                        ])
                     else:
-                        vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'])
+                        vm_options.extend([
+                            '--add-modules=jdk.graal.compiler',
+                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
+                        ])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
@@ -1018,9 +1034,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 module_names = frozenset((m.name for m in modules))
                 all_module_names = frozenset(list(jdk_modules.keys())) | module_names
 
-        # Edit lib/security/default.policy in java.base
-        patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)
-
         # Now build the new JDK image with jlink
         jlink = [jdk.javac.replace('javac', 'jlink')]
         jlink_persist = []
@@ -1032,7 +1045,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
-        module_path = patched_java_base + os.pathsep + jmods_dir
+        # Edit lib/security/default.policy in java.base if prior to JDK 24.
+        # GR-59085 deprecated the security manager in JDK 24 so no policy exists.
+        module_path = jmods_dir
+        if jdk.javaCompliance < '24':
+            patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)
+            module_path = patched_java_base + os.pathsep + jmods_dir
 
         class TempJmods:
             """

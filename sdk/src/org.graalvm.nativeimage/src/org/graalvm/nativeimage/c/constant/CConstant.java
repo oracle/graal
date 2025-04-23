@@ -92,9 +92,11 @@ public @interface CConstant {
          * @param declaringClass The class that contains the method.
          * @param methodName The name of the method annotated with {@link CConstant}.
          * @param returnType The desired type of the returned value. For integer-kind constants, the
-         *            supported types are {@link Long}, {@link Integer}, and {@link Boolean}. For
-         *            floating point constants, the only supported type is {@link Double}. For
-         *            string constants, the only supported type is {@link String}.
+         *            supported types are {@link Boolean}, {@link Byte}, {@link Short},
+         *            {@link Character}, {@link Integer}, and {@link Long}. For floating point
+         *            constants, the supported types are {@link Double} and {@link Float}. For
+         *            string constants, the only supported types are {@link String} and
+         *            {@code byte[]}.
          * @return The value of the C constant.
          *
          * @since 19.0
@@ -102,6 +104,25 @@ public @interface CConstant {
         @Platforms(Platform.HOSTED_ONLY.class)
         public static <T> T get(Class<?> declaringClass, String methodName, Class<T> returnType) {
             return ImageSingletons.lookup(CConstantValueSupport.class).getCConstantValue(declaringClass, methodName, returnType);
+        }
+
+        /**
+         * Returns the value of a {@link CEnum}, i.e., the same value that calling the method
+         * annotated with {@link CEnumValue} would return.
+         * <p>
+         * This method is useful during native image generation, when the annotated method cannot be
+         * called.
+         *
+         * @param cEnum The enum value for which the C value should be returned. The enum type must
+         *            be annotated with {@link CEnum}.
+         * @param methodName The name of the method annotated with {@link CEnumValue}.
+         * @return The value of the C constant.
+         *
+         * @since 24.2
+         */
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public static <T> T get(Enum<?> cEnum, String methodName) {
+            return ImageSingletons.lookup(CConstantValueSupport.class).getCEnumValue(cEnum, methodName);
         }
     }
 }

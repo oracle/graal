@@ -35,11 +35,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   },
 
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
-  libgraal_compiler:: self.libgraal_compiler_base() {
-    # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
-    downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
-  },
-  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
+  libgraal_compiler:: self.libgraal_compiler_base(),
+  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
     environment+: {
@@ -71,44 +68,12 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
-  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
+  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
   # Use economy mode for coverage testing
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
-
-  # Gate for guestgraal
-  guestgraal_compiler:: {
-    local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
-    # LibGraal gate tasks currently expected to work
-    local tasks = [
-      "LibGraal Compiler:Basic",
-      "LibGraal Compiler:FatalErrorHandling",
-      "LibGraal Compiler:OOMEDumping",
-      "LibGraal Compiler:SystemicFailureDetection",
-      "LibGraal Compiler:CompilationTimeout:JIT",
-      "LibGraal Compiler:CTW",
-      "LibGraal Compiler:DaCapo",
-      "LibGraal Compiler:ScalaDaCapo"
-    ] +
-    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
-    if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
-
-    run+: [
-      ['mx', '--env', guestgraal_env, 'build'],
-      ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
-       '-p', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS'],
-       '-cp', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY'],
-       '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
-      ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir],
-    ],
-    logs+: [
-      '*/graal-compiler.log',
-      '*/graal-compiler-ctw.log'
-    ],
-    timelimit: '1:00:00',
-  },
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gate_jobs = {
@@ -116,14 +81,10 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
-
-    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-  } + if repo_config.graalvm_edition == "ce" then
-  {
-    # GuestGraal on EE is still under construction
-    "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {}
-  } else {},
+    "gate-vm-libgraal_compiler-labsjdk-latest-linux-aarch64": {},
+    "gate-vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude
+  },
 
   local gates = g.as_gates(gate_jobs),
 
@@ -131,10 +92,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local dailies = {
     "daily-vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
 
-    "daily-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
-    "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
-    "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
   } + g.as_dailies(gate_jobs),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -173,7 +131,6 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21",
       "Latest"
     ]
     for os_arch in all_os_arches
@@ -182,9 +139,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
-    ] +
-    # GuestGraal on EE is still under construction
-    (if repo_config.graalvm_edition == "ce" then ["guestgraal_compiler"] else [])
+    ]
   ],
 
   local adjust_windows_version(gate) = (
@@ -214,8 +169,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     ]
   ],
 
-  # Coverage builds only on jdk21 (GR-46676)
-  local coverage_jdk21_builds = [
+  # Coverage builds
+  local coverage_jdkLatest_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
     vm.custom_vm +
@@ -227,7 +182,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21"
+      "Latest"
     ]
     for os_arch in [
       "linux-amd64",
@@ -243,7 +198,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local all_builds =
     all_platforms_builds +
     all_platforms_zgc_builds +
-    coverage_jdk21_builds,
+    coverage_jdkLatest_builds,
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result

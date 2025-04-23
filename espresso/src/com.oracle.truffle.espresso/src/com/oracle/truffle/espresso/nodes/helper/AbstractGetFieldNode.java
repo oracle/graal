@@ -34,10 +34,10 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
@@ -543,11 +543,8 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
-    final Klass typeKlass;
-
     ObjectGetFieldNode(Field f) {
         super(f);
-        this.typeKlass = f.resolveTypeKlass();
         assert f.getKind() == JavaKind.Object;
     }
 
@@ -563,6 +560,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     abstract StaticObject executeGetField(StaticObject receiver);
 
     ToReference createToEspressoNode() {
+        Klass typeKlass = field.resolveTypeKlass();
         return ToReference.createToReference(typeKlass, typeKlass.getMeta());
     }
 
@@ -583,7 +581,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
             return toEspressoNode.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to %s", fieldName, typeKlass.getName());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to %s", fieldName, field.resolveTypeKlass().getName());
         }
     }
 }

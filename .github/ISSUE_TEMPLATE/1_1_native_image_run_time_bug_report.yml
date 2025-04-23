@@ -1,0 +1,105 @@
+name: 🚨 Native Image Run-Time Issue Report
+description: Report run-time issues specific to GraalVM's native image
+title: "[Native Image] "
+labels: ["native-image", "bug", "run-time"]
+
+body:
+  - type: markdown
+    attributes:
+      value: "For security vulnerabilities, please consult the [GraalVM security policy](https://github.com/oracle/graal/security/policy) and contact the security team directly."
+
+  - type: textarea
+    id: describe_issue
+    attributes:
+      label: Describe the Issue
+      description: "Describe the run-time issue you are experiencing with GraalVM's native image. Provide a clear and concise description of what happened and what you were trying to achieve."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: latest_version_check
+    attributes:
+      label: "Using the latest version of GraalVM can resolve many issues."
+      options:
+        - label: "I tried with the [latest version](https://www.graalvm.org/downloads/) of GraalVM."
+    validations:
+      required: true
+
+  - type: textarea
+    id: graalvm_version
+    attributes:
+      label: GraalVM Version
+      description: "Provide the version of GraalVM used."
+      placeholder: "Output of `java -version` "
+    validations:
+      required: true
+
+  - type: input
+    id: operating_system
+    attributes:
+      label: Operating System and Version
+      description: "Provide details of your operating system and version (e.g., output of `uname -a` or Windows version)."
+      placeholder: "OS details here"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: troubleshooting_confirmation
+    attributes:
+      label: "Troubleshooting Confirmation"
+      description: "Check this box if you have tried all the suggestions in the troubleshooting guide."
+      options:
+        - label: "I tried the suggestions in the [troubleshooting guide](https://www.graalvm.org/latest/reference-manual/native-image/guides/troubleshoot-run-time-errors/)."
+    validations:
+      required: true
+
+  - type: textarea
+    id: runtime_command
+    attributes:
+      label: Run Command
+      description: "Provide the exact command you used to run the native image."
+      placeholder: "e.g., `./my-native-image ...`"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: "What did you expect to happen when running the native image?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual Behavior
+      description: "What actually happened during the run? Describe any errors or unexpected outcomes."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: "Provide a step-by-step description of how to reproduce the run-time issue. Include any specific commands, configurations, or code snippets.\nAdditionally, share a native image bundle using the flag --bundle-create. See more [here](https://www.graalvm.org/latest/reference-manual/native-image/overview/Bundles/)."
+      placeholder: "1. \n2. \n3."
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: "Provide any additional context or information that might help in diagnosing the issue, such as environmental variables, system settings, or external dependencies."
+    validations:
+      required: false
+
+  - type: textarea
+    id: log_output
+    attributes:
+      label: Run-Time Log Output and Error Messages
+      description: "Include any relevant run-time log outputs or error messages. Attach files by selecting this field and then dragging and dropping them into the comment box below the issue form."
+      placeholder: "Paste run-time logs or error messages here"
+    validations:
+      required: false

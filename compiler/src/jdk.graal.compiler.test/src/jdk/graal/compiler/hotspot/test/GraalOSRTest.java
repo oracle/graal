@@ -267,6 +267,8 @@ public class GraalOSRTest extends GraalOSRTestBase {
         return Stream.of(dis.split("\n")).map(line -> cpRef.matcher(line.trim()).replaceAll(mr -> "#__")).collect(Collectors.joining(System.lineSeparator()));
     }
 
+    private static final int ArrayLength = 10000;
+
     static ReturnValue testArrayBottom(byte[] aB, int[] aI, int i) {
         Object a = null;
         long base = 0;
@@ -275,6 +277,30 @@ public class GraalOSRTest extends GraalOSRTestBase {
             base = Unsafe.ARRAY_BYTE_BASE_OFFSET;
         } else {
             a = aI;
+            base = Unsafe.ARRAY_INT_BASE_OFFSET;
+        }
+        int res = 0;
+        for (int j = 0; j < ArrayLength; j++) {
+            res += UNSAFE.getByte(a, base + j);
+        }
+        GraalDirectives.sideEffect(res);
+
+        return ReturnValue.SUCCESS;
+    }
+
+    @Test
+    public void testOSR07() {
+        testOSR(getInitialOptions(), "testArrayBottom", null, new byte[ArrayLength], new int[ArrayLength], 10);
+    }
+
+    static ReturnValue testNonNullArrayBottom(int i) {
+        Object a;
+        long base;
+        if (i % 2 == 0) {
+            a = new byte[ArrayLength];
+            base = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        } else {
+            a = new int[ArrayLength];
             base = Unsafe.ARRAY_INT_BASE_OFFSET;
         }
         int res = 0;
@@ -287,7 +313,7 @@ public class GraalOSRTest extends GraalOSRTestBase {
     }
 
     @Test
-    public void testOSR07() {
-        testOSR(getInitialOptions(), "testArrayBottom", null, new byte[100], new int[100], 10);
+    public void testOSR08() {
+        testOSR(getInitialOptions(), "testNonNullArrayBottom", null, 10);
     }
 }

@@ -28,12 +28,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.oracle.svm.graal.isolated.IsolatedHandles;
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.isolated.ClientHandle;
@@ -43,6 +42,7 @@ import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCodeInstallBridge;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.svm.graal.isolated.IsolatedSpeculationLog;
@@ -50,6 +50,7 @@ import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 import com.oracle.svm.truffle.isolated.BinaryOutput.ByteArrayBinaryOutput;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -80,6 +81,11 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     @Override
     public void onCompilationFailed(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         onCompilationFailed0(IsolatedCompileContext.get().getClient(), handle, IsolatedCompileContext.get().hand(serializedException), silent, bailout, permanentBailout, graphTooBig);
+    }
+
+    @Override
+    public void onCompilationSuccess(int compilationTier, boolean lastTier) {
+        onCompilationSuccess0(IsolatedCompileContext.get().getClient(), handle, compilationTier, lastTier);
     }
 
     @Override
@@ -128,8 +134,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public void prepareForCompilation() {
-        prepareForCompilation0(IsolatedCompileContext.get().getClient(), handle);
+    public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        return prepareForCompilation0(IsolatedCompileContext.get().getClient(), handle, rootCompilation, compilationTier, lastTier);
     }
 
     @Override
@@ -160,45 +166,59 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return options;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static ClientHandle<SpeculationLog> getCompilationSpeculationLog0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         SpeculationLog log = compilable.getCompilationSpeculationLog();
         return IsolatedCompileClient.get().hand(log);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.VoidExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static void onCompilationFailed0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         Supplier<String> serializedException = new IsolatedStringSupplier(serializedExceptionHandle);
         IsolatedCompileClient.get().unhand(compilableHandle).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.VoidExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
+    private static void onCompilationSuccess0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
+                    int tier, boolean lastTier) {
+        IsolatedCompileClient.get().unhand(compilableHandle).onCompilationSuccess(tier, lastTier);
+    }
+
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static CompilerHandle<String> getName0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         String name = IsolatedCompileClient.get().unhand(compilableHandle).getName();
         return IsolatedCompileClient.get().createStringInCompiler(name);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static int getNonTrivialNodeCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.getNonTrivialNodeCount();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static int countDirectCallNodes0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.countDirectCallNodes();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static int getCallCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.getCallCount();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.BooleanExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static boolean cancelCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle, ClientHandle<String> reasonHandle) {
         final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();
         final SubstrateCompilableTruffleAST compilable = isolatedCompileClient.unhand(compilableHandle);
@@ -206,7 +226,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return compilable.cancelCompilation(reason);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.BooleanExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static boolean isSameOrSplit0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle, ClientHandle<SubstrateCompilableTruffleAST> otherHandle) {
 
@@ -218,31 +239,37 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return compilable.isSameOrSplit(other);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static int getKnownCallSiteCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.getKnownCallSiteCount();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.BooleanExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
+    private static boolean prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle,
+                    boolean rootCompilation, int compilationTier, boolean lastTier) {
         TruffleCompilable ast = IsolatedCompileClient.get().unhand(handle);
-        ast.prepareForCompilation();
+        return ast.prepareForCompilation(rootCompilation, compilationTier, lastTier);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.BooleanExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static boolean isTrivial0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
         return compilable.isTrivial();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static long engineId0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
         return compilable.engineId();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.VoidExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     @SuppressWarnings("unused")
     private static void getCompilerOptions0(ClientIsolateThread client,
                     ClientHandle<? extends TruffleCompilable> inliningHandle,
@@ -257,7 +284,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileContext.VoidExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileContext.ExceptionRethrowCallerEpilogue.class)
     @SuppressWarnings("unused")
     private static void fillCompilerOptions0(@CEntryPoint.IsolateThreadContext CompilerIsolateThread context,
                     ClientIsolateThread client, CCharPointer buffer, int bufferLength,

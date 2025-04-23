@@ -26,10 +26,10 @@ package jdk.graal.compiler.phases.common.util;
 
 import java.util.EnumSet;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
@@ -53,6 +53,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
+import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
@@ -61,75 +62,144 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
 
+    /**
+     * Policy method for the GraalVM compiler loop optimizer.
+     *
+     * If for any reason a loop should be left totally untouched by loop optimizations this method
+     * returns true.
+     */
+    public static boolean excludeLoopFromOptimizer(Loop loop) {
+        /*
+         * Strip mining should be considered a pure "structural" transformation. It rewrites IR to
+         * serve the purpose of enabling other optimizations. The outer loop created in this process
+         * is mere a means to achieve something else. The optimizer should not have to spend any
+         * time optimizing it since it is visited infrequently and only there to enable a more
+         * optimal inner loop.
+         */
+        return loop.loopBegin().isAnyStripMinedOuter();
+    }
+
+    public static long tripCountSignedExact(CountedLoopInfo loop) {
+        ValueNode maxTripCountNode = loop.maxTripCountNode();
+        final long maxTripCountAsSigned = maxTripCountNode.asJavaConstant().asLong();
+        if (maxTripCountAsSigned < 0) {
+            throw new ArithmeticException("Unsigned value " + maxTripCountAsSigned + " overflows signed range");
+        }
+        return maxTripCountAsSigned;
+    }
+
     public static long addExact(int bits, long a, long b) {
-        if (bits == 32) {
-            int ia = (int) a;
-            int ib = (int) b;
-            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+        if (bits == 8) {
+            byte ba = NumUtil.safeToByteAE(a);
+            byte bb = NumUtil.safeToByteAE(b);
+            return addExact(ba, bb);
+        } else if (bits == 16) {
+            short sa = NumUtil.safeToShortAE(a);
+            short sb = NumUtil.safeToShortAE(b);
+            return addExact(sa, sb);
+        } else if (bits == 32) {
+            int ia = NumUtil.safeToIntAE(a);
+            int ib = NumUtil.safeToIntAE(b);
             return Math.addExact(ia, ib);
         } else if (bits == 64) {
             return Math.addExact(a, b);
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
     public static long subtractExact(int bits, long a, long b) {
-        if (bits == 32) {
-            int ia = (int) a;
-            int ib = (int) b;
-            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+        if (bits == 8) {
+            byte ba = NumUtil.safeToByteAE(a);
+            byte bb = NumUtil.safeToByteAE(b);
+            return subExact(ba, bb);
+        } else if (bits == 16) {
+            short sa = NumUtil.safeToShortAE(a);
+            short sb = NumUtil.safeToShortAE(b);
+            return subExact(sa, sb);
+        } else if (bits == 32) {
+            int ia = NumUtil.safeToIntAE(a);
+            int ib = NumUtil.safeToIntAE(b);
             return Math.subtractExact(ia, ib);
         } else if (bits == 64) {
             return Math.subtractExact(a, b);
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
     public static long multiplyExact(int bits, long a, long b) {
-        if (bits == 32) {
-            int ia = (int) a;
-            int ib = (int) b;
-            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+        if (bits == 8) {
+            byte ba = NumUtil.safeToByteAE(a);
+            byte bb = NumUtil.safeToByteAE(b);
+            return mulExact(ba, bb);
+        } else if (bits == 16) {
+            short sa = NumUtil.safeToShortAE(a);
+            short sb = NumUtil.safeToShortAE(b);
+            return mulExact(sa, sb);
+        } else if (bits == 32) {
+            int ia = NumUtil.safeToIntAE(a);
+            int ib = NumUtil.safeToIntAE(b);
             return Math.multiplyExact(ia, ib);
         } else if (bits == 64) {
             return Math.multiplyExact(a, b);
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
-    public static boolean canTakeAbs(long l, int bits) {
-        try {
-            abs(l, bits);
-            return true;
-        } catch (ArithmeticException e) {
-            return false;
+    private static byte addExact(byte x, byte y) {
+        int iR = x + y;
+        byte bR = (byte) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("byte overflow");
         }
+        return bR;
     }
 
-    /**
-     * Compute {@link Math#abs(long)} for the given arguments and the given bit size. Throw a
-     * {@link ArithmeticException} if the abs operation would overflow.
-     */
-    public static long abs(long l, int bits) throws ArithmeticException {
-        if (bits == 32) {
-            if (l == Integer.MIN_VALUE) {
-                throw new ArithmeticException("Abs on Integer.MIN_VALUE would cause an overflow because abs(Integer.MIN_VALUE) = Integer.MAX_VALUE + 1 which does not fit in int (32 bits)");
-            } else {
-                final int i = (int) l;
-                return Math.abs(i);
-            }
-        } else if (bits == 64) {
-            if (l == Long.MIN_VALUE) {
-                throw new ArithmeticException("Abs on Long.MIN_VALUE would cause an overflow because abs(Long.MIN_VALUE) = Long.MAX_VALUE + 1 which does not fit in long (64 bits)");
-            } else {
-                return Math.abs(l);
-            }
-        } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+    private static byte subExact(byte x, byte y) {
+        int iR = x - y;
+        byte bR = (byte) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("byte overflow");
         }
+        return bR;
+    }
+
+    private static byte mulExact(byte x, byte y) {
+        int iR = x * y;
+        byte bR = (byte) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("byte overflow");
+        }
+        return bR;
+    }
+
+    private static short addExact(short x, short y) {
+        int iR = x + y;
+        short bR = (short) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("short overflow");
+        }
+        return bR;
+    }
+
+    private static short subExact(short x, short y) {
+        int iR = x - y;
+        short bR = (short) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("short overflow");
+        }
+        return bR;
+    }
+
+    private static short mulExact(short x, short y) {
+        int iR = x * y;
+        short bR = (short) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("short overflow");
+        }
+        return bR;
     }
 
     /**
@@ -201,9 +271,13 @@ public class LoopUtility {
      * @param canonicalizer must not be {@code null}, will be applied incrementally to nodes whose
      *            inputs changed
      */
-    @SuppressWarnings("try")
     public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
         LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
+        removeObsoleteProxies(graph, context, canonicalizer, loopsData);
+    }
+
+    @SuppressWarnings("try")
+    public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer, LoopsData loopsData) {
         final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED));
         try (NodeEventScope s = graph.trackNodeEvents(inputChanges)) {
             for (Loop loop : loopsData.loops()) {

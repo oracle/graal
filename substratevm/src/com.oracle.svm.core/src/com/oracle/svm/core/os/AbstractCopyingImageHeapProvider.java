@@ -30,11 +30,11 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -47,10 +47,10 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
-        Pointer selfReservedMemory = WordFactory.nullPointer();
+        Pointer selfReservedMemory = Word.nullPointer();
         UnsignedWord requiredSize = getTotalRequiredAddressSpaceSize();
         if (reservedAddressSpace.isNull()) {
-            UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
+            UnsignedWord alignment = Word.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
             selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false);
             if (selfReservedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
@@ -68,7 +68,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
                 heapBase = selfReservedHeapBase;
             } else {
                 heapBase = reservedAddressSpace.add(preHeapRequiredBytes);
-                selfReservedHeapBase = WordFactory.nullPointer();
+                selfReservedHeapBase = Word.nullPointer();
             }
 
             int error = DynamicMethodAddressResolutionHeapSupport.get().initialize();

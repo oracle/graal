@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.debug;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -51,6 +53,7 @@ import java.util.ServiceLoader;
  * image. Delegating to {@link StandardPathUtilitiesProvider} is the recommended way to work in the
  * context of building a native image.
  */
+@LibGraalService
 public interface PathUtilitiesProvider {
     /**
      * Gets a value based on {@code name} that can be passed to {@link #getPath(String, String...)}

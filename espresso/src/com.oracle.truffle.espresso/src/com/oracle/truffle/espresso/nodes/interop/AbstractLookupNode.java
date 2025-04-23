@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.nodes.interop;
 
 import static java.lang.Math.max;
@@ -30,9 +29,10 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
@@ -44,7 +44,7 @@ public abstract class AbstractLookupNode extends EspressoNode {
     abstract Method.MethodVersion[] getMethodArray(Klass k);
 
     @TruffleBoundary
-    Method[] doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+    Method[] doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException, UnknownIdentifierException {
         EspressoContext ctx = getContext();
         ArrayList<Method> result = new ArrayList<>();
         String methodName;
@@ -58,21 +58,23 @@ public abstract class AbstractLookupNode extends EspressoNode {
         }
         Symbol<Name> name = ctx.getNames().lookup(methodName);
         if (name == null) {
-            return null;
+            throw UnknownIdentifierException.create(methodName);
         }
         Symbol<Signature> sig = null;
         if (signature != null) {
             sig = ctx.getSignatures().lookupValidSignature(signature);
             if (sig == null) {
-                return null;
+                throw UnknownIdentifierException.create(methodName);
             }
         }
 
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
         boolean skipArityCheck = arity == -1;
+        boolean memberFound = false;
         for (Method.MethodVersion m : getMethodArray(klass)) {
             if (matchMethod(m.getMethod(), name, sig, isStatic, publicOnly)) {
+                memberFound = true;
                 int matchArity = m.getMethod().getParameterCount();
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
@@ -81,10 +83,13 @@ public abstract class AbstractLookupNode extends EspressoNode {
                 }
             }
         }
+        if (!memberFound) {
+            throw UnknownIdentifierException.create(methodName);
+        }
         if (!skipArityCheck && result.isEmpty() && maxOverallArity >= 0) {
             throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
-        return result.isEmpty() ? null : result.toArray(new Method[0]);
+        return result.isEmpty() ? null : result.toArray(Method.EMPTY_ARRAY);
     }
 
     private static boolean matchMethod(Method m, Symbol<Name> methodName, Symbol<Signature> signature, boolean isStatic, boolean publicOnly) {

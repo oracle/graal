@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
 
@@ -38,17 +42,31 @@ import jdk.graal.compiler.api.replacements.Fold;
 /**
  * Provides new instances of the image heap for creating isolates. The same image heap provider
  * implementation can be shared by different garbage collectors.
- * <p>
- * When a heap base is used, then the image heap is always mapped in a way that the memory at the
- * heap base is protected and marked as inaccessible (see
- * {@link Heap#getImageHeapOffsetInAddressSpace()} for more details). This is done regardless of the
- * used GC, platform, or CPU architecture:
+ *
+ * If {@link SubstrateOptions#SpawnIsolates} is disabled, the image heap is loaded and mapped by the
+ * operating system instead of an image heap provider (see {@link OSCommittedMemoryProvider}). Note
+ * that this mode is deprecated and not covered by the documentation below.
+ *
+ * If {@link SubstrateOptions#SpawnIsolates} is enabled, a heap base is used and the image heap is
+ * explicitly mapped into a contiguous address space. Here is the typical memory layout of a mapped
+ * image heap at run-time:
  *
  * <pre>
- * | protected memory | image heap |
+ * |---------------------------------------------------------------------------------------|
+ * | protected memory |          read-only          |    writable   | read-only (optional) |
+ * |---------------------------------------------------------------------------------------|
+ * |                  | normal objects | relocatable data |         normal objects         |
+ * |---------------------------------------------------------------------------------------|
  * ^
  * heapBase
  * </pre>
+ *
+ * The memory at the heap base is explicitly marked as inaccessible (see
+ * {@link Heap#getImageHeapOffsetInAddressSpace()} for more details). Accesses to it will result in
+ * a segfault.
+ *
+ * Note that the relocatable data may overlap with both the read-only and writable part of the image
+ * heap. Besides that, parts of the read-only relocatable data may be writable at run-time.
  */
 public interface ImageHeapProvider {
     @Fold
@@ -71,11 +89,16 @@ public interface ImageHeapProvider {
      *            written. May be null if this value is not required.
      * @return a result code from {@link CEntryPointErrors}.
      */
+    @Uninterruptible(reason = "Still being initialized.")
     int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer);
 
     /**
      * Disposes an instance of the image heap that was created with this provider. This method must
      * only be called if the image heap memory was allocated by the {@link ImageHeapProvider}.
      */
+    @Uninterruptible(reason = "Called during isolate tear-down.")
     int freeImageHeap(PointerBase heapBase);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    UnsignedWord getImageHeapAddressSpaceSize();
 }

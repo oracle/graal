@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import com.oracle.svm.configure.ConfigurationUsageException;
+import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
@@ -46,8 +47,9 @@ import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.phases.common.LazyValue;
 
 public class ConfigurationGenerateCommand extends ConfigurationCommand {
     @Override
@@ -264,14 +266,12 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
 
         try {
             omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null);
-            List<Path> predefinedClassDestDirs = new ArrayList<>();
+            List<LazyValue<Path>> predefinedClassDestDirs = new ArrayList<>();
             for (URI pathUri : outputCollection.getPredefinedClassesConfigPaths()) {
-                Path subdir = Files.createDirectories(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
-                subdir = Files.createDirectories(subdir);
-                predefinedClassDestDirs.add(subdir);
+                predefinedClassDestDirs.add(PredefinedClassesConfigurationParser.directorySupplier(Paths.get(pathUri).getParent()));
             }
             Predicate<String> shouldExcludeClassesWithHash = omittedConfigurationSet.getPredefinedClassesConfiguration()::containsClassWithHash;
-            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash);
+            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs, shouldExcludeClassesWithHash);
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -282,15 +282,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         }
 
         if (!traceInputs.isEmpty()) {
-            AccessAdvisor advisor = new AccessAdvisor();
-            advisor.setHeuristicsEnabled(builtinHeuristicFilter);
-            if (callersFilter != null) {
-                advisor.setCallerFilterTree(callersFilter);
-            }
-            if (accessFilter != null) {
-                advisor.setAccessFilterTree(accessFilter);
-            }
-
+            AccessAdvisor advisor = new AccessAdvisor(builtinHeuristicFilter, callersFilter, accessFilter, null);
             TraceProcessor processor = new TraceProcessor(advisor);
             for (URI uri : traceInputs) {
                 try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {

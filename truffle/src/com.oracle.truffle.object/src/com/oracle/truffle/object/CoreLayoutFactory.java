@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.object;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -64,26 +67,28 @@ public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFa
         DefaultLayout.resetNativeImageState();
     }
 
-    protected void registerLayoutClass(Class<? extends DynamicObject> subclass) {
-        DefaultLayout.registerLayoutClass(subclass);
+    protected void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
+        DefaultLayout.registerLayoutClass(subclass, layoutLookup);
     }
 
-    public LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, int implicitCastFlags) {
-        return DefaultLayout.createCoreLayout(layoutClass, implicitCastFlags);
+    public LayoutImpl createLayout(Class<? extends DynamicObject> layoutClass, Lookup layoutLookup, int implicitCastFlags) {
+        return DefaultLayout.createCoreLayout(layoutClass, layoutLookup, implicitCastFlags);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Shape createShape(Object builderArgs) {
+    public final Shape createShape(Object builderArgs) {
         Object[] args = (Object[]) builderArgs;
         Class<? extends DynamicObject> layoutClass = (Class<? extends DynamicObject>) args[0];
         int implicitCastFlags = (int) args[1];
-        LayoutImpl impl = createLayout(layoutClass, implicitCastFlags);
         Object dynamicType = args[2];
         Object sharedData = args[3];
         int shapeFlags = (int) args[4];
         var constantProperties = (UnmodifiableEconomicMap<Object, Pair<Object, Integer>>) args[5];
         var singleContextAssumption = (Assumption) args[6];
+        var layoutLookup = (MethodHandles.Lookup) args[7];
 
+        LayoutImpl impl = createLayout(layoutClass, layoutLookup, implicitCastFlags);
         ShapeImpl shape = impl.newShape(dynamicType, sharedData, shapeFlags, singleContextAssumption);
 
         if (constantProperties != null) {

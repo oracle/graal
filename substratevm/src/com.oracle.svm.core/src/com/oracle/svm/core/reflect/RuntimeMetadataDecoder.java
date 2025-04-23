@@ -32,42 +32,49 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
-    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly);
+    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
-    FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index);
+    FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index, int layerId);
 
-    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly);
+    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
-    MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index);
+    MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index, int layerId);
 
-    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly);
+    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
-    ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index);
+    ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index, int layerId);
 
-    Class<?>[] parseClasses(int index);
+    Class<?>[] parseClasses(int index, DynamicHub declaringType);
 
-    RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
+    Class<?>[] parseAllClasses();
 
-    Object[] parseObjects(int index);
+    RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index, int layerId);
 
-    Parameter[] parseReflectParameters(Executable executable, byte[] encoding);
+    Object[] parseObjects(int index, DynamicHub declaringType);
 
-    Object[] parseEnclosingMethod(int index);
+    Parameter[] parseReflectParameters(Executable executable, byte[] encoding, DynamicHub declaringType);
 
-    byte[] parseByteArray(int index);
+    Object[] parseEnclosingMethod(int index, DynamicHub declaringType);
+
+    byte[] parseByteArray(int index, DynamicHub declaringType);
 
     boolean isHiding(int modifiers);
 
     boolean isNegative(int modifiers);
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     int getMetadataByteLength();
 
     class ElementDescriptor {
@@ -153,12 +160,20 @@ public interface RuntimeMetadataDecoder {
             return ImageSingletons.lookup(MetadataAccessor.class);
         }
 
-        <T> T getObject(int index);
+        <T> T getObject(int index, int layerId);
 
-        Class<?> getClass(int index);
+        Class<?> getClass(int index, int layerId);
 
-        String getMemberName(int index);
+        String getMemberName(int index, int layerId);
 
-        String getOtherString(int index);
+        String getOtherString(int index, int layerId);
+    }
+
+    static int getConstantPoolLayerId(Target_jdk_internal_reflect_ConstantPool constPool) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            return constPool.getLayerId();
+        } else {
+            return 0;
+        }
     }
 }

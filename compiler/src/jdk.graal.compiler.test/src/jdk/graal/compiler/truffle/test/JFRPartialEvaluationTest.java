@@ -24,25 +24,28 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
-import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
-import jdk.jfr.Event;
-import jdk.jfr.Name;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.junit.Test;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.Assert.assertNotNull;
+import org.junit.Test;
+
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
+import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
+import jdk.jfr.Event;
+import jdk.jfr.Name;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -66,7 +69,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
                 }
             }
         });
-        if (Runtime.version().feature() < 22) {
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
             Class<?> throwableTracer = findThrowableTracerClass();
             ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
             OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
@@ -114,7 +117,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
                 }
             }
         });
-        if (Runtime.version().feature() < 22) {
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
             Class<?> throwableTracer = findThrowableTracerClass();
             ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
             ResolvedJavaMethod traceError = getResolvedJavaMethod(throwableTracer, "traceError");
@@ -175,7 +178,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Name("test.JFRPartialEvaluationTestEvent")
-    private static class TestEvent extends Event {
+    private static final class TestEvent extends Event {
     }
 
     private static MethodCallTargetNode findInvoke(StructuredGraph graph, ResolvedJavaMethod expectedMethod) {

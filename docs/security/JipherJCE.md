@@ -76,67 +76,37 @@ The steps below show how to embedded Jipher in a native executable, using a simp
     It is recommended that the output directory is `/META-INF/native-image/` (if you build with Maven or Gradle, then `/resources/META-INF/native-image/`). 
     Later, when building a native executable, the `native-image` builder will pick up the files from that location automatically. 
 
-    For this Java application, the agent creates multiple configuration files. The ones to check are:
-
-    - **resource-config.json**: Jipher bundles the OpenSSL libraries (for all supported platforms) within the JAR. This file lists entries for _libjipher.so_, _fips.so_, and _openssl.cnf_ along with the corresponding checksum files. The specific entries pertain to the platform on which the agent is run, and should correspond to the platform for which the native executable is built. For example, on Linux x64, the content should be similar to:
-        ```json
+    For this Java application, the agent creates the _reachability-metadata.json_ file with the following contents:
+    ```json
+    {
+      "reflection":[
         {
-        "resources":{
-        "includes":[
-            {
-            "pattern":"\\Qlibs/linux_x64/fips.so.crc32\\E"
-            },
-            {
-            "pattern":"\\Qlibs/linux_x64/fips.so\\E"
-            },
-            {
-            "pattern":"\\Qlibs/linux_x64/libjipher.so.crc32\\E"
-            },
-            {
-            "pattern":"\\Qlibs/linux_x64/libjipher.so\\E"
-            },
-            {
-            "pattern":"\\Qlibs/linux_x64/openssl.cnf.crc32\\E"
-            },
-            {
-            "pattern":"\\Qlibs/linux_x64/openssl.cnf\\E"
-            },
-            {
-            "pattern":"\\Qlibs\\E"
-            }
-        ]},
-        "bundles":[]
+          "type":"com.oracle.jipher.internal.spi.KeyPairGen$Rsa",
+          "methods":[{"name":"<init>","parameterTypes":[] }]
+        },
+        {
+          "type":"com.oracle.jipher.internal.spi.RsaDigestSig$Sha512WithRsa",
+          "methods":[{"name":"<init>","parameterTypes":[] }]
         }
-        ```
-    - **jni-config.json**: This file lists entries from Jipher internal OpenSSL packages for Java classes with native method declarations. The content should be similar to:
-        ```json
-        {
-        "name":"[B"}
-        ,
-        {
-        "name":"[[B"}
-        ,
-        {
-        "name":"com.oracle.jipher.internal.openssl.JniOpenSsl"}
-        ,
-        {
-        "name":"java.lang.Boolean",
-        "methods":[{"name":"getBoolean","parameterTypes":["java.lang.String"] }]
-        }
-        ```
-    - **reflect-config.json**: This file lists entries from Jipher internal SPI packages for Java classes which implement the JCE SPI. The content should be similar to:
-        ```json
-        [
-        {
-        "name":"com.oracle.jipher.internal.spi.KeyPairGen$Rsa",
-        "methods":[{"name":"<init>","parameterTypes":[] }]}
-        ,
-        {
-        "name":"com.oracle.jipher.internal.spi.RsaDigestSig$Sha512WithRsa",
-        "methods":[{"name":"<init>","parameterTypes":[] }]}
-        ,
-        ...]
-        ```
+      ],
+      "resources":[
+        {"glob":"libs/linux_x64/fips.so.crc32"},
+        {"glob":"libs/linux_x64/fips.so"},
+        {"glob":"libs/linux_x64/libjipher.so.crc32"},
+        {"glob":"libs/linux_x64/libjipher.so"},
+        {"glob":"libs/linux_x64/openssl.cnf.crc32"},
+        {"glob":"libs/linux_x64/openssl.cnf"},
+        {"glob":"libs"}
+      ],
+      "jni":[
+        {"type":"[B"},
+        {"type":"[[B"},
+        {"type":"com.oracle.jipher.internal.openssl.JniOpenSsl"},
+        {"type":"java.lang.Boolean","methods":[{"name":"getBoolean","parameterTypes":["java.lang.String"] }]}
+      ]
+    }
+   ```
+    
 4. For the agent to discover all possible calls to Jipher, re-run the application with the agent on the JVM (you can re-run the agent as many times as needed). This will regenerate the entire configuration suite including any negative test cases (to allow for exception classes to be captured). For the subsequent runs, use this command:
 
     ```shell

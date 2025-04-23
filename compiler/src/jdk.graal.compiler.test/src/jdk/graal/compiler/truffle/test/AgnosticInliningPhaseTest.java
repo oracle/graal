@@ -63,9 +63,10 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return "";
             }
         };
-        final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+        final TruffleTierContext context = TruffleTierContext.createInitialContext(
+                        partialEvaluator,
                         compiler.getOrCreateCompilerOptions(callTarget),
-                        getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+                        getDebugContext(), callTarget,
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilationTask() {
 

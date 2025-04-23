@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 
 #ifndef NATIVE_IMAGE
-#include "precompiled.hpp"
 #include "cds/classListWriter.hpp"
 #include "compiler/compileLog.hpp"
 #include "jvm.h"
@@ -47,6 +46,9 @@
 #include "utilities/xmlstream.hpp"
 
 // Declarations of jvm methods
+
+namespace svm_container {
+
 extern "C" void jio_print(const char* s, size_t len);
 extern "C" int jio_printf(const char *fmt, ...);
 
@@ -136,8 +138,8 @@ const char* outputStream::do_vsnprintf(char* buffer, size_t buflen,
   }
 #ifdef ASSERT
   if (required_len > result_len) {
-    warning("outputStream::do_vsnprintf output truncated -- buffer length is " SIZE_FORMAT
-            " bytes but " SIZE_FORMAT " bytes are needed.",
+    warning("outputStream::do_vsnprintf output truncated -- buffer length is %zu"
+            " bytes but %zu bytes are needed.",
             add_cr ? buflen + 1 : buflen, required_len + 1);
   }
 #endif
@@ -190,7 +192,13 @@ void outputStream::vprint_cr(const char* format, va_list argptr) {
   do_vsnprintf_and_write(format, argptr, true);
 }
 
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
+
+namespace svm_container {
+
 void outputStream::print_raw(const char* str, size_t len) {
 #ifndef NATIVE_IMAGE
   if (_autoindent && _position == 0) {
@@ -400,7 +408,7 @@ void stringStream::write(const char* s, size_t len) {
   }
   const size_t reasonable_max_len = 1 * G;
   if (len >= reasonable_max_len) {
-    assert(false, "bad length? (" SIZE_FORMAT ")", len);
+    assert(false, "bad length? (%zu)", len);
     return;
   }
   size_t write_len = 0;
@@ -453,6 +461,13 @@ char* stringStream::as_string(bool c_heap) const {
   }
   return copy;
 }
+
+char* stringStream::as_string(Arena* arena) const {
+  char* copy = NEW_ARENA_ARRAY(arena, char, _written + 1);
+  ::memcpy(copy, _buffer, _written);
+  copy[_written] = '\0';  // terminating null
+  return copy;
+}
 #endif // !NATIVE_IMAGE
 
 stringStream::~stringStream() {
@@ -460,6 +475,9 @@ stringStream::~stringStream() {
     FREE_C_HEAP_ARRAY(char, _buffer);
   }
 }
+
+
+} // namespace svm_container
 
 #ifndef NATIVE_IMAGE
 // tty needs to be always accessible since there are code paths that may write to it
@@ -471,6 +489,9 @@ stringStream::~stringStream() {
 // The policy followed here is a compromise reached during review of JDK-8292351:
 // - pre-init: we silently swallow all output. We won't see anything, but at least won't crash
 // - post-exit: we write to a simple fdStream, but somewhat mimic the behavior of the real defaultStream
+
+namespace svm_container {
+
 static nullStream tty_preinit_stream;
 outputStream* tty = &tty_preinit_stream;
 
@@ -893,7 +914,7 @@ intx defaultStream::hold(intx writer_id) {
     if (has_log) {
       _log_file->bol();
       // output a hint where this output is coming from:
-      _log_file->print_cr("<writer thread='" UINTX_FORMAT "'/>", writer_id);
+      _log_file->print_cr("<writer thread='%zu'/>", writer_id);
     }
     _last_writer = writer_id;
   }
@@ -1090,6 +1111,9 @@ bufferedStream::~bufferedStream() {
   FREE_C_HEAP_ARRAY(char, buffer);
 }
 
+
+} // namespace svm_container
+
 #ifndef PRODUCT
 
 #if defined(LINUX) || defined(AIX) || defined(_ALLBSD_SOURCE)
@@ -1103,6 +1127,9 @@ bufferedStream::~bufferedStream() {
 #endif
 
 // Network access
+
+namespace svm_container {
+
 networkStream::networkStream() : bufferedStream(1024*10, 1024*10) {
 
   _socket = -1;
@@ -1166,6 +1193,9 @@ bool networkStream::connect(const char *host, short port) {
   freeaddrinfo(addr_info);
   return (conn >= 0);
 }
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 #endif

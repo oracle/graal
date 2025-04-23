@@ -44,6 +44,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
 public final class RuntimeSupport implements VMRuntimeSupport {
+
     @FunctionalInterface
     public interface Hook {
         void execute(boolean isFirstIsolate);
@@ -94,7 +95,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public void initialize() {
         boolean shouldInitialize = initializationState.compareAndSet(InitializationState.Uninitialized, InitializationState.InProgress);
         if (shouldInitialize) {
-            IsolateArgumentParser.verifyOptionValues();
+            IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
             executeHooks(startupHooks);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,11 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import static jdk.graal.compiler.nodes.GraphState.StageFlag.SAFEPOINTS_INSERTION;
+
 import java.util.HashMap;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -37,8 +41,6 @@ import jdk.graal.compiler.replacements.nodes.BitScanReverseNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -59,12 +61,17 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("mathTan");
         testGraph("mathAll");
 
+        if (getReplacements().hasSubstitution(getResolvedJavaMethod(Math.class, "tanh"), getInitialOptions())) {
+            testGraph("mathTanh");
+        }
+
         test("mathCos", value);
         test("mathLog", value);
         test("mathLog10", value);
         test("mathSin", value);
         test("mathSqrt", value);
         test("mathTan", value);
+        test("mathTanh", value);
         test("mathAll", value);
     }
 
@@ -130,6 +137,10 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         return Math.tan(value);
     }
 
+    public static double mathTanh(double value) {
+        return Math.tanh(value);
+    }
+
     public static double mathAll(double value) {
         return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value);
     }
@@ -140,7 +151,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getInlineSubstitution(realJavaMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realJavaMethod, 0, false, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClasses);
         }
@@ -322,4 +333,25 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("isInstance2", true, new HashMap<>());
         test("isInstance2", false, new HashMap<>());
     }
+
+    public static boolean constantIsAssignableFromConstantPrimary() {
+        // This tests constant folding in InstanceOfSnippets.isAssignableFrom
+        return delayConstantFoldingUntil(Number.class, SAFEPOINTS_INSERTION).isAssignableFrom(delayConstantFoldingUntil(Integer.class, SAFEPOINTS_INSERTION));
+    }
+
+    @Test
+    public void testConstantIsAssignableFromConstantPrimary() {
+        test("constantIsAssignableFromConstantPrimary");
+    }
+
+    public static boolean constantIsAssignableFromConstantSecondary() {
+        // This tests constant folding in InstanceOfSnippets.isAssignableFrom
+        return delayConstantFoldingUntil(Cloneable.class, SAFEPOINTS_INSERTION).isAssignableFrom(delayConstantFoldingUntil(Integer.class, SAFEPOINTS_INSERTION));
+    }
+
+    @Test
+    public void testConstantIsAssignableFromConstantSecondary() {
+        test("constantIsAssignableFromConstantSecondary");
+    }
+
 }

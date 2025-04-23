@@ -25,9 +25,9 @@
  */
 package com.oracle.svm.hosted;
 
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_FINAL;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
+import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_FINAL;
+import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_STATIC;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,16 +36,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
+import com.oracle.svm.configure.PredefinedClassesRegistry;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.configure.PredefinedClassesRegistry;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -54,16 +56,15 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassReader;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassWriter;
+import com.oracle.svm.shaded.org.objectweb.asm.FieldVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.MethodVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.Digest;
-import jdk.internal.org.objectweb.asm.ClassReader;
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.FieldVisitor;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
 
 @AutomaticallyRegisteredFeature
 public class ClassPredefinitionFeature implements InternalFeature {
@@ -91,15 +92,22 @@ public class ClassPredefinitionFeature implements InternalFeature {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
-        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.StrictConfiguration.getValue());
+        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.getConfigurationParserOptions());
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, PredefinedClassesSupport.class, false, "java.base", "jdk.internal.org.objectweb.asm");
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        PredefinedClassesSupport support = ImageSingletons.lookup(PredefinedClassesSupport.class);
+        support.setRegistrationValidator(clazz -> {
+            Optional<AnalysisType> analysisType = impl.getMetaAccess().optionalLookupJavaType(clazz);
+            analysisType.map(impl.getHostVM()::dynamicHub).ifPresent(
+                            hub -> VMError.guarantee(hub.isLoaded(), "Classes that should be predefined must not have a class loader."));
+        });
+
         sealed = true;
 
         List<String> skipped = new ArrayList<>();
@@ -142,7 +150,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
         }
     }
 
-    private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
+    private final class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
         @Override
         public void add(String nameInfo, String providedHash, URI baseUri) {
             if (!PredefinedClassesSupport.supportsBytecodes()) {

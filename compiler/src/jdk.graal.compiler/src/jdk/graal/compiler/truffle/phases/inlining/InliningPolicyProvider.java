@@ -26,7 +26,9 @@ package jdk.graal.compiler.truffle.phases.inlining;
 
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 
+@LibGraalService
 public abstract class InliningPolicyProvider implements Comparable<InliningPolicyProvider> {
 
     private final int priority;

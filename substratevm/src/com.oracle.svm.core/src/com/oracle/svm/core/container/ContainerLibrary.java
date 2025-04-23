@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 /**
@@ -49,47 +48,47 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @CContext(ContainerLibraryDirectives.class)
 @CLibrary(value = "svm_container", requireStatic = true, dependsOn = "m")
 // The following annotations are for files in `src/hotspot`, which are copied from the JDK
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/java.base/share/native/include/jni.h")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/java.base/unix/native/include/jni_md.h")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupSubsystem_linux.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupSubsystem_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupUtil_linux.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupUtil_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupV1Subsystem_linux.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupV1Subsystem_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupV2Subsystem_linux.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupV2Subsystem_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/osContainer_linux.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/osContainer_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+10/src/hotspot/os/linux/os_linux.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/os_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/os_linux.inline.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/posix/include/jvm_md.h")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/posix/os_posix.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/posix/os_posix.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/posix/os_posix.inline.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+9/src/hotspot/share/memory/allocation.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allocation.inline.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allStatic.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/nmt/memflags.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+8/src/hotspot/share/runtime/os.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+8/src/hotspot/share/runtime/os.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/runtime/os.inline.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/checkedCast.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/compilerWarnings_gcc.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/compilerWarnings.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/globalDefinitions_gcc.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+9/src/hotspot/share/utilities/globalDefinitions.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/macros.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/ostream.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/ostream.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/native/include/jni.h")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/unix/native/include/jni_md.h")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupSubsystem_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupSubsystem_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupUtil_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupUtil_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupV1Subsystem_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupV1Subsystem_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupV2Subsystem_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/cgroupV2Subsystem_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/osContainer_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/osContainer_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/os_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/os_linux.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/linux/os_linux.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/include/jvm_md.h")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/os_posix.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/os_posix.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/os_posix.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/memory/allocation.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/memory/allocation.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/memory/allStatic.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/nmt/memTag.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/runtime/os.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/runtime/os.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/runtime/os.inline.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/checkedCast.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/compilerWarnings_gcc.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/compilerWarnings.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/globalDefinitions_gcc.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/globalDefinitions.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/macros.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/ostream.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/ostream.hpp")
 // The following annotations are for files in `src/svm`, which are completely customized for SVM
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/logging/log.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+9/src/hotspot/share/memory/allocation.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+10/src/hotspot/share/runtime/globals.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/debug.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/debug.hpp")
-class ContainerLibrary {
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/logging/log.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/memory/allocation.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/runtime/globals.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/debug.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/debug.hpp")
+public class ContainerLibrary {
     static final int VERSION = 240100;
 
     // keep in sync with svm_container.hpp
@@ -142,14 +141,9 @@ class ContainerLibrary {
 class ContainerLibraryDirectives implements CContext.Directives {
     /**
      * True if {@link ContainerLibrary} should be linked.
-     *
-     * Note that although this method returns {@code true} only for certain GCs, the
-     * {@link CFunction}s defined in {@link ContainerLibrary} are always registered and can be
-     * called even if this method returns {@code false}, as other GCs provide alternative
-     * implementations themselves.
      */
     @Override
     public boolean isInConfiguration() {
-        return Container.isSupported() && (SubstrateOptions.useSerialGC() || SubstrateOptions.useEpsilonGC());
+        return Container.isSupported();
     }
 }

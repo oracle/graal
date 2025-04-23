@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,9 +64,12 @@ public class DisableOverflownCountedLoopsPhase extends Phase {
     @Override
     public void updateGraphState(GraphState graphState) {
         super.updateGraphState(graphState);
+        graphState.removeRequirementToStage(LOOP_OVERFLOWS_CHECKED);
         /*
          * This phase can run multiple times which is fine as long as we run it before all loop
-         * phases.
+         * phases. Note that newly inlined loops after this phase essentially invalidate this flag,
+         * but we have no formal invalidation mechanism. Inlining must therefore run this phase
+         * explicitly if it introduces new loops.
          */
         if (graphState.isBeforeStage(LOOP_OVERFLOWS_CHECKED)) {
             graphState.setAfterStage(LOOP_OVERFLOWS_CHECKED);

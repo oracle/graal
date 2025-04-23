@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,41 +24,9 @@
  */
 package jdk.graal.compiler.asm.amd64;
 
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SBB;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp.DEC;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp.INC;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp.MUL;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMIOp.SHA1RNDS4;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADCX;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADOX;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.IMUL;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA1MSG1;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA1MSG2;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA1NEXTE;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256MSG1;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256MSG2;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.SHA256RNDS2;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VCVTPS2PH;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXL;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTPH2PS;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VGF2P8AFFINEQB;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
+import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z1;
 import static jdk.graal.compiler.core.common.NumUtil.isByte;
 import static jdk.graal.compiler.core.common.NumUtil.isInt;
 import static jdk.graal.compiler.core.common.NumUtil.isShiftCount;
@@ -75,8 +43,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.F16C;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.GFNI;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 
 import java.util.ArrayList;
@@ -89,18 +55,18 @@ import org.graalvm.collections.EconomicSet;
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
+import jdk.graal.compiler.core.amd64.MemoryReadInterceptor;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.TargetDescription;
@@ -108,7 +74,7 @@ import jdk.vm.ci.code.TargetDescription;
 /**
  * This class implements an assembler that can encode most X86 instructions.
  */
-public class AMD64Assembler extends AMD64BaseAssembler {
+public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInterceptor {
 
     public static class Options {
         // @formatter:off
@@ -248,6 +214,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         DoubleAssertion(XMM, XMM, OperandSize.SD),
         PackedSingleAssertion(XMM, XMM, OperandSize.PS),
         PackedDoubleAssertion(XMM, XMM, OperandSize.PD),
+        PackedDoubleIntToFloatAssertion(XMM, CPU, OperandSize.PD),
+        PackedDoubleFloatToIntAssertion(CPU, XMM, OperandSize.PD),
         IntToFloatAssertion(XMM, CPU, OperandSize.DWORD, OperandSize.QWORD),
         DwordToFloatAssertion(XMM, CPU, OperandSize.DWORD),
         QwordToFloatAssertion(XMM, CPU, OperandSize.QWORD),
@@ -361,6 +329,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 case SSE4A:
                 case SSE4_1:
                 case SSE4_2:
+                case AES:
+                case CLMUL:
+                case GFNI:
                     return true;
                 default:
                     return false;
@@ -395,7 +366,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         protected final void emitImmediate(AMD64Assembler asm, OperandSize size, int imm) {
             if (immIsByte) {
-                assert imm == (byte) imm : imm;
+                assert NumUtil.isUByte(imm) || NumUtil.isByte(imm) : imm;
                 asm.emitByte(imm);
             } else {
                 size.emitImmediate(asm, imm);
@@ -450,10 +421,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final AMD64RMOp MOV    = new AMD64RMOp("MOV",                0x8B, OpAssertion.WordOrLargerAssertion);
         public static final AMD64RMOp CMP    = new AMD64RMOp("CMP",                0x3B, OpAssertion.WordOrLargerAssertion);
 
+        public static final AMD64RMOp XCHGB  = new AMD64RMOp("XCHGB",              0x86, OpAssertion.ByteAssertion);
+        public static final AMD64RMOp XCHG   = new AMD64RMOp("XCHG",               0x87, OpAssertion.WordOrLargerAssertion);
         // TEST is documented as MR operation, but it's symmetric, and using it as RM operation is more convenient.
         public static final AMD64RMOp TESTB  = new AMD64RMOp("TEST",               0x84, OpAssertion.ByteAssertion);
         public static final AMD64RMOp TEST   = new AMD64RMOp("TEST",               0x85, OpAssertion.WordOrLargerAssertion);
-
+        public static final AMD64RMOp CMPXCHG = new AMD64RMOp("CMPXCHG",     P_0F, 0xB1, OpAssertion.WordOrLargerAssertion);
         // ADX instructions
         public static final AMD64RMOp ADCX   = new AMD64RMOp("ADCX", 0x66, P_0F38, 0xF6, OpAssertion.DwordOrLargerAssertion, CPUFeature.ADX);
         public static final AMD64RMOp ADOX   = new AMD64RMOp("ADOX", 0xF3, P_0F38, 0xF6, OpAssertion.DwordOrLargerAssertion, CPUFeature.ADX);
@@ -465,6 +438,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public static final AMD64RMOp SHA256MSG1  = new AMD64RMOp("SHA256MSG1",  P_0F38, 0xCC, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
         public static final AMD64RMOp SHA256MSG2  = new AMD64RMOp("SHA256MSG2",  P_0F38, 0xCD, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+
+        // xmm0 is implicit additional source to this instruction.
         public static final AMD64RMOp SHA256RNDS2 = new AMD64RMOp("SHA256RNDS2", P_0F38, 0xCB, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
 
         // @formatter:on
@@ -500,8 +475,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
             assert verify(asm, size, dst, null);
             assert !isSSEInstruction();
+            asm.interceptMemorySrcOperands(src);
             emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
             asm.emitOperandHelper(dst, src, 0);
+        }
+
+        public void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, boolean force4Byte) {
+            assert verify(asm, size, dst, null);
+            assert !isSSEInstruction();
+            asm.interceptMemorySrcOperands(src);
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
+            asm.emitOperandHelper(dst, src, force4Byte, 0);
         }
     }
 
@@ -510,9 +494,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static class AMD64MROp extends AMD64RROp {
         // @formatter:off
-        public static final AMD64MROp MOVB   = new AMD64MROp("MOVB", 0x88, OpAssertion.ByteAssertion);
-        public static final AMD64MROp MOV    = new AMD64MROp("MOV",  0x89, OpAssertion.WordOrLargerAssertion);
-       // @formatter:on
+        public static final AMD64MROp MOVB     = new AMD64MROp("MOVB",           0x88, OpAssertion.ByteAssertion);
+        public static final AMD64MROp MOV      = new AMD64MROp("MOV",            0x89, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MROp TEST     = new AMD64MROp("TEST",           0x85, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MROp CMPXCHGB = new AMD64MROp("CMPXCHGB", P_0F, 0xB0, OpAssertion.ByteAssertion);
+        public static final AMD64MROp CMPXCHG  = new AMD64MROp("CMPXCHG",  P_0F, 0xB1, OpAssertion.WordOrLargerAssertion);
+
+        public static final AMD64MROp XADDB    = new AMD64MROp("XADDB",    P_0F, 0xC0, OpAssertion.ByteAssertion);
+        public static final AMD64MROp XADD     = new AMD64MROp("XADD",     P_0F, 0xC1, OpAssertion.WordOrLargerAssertion);
+        // @formatter:on
 
         protected AMD64MROp(String opcode, int op, OpAssertion assertion) {
             this(opcode, 0, 0, op, assertion, null);
@@ -547,20 +537,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class AMD64MOp extends AMD64Op {
         // @formatter:off
-        public static final AMD64MOp NOTB = new AMD64MOp("NOT",  0xF6, 2, OpAssertion.ByteAssertion);
-        public static final AMD64MOp NEGB = new AMD64MOp("NEG",  0xF6, 3, OpAssertion.ByteAssertion);
-        public static final AMD64MOp NOT  = new AMD64MOp("NOT",  0xF7, 2);
-        public static final AMD64MOp NEG  = new AMD64MOp("NEG",  0xF7, 3);
-        public static final AMD64MOp MUL  = new AMD64MOp("MUL",  0xF7, 4);
-        public static final AMD64MOp IMUL = new AMD64MOp("IMUL", 0xF7, 5);
+        public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
+        public static final AMD64MOp DECB = new AMD64MOp("DEC",  0xFE, 1, OpAssertion.ByteAssertion);
         public static final AMD64MOp DIV  = new AMD64MOp("DIV",  0xF7, 6);
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
-        public static final AMD64MOp INCB = new AMD64MOp("INC",  0xFE, 0, OpAssertion.ByteAssertion);
-        public static final AMD64MOp DECB = new AMD64MOp("DEC",  0xFE, 1, OpAssertion.ByteAssertion);
+        public static final AMD64MOp IMUL = new AMD64MOp("IMUL", 0xF7, 5);
         public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
-        public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
-        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6, OpAssertion.WordOrQwordAssertion);
+        public static final AMD64MOp INCB = new AMD64MOp("INC",  0xFE, 0, OpAssertion.ByteAssertion);
+        public static final AMD64MOp MUL  = new AMD64MOp("MUL",  0xF7, 4);
+        public static final AMD64MOp NEG  = new AMD64MOp("NEG",  0xF7, 3);
+        public static final AMD64MOp NEGB = new AMD64MOp("NEG",  0xF6, 3, OpAssertion.ByteAssertion);
+        public static final AMD64MOp NOT  = new AMD64MOp("NOT",  0xF7, 2);
+        public static final AMD64MOp NOTB = new AMD64MOp("NOT",  0xF6, 2, OpAssertion.ByteAssertion);
         public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.WordOrQwordAssertion);
+        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6, OpAssertion.WordOrQwordAssertion);
+        public static final AMD64MOp SAR  = new AMD64MOp("SAR",  0xD3, 7, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MOp SAR1 = new AMD64MOp("SAR1", 0xD1, 7, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MOp SHL  = new AMD64MOp("SHL",  0xD3, 4, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MOp SHL1 = new AMD64MOp("SHL1", 0xD1, 4, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MOp SHR  = new AMD64MOp("SHR",  0xD3, 5, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MOp SHR1 = new AMD64MOp("SHR1", 0xD1, 5, OpAssertion.WordOrLargerAssertion);
         // @formatter:on
 
         private final int ext;
@@ -596,24 +592,36 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static class AMD64MIOp extends AMD64ImmOp {
         // @formatter:off
-        public static final AMD64MIOp MOVB = new AMD64MIOp("MOVB", true,  0xC6, 0, OpAssertion.ByteAssertion);
-        public static final AMD64MIOp MOV  = new AMD64MIOp("MOV",  false, 0xC7, 0);
-        public static final AMD64MIOp TEST = new AMD64MIOp("TEST", false, 0xF7, 0);
+        public static final AMD64MIOp BT    = new AMD64MIOp("BT",   true,  P_0F, 0xBA, 4, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp BTR   = new AMD64MIOp("BTR",  true,  P_0F, 0xBA, 6, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp MOVB  = new AMD64MIOp("MOVB", true,        0xC6, 0, false, OpAssertion.ByteAssertion);
+        public static final AMD64MIOp MOV   = new AMD64MIOp("MOV",  false,       0xC7, 0, false, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp SAR   = new AMD64MIOp("SAR",  true,        0xC1, 7, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp SHL   = new AMD64MIOp("SHL",  true,        0xC1, 4, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp SHR   = new AMD64MIOp("SHR",  true,        0xC1, 5, true, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64MIOp TESTB = new AMD64MIOp("TEST", true,        0xF6, 0, true, OpAssertion.ByteAssertion);
+        public static final AMD64MIOp TEST  = new AMD64MIOp("TEST", false,       0xF7, 0, true, OpAssertion.WordOrLargerAssertion);
         // @formatter:on
 
         private final int ext;
+        /**
+         * Defines if the Op reads from memory and makes the result observable by the user (e.g.
+         * spilling to a register or in a flag).
+         */
+        private final boolean isMemRead;
 
-        protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext) {
-            this(opcode, immIsByte, op, ext, OpAssertion.WordOrLargerAssertion);
+        protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext, boolean isMemRead) {
+            this(opcode, immIsByte, op, ext, isMemRead, OpAssertion.WordOrLargerAssertion);
         }
 
-        protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext, OpAssertion assertion) {
-            this(opcode, immIsByte, 0, op, ext, assertion);
+        protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext, boolean isMemRead, OpAssertion assertion) {
+            this(opcode, immIsByte, 0, op, ext, isMemRead, assertion);
         }
 
-        protected AMD64MIOp(String opcode, boolean immIsByte, int prefix, int op, int ext, OpAssertion assertion) {
+        protected AMD64MIOp(String opcode, boolean immIsByte, int prefix, int op, int ext, boolean isMemRead, OpAssertion assertion) {
             super(opcode, immIsByte, prefix, op, assertion);
             this.ext = ext;
+            this.isMemRead = isMemRead;
         }
 
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, int imm) {
@@ -633,15 +641,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             }
         }
 
-        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, int imm) {
-            emit(asm, size, dst, imm, false);
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address address, int imm) {
+            emit(asm, size, address, imm, false);
         }
 
-        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, int imm, boolean annotateImm) {
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address address, int imm, boolean annotateImm) {
             assert verify(asm, size, null, null);
+            if (isMemRead) {
+                asm.interceptMemorySrcOperands(address);
+            }
             int insnPos = asm.position();
-            emitOpcode(asm, size, getRXB(null, dst), 0, 0);
-            asm.emitOperandHelper(ext, dst, immediateSize(size));
+            emitOpcode(asm, size, getRXB(null, address), 0, 0);
+            asm.emitOperandHelper(ext, address, immediateSize(size));
             int immPos = asm.position();
             emitImmediate(asm, size, imm);
             int nextInsnPos = asm.position();
@@ -649,17 +660,21 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 asm.codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
             }
         }
+
+        public boolean isMemRead() {
+            return isMemRead;
+        }
     }
 
     /**
      * Denotes the preferred nds register (VEX.vvvv) for VEX-encoding of an SSE instruction.
-     *
+     * <p>
      * For RM instructions where VEX.vvvv is reserved and must be 1111b, we should use
      * {@link PreferredNDS#NONE}. For RVM instructions, the default should be
      * {@link PreferredNDS#DST} to mimic the semantic of {@code dst <- op (dst, src)}. We should
      * only use {@link PreferredNDS#SRC} for unary instructions, e.g., ROUNDSS. This would help us
      * avoid an implicit dependency to {@code dst} register.
-     *
+     * <p>
      * Note that when {@code src} is a memory address, we will choose {@code dst} as {@code nds}
      * even if {@link PreferredNDS#SRC} is specified, which implies an implicit dependency to
      * {@code dst}. In {@link jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertOp}, we
@@ -694,7 +709,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     /**
      * Opcodes with operand order of RMI.
-     *
+     * <p>
      * We only have one form of round as the operation is always treated with single variant input,
      * making its extension to 3 address forms redundant.
      */
@@ -702,45 +717,29 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         public static final AMD64RMIOp IMUL    = new AMD64RMIOp("IMUL", false, 0x69);
         public static final AMD64RMIOp IMUL_SX = new AMD64RMIOp("IMUL", true,  0x6B);
-        public static final AMD64RMIOp ROUNDSS = new AMD64RMIOp("ROUNDSS", true, P_0F3A, 0x0A, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
-        public static final AMD64RMIOp ROUNDSD = new AMD64RMIOp("ROUNDSD", true, P_0F3A, 0x0B, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
 
-        public static final AMD64RMIOp SHA1RNDS4 = new AMD64RMIOp("SHA1RNDS4", true, P_0F3A, 0xCC, PreferredNDS.NONE, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
+        public static final AMD64RMIOp SHA1RNDS4 = new AMD64RMIOp("SHA1RNDS4", true, P_0F3A, 0xCC, OpAssertion.PackedSingleAssertion, CPUFeature.SHA);
         // @formatter:on
-
-        private final PreferredNDS preferredNDS;
 
         protected AMD64RMIOp(String opcode, boolean immIsByte, int op) {
             super(opcode, immIsByte, 0, op, OpAssertion.WordOrLargerAssertion, null);
-            this.preferredNDS = PreferredNDS.NONE;
         }
 
-        protected AMD64RMIOp(String opcode, boolean immIsByte, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+        protected AMD64RMIOp(String opcode, boolean immIsByte, int prefix, int op, OpAssertion assertion, CPUFeature feature) {
             super(opcode, immIsByte, prefix, op, assertion, feature);
-            this.preferredNDS = preferredNDS;
         }
 
-        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
+        public void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
             assert verify(asm, size, dst, src);
-            if (isSSEInstruction()) {
-                asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, false);
-                asm.emitByte(op);
-                asm.emitModRM(dst, src);
-            } else {
-                emitOpcode(asm, size, getRXB(dst, src), dst.encoding, src.encoding);
-                asm.emitModRM(dst, src);
-            }
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, src.encoding);
+            asm.emitModRM(dst, src);
             emitImmediate(asm, size, imm);
         }
 
-        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, int imm) {
+        public void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, int imm) {
             assert verify(asm, size, dst, null);
-            if (isSSEInstruction()) {
-                asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, false);
-                asm.emitByte(op);
-            } else {
-                emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
-            }
+            asm.interceptMemorySrcOperands(src);
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
             asm.emitOperandHelper(dst, src, immediateSize(size));
             emitImmediate(asm, size, imm);
         }
@@ -769,10 +768,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public static class SSEOp extends AMD64RMOp {
         // @formatter:off
+        public static final SSEOp CVTDQ2PD  = new SSEOp("CVTDQ2PD",        P_0F, 0xE6, PreferredNDS.NONE, OpAssertion.SingleAssertion);
         public static final SSEOp CVTSI2SS  = new SSEOp("CVTSI2SS",  0xF3, P_0F, 0x2A, PreferredNDS.DST,  OpAssertion.IntToFloatAssertion);
         public static final SSEOp CVTSI2SD  = new SSEOp("CVTSI2SD",  0xF2, P_0F, 0x2A, PreferredNDS.DST,  OpAssertion.IntToFloatAssertion);
         public static final SSEOp CVTTSS2SI = new SSEOp("CVTTSS2SI", 0xF3, P_0F, 0x2C, PreferredNDS.NONE, OpAssertion.FloatToIntAssertion);
         public static final SSEOp CVTTSD2SI = new SSEOp("CVTTSD2SI", 0xF2, P_0F, 0x2C, PreferredNDS.NONE, OpAssertion.FloatToIntAssertion);
+        public static final SSEOp CVTTPD2DQ = new SSEOp("CVTTPD2DQ",       P_0F, 0xE6, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion);
+
         public static final SSEOp UCOMIS    = new SSEOp("UCOMIS",          P_0F, 0x2E, PreferredNDS.NONE, OpAssertion.PackedFloatAssertion);
         public static final SSEOp SQRT      = new SSEOp("SQRT",            P_0F, 0x51, PreferredNDS.SRC,  OpAssertion.ScalarFloatAssertion);
         public static final SSEOp AND       = new SSEOp("AND",             P_0F, 0x54, PreferredNDS.DST,  OpAssertion.PackedFloatAssertion);
@@ -783,10 +785,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final SSEOp MUL       = new SSEOp("MUL",             P_0F, 0x59, PreferredNDS.DST);
         public static final SSEOp CVTSS2SD  = new SSEOp("CVTSS2SD",        P_0F, 0x5A, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
         public static final SSEOp CVTSD2SS  = new SSEOp("CVTSD2SS",        P_0F, 0x5A, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+        public static final SSEOp CVTSD2SI  = new SSEOp("CVTSD2SI",  0XF2, P_0F, 0x2D, PreferredNDS.NONE,  OpAssertion.FloatToIntAssertion);
         public static final SSEOp SUB       = new SSEOp("SUB",             P_0F, 0x5C, PreferredNDS.DST);
         public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D, PreferredNDS.DST);
         public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E, PreferredNDS.DST);
         public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F, PreferredNDS.DST);
+
+        public static final SSEOp PADDD     = new SSEOp("PADDD",           P_0F, 0xFE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PADDQ     = new SSEOp("PADDQ",           P_0F, 0xD4, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PSLLQ     = new SSEOp("PSLLQ",           P_0F, 0xF3, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PSUBB     = new SSEOp("PSUBB",           P_0F, 0xF8, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PSUBW     = new SSEOp("PSUBW",           P_0F, 0xF9, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PSUBD     = new SSEOp("PSUBD",           P_0F, 0xFA, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
         public static final SSEOp PSUBUSB   = new SSEOp("PSUBUSB",         P_0F, 0xD8, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
         public static final SSEOp PSUBUSW   = new SSEOp("PSUBUSW",         P_0F, 0xD9, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
         public static final SSEOp PMINUB    = new SSEOp("PMINUB",          P_0F, 0xDA, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
@@ -796,13 +806,58 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final SSEOp PACKUSWB  = new SSEOp("PACKUSWB",        P_0F, 0x67, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
         public static final SSEOp PACKUSDW  = new SSEOp("PACKUSDW",      P_0F38, 0x2B, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,  CPUFeature.SSE4_1);
 
+        public static final SSEOp PCMPEQB   = new SSEOp("PCMPEQB",         P_0F, 0x74, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PCMPEQW   = new SSEOp("PCMPEQW",         P_0F, 0x75, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PCMPEQD   = new SSEOp("PCMPEQD",         P_0F, 0x76, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+
+        public static final SSEOp PCMPGTB   = new SSEOp("PCMPGTB",         P_0F, 0x64, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PCMPGTW   = new SSEOp("PCMPGTW",         P_0F, 0x65, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PCMPGTD   = new SSEOp("PCMPGTD",         P_0F, 0x66, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+
+        public static final SSEOp PMOVSXBW  = new SSEOp("PMOVSXBW",      P_0F38, 0x20, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVSXBD  = new SSEOp("PMOVSXBD",      P_0F38, 0x21, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVSXBQ  = new SSEOp("PMOVSXBQ",      P_0F38, 0x22, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVSXWD  = new SSEOp("PMOVSXWD",      P_0F38, 0x23, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVSXWQ  = new SSEOp("PMOVSXWQ",      P_0F38, 0x24, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVSXDQ  = new SSEOp("PMOVSXDQ",      P_0F38, 0x25, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVZXBW  = new SSEOp("PMOVZXBW",      P_0F38, 0x30, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVZXBD  = new SSEOp("PMOVZXBD",      P_0F38, 0x31, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVZXBQ  = new SSEOp("PMOVZXBQ",      P_0F38, 0x32, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVZXWD  = new SSEOp("PMOVZXWD",      P_0F38, 0x33, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVZXWQ  = new SSEOp("PMOVZXWQ",      P_0F38, 0x34, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMOVZXDQ  = new SSEOp("PMOVZXDQ",      P_0F38, 0x35, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+
+        public static final SSEOp PAND      = new SSEOp("PAND",            P_0F, 0xDB, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSEOp PANDN     = new SSEOp("PANDN",           P_0F, 0xDF, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSEOp POR       = new SSEOp("POR",             P_0F, 0xEB, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSEOp PXOR      = new SSEOp("PXOR",            P_0F, 0xEF, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+
+        public static final SSEOp RCPPS     = new SSEOp("RCPPS",           P_0F, 0x53, PreferredNDS.NONE, OpAssertion.PackedSingleAssertion, CPUFeature.SSE);
+
+        public static final SSEOp PTEST     = new SSEOp("PTEST",         P_0F38, 0x17, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
         public static final SSEOp PSHUFB    = new SSEOp("PSHUFB",        P_0F38, 0x00, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSSE3);
+        public static final SSEOp PUNPCKLBW = new SSEOp("PUNPCKLBW",       P_0F, 0x60, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+
+        public static final SSEOp AESDEC    = new SSEOp("AESDEC",        P_0F38, 0xDE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.AES);
+        public static final SSEOp AESDECLAST = new SSEOp("AESDECLAST",   P_0F38, 0xDF, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.AES);
+        public static final SSEOp AESENC    = new SSEOp("AESENC",        P_0F38, 0xDC, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.AES);
+        public static final SSEOp AESENCLAST = new SSEOp("AESENCLAST",   P_0F38, 0xDD, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.AES);
 
         // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
         public static final SSEOp MOVD      = new SSEOp("MOVD",      0x66, P_0F, 0x6E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
         public static final SSEOp MOVQ      = new SSEOp("MOVQ",      0x66, P_0F, 0x6E, PreferredNDS.NONE, OpAssertion.QwordToFloatAssertion);
         public static final SSEOp MOVSS     = new SSEOp("MOVSS",           P_0F, 0x10, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
         public static final SSEOp MOVSD     = new SSEOp("MOVSD",           P_0F, 0x10, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+
+        public static final SSEOp MOVAPD    = new SSEOp("MOVAPD",          P_0F, 0x28, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp MOVAPS    = new SSEOp("MOVAPS",          P_0F, 0x28, PreferredNDS.NONE, OpAssertion.PackedFloatAssertion);
+
+        public static final SSEOp MOVDDUP   = new SSEOp("MOVDDUP",         P_0F, 0x12, PreferredNDS.NONE,  OpAssertion.DoubleAssertion, CPUFeature.SSE3);
+        public static final SSEOp MOVDQA    = new SSEOp("MOVDQA",          P_0F, 0x6F, PreferredNDS.NONE,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp MOVDQU    = new SSEOp("MOVDQU",          P_0F, 0x6F, PreferredNDS.NONE,  OpAssertion.SingleAssertion);
+
+        public static final SSEOp UNPCKHPD  = new SSEOp("UNPCKHPD",        P_0F, 0x15, PreferredNDS.DST,   OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp UNPCKLPD  = new SSEOp("UNPCKLPD",        P_0F, 0x14, PreferredNDS.DST,   OpAssertion.PackedDoubleAssertion);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -846,11 +901,101 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
             assert verify(asm, size, dst, null);
             assert isSSEInstruction();
+            asm.interceptMemorySrcOperands(src);
             // MOVSS/SD are not RVM instruction when the dst is an address
             Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(dst, src);
             asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == OperandSize.QWORD);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
+        }
+    }
+
+    public static class SSERIOp extends AMD64ImmOp {
+        // @formatter:off
+        public static final SSERIOp PSLLW  = new SSERIOp("PSLLW",  true, P_0F, 0x71, 6, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSLLD  = new SSERIOp("PSLLD",  true, P_0F, 0x72, 6, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSLLDQ = new SSERIOp("PSLLDQ", true, P_0F, 0x73, 7, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSLLQ  = new SSERIOp("PSLLQ",  true, P_0F, 0x73, 6, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSRAW  = new SSERIOp("PSRAW",  true, P_0F, 0x71, 4, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSRAD  = new SSERIOp("PSRAD",  true, P_0F, 0x72, 4, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSRLW  = new SSERIOp("PSRLW",  true, P_0F, 0x71, 2, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSRLD  = new SSERIOp("PSRLD",  true, P_0F, 0x72, 2, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSRLDQ = new SSERIOp("PSRLDQ", true, P_0F, 0x73, 3, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERIOp PSRLQ  = new SSERIOp("PSRLQ",  true, P_0F, 0x73, 2, PreferredNDS.DST, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        // @formatter:on
+
+        private final int ext;
+        private final PreferredNDS preferredNDS;
+
+        protected SSERIOp(String opcode, boolean immIsByte, int prefix, int op, int ext, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, immIsByte, prefix, op, assertion, feature);
+            this.ext = ext;
+            this.preferredNDS = preferredNDS;
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, int imm) {
+            assert verify(asm, size, dst, null);
+            assert isSSEInstruction();
+            // pass xmm0 to make our assertion happy
+            asm.simdPrefix(AMD64.xmm0, preferredNDS.getNds(dst, Register.None), dst, size, prefix1, prefix2, false);
+            asm.emitByte(op);
+            asm.emitModRM(ext, dst);
+            emitImmediate(asm, size, imm);
+        }
+    }
+
+    public static class SSERMIOp extends AMD64RMIOp {
+        // @formatter:off
+        public static final SSERMIOp ROUNDSS       = new SSERMIOp("ROUNDSS",       true, P_0F3A,       0x0A, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp ROUNDSD       = new SSERMIOp("ROUNDSD",       true, P_0F3A,       0x0B, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+
+        public static final SSERMIOp PCMPESTRI     = new SSERMIOp("PCMPESTRI",     true, P_0F3A,       0x61, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_2);
+        public static final SSERMIOp PCLMULQDQ     = new SSERMIOp("PCLMULQDQ",     true, P_0F3A,       0x44, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.CLMUL);
+        public static final SSERMIOp GF2P8AFFINEQB = new SSERMIOp("GF2P8AFFINEQB", true, P_0F3A, true, 0xCE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.GFNI);
+
+        public static final SSERMIOp PINSRB        = new SSERMIOp("PINSRB",        true, P_0F3A,       0x20, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp PINSRW        = new SSERMIOp("PINSRW",        true,   P_0F,       0xC4, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE2);
+        public static final SSERMIOp PINSRD        = new SSERMIOp("PINSRD",        true, P_0F3A,       0x22, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp PINSRQ        = new SSERMIOp("PINSRQ",        true, P_0F3A, true, 0x22, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
+
+        public static final SSERMIOp PALIGNR       = new SSERMIOp("PALIGNR",       true, P_0F3A,       0x0F, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSSE3);
+        public static final SSERMIOp PBLENDW       = new SSERMIOp("PBLENDW",       true, P_0F3A,       0x0E, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp PSHUFD        = new SSERMIOp("PSHUFD",        true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERMIOp PSHUFLW       = new SSERMIOp("PSHUFLW",       true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.DoubleAssertion, CPUFeature.SSE2);
+        // @formatter:on
+
+        private final PreferredNDS preferredNDS;
+        private final boolean w;
+
+        protected SSERMIOp(String opcode, boolean immIsByte, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            this(opcode, immIsByte, prefix, false, op, preferredNDS, assertion, feature);
+        }
+
+        protected SSERMIOp(String opcode, boolean immIsByte, int prefix, boolean w, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, immIsByte, prefix, op, assertion, feature);
+            this.preferredNDS = preferredNDS;
+            this.w = w;
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
+            assert verify(asm, size, dst, src);
+            assert isSSEInstruction();
+            asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, w);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+            emitImmediate(asm, size, imm);
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, int imm) {
+            assert verify(asm, size, dst, null);
+            assert isSSEInstruction();
+            asm.interceptMemorySrcOperands(src);
+            asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, w);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src, immediateSize(size));
+            emitImmediate(asm, size, imm);
         }
     }
 
@@ -861,11 +1006,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         // MOVD and MOVQ are the same opcode, just with different operand size prefix
         // Note that as MR opcodes, they have reverse operand order, so the IntToFloatingAssertion must be used.
-        public static final SSEMROp MOVD  = new SSEMROp("MOVD", 0x66, P_0F, 0x7E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
-        public static final SSEMROp MOVQ  = new SSEMROp("MOVQ", 0x66, P_0F, 0x7E, PreferredNDS.NONE, OpAssertion.QwordToFloatAssertion);
+        public static final SSEMROp MOVD   = new SSEMROp("MOVD",   0x66, P_0F, 0x7E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
+        public static final SSEMROp MOVQ   = new SSEMROp("MOVQ",   0x66, P_0F, 0x7E, PreferredNDS.NONE, OpAssertion.QwordToFloatAssertion);
         // MOVSS and MOVSD are the same opcode, just with different operand size prefix
-        public static final SSEMROp MOVSS = new SSEMROp("MOVSS",      P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
-        public static final SSEMROp MOVSD = new SSEMROp("MOVSD",      P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+        public static final SSEMROp MOVSS  = new SSEMROp("MOVSS",               P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
+        public static final SSEMROp MOVSD  = new SSEMROp("MOVSD",               P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+
+        public static final SSEMROp MOVDQU = new SSEMROp("MOVDQU",              P_0F, 0x7F, PreferredNDS.NONE, OpAssertion.SingleAssertion);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -900,6 +1047,42 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    public static class SSEMRIOp extends AMD64ImmOp {
+        // @formatter:off
+        public static final SSEMRIOp PEXTRB = new SSEMRIOp("PEXTRB", true, P_0F3A, false, 0x14, PreferredNDS.NONE,  OpAssertion.PackedDoubleFloatToIntAssertion, CPUFeature.SSE4_1);
+        public static final SSEMRIOp PEXTRW = new SSEMRIOp("PEXTRW", true, P_0F3A, false, 0x15, PreferredNDS.NONE,  OpAssertion.PackedDoubleFloatToIntAssertion, CPUFeature.SSE4_1);
+        public static final SSEMRIOp PEXTRD = new SSEMRIOp("PEXTRD", true, P_0F3A, false, 0x16, PreferredNDS.NONE,  OpAssertion.PackedDoubleFloatToIntAssertion, CPUFeature.SSE4_1);
+        public static final SSEMRIOp PEXTRQ = new SSEMRIOp("PEXTRQ", true, P_0F3A, true,  0x16, PreferredNDS.NONE,  OpAssertion.PackedDoubleFloatToIntAssertion, CPUFeature.SSE4_1);
+        // @formatter:on
+
+        private final PreferredNDS preferredNDS;
+        private final boolean w;
+
+        protected SSEMRIOp(String opcode, boolean immIsByte, int prefix, boolean w, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, immIsByte, prefix, op, assertion, feature);
+            this.w = w;
+            this.preferredNDS = preferredNDS;
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
+            assert verify(asm, size, dst, src);
+            assert isSSEInstruction();
+            asm.simdPrefix(src, preferredNDS.getNds(src, dst), dst, size, prefix1, prefix2, w);
+            asm.emitByte(op);
+            asm.emitModRM(src, dst);
+            emitImmediate(asm, size, imm);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src, int imm) {
+            assert verify(asm, size, null, src);
+            assert isSSEInstruction();
+            asm.simdPrefix(src, preferredNDS.getNds(src, dst), dst, size, prefix1, prefix2, w);
+            asm.emitByte(op);
+            asm.emitOperandHelper(src, dst, immediateSize(size));
+            emitImmediate(asm, size, imm);
+        }
+    }
+
     /**
      * Arithmetic operation with operand order of RM, MR or MI.
      */
@@ -927,12 +1110,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         private AMD64BinaryArithmetic(String opcode, int code) {
             int baseOp = code << 3;
 
-            byteImmOp = new AMD64MIOp(opcode, true, 0, 0x80, code, OpAssertion.ByteAssertion);
+            byteImmOp = new AMD64MIOp(opcode, true, 0, 0x80, code, false, OpAssertion.ByteAssertion);
             byteMrOp = new AMD64MROp(opcode, 0, baseOp, OpAssertion.ByteAssertion);
             byteRmOp = new AMD64RMOp(opcode, 0, baseOp | 0x02, OpAssertion.ByteAssertion);
 
-            immOp = new AMD64MIOp(opcode, false, 0, 0x81, code, OpAssertion.WordOrLargerAssertion);
-            immSxOp = new AMD64MIOp(opcode, true, 0, 0x83, code, OpAssertion.WordOrLargerAssertion);
+            immOp = new AMD64MIOp(opcode, false, 0, 0x81, code, false, OpAssertion.WordOrLargerAssertion);
+            immSxOp = new AMD64MIOp(opcode, true, 0, 0x83, code, false, OpAssertion.WordOrLargerAssertion);
             mrOp = new AMD64MROp(opcode, 0, baseOp | 0x01, OpAssertion.WordOrLargerAssertion);
             rmOp = new AMD64RMOp(opcode, 0, baseOp | 0x03, OpAssertion.WordOrLargerAssertion);
         }
@@ -985,30 +1168,77 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         private AMD64Shift(String opcode, int code) {
             m1Op = new AMD64MOp(opcode, 0, 0xD1, code, OpAssertion.WordOrLargerAssertion);
             mcOp = new AMD64MOp(opcode, 0, 0xD3, code, OpAssertion.WordOrLargerAssertion);
-            miOp = new AMD64MIOp(opcode, true, 0, 0xC1, code, OpAssertion.WordOrLargerAssertion);
+            miOp = new AMD64MIOp(opcode, true, 0, 0xC1, code, true, OpAssertion.WordOrLargerAssertion);
         }
     }
 
+    /**
+     * This is used to verify the availability of a vex-encoded instruction during code emission.
+     */
+    private enum VEXFeatureAssertion {
+        AVX1(EnumSet.of(CPUFeature.AVX), EnumSet.of(CPUFeature.AVX)),
+        AVX2(EnumSet.of(CPUFeature.AVX2), EnumSet.of(CPUFeature.AVX2)),
+        AVX1_AVX2(EnumSet.of(CPUFeature.AVX), EnumSet.of(CPUFeature.AVX2)),
+        AVX1_128(EnumSet.of(CPUFeature.AVX), null),
+        AVX2_128(EnumSet.of(CPUFeature.AVX2), null),
+        AVX1_256(null, EnumSet.of(CPUFeature.AVX)),
+        AVX2_256(null, EnumSet.of(CPUFeature.AVX2)),
+        BMI1(EnumSet.of(CPUFeature.BMI1), null),
+        BMI2(EnumSet.of(CPUFeature.BMI2), null),
+        FMA(EnumSet.of(CPUFeature.FMA), EnumSet.of(CPUFeature.FMA)),
+        FMA_128(EnumSet.of(CPUFeature.FMA), null),
+        AVX1_AES_128(EnumSet.of(CPUFeature.AVX, CPUFeature.AES), null),
+        F16C(EnumSet.of(CPUFeature.F16C), EnumSet.of(CPUFeature.F16C)),
+        CLMUL_AVX1(EnumSet.of(CPUFeature.AVX, CPUFeature.CLMUL), EnumSet.of(CPUFeature.AVX, CPUFeature.CLMUL)),
+        GFNI_AVX1(EnumSet.of(CPUFeature.AVX, CPUFeature.GFNI), EnumSet.of(CPUFeature.AVX, CPUFeature.GFNI)),
+        AVX512F_L0(EnumSet.of(CPUFeature.AVX512F), null),
+        AVX512BW_L0(EnumSet.of(CPUFeature.AVX512BW), null),
+        AVX512DQ_L0(EnumSet.of(CPUFeature.AVX512DQ), null),
+        AVX512F_L1(null, EnumSet.of(CPUFeature.AVX512F)),
+        AVX512BW_L1(null, EnumSet.of(CPUFeature.AVX512BW)),
+        AVX512DQ_L1(null, EnumSet.of(CPUFeature.AVX512DQ));
+
+        private final EnumSet<CPUFeature> l128Features;
+        private final EnumSet<CPUFeature> l256Features;
+
+        VEXFeatureAssertion(EnumSet<CPUFeature> l128Features, EnumSet<CPUFeature> l256Features) {
+            this.l128Features = l128Features;
+            this.l256Features = l256Features;
+        }
+
+        public boolean isValid(EnumSet<CPUFeature> features, AVXSize size) {
+            return switch (size) {
+                case XMM -> l128Features != null && features.containsAll(l128Features);
+                case YMM -> l256Features != null && features.containsAll(l256Features);
+                case ZMM -> false;
+                default -> throw GraalError.shouldNotReachHereUnexpectedValue(size);
+            };
+        }
+    }
+
+    /**
+     * This is used to verify the availability of an evex-encoded instruction during code emission.
+     */
     private enum EVEXFeatureAssertion {
         /*
          * With very few exceptions (namely, KMOV{B,D,Q}), all AVX512 instructions require AVX512F.
          * For simplicity, include AVX512F in all AVX512 assertions, and mention it in the name of
          * the assertion even though it is implied.
          */
-        AVX512F_ALL(EnumSet.of(AVX512F), EnumSet.of(AVX512F), EnumSet.of(AVX512F)),
-        AVX512F_128ONLY(EnumSet.of(AVX512F), null, null),
-        AVX512BW_128ONLY(EnumSet.of(AVX512BW), null, null),
-        AVX512DQ_128ONLY(EnumSet.of(AVX512DQ), null, null),
+        AVX512F_128(EnumSet.of(AVX512F), null, null),
+        AVX512BW_128(EnumSet.of(AVX512BW), null, null),
+        AVX512DQ_128(EnumSet.of(AVX512DQ), null, null),
         AVX512F_VL(EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F)),
         AVX512F_CD_VL(EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD)),
-        AVX512F_DQ_ALL(EnumSet.of(AVX512F, AVX512DQ), EnumSet.of(AVX512F, AVX512DQ), EnumSet.of(AVX512F, AVX512DQ)),
         AVX512F_DQ_VL(EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
-        AVX512F_BW_ALL(EnumSet.of(AVX512F, AVX512BW), EnumSet.of(AVX512F, AVX512BW), EnumSet.of(AVX512F, AVX512BW)),
         AVX512F_BW_VL(EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW)),
         AVX512F_VL_256_512(null, EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F)),
         AVX512F_DQ_VL_256_512(null, EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
-        AVX512F_DQ_512ONLY(null, null, EnumSet.of(AVX512F, AVX512DQ)),
-        AVX512F_512ONLY(null, null, EnumSet.of(AVX512F));
+        AVX512F_DQ_512(null, null, EnumSet.of(AVX512F, AVX512DQ)),
+        AVX512F_512(null, null, EnumSet.of(AVX512F)),
+        AVX512_VBMI_VL(EnumSet.of(CPUFeature.AVX512_VBMI, CPUFeature.AVX512VL), EnumSet.of(CPUFeature.AVX512_VBMI, CPUFeature.AVX512VL), EnumSet.of(CPUFeature.AVX512_VBMI)),
+        CLMUL_AVX512F_VL(EnumSet.of(CPUFeature.AVX512VL, CPUFeature.CLMUL), EnumSet.of(CPUFeature.AVX512VL, CPUFeature.CLMUL), EnumSet.of(CPUFeature.AVX512F, CPUFeature.CLMUL)),
+        GFNI_AVX512F_VL(EnumSet.of(CPUFeature.AVX512VL, CPUFeature.GFNI), EnumSet.of(CPUFeature.AVX512VL, CPUFeature.GFNI), EnumSet.of(CPUFeature.AVX512F, CPUFeature.GFNI));
 
         private final EnumSet<CPUFeature> l128features;
         private final EnumSet<CPUFeature> l256features;
@@ -1020,32 +1250,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this.l512features = l512features;
         }
 
-        public boolean check(EnumSet<CPUFeature> features, int l) {
-            switch (l) {
-                case VEXPrefixConfig.L128:
-                    GraalError.guarantee(l128features != null && features.containsAll(l128features), "emitting illegal 128 bit instruction, required features: %s", l128features);
-                    break;
-                case VEXPrefixConfig.L256:
-                    GraalError.guarantee(l256features != null && features.containsAll(l256features), "emitting illegal 256 bit instruction, required features: %s", l256features);
-                    break;
-                case VEXPrefixConfig.L512:
-                    GraalError.guarantee(l512features != null && features.containsAll(l512features), "emitting illegal 512 bit instruction, required features: %s", l512features);
-                    break;
-            }
-            return true;
-        }
-
-        public boolean supports(EnumSet<CPUFeature> features, AVXKind.AVXSize avxSize) {
-            switch (avxSize) {
-                case XMM:
-                    return l128features != null && features.containsAll(l128features);
-                case YMM:
-                    return l256features != null && features.containsAll(l256features);
-                case ZMM:
-                    return l512features != null && features.containsAll(l512features);
-                default:
-                    throw GraalError.shouldNotReachHereUnexpectedValue(avxSize); // ExcludeFromJacocoGeneratedReport
-            }
+        public boolean isValid(EnumSet<CPUFeature> features, AVXSize size) {
+            return switch (size) {
+                case XMM -> l128features != null && features.containsAll(l128features);
+                case YMM -> l256features != null && features.containsAll(l256features);
+                case ZMM -> l512features != null && features.containsAll(l512features);
+                default -> throw GraalError.shouldNotReachHereUnexpectedValue(size);
+            };
         }
     }
 
@@ -1072,143 +1283,129 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     private static final UnionRegisterCategory CPU_OR_MASK = new UnionRegisterCategory("CPU_OR_MASK", CPU, MASK);
+    private static final UnionRegisterCategory CPU_OR_XMM = new UnionRegisterCategory("CPU_OR_XMM", CPU, XMM);
 
     private static boolean categoryContains(RegisterCategory category, Register register) {
         return register.getRegisterCategory().equals(category) || (category instanceof UnionRegisterCategory && ((UnionRegisterCategory) category).contains(register));
     }
 
-    public enum VEXOpAssertion {
-        AVX1(CPUFeature.AVX, CPUFeature.AVX, null),
-        AVX1_2(CPUFeature.AVX, CPUFeature.AVX2, null),
-        AVX2(CPUFeature.AVX2, CPUFeature.AVX2, null),
-        AVX1_128ONLY(CPUFeature.AVX, null, null),
-        AVX1_256ONLY(null, CPUFeature.AVX, null),
-        AVX2_256ONLY(null, CPUFeature.AVX2, null),
-        XMM_CPU(CPUFeature.AVX, null, null, null, XMM, null, CPU, null),
-        XMM_XMM_CPU(CPUFeature.AVX, null, null, null, XMM, XMM, CPU, null),
-        CPU_XMM(CPUFeature.AVX, null, null, null, CPU, null, XMM, null),
-        AVX1_2_CPU_XMM(CPUFeature.AVX, CPUFeature.AVX2, null, null, CPU, null, XMM, null),
-        BMI1(CPUFeature.BMI1, null, null, null, CPU, CPU, CPU, null),
-        BMI2(CPUFeature.BMI2, null, null, null, CPU, CPU, CPU, null),
-        FMA(CPUFeature.FMA, CPUFeature.FMA, EVEXFeatureAssertion.AVX512F_VL),
-        FMA_AVX512F_128ONLY(CPUFeature.FMA, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, XMM, null),
+    /**
+     * This is used to verify the availability of an instruction during code emission.
+     */
+    private enum VEXOpAssertion {
+        AVX1(VEXFeatureAssertion.AVX1, null, XMM, XMM, XMM),
+        AVX1_2(VEXFeatureAssertion.AVX1_AVX2, null, XMM, XMM, XMM),
+        AVX2(VEXFeatureAssertion.AVX2, null, XMM, XMM, XMM),
+        AVX1_128ONLY(VEXFeatureAssertion.AVX1_128, null, XMM, XMM, XMM),
+        AVX1_256ONLY(VEXFeatureAssertion.AVX1_256, null, XMM, XMM, XMM),
+        AVX2_256ONLY(VEXFeatureAssertion.AVX2_256, null, XMM, XMM, XMM),
+        XMM_CPU(VEXFeatureAssertion.AVX1_128, null, XMM, null, CPU),
+        XMM_XMM_CPU(VEXFeatureAssertion.AVX1_128, null, XMM, XMM, CPU),
+        CPU_XMM(VEXFeatureAssertion.AVX1_128, null, CPU, null, XMM),
+        AVX1_CPU_XMM(VEXFeatureAssertion.AVX1, null, CPU, null, XMM),
+        AVX1_2_CPU_XMM(VEXFeatureAssertion.AVX1_AVX2, null, CPU, null, XMM),
+        BMI1(VEXFeatureAssertion.BMI1, null, CPU, CPU, CPU),
+        BMI2(VEXFeatureAssertion.BMI2, null, CPU, CPU, CPU),
+        FMA(VEXFeatureAssertion.FMA, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM),
+        FMA_AVX512F_128ONLY(VEXFeatureAssertion.FMA_128, EVEXFeatureAssertion.AVX512F_128, XMM, XMM, XMM),
 
-        XMM_CPU_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, null, CPU, null),
-        XMM_CPU_AVX512BW_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512BW_128ONLY, XMM, null, CPU, null),
-        XMM_CPU_AVX512DQ_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512DQ_128ONLY, XMM, null, CPU, null),
-        CPU_XMM_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, CPU, null, XMM, null),
-        XMM_XMM_XMM_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, XMM, null),
-        XMM_XMM_CPU_AVX512F_128ONLY(CPUFeature.AVX, null, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, XMM, CPU, null),
-        XMM_CPU_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512BW, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, null, CPU, null),
-        XMM_CPU_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, CPUFeature.AVX512F, EVEXFeatureAssertion.AVX512F_VL, XMM, null, CPU, null),
-        AVX1_AVX512F_128_ONLY(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_128ONLY),
-        AVX1_AVX512F_ALL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_ALL),
-        AVX1_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
-        AVX1_256ONLY_AVX512F_VL(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
-        AVX1_128ONLY_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY),
-        AVX1_AVX2_AVX512F_BW(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_ALL),
-        AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
-        AVX1_AVX2_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_DQ_VL),
-        AVX1_AVX2_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
-        AVX2_AVX512BW_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
-        AVX2_AVX512F_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
-        AVX2_AVX512F_VL_256_512(null, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
-        AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_BW_VL),
-        AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_VL),
-        AVX512F_VL_256_512(null, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_VL_256_512),
-        AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_DQ_VL),
-        AVX512DQ_VL_256_512(null, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_DQ_VL_256_512),
-        AVX512DQ_512ONLY(null, null, EVEXFeatureAssertion.AVX512F_DQ_512ONLY),
-        AVX512F_512ONLY(null, null, EVEXFeatureAssertion.AVX512F_512ONLY),
-        AVX_AVX512F_VL_256_512(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
-        AVX1_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_DQ_VL),
+        AVX1_AVX512F_CPU_OR_XMM(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512F_128, CPU_OR_XMM, null, CPU_OR_XMM),
+        XMM_CPU_AVX1_AVX512BW_128ONLY(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512BW_128, XMM, null, CPU),
+        XMM_CPU_AVX1_AVX512DQ_128ONLY(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512DQ_128, XMM, null, CPU),
+        CPU_XMM_AVX1_AVX512F_128ONLY(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512F_128, CPU, null, XMM),
+        XMM_XMM_CPU_AVX1_AVX512F_128ONLY(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512F_128, XMM, XMM, CPU),
+        XMM_XMM_CPU_AVX1_AVX512BW_128ONLY(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512BW_128, XMM, XMM, CPU),
+        XMM_XMM_CPU_AVX1_AVX512DQ_128ONLY(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512DQ_128, XMM, XMM, CPU),
+        XMM_CPU_AVX512BW_VL(null, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, null, CPU),
+        XMM_CPU_AVX512F_VL(null, EVEXFeatureAssertion.AVX512F_VL, XMM, null, CPU),
+        AVX1_AVX512F_VL(VEXFeatureAssertion.AVX1, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM),
+        AVX1_AVX512DQ_VL(VEXFeatureAssertion.AVX1, EVEXFeatureAssertion.AVX512F_DQ_VL, XMM, XMM, XMM),
+        AVX1_AVX512F_128(VEXFeatureAssertion.AVX1_128, EVEXFeatureAssertion.AVX512F_128, XMM, XMM, XMM),
+        AVX1_AVX512F_VL_256_512(VEXFeatureAssertion.AVX1_256, EVEXFeatureAssertion.AVX512F_VL_256_512, XMM, XMM, XMM),
+        AVX1_AVX2_AVX512F_VL(VEXFeatureAssertion.AVX1_AVX2, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM),
+        AVX1_AVX2_AVX512BW_VL(VEXFeatureAssertion.AVX1_AVX2, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, XMM, XMM),
+        AVX1_AVX2_AVX512DQ_VL(VEXFeatureAssertion.AVX1_AVX2, EVEXFeatureAssertion.AVX512F_DQ_VL, XMM, XMM, XMM),
+        AVX2_AVX512F_VL(VEXFeatureAssertion.AVX2, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM),
+        AVX2_AVX512BW_VL(VEXFeatureAssertion.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, XMM, XMM),
+        AVX2_AVX512F_VL_256_512(VEXFeatureAssertion.AVX2_256, EVEXFeatureAssertion.AVX512F_VL_256_512, XMM, XMM, XMM),
+        AVX512F_VL(null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM),
+        AVX512BW_VL(null, EVEXFeatureAssertion.AVX512F_BW_VL, XMM, XMM, XMM),
+        AVX512DQ_VL(null, EVEXFeatureAssertion.AVX512F_DQ_VL, XMM, XMM, XMM),
+        AVX512F_VL_256_512(null, EVEXFeatureAssertion.AVX512F_VL_256_512, XMM, XMM, XMM),
+        AVX512DQ_VL_256_512(null, EVEXFeatureAssertion.AVX512F_DQ_VL_256_512, XMM, XMM, XMM),
+        AVX512F_512ONLY(null, EVEXFeatureAssertion.AVX512F_512, XMM, XMM, XMM),
+        AVX512DQ_512ONLY(null, EVEXFeatureAssertion.AVX512F_DQ_512, XMM, XMM, XMM),
+        AVX512_VBMI_VL(null, EVEXFeatureAssertion.AVX512_VBMI_VL, XMM, XMM, XMM),
 
-        AVX512F_CPU_OR_MASK(CPUFeature.AVX512F, null, null, EVEXFeatureAssertion.AVX512F_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
-        AVX512DQ_CPU_OR_MASK(CPUFeature.AVX512DQ, null, null, EVEXFeatureAssertion.AVX512F_DQ_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
-        AVX512BW_CPU_OR_MASK(CPUFeature.AVX512BW, null, null, EVEXFeatureAssertion.AVX512F_BW_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
-        AVX512F_MASK(CPUFeature.AVX512F, null, null, null, MASK, MASK, MASK, null),
-        AVX512DQ_MASK(CPUFeature.AVX512DQ, null, null, null, MASK, MASK, MASK, null),
-        AVX512BW_MASK(CPUFeature.AVX512BW, null, null, null, MASK, MASK, MASK, null),
-        MASK_XMM_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, XMM, XMM, null),
-        MASK_NULL_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, null, XMM, null),
-        MASK_NULL_XMM_AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_DQ_VL, MASK, null, XMM, null),
-        MASK_NULL_XMM_AVX512DQ(CPUFeature.AVX512DQ, CPUFeature.AVX512DQ, null, EVEXFeatureAssertion.AVX512F_DQ_ALL, MASK, null, XMM, null),
-        MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
-        AVX1_128ONLY_CLMUL(CPUFeature.AVX, null, CPUFeature.CLMUL, null, XMM, XMM, XMM, XMM),
-        AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM),
-        AVX1_GFNI_AVX512F_VL(GFNI, GFNI, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null),
-        F16C_AVX512F_VL(F16C, F16C, null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
+        AVX512F_CPU_OR_MASK(VEXFeatureAssertion.AVX512F_L0, null, CPU_OR_MASK, null, CPU_OR_MASK),
+        AVX512BW_CPU_OR_MASK(VEXFeatureAssertion.AVX512BW_L0, null, CPU_OR_MASK, null, CPU_OR_MASK),
+        AVX512DQ_CPU_OR_MASK(VEXFeatureAssertion.AVX512DQ_L0, null, CPU_OR_MASK, null, CPU_OR_MASK),
+        AVX512F_MASK_L0(VEXFeatureAssertion.AVX512F_L0, null, MASK, MASK, MASK),
+        AVX512DQ_MASK_L0(VEXFeatureAssertion.AVX512DQ_L0, null, MASK, MASK, MASK),
+        AVX512BW_MASK_L0(VEXFeatureAssertion.AVX512BW_L0, null, MASK, MASK, MASK),
+        AVX512F_MASK_L1(VEXFeatureAssertion.AVX512F_L1, null, MASK, MASK, MASK),
+        AVX512DQ_MASK_L1(VEXFeatureAssertion.AVX512DQ_L1, null, MASK, MASK, MASK),
+        AVX512BW_MASK_L1(VEXFeatureAssertion.AVX512BW_L1, null, MASK, MASK, MASK),
+        MASK_XMM_XMM_AVX512F_VL(null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM),
+        MASK_XMM_XMM_AVX512BW_VL(null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, XMM, XMM),
+        MASK_XMM_XMM_AVX512F_128(null, EVEXFeatureAssertion.AVX512F_128, MASK, XMM, XMM),
+        MASK_XMM_AVX512BW_VL(null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, null, XMM),
+        MASK_XMM_AVX512DQ_VL(null, EVEXFeatureAssertion.AVX512F_DQ_VL, MASK, null, XMM),
+        MASK_XMM_AVX512DQ_128(null, EVEXFeatureAssertion.AVX512DQ_128, MASK, null, XMM),
 
-        private final CPUFeature l128feature;
-        private final CPUFeature l256feature;
-        private final CPUFeature extendedFeature;
-        private final EVEXFeatureAssertion l512features;
+        CLMUL_AVX1_AVX512F_VL(VEXFeatureAssertion.CLMUL_AVX1, EVEXFeatureAssertion.CLMUL_AVX512F_VL, XMM, XMM, XMM),
+        AES_AVX1_128ONLY(VEXFeatureAssertion.AVX1_AES_128, null, XMM, XMM, XMM),
+        GFNI_AVX1_AVX512F_VL(VEXFeatureAssertion.GFNI_AVX1, EVEXFeatureAssertion.GFNI_AVX512F_VL, XMM, XMM, XMM),
+        F16C_AVX512F_VL(VEXFeatureAssertion.F16C, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM);
+
+        private final VEXFeatureAssertion vexFeatures;
+        private final EVEXFeatureAssertion evexFeatures;
 
         private final RegisterCategory rCategory;
         private final RegisterCategory vCategory;
         private final RegisterCategory mCategory;
-        private final RegisterCategory imm8Category;
 
-        VEXOpAssertion(CPUFeature l128feature, CPUFeature l256feature, EVEXFeatureAssertion l512features) {
-            this(l128feature, l256feature, null, l512features, XMM, XMM, XMM, XMM);
-        }
-
-        VEXOpAssertion(CPUFeature l128feature, CPUFeature l256feature, CPUFeature extendedFeature, EVEXFeatureAssertion l512features, RegisterCategory rCategory, RegisterCategory vCategory,
-                        RegisterCategory mCategory, RegisterCategory imm8Category) {
-            this.l128feature = l128feature;
-            this.l256feature = l256feature;
-            this.extendedFeature = extendedFeature;
-            this.l512features = l512features;
+        VEXOpAssertion(VEXFeatureAssertion vexFeatures, EVEXFeatureAssertion evexFeatures, RegisterCategory rCategory, RegisterCategory vCategory, RegisterCategory mCategory) {
+            this.vexFeatures = vexFeatures;
+            this.evexFeatures = evexFeatures;
             this.rCategory = rCategory;
             this.vCategory = vCategory;
             this.mCategory = mCategory;
-            this.imm8Category = imm8Category;
         }
 
-        public boolean check(EnumSet<CPUFeature> features, AVXKind.AVXSize size, Register r, Register v, Register m) {
-            return check(features, getLFlag(size), r, v, m, null);
+        private boolean isValid(EnumSet<CPUFeature> features, AVXSize size) {
+            return vexFeatures != null && vexFeatures.isValid(features, size) || evexFeatures != null && evexFeatures.isValid(features, size);
+        }
+    }
+
+    /**
+     * This is used to query the availability of operations, in contrast to {@link VEXOpAssertion}
+     * where the {@link AVXSize} parameter is used purely as an encoding property, this class used
+     * {@code AVXSize} to denote the size of the operations. As a result, it is generally expected
+     * that if an operation is available with a large {@code AVXSize}, it is also available with
+     * smaller ones.
+     */
+    public enum VectorFeatureAssertion {
+        AVX1_AVX512F_VL(VEXOpAssertion.AVX1_AVX512F_VL),
+        AVX1_AVX512DQ_VL(VEXOpAssertion.AVX1_AVX512DQ_VL),
+        AVX1_AVX2_AVX512F_VL(VEXOpAssertion.AVX1_AVX2_AVX512F_VL),
+        AVX1_AVX2_AVX512BW_VL(VEXOpAssertion.AVX1_AVX2_AVX512BW_VL),
+        AVX1_AVX2_AVX512DQ_VL(VEXOpAssertion.AVX1_AVX2_AVX512DQ_VL),
+        AVX2_AVX512F_VL(VEXOpAssertion.AVX2_AVX512F_VL),
+        AVX2_AVX512BW_VL(VEXOpAssertion.AVX2_AVX512BW_VL),
+        AVX512F_VL(VEXOpAssertion.AVX512F_VL),
+        AVX512BW_VL(VEXOpAssertion.AVX512BW_VL),
+        AVX512DQ_VL(VEXOpAssertion.AVX512DQ_VL),
+        FMA(VEXOpAssertion.FMA);
+
+        private final VEXOpAssertion opAssertion;
+
+        VectorFeatureAssertion(VEXOpAssertion opAssertion) {
+            this.opAssertion = opAssertion;
         }
 
-        public boolean check(EnumSet<CPUFeature> features, AVXKind.AVXSize size, Register r, Register v, Register m, Register imm8) {
-            return check(features, getLFlag(size), r, v, m, imm8);
-        }
-
-        public boolean check(EnumSet<CPUFeature> features, int l, Register r, Register v, Register m, Register imm8) {
-            if (isAVX512Register(r) || isAVX512Register(v) || isAVX512Register(m) || l == VEXPrefixConfig.L512) {
-                GraalError.guarantee(l512features != null && l512features.check(features, l), "emitting illegal 512 bit instruction, required features: %s", l512features);
-            } else if (l == VEXPrefixConfig.L128) {
-                GraalError.guarantee(l128feature != null && features.contains(l128feature), "emitting illegal 128 bit instruction, required feature: %s", l128feature);
-            } else if (l == VEXPrefixConfig.L256) {
-                GraalError.guarantee(l256feature != null && features.contains(l256feature), "emitting illegal 256 bit instruction, required feature: %s", l256feature);
-            }
-            if (r != null) {
-                GraalError.guarantee(categoryContains(rCategory, r), "expected r in category %s, got %s", rCategory, r);
-            }
-            if (v != null) {
-                GraalError.guarantee(categoryContains(vCategory, v), "expected v in category %s, got %s", vCategory, v);
-            }
-            if (m != null) {
-                GraalError.guarantee(categoryContains(mCategory, m), "expected m in category %s, got %s", mCategory, m);
-            }
-            if (imm8 != null) {
-                GraalError.guarantee(imm8.getRegisterCategory().equals(imm8Category), "expected imm8 in category %s, got %s", imm8Category, imm8);
-            }
-            if (extendedFeature != null) {
-                GraalError.guarantee(features.contains(extendedFeature), "emitting illegal instruction, required extended feature: %s", extendedFeature);
-            }
-            return true;
-        }
-
-        public boolean supports(EnumSet<CPUFeature> features, AVXKind.AVXSize avxSize, boolean useZMMRegisters) {
-            boolean extendedFeatureCheck = extendedFeature != null ? features.contains(extendedFeature) : true;
-            if (useZMMRegisters || avxSize == AVXKind.AVXSize.ZMM) {
-                return l512features != null && l512features.supports(features, avxSize) && extendedFeatureCheck;
-            } else if (avxSize == AVXKind.AVXSize.XMM) {
-                return l128feature != null && features.contains(l128feature) && extendedFeatureCheck;
-            } else if (avxSize == AVXKind.AVXSize.YMM) {
-                return l256feature != null && features.contains(l256feature) && extendedFeatureCheck;
-            }
-            throw GraalError.shouldNotReachHereUnexpectedValue(avxSize); // ExcludeFromJacocoGeneratedReport
+        public boolean supports(EnumSet<CPUFeature> features, AVXSize size) {
+            return opAssertion.isValid(features, size);
         }
     }
 
@@ -1265,16 +1462,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, VEXPrefixConfig.WIG);
         }
 
-        public final boolean isSupported(AMD64Assembler vasm, AVXKind.AVXSize size) {
-            return isSupported(vasm, size, false);
-        }
-
-        public final boolean isSupported(AMD64Assembler vasm, AVXKind.AVXSize size, boolean useZMMRegisters) {
-            return assertion.supports(vasm.getFeatures(), size, useZMMRegisters);
-        }
-
-        public final boolean isSupported(AMD64 arch, AMD64Kind kind) {
-            return assertion.supports(arch.getFeatures(), AVXKind.getRegisterSize(kind), false);
+        public boolean isSupported(AMD64Assembler asm, AVXSize size) {
+            return assertion.isValid(asm.getFeatures(), size);
         }
 
         /**
@@ -1283,8 +1472,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
          * to its own type.
          */
         protected final VexOp encodingLogic(AMD64SIMDInstructionEncoding encoding) {
-            GraalError.guarantee(variant != null, "%s has no %s variant!", this, encoding);
-            GraalError.guarantee(this.isEvex ^ variant.isEvex, "Only pairs of VEX and EVEX instructions are allowed. (%s, %s)", this, variant);
+            GraalError.guarantee(variant != null || isEvex == (encoding == AMD64SIMDInstructionEncoding.EVEX), "%s has no %s variant!", this, encoding);
+            GraalError.guarantee(variant == null || this.isEvex != variant.isEvex, "Only pairs of VEX and EVEX instructions are allowed. (%s, %s)", this, variant);
             return switch (encoding) {
                 case VEX -> isEvex ? variant : this;
                 case EVEX -> isEvex ? this : variant;
@@ -1304,47 +1493,61 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return opcode;
         }
 
-        protected final int getDisp8Scale(boolean useEvex, AVXKind.AVXSize size) {
+        protected final int getDisp8Scale(boolean useEvex, AVXSize size) {
             return useEvex ? evexTuple.getDisp8ScalingFactor(size) : DEFAULT_DISP8_SCALE;
         }
 
-        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, Register src, AVXKind.AVXSize size, int actualPP, int actualMMMMM, int actualW, int actualWEvex,
-                        boolean checkAVX) {
-            emitVexOrEvex(asm, dst, nds, src, Register.None, size, actualPP, actualMMMMM, actualW, actualWEvex, checkAVX, Z0, B0);
+        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, Register src, AVXSize size, int actualPP, int actualMMMMM, int actualW, int actualWEvex) {
+            emitVexOrEvex(asm, dst, nds, src, Register.None, size, actualPP, actualMMMMM, actualW, actualWEvex, Z0, B0);
         }
 
-        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, Register src, Register opmask, AVXKind.AVXSize size, int actualPP, int actualMMMMM, int actualW,
-                        int actualWEvex, boolean checkAVX, int z, int b) {
+        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, Register src, Register opmask, AVXSize size, int actualPP, int actualMMMMM, int actualW,
+                        int actualWEvex, int z, int b) {
+            AVXSize avxSize = size;
+            if (avxSize == AVXSize.DWORD || avxSize == AVXSize.QWORD) {
+                avxSize = AVXSize.XMM;
+            }
             if (isEvex) {
-                asm.evexPrefix(dst, opmask, nds, src, size, actualPP, actualMMMMM, actualWEvex, z, b);
+                checkEvex(asm, avxSize, dst, opmask, z, nds, src, b);
+                asm.evexPrefix(dst, opmask, nds, src, avxSize, actualPP, actualMMMMM, actualWEvex, z, b);
             } else {
-                GraalError.guarantee(Register.None.equals(opmask), "trying to emit VEX prefix for instruction %s with opmask %s", opcode, opmask);
-                GraalError.guarantee(size != AVXSize.ZMM, "trying to emit VEX prefix for ZMM sized %s", opcode);
-                // instructions using registers XMM16 - XMM31 need to be encoded with an EVEX prefix
-                GraalError.guarantee(!isAVX512Register(dst) && !isAVX512Register(nds) && !isAVX512Register(src), "trying to emit VEX prefix for instruction %s using dst: %s, nds: %s, src: %s", opcode,
-                                dst, nds, src);
-
-                asm.emitVEX(getLFlag(size), actualPP, actualMMMMM, actualW, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0, checkAVX);
+                checkVex(asm, avxSize, dst, opmask, z, nds, src, b);
+                asm.emitVEX(getLFlag(avxSize), actualPP, actualMMMMM, actualW, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0);
             }
         }
 
-        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, AMD64Address src, AVXKind.AVXSize size, int actualPP, int actualMMMMM, int actualW, int actualWEvex,
-                        boolean checkAVX) {
-            emitVexOrEvex(asm, dst, nds, src, Register.None, size, actualPP, actualMMMMM, actualW, actualWEvex, checkAVX, Z0, B0);
+        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, AMD64Address src, AVXSize size, int actualPP, int actualMMMMM, int actualW, int actualWEvex) {
+            emitVexOrEvex(asm, dst, nds, src, Register.None, size, actualPP, actualMMMMM, actualW, actualWEvex, Z0, B0);
         }
 
-        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, AMD64Address src, Register opmask, AVXKind.AVXSize size, int actualPP, int actualMMMMM, int actualW,
-                        int actualWEvex, boolean checkAVX, int z, int b) {
+        protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, AMD64Address src, Register opmask, AVXSize size, int actualPP, int actualMMMMM, int actualW,
+                        int actualWEvex, int z, int b) {
+            asm.interceptMemorySrcOperands(src);
             if (isEvex) {
+                checkEvex(asm, size, dst, opmask, z, nds, null, b);
                 asm.evexPrefix(dst, opmask, nds, src, size, actualPP, actualMMMMM, actualWEvex, z, b);
             } else {
-                GraalError.guarantee(Register.None.equals(opmask), "trying to emit VEX prefix for instruction %s with opmask %s", opcode, opmask);
-                GraalError.guarantee(size != AVXSize.ZMM, "trying to emit VEX prefix for ZMM sized %s", opcode);
-                // instructions using registers XMM16 - XMM31 need to be encoded with an EVEX prefix
-                GraalError.guarantee(!isAVX512Register(dst) && !isAVX512Register(nds), "trying to emit VEX prefix for instruction %s using dst: %s, nds: %s", opcode, dst, nds);
-
-                asm.emitVEX(getLFlag(size), actualPP, actualMMMMM, actualW, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0, checkAVX);
+                checkVex(asm, size, dst, opmask, z, nds, null, b);
+                asm.emitVEX(getLFlag(size), actualPP, actualMMMMM, actualW, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0);
             }
+        }
+
+        private void checkVex(AMD64Assembler asm, AVXSize size, Register dst, Register mask, int z, Register nds, Register src, int b) {
+            GraalError.guarantee(mask.equals(Register.None) && z == Z0, "{%s}%s", mask.equals(Register.None) ? mask.name : "K0", z == Z0 ? "" : " {z}");
+            GraalError.guarantee(b == B0, "illegal EVEX.b");
+            GraalError.guarantee(dst == null || (!isAVX512Register(dst) && categoryContains(assertion.rCategory, dst)), "instruction %s illegal operand %s", opcode, dst);
+            GraalError.guarantee(!nds.isValid() || (!isAVX512Register(nds) && categoryContains(assertion.vCategory, nds)), "instruction %s illegal operand %s", opcode, nds);
+            GraalError.guarantee(src == null || (!isAVX512Register(src) && categoryContains(assertion.mCategory, src)), "instruction %s illegal operand %s", opcode, src);
+            GraalError.guarantee(assertion.vexFeatures.isValid(asm.getFeatures(), size), "instruction %s not supported for size %s", opcode, size);
+        }
+
+        private void checkEvex(AMD64Assembler asm, AVXSize size, Register dst, Register mask, int z, Register nds, Register src, int b) {
+            GraalError.guarantee(mask.isValid() || z == Z0, "illegal EVEX.z for no mask");
+            GraalError.guarantee(src == null || b == B0, "illegal EVEX.b for register operand %s", src);
+            GraalError.guarantee(dst == null || categoryContains(assertion.rCategory, dst), "instruction %s illegal operand %s", opcode, dst);
+            GraalError.guarantee(!nds.isValid() || categoryContains(assertion.vCategory, nds), "instruction %s illegal operand %s", opcode, nds);
+            GraalError.guarantee(src == null || categoryContains(assertion.mCategory, src), "instruction %s illegal operand %s", opcode, src);
+            GraalError.guarantee(assertion.evexFeatures.isValid(asm.getFeatures(), size), "instruction %s not supported for size %s", opcode, size);
         }
     }
 
@@ -1360,20 +1563,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRROp EVPBROADCASTD_GPR = new VexRROp("EVPBROADCASTD_GPR", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x7C, VEXOpAssertion.XMM_CPU_AVX512F_VL,  EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0, true);
         public static final VexRROp EVPBROADCASTQ_GPR = new VexRROp("EVPBROADCASTQ_GPR", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x7C, VEXOpAssertion.XMM_CPU_AVX512F_VL,  EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1, true);
 
-        public static final VexRROp KTESTB            = new VexRROp("KTESTB",            VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x99, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRROp KTESTW            = new VexRROp("KTESTW",            VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x99, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRROp KTESTD            = new VexRROp("KTESTD",            VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x99, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRROp KTESTQ            = new VexRROp("KTESTQ",            VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x99, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRROp KTESTB            = new VexRROp("KTESTB",            VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x99, VEXOpAssertion.AVX512DQ_MASK_L0);
+        public static final VexRROp KTESTW            = new VexRROp("KTESTW",            VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x99, VEXOpAssertion.AVX512DQ_MASK_L0);
+        public static final VexRROp KTESTD            = new VexRROp("KTESTD",            VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x99, VEXOpAssertion.AVX512BW_MASK_L0);
+        public static final VexRROp KTESTQ            = new VexRROp("KTESTQ",            VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x99, VEXOpAssertion.AVX512BW_MASK_L0);
 
-        public static final VexRROp KORTESTB          = new VexRROp("KORTESTB",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x98, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRROp KORTESTW          = new VexRROp("KORTESTW",          VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x98, VEXOpAssertion.AVX512F_MASK);
-        public static final VexRROp KORTESTD          = new VexRROp("KORTESTD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x98, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRROp KORTESTQ          = new VexRROp("KORTESTQ",          VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x98, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRROp KORTESTB          = new VexRROp("KORTESTB",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x98, VEXOpAssertion.AVX512DQ_MASK_L0);
+        public static final VexRROp KORTESTW          = new VexRROp("KORTESTW",          VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x98, VEXOpAssertion.AVX512F_MASK_L0);
+        public static final VexRROp KORTESTD          = new VexRROp("KORTESTD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x98, VEXOpAssertion.AVX512BW_MASK_L0);
+        public static final VexRROp KORTESTQ          = new VexRROp("KORTESTQ",          VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x98, VEXOpAssertion.AVX512BW_MASK_L0);
 
-        public static final VexRROp KNOTB             = new VexRROp("KNOTB",             VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x44, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRROp KNOTW             = new VexRROp("KNOTW",             VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x44, VEXOpAssertion.AVX512F_MASK);
-        public static final VexRROp KNOTD             = new VexRROp("KNOTD",             VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x44, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRROp KNOTQ             = new VexRROp("KNOTQ",             VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x44, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRROp KNOTB             = new VexRROp("KNOTB",             VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x44, VEXOpAssertion.AVX512DQ_MASK_L0);
+        public static final VexRROp KNOTW             = new VexRROp("KNOTW",             VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x44, VEXOpAssertion.AVX512F_MASK_L0);
+        public static final VexRROp KNOTD             = new VexRROp("KNOTD",             VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x44, VEXOpAssertion.AVX512BW_MASK_L0);
+        public static final VexRROp KNOTQ             = new VexRROp("KNOTQ",             VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x44, VEXOpAssertion.AVX512BW_MASK_L0);
         // @formatter:on
 
         protected VexRROp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, boolean isEvex) {
@@ -1394,17 +1597,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            assert op != 0x1A || op != 0x5A : op;
-            emitVexOrEvex(asm, dst, Register.None, src, size, pp, mmmmm, w, wEvex, false);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src);
+            emit(asm, size, dst, src, Register.None, Z0, B0);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            assert op != 0x1A || op != 0x5A : op;
-            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
@@ -1415,26 +1612,29 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static class VexRMOp extends VexRROp {
         // @formatter:off
-        public static final VexRMOp VAESIMC         = new VexRMOp("VAESIMC",         VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0xDB, VEXOpAssertion.AVX1_128ONLY_AES);
-        public static final VexRMOp VCVTTSS2SI      = new VexRMOp("VCVTTSS2SI",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x2C, VEXOpAssertion.CPU_XMM_AVX512F_128ONLY,   EVEXTuple.T1F_32BIT, VEXPrefixConfig.W0);
-        public static final VexRMOp VCVTTSS2SQ      = new VexRMOp("VCVTTSS2SQ",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x2C, VEXOpAssertion.CPU_XMM_AVX512F_128ONLY,   EVEXTuple.T1F_32BIT, VEXPrefixConfig.W1);
-        public static final VexRMOp VCVTTSD2SI      = new VexRMOp("VCVTTSD2SI",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x2C, VEXOpAssertion.CPU_XMM_AVX512F_128ONLY,   EVEXTuple.T1F_64BIT, VEXPrefixConfig.W0);
-        public static final VexRMOp VCVTTSD2SQ      = new VexRMOp("VCVTTSD2SQ",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x2C, VEXOpAssertion.CPU_XMM_AVX512F_128ONLY,   EVEXTuple.T1F_64BIT, VEXPrefixConfig.W1);
+        public static final VexRMOp VAESIMC         = new VexRMOp("VAESIMC",         VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0xDB, VEXOpAssertion.AES_AVX1_128ONLY);
+        public static final VexRMOp VCVTTSS2SI      = new VexRMOp("VCVTTSS2SI",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x2C, VEXOpAssertion.CPU_XMM_AVX1_AVX512F_128ONLY, EVEXTuple.T1F_32BIT, VEXPrefixConfig.W0);
+        public static final VexRMOp VCVTTSS2SQ      = new VexRMOp("VCVTTSS2SQ",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x2C, VEXOpAssertion.CPU_XMM_AVX1_AVX512F_128ONLY, EVEXTuple.T1F_32BIT, VEXPrefixConfig.W1);
+        public static final VexRMOp VCVTTSD2SI      = new VexRMOp("VCVTTSD2SI",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0x2C, VEXOpAssertion.CPU_XMM_AVX1_AVX512F_128ONLY, EVEXTuple.T1F_64BIT, VEXPrefixConfig.W0);
+        public static final VexRMOp VCVTTSD2SQ      = new VexRMOp("VCVTTSD2SQ",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x2C, VEXOpAssertion.CPU_XMM_AVX1_AVX512F_128ONLY, EVEXTuple.T1F_64BIT, VEXPrefixConfig.W1);
         public static final VexRMOp VCVTPS2PD       = new VexRMOp("VCVTPS2PD",       VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5A, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       VEXPrefixConfig.W0);
         public static final VexRMOp VCVTPD2PS       = new VexRMOp("VCVTPD2PS",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5A, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRMOp VCVTDQ2PS       = new VexRMOp("VCVTDQ2PS",       VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5B, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRMOp VCVTTPS2DQ      = new VexRMOp("VCVTTPS2DQ",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5B, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRMOp VCVTTPD2DQ      = new VexRMOp("VCVTTPD2DQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRMOp VCVTDQ2PD       = new VexRMOp("VCVTDQ2PD",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       VEXPrefixConfig.W0);
+        public static final VexRMOp VMOVDDUP        = new VexRMOp("VMOVDDUP",        VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x12, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.DUP,       VEXPrefixConfig.W1);
         public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
-        public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x1A, VEXOpAssertion.AVX1_256ONLY);
-        public static final VexRMOp VPBROADCASTI128 = new VexRMOp("VPBROADCASTI128", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x5A, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x19, VEXOpAssertion.AVX1_AVX512F_VL_256_512,   EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x1A, VEXOpAssertion.AVX1_AVX512F_VL_256_512,   EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0);
+        public static final VexRMOp VPBROADCASTI128 = new VexRMOp("VPBROADCASTI128", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x5A, VEXOpAssertion.AVX2_AVX512F_VL_256_512,   EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0);
         public static final VexRMOp VPBROADCASTB    = new VexRMOp("VPBROADCASTB",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x78, VEXOpAssertion.AVX2_AVX512BW_VL,          EVEXTuple.T1S_8BIT,  VEXPrefixConfig.W0);
         public static final VexRMOp VPBROADCASTW    = new VexRMOp("VPBROADCASTW",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x79, VEXOpAssertion.AVX2_AVX512BW_VL,          EVEXTuple.T1S_16BIT, VEXPrefixConfig.W0);
         public static final VexRMOp VPBROADCASTD    = new VexRMOp("VPBROADCASTD",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x58, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
         public static final VexRMOp VPBROADCASTQ    = new VexRMOp("VPBROADCASTQ",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x59, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRMOp VPMOVMSKB       = new VexRMOp("VPMOVMSKB",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD7, VEXOpAssertion.AVX1_2_CPU_XMM);
+        public static final VexRMOp VMOVMSKPD       = new VexRMOp("VMOVMSKPD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x50, VEXOpAssertion.AVX1_CPU_XMM);
+        public static final VexRMOp VMOVMSKPS       = new VexRMOp("VMOVMSKPS",       VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x50, VEXOpAssertion.AVX1_CPU_XMM);
 
         public static final VexRMOp VPMOVSXBW       = new VexRMOp("VPMOVSXBW",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x20, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.HVM,       VEXPrefixConfig.WIG);
         public static final VexRMOp VPMOVSXBD       = new VexRMOp("VPMOVSXBD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x21, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.QVM,       VEXPrefixConfig.WIG);
@@ -1448,11 +1648,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VPMOVZXWD       = new VexRMOp("VPMOVZXWD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x33, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.HVM,       VEXPrefixConfig.WIG);
         public static final VexRMOp VPMOVZXWQ       = new VexRMOp("VPMOVZXWQ",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x34, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.QVM,       VEXPrefixConfig.WIG);
         public static final VexRMOp VPMOVZXDQ       = new VexRMOp("VPMOVZXDQ",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x35, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.HVM,       VEXPrefixConfig.WIG);
-        public static final VexRMOp VPTEST          = new VexRMOp("VPTEST",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x17);
+        public static final VexRMOp VPTEST          = new VexRMOp("VPTEST",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x17, VEXOpAssertion.AVX1);
         public static final VexRMOp VSQRTPD         = new VexRMOp("VSQRTPD",         VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRMOp VSQRTPS         = new VexRMOp("VSQRTPS",         VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       VEXPrefixConfig.W0);
-        public static final VexRMOp VUCOMISS        = new VexRMOp("VUCOMISS",        VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x2E, VEXOpAssertion.AVX1_AVX512F_128_ONLY,     EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRMOp VUCOMISD        = new VexRMOp("VUCOMISD",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x2E, VEXOpAssertion.AVX1_AVX512F_128_ONLY,     EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRMOp VUCOMISS        = new VexRMOp("VUCOMISS",        VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x2E, VEXOpAssertion.AVX1_AVX512F_128,          EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRMOp VUCOMISD        = new VexRMOp("VUCOMISD",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x2E, VEXOpAssertion.AVX1_AVX512F_128,          EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRMOp VPABSB          = new VexRMOp("VPABSB",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x1C, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRMOp VPABSW          = new VexRMOp("VPABSW",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x1D, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRMOp VPABSD          = new VexRMOp("VPABSD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x1E, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W0);
@@ -1473,16 +1673,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp EVCVTTPD2DQ     = new VexRMOp("EVCVTTPD2DQ",     VCVTTPD2DQ);
         public static final VexRMOp EVCVTTPD2QQ     = new VexRMOp("EVCVTTPD2QQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1,  0x7A, VEXOpAssertion.AVX512DQ_VL,               EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRMOp EVCVTDQ2PD      = new VexRMOp("EVCVTDQ2PD",      VCVTDQ2PD);
+        public static final VexRMOp EVMOVDDUP       = new VexRMOp("EVMOVDDUP",       VMOVDDUP);
         public static final VexRMOp EVBROADCASTSS   = new VexRMOp("EVBROADCASTSS",   VBROADCASTSS);
         public static final VexRMOp EVBROADCASTSD   = new VexRMOp("EVBROADCASTSD",   VBROADCASTSD);
         public static final VexRMOp EVPBROADCASTB   = new VexRMOp("EVPBROADCASTB",   VPBROADCASTB);
         public static final VexRMOp EVPBROADCASTW   = new VexRMOp("EVPBROADCASTW",   VPBROADCASTW);
         public static final VexRMOp EVPBROADCASTD   = new VexRMOp("EVPBROADCASTD",   VPBROADCASTD);
         public static final VexRMOp EVPBROADCASTQ   = new VexRMOp("EVPBROADCASTQ",   VPBROADCASTQ);
-        public static final VexRMOp EVPMOVB2M       = new VexRMOp("EVPMOVB2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
-        public static final VexRMOp EVPMOVW2M       = new VexRMOp("EVPMOVW2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
-        public static final VexRMOp EVPMOVD2M       = new VexRMOp("EVPMOVD2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x39, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ_VL, EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
-        public static final VexRMOp EVPMOVQ2M       = new VexRMOp("EVPMOVQ2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x39, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ_VL, EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRMOp EVPMOVB2M       = new VexRMOp("EVPMOVB2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x29, VEXOpAssertion.MASK_XMM_AVX512BW_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
+        public static final VexRMOp EVPMOVW2M       = new VexRMOp("EVPMOVW2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x29, VEXOpAssertion.MASK_XMM_AVX512BW_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRMOp EVPMOVD2M       = new VexRMOp("EVPMOVD2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x39, VEXOpAssertion.MASK_XMM_AVX512DQ_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
+        public static final VexRMOp EVPMOVQ2M       = new VexRMOp("EVPMOVQ2M",       VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x39, VEXOpAssertion.MASK_XMM_AVX512DQ_VL,      EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRMOp EVPMOVSXBW      = new VexRMOp("EVPMOVSXBW",      VPMOVSXBW);
         public static final VexRMOp EVPMOVSXBD      = new VexRMOp("EVPMOVSXBD",      VPMOVSXBD);
         public static final VexRMOp EVPMOVSXBQ      = new VexRMOp("EVPMOVSXBQ",      VPMOVSXBQ);
@@ -1506,10 +1707,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp EVCVTPH2PS      = new VexRMOp("EVCVTPH2PS",      VCVTPH2PS);
 
         // @formatter:on
-
-        protected VexRMOp(String opcode, int pp, int mmmmm, int w, int op) {
-            this(opcode, pp, mmmmm, w, op, VEXOpAssertion.AVX1, EVEXTuple.INVALID, VEXPrefixConfig.WIG);
-        }
 
         protected VexRMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             this(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, VEXPrefixConfig.WIG);
@@ -1542,21 +1739,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexRMOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src) {
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
             emit(asm, size, dst, src, Register.None, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0, getDisp8Scale(isEvex, size));
         }
@@ -1575,7 +1770,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
         }
 
-        public abstract void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src);
+        public abstract void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src);
     }
 
     /**
@@ -1595,21 +1790,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMoveOp VMOVUPS   = new VexMoveOp("VMOVUPS",   VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexMoveOp VMOVUPD   = new VexMoveOp("VMOVUPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
         // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers.
-        public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
-        public static final VexMoveOp VMOVD     = new VexMoveOp("VMOVD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexMoveOp VMOVQ     = new VexMoveOp("VMOVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        // VexRVMOp.VMOVSS/VMOVSD utilize the merge semantics, while these simply move the whole
+        // XMM register from src to dst
+        public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_128,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_128,        EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexMoveOp VMOVD     = new VexMoveOp("VMOVD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x6E, 0x7E, VEXOpAssertion.AVX1_AVX512F_CPU_OR_XMM, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexMoveOp VMOVQ     = new VexMoveOp("VMOVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x6E, 0x7E, VEXOpAssertion.AVX1_AVX512F_CPU_OR_XMM, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
 
         // EVEX encoded instructions
         public static final VexMoveOp EVMOVDQA32 = new VexMoveOp("EVMOVDQA32", VMOVDQA32);
         public static final VexMoveOp EVMOVDQA64 = new VexMoveOp("EVMOVDQA64", VMOVDQA64);
+        public static final VexMoveOp EVMOVDQU8  = new VexMoveOp("EVMOVDQU8",  VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x6F, 0x7F, VEXOpAssertion.AVX512BW_VL, EVEXTuple.FVM, VEXPrefixConfig.W0, true);
+        public static final VexMoveOp EVMOVDQU16 = new VexMoveOp("EVMOVDQU16", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x6F, 0x7F, VEXOpAssertion.AVX512BW_VL, EVEXTuple.FVM, VEXPrefixConfig.W1, true);
         public static final VexMoveOp EVMOVDQU32 = new VexMoveOp("EVMOVDQU32", VMOVDQU32);
         public static final VexMoveOp EVMOVDQU64 = new VexMoveOp("EVMOVDQU64", VMOVDQU64);
         public static final VexMoveOp EVMOVAPS   = new VexMoveOp("EVMOVAPS",   VMOVAPS);
         public static final VexMoveOp EVMOVAPD   = new VexMoveOp("EVMOVAPD",   VMOVAPD);
         public static final VexMoveOp EVMOVUPS   = new VexMoveOp("EVMOVUPS",   VMOVUPS);
         public static final VexMoveOp EVMOVUPD   = new VexMoveOp("EVMOVUPD",   VMOVUPD);
-        // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers.
         public static final VexMoveOp EVMOVSS    = new VexMoveOp("EVMOVSS",    VMOVSS);
         public static final VexMoveOp EVMOVSD    = new VexMoveOp("EVMOVSD",    VMOVSD);
         public static final VexMoveOp EVMOVD     = new VexMoveOp("EVMOVD",     VMOVD);
@@ -1645,44 +1843,69 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
+            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
 
-        public void emitReverse(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, dst), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src, Register mask) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, Z0, B0);
+            asm.emitByte(opReverse);
+            asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
+        }
+
+        public void emitReverse(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
+            Register nds = (this == VMOVSS || this == VMOVSD || this == EVMOVSS || this == EVMOVSD) ? src : Register.None;
+            emitVexOrEvex(asm, src, nds, dst, size, pp, mmmmm, w, wEvex);
             asm.emitByte(opReverse);
             asm.emitModRM(src, dst);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            // MOVSS/SD are RVM instruction when both operands are registers
-            Register nds = (this == VMOVSS || this == VMOVSD || this == EVMOVSS || this == EVMOVSD) ? src : Register.None;
-            emitVexOrEvex(asm, dst, nds, src, size, pp, mmmmm, w, wEvex, false);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
+            emit(asm, size, dst, src, Register.None, Z0, B0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
             // MOVSS/SD are RVM instruction when both operands are registers
             Register nds = (this == VMOVSS || this == VMOVSD || this == EVMOVSS || this == EVMOVSD) ? src : Register.None;
-            emitVexOrEvex(asm, dst, nds, src, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+            emitVexOrEvex(asm, dst, nds, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
 
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, z, b);
+            asm.emitByte(opReverse);
+            asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
+        }
     }
 
     public interface VexRRIOp {
-        void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8);
+        void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8);
+    }
+
+    public static class VexMaskRRIOp extends VexOp implements VexRRIOp {
+        // @formatter:off
+        public static final VexMaskRRIOp KSHIFTRB = new VexMaskRRIOp("KSHIFTRB", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x30, VEXOpAssertion.AVX512DQ_MASK_L0);
+        public static final VexMaskRRIOp KSHIFTRW = new VexMaskRRIOp("KSHIFTRW", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x30, VEXOpAssertion.AVX512F_MASK_L0);
+        public static final VexMaskRRIOp KSHIFTRD = new VexMaskRRIOp("KSHIFTRD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x31, VEXOpAssertion.AVX512BW_MASK_L0);
+        public static final VexMaskRRIOp KSHIFTRQ = new VexMaskRRIOp("KSHIFTRQ", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x31, VEXOpAssertion.AVX512BW_MASK_L0);
+        // @formatter:on
+
+        protected VexMaskRRIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+            super(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, VEXPrefixConfig.WIG);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
+            emitVexOrEvex(asm, dst, Register.None, src, Register.None, size, pp, mmmmm, w, wEvex, Z0, B0);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+            asm.emitByte(imm8);
+        }
     }
 
     /**
@@ -1690,15 +1913,21 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static class VexRMIOp extends VexOp implements VexRRIOp {
         // @formatter:off
-        public static final VexRMIOp VAESKEYGENASSIST = new VexRMIOp("VAESKEYGENASSIST", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0xDF, VEXOpAssertion.AVX1_128ONLY_AES);
+        public static final VexRMIOp VAESKEYGENASSIST = new VexRMIOp("VAESKEYGENASSIST", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0xDF, VEXOpAssertion.AES_AVX1_128ONLY);
         public static final VexRMIOp VPERMQ           = new VexRMIOp("VPERMQ",           VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x00, VEXOpAssertion.AVX2_AVX512F_VL_256_512, EVEXTuple.FVM, VEXPrefixConfig.W1);
         public static final VexRMIOp VPSHUFLW         = new VexRMIOp("VPSHUFLW",         VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, VEXPrefixConfig.WIG);
         public static final VexRMIOp VPSHUFHW         = new VexRMIOp("VPSHUFHW",         VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,   EVEXTuple.FVM, VEXPrefixConfig.WIG);
         public static final VexRMIOp VPSHUFD          = new VexRMIOp("VPSHUFD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x70, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,    EVEXTuple.FVM, VEXPrefixConfig.W0);
+        public static final VexRMIOp VPERMILPD        = new VexRMIOp("VPERMILPD",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x05, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM, VEXPrefixConfig.W1);
+        public static final VexRMIOp VPERMILPS        = new VexRMIOp("VPERMILPS",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x04, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM, VEXPrefixConfig.W0);
+        public static final VexRMIOp VPERMPD          = new VexRMIOp("VPERMPD",          VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x01, VEXOpAssertion.AVX2_AVX512F_VL_256_512, EVEXTuple.FVM, VEXPrefixConfig.W1);
         public static final VexRMIOp RORXL            = new VexRMIOp("RORXL",            VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0xF0, VEXOpAssertion.BMI2);
         public static final VexRMIOp RORXQ            = new VexRMIOp("RORXQ",            VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0xF0, VEXOpAssertion.BMI2);
 
         // EVEX encoded instructions
+        public static final VexRMIOp EVPERMILPD       = new VexRMIOp("EVPERMILPD",       VPERMILPD);
+        public static final VexRMIOp EVPERMILPS       = new VexRMIOp("EVPERMILPS",       VPERMILPS);
+        public static final VexRMIOp EVPERMPD         = new VexRMIOp("EVPERMPD",         VPERMPD);
         public static final VexRMIOp EVPERMQ          = new VexRMIOp("EVPERMQ",          VPERMQ);
         public static final VexRMIOp EVPSHUFLW        = new VexRMIOp("EVPSHUFLW",        VPSHUFLW);
         public static final VexRMIOp EVPSHUFHW        = new VexRMIOp("EVPSHUFHW",        VPSHUFHW);
@@ -1733,35 +1962,25 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, Register.None, src, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
+            emit(asm, size, dst, src, imm8, Register.None, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8) {
+            emit(asm, size, dst, src, imm8, Register.None, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
             asm.emitByte(imm8);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, Register.None, src, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(isEvex, size));
-            asm.emitByte(imm8);
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src);
-            asm.emitByte(imm8);
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src, int imm8, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src, 1, getDisp8Scale(true, size));
             asm.emitByte(imm8);
         }
     }
@@ -1771,8 +1990,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class EvexRMIOp extends VexRMIOp {
         // @formatter:off
-        public static final EvexRMIOp EVFPCLASSSS = new EvexRMIOp("EVFPCLASS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x67, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final EvexRMIOp EVFPCLASSSD = new EvexRMIOp("EVFPCLASD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x67, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final EvexRMIOp EVFPCLASSSS = new EvexRMIOp("EVFPCLASS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final EvexRMIOp EVFPCLASSSD = new EvexRMIOp("EVFPCLASD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         // @formatter:on
 
         private EvexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
@@ -1785,15 +2004,41 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
             emit(asm, size, dst, src, imm8, Register.None, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8) {
             emit(asm, size, dst, src, imm8, Register.None, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
+        }
+    }
+
+    public static final class EvexRMIExtendOp extends VexRMIOp {
+        // @formatter:off
+        public static final EvexRMIExtendOp EVPROLQ = new EvexRMIExtendOp("EVPROLQ", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W1, 0x72, 1, VEXOpAssertion.AVX512F_VL, EVEXTuple.FVM, VEXPrefixConfig.W1);
+        // @formatter:on
+        private final int ext;
+
+        private EvexRMIExtendOp(String opcode, int pp, int mmmmm, int w, int op, int ext, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+            super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, true);
+            this.ext = ext;
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, dst, src, mask, size, pp, mmmmm, w, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(ext, src);
+            asm.emitByte(imm8);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, dst, src, mask, size, pp, mmmmm, w, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitOperandHelper(ext, src, 1, getDisp8Scale(isEvex, size));
+            asm.emitByte(imm8);
         }
     }
 
@@ -1822,25 +2067,23 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src) {
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
             emit(asm, size, dst, src, Register.None, Z0, B0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, dst), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(src, dst);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src) {
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
             emit(asm, size, dst, src, Register.None, Z0, B0);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(isEvex, size));
         }
@@ -1851,22 +2094,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexMRIOp extends VexOp implements VexRRIOp {
         // @formatter:off
-        public static final VexMRIOp VPEXTRB       = new VexMRIOp("VPEXTRB",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x14, VEXOpAssertion.XMM_CPU_AVX512BW_128ONLY, EVEXTuple.T1S_8BIT,  VEXPrefixConfig.W0);
-        public static final VexMRIOp VPEXTRW       = new VexMRIOp("VPEXTRW",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x15, VEXOpAssertion.XMM_CPU_AVX512BW_128ONLY, EVEXTuple.T1S_16BIT, VEXPrefixConfig.W0);
-        public static final VexMRIOp VPEXTRD       = new VexMRIOp("VPEXTRD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x16, VEXOpAssertion.XMM_CPU_AVX512DQ_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexMRIOp VPEXTRQ       = new VexMRIOp("VPEXTRQ",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x16, VEXOpAssertion.XMM_CPU_AVX512DQ_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexMRIOp VPEXTRB       = new VexMRIOp("VPEXTRB",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x14, VEXOpAssertion.XMM_CPU_AVX1_AVX512BW_128ONLY, EVEXTuple.T1S_8BIT,  VEXPrefixConfig.W0);
+        public static final VexMRIOp VPEXTRW       = new VexMRIOp("VPEXTRW",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x15, VEXOpAssertion.XMM_CPU_AVX1_AVX512BW_128ONLY, EVEXTuple.T1S_16BIT, VEXPrefixConfig.W0);
+        public static final VexMRIOp VPEXTRD       = new VexMRIOp("VPEXTRD",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x16, VEXOpAssertion.XMM_CPU_AVX1_AVX512DQ_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexMRIOp VPEXTRQ       = new VexMRIOp("VPEXTRQ",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x16, VEXOpAssertion.XMM_CPU_AVX1_AVX512DQ_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
 
         // AVX/AVX2 128-bit extract
-        public static final VexMRIOp VEXTRACTF128  = new VexMRIOp("VEXTRACTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x19, VEXOpAssertion.AVX1_256ONLY);
-        public static final VexMRIOp VEXTRACTI128  = new VexMRIOp("VEXTRACTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x39, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexMRIOp VEXTRACTF128  = new VexMRIOp("VEXTRACTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x19, VEXOpAssertion.AVX1_AVX512F_VL_256_512,       EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0);
+        public static final VexMRIOp VEXTRACTI128  = new VexMRIOp("VEXTRACTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x39, VEXOpAssertion.AVX2_AVX512F_VL_256_512,       EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0);
 
         // AVX-512 extract
         public static final VexMRIOp EVPEXTRB       = new VexMRIOp("EVPEXTRB",       VPEXTRB);
         public static final VexMRIOp EVPEXTRW       = new VexMRIOp("EVPEXTRW",       VPEXTRW);
         public static final VexMRIOp EVPEXTRD       = new VexMRIOp("EVPEXTRD",       VPEXTRD);
         public static final VexMRIOp EVPEXTRQ       = new VexMRIOp("EVPEXTRQ",       VPEXTRQ);
-        public static final VexMRIOp EVEXTRACTF32X4 = new VexMRIOp("EVEXTRACTF32X4", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x19, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0, true);
-        public static final VexMRIOp EVEXTRACTI32X4 = new VexMRIOp("EVEXTRACTI32X4", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x39, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT,  VEXPrefixConfig.W0, true);
+        public static final VexMRIOp EVEXTRACTF32X4 = new VexMRIOp("EVEXTRACTF32X4", VEXTRACTF128);
+        public static final VexMRIOp EVEXTRACTI32X4 = new VexMRIOp("EVEXTRACTI32X4", VEXTRACTI128);
         public static final VexMRIOp EVEXTRACTF64X2 = new VexMRIOp("EVEXTRACTF64X2", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x19, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT,  VEXPrefixConfig.W1, true);
         public static final VexMRIOp EVEXTRACTI64X2 = new VexMRIOp("EVEXTRACTI64X2", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x39, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT,  VEXPrefixConfig.W1, true);
 
@@ -1908,33 +2151,23 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, dst), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
+            emit(asm, size, dst, src, imm8, Register.None, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, int imm8) {
+            emit(asm, size, dst, src, imm8, Register.None, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(src, dst);
             asm.emitByte(imm8);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex, false);
-            asm.emitByte(op);
-            asm.emitOperandHelper(src, dst, 1, getDisp8Scale(isEvex, size));
-            asm.emitByte(imm8);
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, dst), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, z, b);
-            asm.emitByte(op);
-            asm.emitModRM(src, dst);
-            asm.emitByte(imm8);
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src, int imm8, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, int imm8, Register mask, int z, int b) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(isEvex, size));
             asm.emitByte(imm8);
@@ -1960,17 +2193,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexRVMROp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register mask, Register src1, Register src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, mask, src1, src2), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, Register src1, Register src2) {
+            GraalError.guarantee(mask.getRegisterCategory().equals(XMM), "%s", mask);
+            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
             asm.emitByte(mask.encoding() << 4);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register mask, Register src1, AMD64Address src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, mask, src1, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, Register src1, AMD64Address src2) {
+            GraalError.guarantee(mask.getRegisterCategory().equals(XMM), "%s", mask);
+            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(isEvex, size));
             asm.emitByte(mask.encoding() << 4);
@@ -1979,25 +2212,30 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public static class VexRVROp extends VexOp {
         // @formatter:off
-        public static final VexRVROp KANDW  = new VexRVROp("KANDW",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x41, VEXOpAssertion.AVX512F_MASK);
-        public static final VexRVROp KANDB  = new VexRVROp("KANDB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x41, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRVROp KANDQ  = new VexRVROp("KANDQ",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x41, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRVROp KANDD  = new VexRVROp("KANDD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x41, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRVROp KANDW  = new VexRVROp("KANDW",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x41, VEXOpAssertion.AVX512F_MASK_L1);
+        public static final VexRVROp KANDB  = new VexRVROp("KANDB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x41, VEXOpAssertion.AVX512DQ_MASK_L1);
+        public static final VexRVROp KANDQ  = new VexRVROp("KANDQ",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x41, VEXOpAssertion.AVX512BW_MASK_L1);
+        public static final VexRVROp KANDD  = new VexRVROp("KANDD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x41, VEXOpAssertion.AVX512BW_MASK_L1);
 
-        public static final VexRVROp KANDNW = new VexRVROp("KANDNW", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x42, VEXOpAssertion.AVX512F_MASK);
-        public static final VexRVROp KANDNB = new VexRVROp("KANDNB", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x42, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRVROp KANDNQ = new VexRVROp("KANDNQ", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x42, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRVROp KANDND = new VexRVROp("KANDND", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x42, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRVROp KANDNW = new VexRVROp("KANDNW", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x42, VEXOpAssertion.AVX512F_MASK_L1);
+        public static final VexRVROp KANDNB = new VexRVROp("KANDNB", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x42, VEXOpAssertion.AVX512DQ_MASK_L1);
+        public static final VexRVROp KANDNQ = new VexRVROp("KANDNQ", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x42, VEXOpAssertion.AVX512BW_MASK_L1);
+        public static final VexRVROp KANDND = new VexRVROp("KANDND", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x42, VEXOpAssertion.AVX512BW_MASK_L1);
 
-        public static final VexRVROp KORW   = new VexRVROp("KORW",   VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x45, VEXOpAssertion.AVX512F_MASK);
-        public static final VexRVROp KORB   = new VexRVROp("KORB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x45, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRVROp KORQ   = new VexRVROp("KORQ",   VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x45, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRVROp KORD   = new VexRVROp("KORD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x45, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRVROp KORW   = new VexRVROp("KORW",   VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x45, VEXOpAssertion.AVX512F_MASK_L1);
+        public static final VexRVROp KORB   = new VexRVROp("KORB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x45, VEXOpAssertion.AVX512DQ_MASK_L1);
+        public static final VexRVROp KORQ   = new VexRVROp("KORQ",   VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x45, VEXOpAssertion.AVX512BW_MASK_L1);
+        public static final VexRVROp KORD   = new VexRVROp("KORD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x45, VEXOpAssertion.AVX512BW_MASK_L1);
 
-        public static final VexRVROp KXORW  = new VexRVROp("KXORW",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x47, VEXOpAssertion.AVX512F_MASK);
-        public static final VexRVROp KXORB  = new VexRVROp("KXORB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x47, VEXOpAssertion.AVX512DQ_MASK);
-        public static final VexRVROp KXORQ  = new VexRVROp("KXORQ",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x47, VEXOpAssertion.AVX512BW_MASK);
-        public static final VexRVROp KXORD  = new VexRVROp("KXORD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x47, VEXOpAssertion.AVX512BW_MASK);
+        public static final VexRVROp KXORW  = new VexRVROp("KXORW",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x47, VEXOpAssertion.AVX512F_MASK_L1);
+        public static final VexRVROp KXORB  = new VexRVROp("KXORB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x47, VEXOpAssertion.AVX512DQ_MASK_L1);
+        public static final VexRVROp KXORQ  = new VexRVROp("KXORQ",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x47, VEXOpAssertion.AVX512BW_MASK_L1);
+        public static final VexRVROp KXORD  = new VexRVROp("KXORD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x47, VEXOpAssertion.AVX512BW_MASK_L1);
+
+        public static final VexRVROp KXNORW = new VexRVROp("KXNORW", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x46, VEXOpAssertion.AVX512F_MASK_L1);
+        public static final VexRVROp KXNORB = new VexRVROp("KXNORB", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0x46, VEXOpAssertion.AVX512DQ_MASK_L1);
+        public static final VexRVROp KXNORQ = new VexRVROp("KXNORQ", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x46, VEXOpAssertion.AVX512BW_MASK_L1);
+        public static final VexRVROp KXNORD = new VexRVROp("KXNORD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, 0x46, VEXOpAssertion.AVX512BW_MASK_L1);
         // @formatter:on
 
         protected VexRVROp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -2009,10 +2247,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexRVROp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, src2), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, Register dst, Register src1, Register src2) {
             // format VEX.L1 ... kdest, ksrc1, ksrc2
-            asm.emitVEX(1, pp, mmmmm, w, 0, src1.encoding(), false);
+            emitVexOrEvex(asm, dst, src1, src2, AVXSize.YMM, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
@@ -2033,51 +2270,52 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VXORPD          = new VexRVMOp("VXORPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x57, VEXOpAssertion.AVX1_AVX512DQ_VL,             EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRVMOp VADDPS          = new VexRVMOp("VADDPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x58, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VADDPD          = new VexRVMOp("VADDPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x58, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VADDSS          = new VexRVMOp("VADDSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x58, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMOp VADDSD          = new VexRVMOp("VADDSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x58,VEXOpAssertion.AVX1_AVX512F_128_ONLY,         EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VADDSS          = new VexRVMOp("VADDSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x58, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VADDSD          = new VexRVMOp("VADDSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x58, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VMULPS          = new VexRVMOp("VMULPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x59, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VMULPD          = new VexRVMOp("VMULPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x59, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VMULSS          = new VexRVMOp("VMULSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x59, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMOp VMULSD          = new VexRVMOp("VMULSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x59, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMULSS          = new VexRVMOp("VMULSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x59, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VMULSD          = new VexRVMOp("VMULSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x59, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VSUBPS          = new VexRVMOp("VSUBPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5C, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VSUBPD          = new VexRVMOp("VSUBPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5C, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VSUBSS          = new VexRVMOp("VSUBSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5C, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMOp VSUBSD          = new VexRVMOp("VSUBSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5C, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VSUBSS          = new VexRVMOp("VSUBSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5C, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VSUBSD          = new VexRVMOp("VSUBSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5C, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VMINPS          = new VexRVMOp("VMINPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5D, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VMINPD          = new VexRVMOp("VMINPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5D, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VMINSS          = new VexRVMOp("VMINSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5D, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMOp VMINSD          = new VexRVMOp("VMINSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5D, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMINSS          = new VexRVMOp("VMINSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5D, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VMINSD          = new VexRVMOp("VMINSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5D, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VDIVPS          = new VexRVMOp("VDIVPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5E, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VDIVPD          = new VexRVMOp("VDIVPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5E, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VDIVSS          = new VexRVMOp("VDIVSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5E, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMOp VDIVSD          = new VexRVMOp("VDIVSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5E, VEXOpAssertion.AVX1_AVX512F_128_ONLY,        EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VDIVSS          = new VexRVMOp("VDIVSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5E, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VDIVSD          = new VexRVMOp("VDIVSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5E, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VMAXPS          = new VexRVMOp("VMAXPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VMAXPD          = new VexRVMOp("VMAXPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VMAXSS          = new VexRVMOp("VMAXSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMOp VMAXSD          = new VexRVMOp("VMAXSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_128ONLY_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMAXSS          = new VexRVMOp("VMAXSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VMAXSD          = new VexRVMOp("VMAXSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x5F, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VPACKUSDW       = new VexRVMOp("VPACKUSDW",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x2B, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPACKUSWB       = new VexRVMOp("VPACKUSWB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x67, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
+        public static final VexRVMOp VPACKSSWB       = new VexRVMOp("VPACKSSWB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x63, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VADDSUBPS       = new VexRVMOp("VADDSUBPS",   VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD0, VEXOpAssertion.AVX1);
         public static final VexRVMOp VADDSUBPD       = new VexRVMOp("VADDSUBPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD0, VEXOpAssertion.AVX1);
-        public static final VexRVMOp VPAND           = new VexRVMOp("VPAND",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VPANDN          = new VexRVMOp("VPANDN",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDF, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VPOR            = new VexRVMOp("VPOR",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VPXOR           = new VexRVMOp("VPXOR",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEF, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
+        public static final VexRVMOp VPAND           = new VexRVMOp("VPAND",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPANDN          = new VexRVMOp("VPANDN",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDF, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPOR            = new VexRVMOp("VPOR",        VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPXOR           = new VexRVMOp("VPXOR",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEF, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPADDB          = new VexRVMOp("VPADDB",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xFC, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPADDW          = new VexRVMOp("VPADDW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xFD, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPADDD          = new VexRVMOp("VPADDD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xFE, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPADDQ          = new VexRVMOp("VPADDQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xD4, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
         public static final VexRVMOp VPMAXSB         = new VexRVMOp("VPMAXSB",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x3C, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
-        public static final VexRVMOp VPMAXSW         = new VexRVMOp("VPMAXSW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEE, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       VEXPrefixConfig.WIG);
+        public static final VexRVMOp VPMAXSW         = new VexRVMOp("VPMAXSW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEE, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPMAXSD         = new VexRVMOp("VPMAXSD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x3D, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPMAXUB         = new VexRVMOp("VPMAXUB",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xDE, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
-        public static final VexRVMOp VPMAXUW         = new VexRVMOp("VPMAXUW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x3E, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       VEXPrefixConfig.WIG);
+        public static final VexRVMOp VPMAXUW         = new VexRVMOp("VPMAXUW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x3E, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPMAXUD         = new VexRVMOp("VPMAXUD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x3F, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPMINSB         = new VexRVMOp("VPMINSB",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x38, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
-        public static final VexRVMOp VPMINSW         = new VexRVMOp("VPMINSW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEA, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       VEXPrefixConfig.WIG);
+        public static final VexRVMOp VPMINSW         = new VexRVMOp("VPMINSW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEA, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPMINSD         = new VexRVMOp("VPMINSD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x39, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPMINUB         = new VexRVMOp("VPMINUB",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xDA, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.W0);
-        public static final VexRVMOp VPMINUW         = new VexRVMOp("VPMINUW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x3A, VEXOpAssertion.AVX1_AVX2_AVX512F_BW,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPMINUW         = new VexRVMOp("VPMINUW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x3A, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPMINUD         = new VexRVMOp("VPMINUD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x3B, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPMULHUW        = new VexRVMOp("VPMULHUW",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE4, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPMULHW         = new VexRVMOp("VPMULHW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xE5, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
@@ -2089,6 +2327,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPSUBW          = new VexRVMOp("VPSUBW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xF9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPSUBD          = new VexRVMOp("VPSUBD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xFA, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPSUBQ          = new VexRVMOp("VPSUBQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xFB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       VEXPrefixConfig.W1);
+        public static final VexRVMOp VPSLLVD         = new VexRVMOp("VPSLLVD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x47, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPSLLVQ         = new VexRVMOp("VPSLLVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x47, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
+        public static final VexRVMOp VPSRLVD         = new VexRVMOp("VPSRLVD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x45, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPSRLVQ         = new VexRVMOp("VPSRLVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x45, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
+        public static final VexRVMOp VPSRAVD         = new VexRVMOp("VPSRAVD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x46, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPSHUFB         = new VexRVMOp("VPSHUFB",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x00, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       VEXPrefixConfig.WIG);
         public static final VexRVMOp VPCMPEQB        = new VexRVMOp("VPCMPEQB",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x74, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPCMPEQW        = new VexRVMOp("VPCMPEQW",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x75, VEXOpAssertion.AVX1_2);
@@ -2102,12 +2345,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VFMADD231SD     = new VexRVMOp("VFMADD231SD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
         public static final VexRVMOp VFMADD231PS     = new VexRVMOp("VFMADD231PS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0xB8, VEXOpAssertion.FMA,                          EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VFMADD231PD     = new VexRVMOp("VFMADD231PD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0xB8, VEXOpAssertion.FMA,                          EVEXTuple.FVM,       VEXPrefixConfig.W1);
-        public static final VexRVMOp VSQRTSD         = new VexRVMOp("VSQRTSD",     VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
-        public static final VexRVMOp VSQRTSS         = new VexRVMOp("VSQRTSS",     VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VSQRTSD         = new VexRVMOp("VSQRTSD",     VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VSQRTSS         = new VexRVMOp("VSQRTSS",     VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
 
+        public static final VexRVMOp VPERMILPS       = new VexRVMOp("VPERMILPS",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x0C, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W0);
         public static final VexRVMOp VPERMD          = new VexRVMOp("VPERMD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x36, VEXOpAssertion.AVX2_AVX512F_VL_256_512,      EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPERMPS         = new VexRVMOp("VPERMPS",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x16, VEXOpAssertion.AVX2_AVX512F_VL_256_512,      EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VPERMILPD       = new VexRVMOp("VPERMILPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x0D, VEXOpAssertion.AVX1_AVX512F_VL,              EVEXTuple.FVM,       VEXPrefixConfig.W1);
 
-        public static final VexRVMOp MOVLHPS         = new VexRVMOp("MOVLHPS",     VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x16, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY,  EVEXTuple.FVM,       VEXPrefixConfig.W0);
+        public static final VexRVMOp VMOVSS          = new VexRVMOp("VMOVSS",      VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x10, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMOp VMOVSD          = new VexRVMOp("VMOVSD",      VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x10, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMOVHPD         = new VexRVMOp("VMOVHPD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x16, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMOVLPD         = new VexRVMOp("VMOVLPD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x12, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMOp VMOVLHPS        = new VexRVMOp("VMOVLHPS",    VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x16, VEXOpAssertion.AVX1_AVX512F_128,             EVEXTuple.FVM,       VEXPrefixConfig.W0);
 
         public static final VexRVMOp VPHADDW         = new VexRVMOp("VPHADDW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x01, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPHADDD         = new VexRVMOp("VPHADDD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, 0x02, VEXOpAssertion.AVX1_2);
@@ -2146,10 +2396,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp EVMAXSD         = new VexRVMOp("EVMAXSD",      VMAXSD);
         public static final VexRVMOp EVPACKUSDW      = new VexRVMOp("EVPACKUSDW",   VPACKUSDW);
         public static final VexRVMOp EVPACKUSWB      = new VexRVMOp("EVPACKUSWB",   VPACKUSWB);
-        public static final VexRVMOp EVPAND          = new VexRVMOp("EVPAND",       VPAND);
-        public static final VexRVMOp EVPANDN         = new VexRVMOp("EVPANDN",      VPANDN);
-        public static final VexRVMOp EVPOR           = new VexRVMOp("EVPOR",        VPOR);
-        public static final VexRVMOp EVPXOR          = new VexRVMOp("EVPXOR",       VPXOR);
+        public static final VexRVMOp EVPANDD         = new VexRVMOp("EVPANDD",      VPAND);
+        public static final VexRVMOp EVPANDQ         = new VexRVMOp("EVPANDQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDB, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPANDND        = new VexRVMOp("EVPANDND",     VPANDN);
+        public static final VexRVMOp EVPANDNQ        = new VexRVMOp("EVPANDNQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xDF, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPORD          = new VexRVMOp("EVPORD",       VPOR);
+        public static final VexRVMOp EVPORQ          = new VexRVMOp("EVPORQ",       VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEB, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPXORD         = new VexRVMOp("EVPXORD",      VPXOR);
+        public static final VexRVMOp EVPXORQ         = new VexRVMOp("EVPXORQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xEF, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRVMOp EVPADDB         = new VexRVMOp("EVPADDB",      VPADDB);
         public static final VexRVMOp EVPADDW         = new VexRVMOp("EVPADDW",      VPADDW);
         public static final VexRVMOp EVPADDD         = new VexRVMOp("EVPADDD",      VPADDD);
@@ -2181,6 +2435,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp EVPSUBW         = new VexRVMOp("EVPSUBW",      VPSUBW);
         public static final VexRVMOp EVPSUBD         = new VexRVMOp("EVPSUBD",      VPSUBD);
         public static final VexRVMOp EVPSUBQ         = new VexRVMOp("EVPSUBQ",      VPSUBQ);
+        public static final VexRVMOp EVPSLLVW        = new VexRVMOp("EVPSLLVW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x12, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPSLLVD        = new VexRVMOp("EVPSLLVD",     VPSLLVD);
+        public static final VexRVMOp EVPSLLVQ        = new VexRVMOp("EVPSLLVQ",     VPSLLVQ);
+        public static final VexRVMOp EVPSRLVW        = new VexRVMOp("EVPSRLVW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x10, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPSRLVD        = new VexRVMOp("EVPSRLVD",     VPSRLVD);
+        public static final VexRVMOp EVPSRLVQ        = new VexRVMOp("EVPSRLVQ",     VPSRLVQ);
+        public static final VexRVMOp EVPSRAVW        = new VexRVMOp("EVPSRAVW",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x11, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPSRAVD        = new VexRVMOp("EVPSRAVD",     VPSRAVD);
+        public static final VexRVMOp EVPSRAVQ        = new VexRVMOp("EVPSRAVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x46, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRVMOp EVPSHUFB        = new VexRVMOp("EVPSHUFB",     VPSHUFB);
         public static final VexRVMOp EVPCMPEQB       = new VexRVMOp("EVPCMPEQB",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x74, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL,     EVEXTuple.FVM,       VEXPrefixConfig.WIG, true);
         public static final VexRVMOp EVPCMPEQW       = new VexRVMOp("EVPCMPEQW",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0x75, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL,     EVEXTuple.FVM,       VEXPrefixConfig.WIG, true);
@@ -2197,8 +2460,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp EVSQRTSD        = new VexRVMOp("EVSQRTSD",     VSQRTSD);
         public static final VexRVMOp EVSQRTSS        = new VexRVMOp("EVSQRTSS",     VSQRTSS);
 
+        public static final VexRVMOp EVPERMB         = new VexRVMOp("EVPERMB",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x8D, VEXOpAssertion.AVX512_VBMI_VL,               EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
         public static final VexRVMOp EVPERMW         = new VexRVMOp("EVPERMW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x8D, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPERMILPS      = new VexRVMOp("EVPERMILPS",   VPERMILPS);
         public static final VexRVMOp EVPERMD         = new VexRVMOp("EVPERMD",      VPERMD);
+        public static final VexRVMOp EVPERMPS        = new VexRVMOp("EVPERMPS",     VPERMPS);
+        public static final VexRVMOp EVPERMILPD      = new VexRVMOp("EVPERMILPD",   VPERMILPD);
+        public static final VexRVMOp EVPERMQ         = new VexRVMOp("EVPERMQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x36, VEXOpAssertion.AVX512F_VL_256_512,           EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPERMPD        = new VexRVMOp("EVPERMPD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x16, VEXOpAssertion.AVX512F_VL_256_512,           EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
 
         public static final VexRVMOp EVPBLENDMB      = new VexRVMOp("EVPBLENDMB",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x66, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
         public static final VexRVMOp EVPBLENDMW      = new VexRVMOp("EVPBLENDMW",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x66, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
@@ -2206,9 +2475,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp EVPBLENDMQ      = new VexRVMOp("EVPBLENDMQ",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x64, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
         public static final VexRVMOp EVBLENDMPS      = new VexRVMOp("EVBLENDMPS",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
         public static final VexRVMOp EVBLENDMPD      = new VexRVMOp("EVBLENDMPD",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
-        public static final VexRVMOp EVPERMT2B       = new VexRVMOp("EVPERMT2B",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x7D, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
+        public static final VexRVMOp EVPERMT2B       = new VexRVMOp("EVPERMT2B",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0,  0x7D, VEXOpAssertion.AVX512_VBMI_VL,               EVEXTuple.FVM,       VEXPrefixConfig.W0, true);
+        public static final VexRVMOp EVPERMT2Q       = new VexRVMOp("EVPERMT2Q",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x7E, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
+        public static final VexRVMOp EVPROLVQ        = new VexRVMOp("EVPROLVQ",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1,  0x15, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       VEXPrefixConfig.W1, true);
 
-        public static final VexRVMOp EMOVLHPS        = new VexRVMOp("EMOVLHPS",     MOVLHPS);
+        public static final VexRVMOp EVMOVSS         = new VexRVMOp("EVMOVSS",      VMOVSS);
+        public static final VexRVMOp EVMOVSD         = new VexRVMOp("EVMOVSD",      VMOVSD);
+        public static final VexRVMOp EVMOVHPD        = new VexRVMOp("EVMOVHPD",     VMOVHPD);
+        public static final VexRVMOp EVMOVLPD        = new VexRVMOp("EVMOVLPD",     VMOVLPD);
+        public static final VexRVMOp EVMOVLHPS       = new VexRVMOp("EVMOVLHPS",    VMOVLHPS);
         // @formatter:on
 
         protected VexRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -2238,44 +2513,30 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexRVMOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, src2), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
+            emit(asm, size, dst, src1, src2, Register.None, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
+            emit(asm, size, dst, src1, src2, Register.None, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask) {
+            emit(asm, size, dst, src1, src2, mask, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask) {
+            emit(asm, size, dst, src1, src2, mask, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(isEvex, size));
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, Register mask) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, src2), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src2);
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(isEvex, size));
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, src2), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, z, b);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src2);
-        }
-
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(isEvex, size));
         }
@@ -2287,12 +2548,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public static final class VexRVMConvertOp extends VexRVMOp {
         // @formatter:off
-        public static final VexRVMConvertOp VCVTSD2SS = new VexRVMConvertOp("VCVTSD2SS", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x5A, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
-        public static final VexRVMConvertOp VCVTSS2SD = new VexRVMConvertOp("VCVTSS2SD", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x5A, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMConvertOp VCVTSI2SD = new VexRVMConvertOp("VCVTSI2SD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMConvertOp VCVTSQ2SD = new VexRVMConvertOp("VCVTSQ2SD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
-        public static final VexRVMConvertOp VCVTSI2SS = new VexRVMConvertOp("VCVTSI2SS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final VexRVMConvertOp VCVTSQ2SS = new VexRVMConvertOp("VCVTSQ2SS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMConvertOp VCVTSD2SS = new VexRVMConvertOp("VCVTSD2SS", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x5A, VEXOpAssertion.AVX1_AVX512F_128,                 EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMConvertOp VCVTSS2SD = new VexRVMConvertOp("VCVTSS2SD", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0x5A, VEXOpAssertion.AVX1_AVX512F_128,                 EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMConvertOp VCVTSI2SD = new VexRVMConvertOp("VCVTSI2SD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMConvertOp VCVTSQ2SD = new VexRVMConvertOp("VCVTSQ2SD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMConvertOp VCVTSI2SS = new VexRVMConvertOp("VCVTSI2SS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMConvertOp VCVTSQ2SS = new VexRVMConvertOp("VCVTSQ2SS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
 
         // EVEX encoded instruction
         public static final VexRVMConvertOp EVCVTSD2SS = new VexRVMConvertOp("EVCVTSD2SS", VCVTSD2SS);
@@ -2341,37 +2602,27 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src1, src2, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
+            emit(asm, size, dst, src1, src2, Register.None, Z0, B0);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
+            assert size == AVXSize.DWORD || size == AVXSize.QWORD : size;
+            emitVexOrEvex(asm, dst, src1, src2, mask, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src1, src2, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
-            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false, z, b);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src2);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
+            emit(asm, size, dst, src1, src2, Register.None, Z0, B0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src1, null, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src2, 0);
-        }
-
-        @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src1, null, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
-            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
+            assert size == AVXSize.DWORD || size == AVXSize.QWORD : size;
+            emitVexOrEvex(asm, dst, src1, src2, mask, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
         }
@@ -2395,18 +2646,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexGeneralPurposeRMVOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src2, src1, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
-            emitVexOrEvex(asm, dst, src2, src1, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
+            assert size == AVXSize.DWORD || size == AVXSize.QWORD : size;
+            emitVexOrEvex(asm, dst, src2, src1, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex);
             asm.emitByte(op);
             asm.emitModRM(dst, src1);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src1, Register src2) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), VEXPrefixConfig.LZ, dst, src2, null, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.DWORD || size == AVXKind.AVXSize.QWORD : size;
-            emitVexOrEvex(asm, dst, src2, src1, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src1, Register src2) {
+            assert size == AVXSize.DWORD || size == AVXSize.QWORD : size;
+            emitVexOrEvex(asm, dst, src2, src1, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src1, 0);
         }
@@ -2414,10 +2663,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public static final class VexAESOp extends VexRVMOp {
         // @formatter:off
-        public static final VexAESOp VAESENC     = new VexAESOp("VAESENC",     0xDC, VEXOpAssertion.AVX1_128ONLY_AES);
-        public static final VexAESOp VAESENCLAST = new VexAESOp("VAESENCLAST", 0xDD, VEXOpAssertion.AVX1_128ONLY_AES);
-        public static final VexAESOp VAESDEC     = new VexAESOp("VAESDEC",     0xDE, VEXOpAssertion.AVX1_128ONLY_AES);
-        public static final VexAESOp VAESDECLAST = new VexAESOp("VAESDECLAST", 0xDF, VEXOpAssertion.AVX1_128ONLY_AES);
+        public static final VexAESOp VAESENC     = new VexAESOp("VAESENC",     0xDC, VEXOpAssertion.AES_AVX1_128ONLY);
+        public static final VexAESOp VAESENCLAST = new VexAESOp("VAESENCLAST", 0xDD, VEXOpAssertion.AES_AVX1_128ONLY);
+        public static final VexAESOp VAESDEC     = new VexAESOp("VAESDEC",     0xDE, VEXOpAssertion.AES_AVX1_128ONLY);
+        public static final VexAESOp VAESDECLAST = new VexAESOp("VAESDECLAST", 0xDF, VEXOpAssertion.AES_AVX1_128ONLY);
         // @formatter:on
 
         private VexAESOp(String opcode, int op, VEXOpAssertion assertion) {
@@ -2431,11 +2680,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, Register result, Register state, Register key) {
-            emit(asm, AVXKind.AVXSize.XMM, result, state, key);
+            emit(asm, AVXSize.XMM, result, state, key);
         }
 
         public void emit(AMD64Assembler asm, Register result, Register state, AMD64Address keyLocation) {
-            emit(asm, AVXKind.AVXSize.XMM, result, state, keyLocation);
+            emit(asm, AVXSize.XMM, result, state, keyLocation);
         }
     }
 
@@ -2463,10 +2712,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexGatherOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address address, Register mask) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, mask, null, null), "emitting invalid instruction");
-            assert size == AVXKind.AVXSize.XMM || size == AVXKind.AVXSize.YMM : size;
-            emitVexOrEvex(asm, dst, mask, address, size, pp, mmmmm, w, wEvex, true);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask) {
+            emitVexOrEvex(asm, dst, mask, address, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, address, 0);
         }
@@ -2496,14 +2743,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (EvexGatherOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address address, Register mask) {
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask) {
             emit(asm, size, dst, address, mask, Z0, B0);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address address, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null, null), "emitting invalid instruction");
-            assert size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM : size;
-            emitVexOrEvex(asm, dst, Register.None, address, mask, size, pp, mmmmm, w, wEvex, true, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, Register.None, address, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, address, 0);
         }
@@ -2528,33 +2773,25 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
+            emit(asm, size, dst, src, Register.None, Z0, B0);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, null, dst, src, mask, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(ext, src);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, AMD64.cpuRegisters[ext], dst, src, mask, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false, z, b);
-            asm.emitByte(op);
-            asm.emitModRM(ext, src);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
+            emit(asm, size, dst, src, Register.None, Z0, B0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false);
-            asm.emitByte(op);
-            asm.emitOperandHelper(ext, src, 0);
-        }
-
-        @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, AMD64.cpuRegisters[ext], dst, src, mask, size, pp, mmmmm, size == AVXKind.AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, false, z, b);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, null, dst, src, mask, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(ext, src, 0);
         }
@@ -2619,9 +2856,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, null, dst, src), "emitting invalid instruction");
-            emitVexOrEvex(asm, null, dst, src, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
+            emitVexOrEvex(asm, null, dst, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(immOp);
             asm.emitModRM(r, src);
             asm.emitByte(imm8);
@@ -2662,9 +2898,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, null, dst, src), "emitting invalid instruction");
-            emitVexOrEvex(asm, null, dst, src, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
+            emitVexOrEvex(asm, null, dst, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitModRM(r, src);
             asm.emitByte(imm8);
@@ -2676,17 +2911,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexMaskedMoveOp extends VexOp {
         // @formatter:off
-        public static final VexMaskedMoveOp VMASKMOVPS = new VexMaskedMoveOp("VMASKMOVPS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, 0x2C, 0x2E);
-        public static final VexMaskedMoveOp VMASKMOVPD = new VexMaskedMoveOp("VMASKMOVPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, 0x2D, 0x2F);
+        public static final VexMaskedMoveOp VMASKMOVPS = new VexMaskedMoveOp("VMASKMOVPS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, 0x2C, 0x2E, VEXOpAssertion.AVX1);
+        public static final VexMaskedMoveOp VMASKMOVPD = new VexMaskedMoveOp("VMASKMOVPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, 0x2D, 0x2F, VEXOpAssertion.AVX1);
         public static final VexMaskedMoveOp VPMASKMOVD = new VexMaskedMoveOp("VPMASKMOVD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, 0x8C, 0x8E, VEXOpAssertion.AVX2);
         public static final VexMaskedMoveOp VPMASKMOVQ = new VexMaskedMoveOp("VPMASKMOVQ", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1, 0x8C, 0x8E, VEXOpAssertion.AVX2);
         // @formatter:on
 
         private final int opReverse;
-
-        private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse) {
-            this(opcode, pp, mmmmm, w, op, opReverse, VEXOpAssertion.AVX1);
-        }
 
         private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
@@ -2698,16 +2929,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexMaskedMoveOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register mask, AMD64Address src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, mask, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, mask, src, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, AMD64Address src) {
+            emitVexOrEvex(asm, dst, mask, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register mask, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, mask, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, src, mask, dst, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register mask, Register src) {
+            emitVexOrEvex(asm, src, mask, dst, size, pp, mmmmm, w, wEvex);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
@@ -2735,10 +2964,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         private static final int OP_CPU_FROM_K   = 0x93;
         // @formatter:on
 
-        /** The value of the pp field if one of the operands is a general purpose register. */
+        /**
+         * The value of the pp field if one of the operands is a general purpose register.
+         */
         private final int ppCPU;
 
-        /** The value of the w field if one of the operands is a general purpose register. */
+        /**
+         * The value of the w field if one of the operands is a general purpose register.
+         */
         private final int wCPU;
 
         private VexMoveMaskOp(String opcode, int pp, int ppCPU, int mmmmm, int w, int wCPU, VEXOpAssertion assertion) {
@@ -2753,31 +2986,28 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
             GraalError.guarantee(!(inRC(CPU, dst) && inRC(CPU, src)), "source and destination can't both be CPU registers");
             int actualOp = op(dst, src);
             int actualPP = pp(dst, src);
             int actualW = w(dst, src);
-            emitVexOrEvex(asm, dst, Register.None, src, size, actualPP, mmmmm, actualW, wEvex, false);
+            emitVexOrEvex(asm, dst, Register.None, src, size, actualPP, mmmmm, actualW, wEvex);
             asm.emitByte(actualOp);
             asm.emitModRM(dst, src);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
             GraalError.guarantee(inRC(MASK, src), "source must be a mask register");
-            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex, false);
+            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex);
             asm.emitByte(OP_MEM_FROM_K);
             asm.emitOperandHelper(src, dst, 0);
         }
 
         @Override
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, AMD64Address src) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
             GraalError.guarantee(inRC(MASK, dst), "destination must be a mask register");
-            emitVexOrEvex(asm, dst, Register.None, src, size, pp, mmmmm, w, wEvex, false);
+            emitVexOrEvex(asm, dst, Register.None, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(OP_K_FROM_K_MEM);
             asm.emitOperandHelper(dst, src, 0);
         }
@@ -2818,32 +3048,38 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexRVMIOp extends VexOp {
         // @formatter:off
-        public static final VexRVMIOp VPINSRB      = new VexRVMIOp("VPINSRB",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x20, VEXOpAssertion.XMM_XMM_CPU);
-        public static final VexRVMIOp VPINSRW      = new VexRVMIOp("VPINSRW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xC4, VEXOpAssertion.XMM_XMM_CPU);
-        public static final VexRVMIOp VPINSRD      = new VexRVMIOp("VPINSRD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x22, VEXOpAssertion.XMM_XMM_CPU);
-        public static final VexRVMIOp VPINSRQ      = new VexRVMIOp("VPINSRQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x22, VEXOpAssertion.XMM_XMM_CPU);
+        public static final VexRVMIOp VPINSRB      = new VexRVMIOp("VPINSRB",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x20, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512BW_128ONLY, EVEXTuple.T1S_8BIT,  VEXPrefixConfig.WIG);
+        public static final VexRVMIOp VPINSRW      = new VexRVMIOp("VPINSRW",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.W0,  0xC4, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512BW_128ONLY, EVEXTuple.T1S_16BIT, VEXPrefixConfig.WIG);
+        public static final VexRVMIOp VPINSRD      = new VexRVMIOp("VPINSRD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x22, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512DQ_128ONLY, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMIOp VPINSRQ      = new VexRVMIOp("VPINSRQ",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x22, VEXOpAssertion.XMM_XMM_CPU_AVX1_AVX512DQ_128ONLY, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final VexRVMIOp VINSERTPS    = new VexRVMIOp("VINSERTPS",    VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0x21, VEXOpAssertion.AVX1_AVX512F_128,         EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
 
         public static final VexRVMIOp VSHUFPS      = new VexRVMIOp("VSHUFPS",      VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      VEXPrefixConfig.W0);
         public static final VexRVMIOp VSHUFPD      = new VexRVMIOp("VSHUFPD",      VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F,   VEXPrefixConfig.WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      VEXPrefixConfig.W1);
 
         // AVX/AVX2 insert
-        public static final VexRVMIOp VINSERTF128  = new VexRVMIOp("VINSERTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_256ONLY);
-        public static final VexRVMIOp VINSERTI128  = new VexRVMIOp("VINSERTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x38, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRVMIOp VINSERTF128  = new VexRVMIOp("VINSERTF128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL_256_512,  EVEXTuple.T4_32BIT, VEXPrefixConfig.W0);
+        public static final VexRVMIOp VINSERTI128  = new VexRVMIOp("VINSERTI128",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x38, VEXOpAssertion.AVX2_AVX512F_VL_256_512,  EVEXTuple.T4_32BIT, VEXPrefixConfig.W0);
 
         // AVX2 128-bit permutation
         public static final VexRVMIOp VPERM2I128   = new VexRVMIOp("VPERM2I128",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x46, VEXOpAssertion.AVX2_256ONLY);
         public static final VexRVMIOp VPERM2F128   = new VexRVMIOp("VPERM2F128",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x06, VEXOpAssertion.AVX1_256ONLY);
         // Carry-Less Multiplication Quadword
-        public static final VexRVMIOp VPCLMULQDQ   = new VexRVMIOp("VPCLMULQDQ",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0x44, VEXOpAssertion.AVX1_128ONLY_CLMUL);
+        public static final VexRVMIOp VPCLMULQDQ   = new VexRVMIOp("VPCLMULQDQ",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0x44, VEXOpAssertion.CLMUL_AVX1_AVX512F_VL,    EVEXTuple.FVM,      VEXPrefixConfig.WIG);
         // Packed Align Right
         public static final VexRVMIOp VPALIGNR     = new VexRVMIOp("VPALIGNR",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.WIG, 0x0F, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,    EVEXTuple.FVM,      VEXPrefixConfig.WIG);
         // Blend Packed Dwords
         public static final VexRVMIOp VPBLENDD     = new VexRVMIOp("VPBLENDD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x02, VEXOpAssertion.AVX2);
 
         // Galois Field New Instructions
-        public static final VexRVMIOp VGF2P8AFFINEQB  = new VexRVMIOp("VGF2P8AFFINEQB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0xCE, VEXOpAssertion.AVX1_GFNI_AVX512F_VL,      EVEXTuple.FVM,      VEXPrefixConfig.W1);
+        public static final VexRVMIOp VGF2P8AFFINEQB  = new VexRVMIOp("VGF2P8AFFINEQB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0xCE, VEXOpAssertion.GFNI_AVX1_AVX512F_VL, EVEXTuple.FVM,     VEXPrefixConfig.W1);
 
         // EVEX encoded instructions
+        public static final VexRVMIOp EVPINSRB        = new VexRVMIOp("EVPINSRB",        VPINSRB);
+        public static final VexRVMIOp EVPINSRW        = new VexRVMIOp("EVPINSRW",        VPINSRW);
+        public static final VexRVMIOp EVPINSRD        = new VexRVMIOp("EVPINSRD",        VPINSRD);
+        public static final VexRVMIOp EVPINSRQ        = new VexRVMIOp("EVPINSRQ",        VPINSRQ);
+        public static final VexRVMIOp EVINSERTPS      = new VexRVMIOp("EVINSERTPS",      VINSERTPS);
         public static final VexRVMIOp EVSHUFPS        = new VexRVMIOp("EVSHUFPS",        VSHUFPS);
         public static final VexRVMIOp EVSHUFPD        = new VexRVMIOp("EVSHUFPD",        VSHUFPD);
         public static final VexRVMIOp EVPTERNLOGD     = new VexRVMIOp("EVPTERNLOGD",     VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x25, VEXOpAssertion.AVX512F_VL,               EVEXTuple.FVM,      VEXPrefixConfig.W0, true);
@@ -2853,8 +3089,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp EVPALIGNR       = new VexRVMIOp("EVPALIGNR",       VPALIGNR);
 
         // AVX-512 insert
-        public static final VexRVMIOp EVINSERTF32X4   = new VexRVMIOp("EVINSERTF32X4",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x18, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT, VEXPrefixConfig.W0, true);
-        public static final VexRVMIOp EVINSERTI32X4   = new VexRVMIOp("EVINSERTI32X4",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x38, VEXOpAssertion.AVX512F_VL_256_512,       EVEXTuple.T4_32BIT, VEXPrefixConfig.W0, true);
+        public static final VexRVMIOp EVINSERTF32X4   = new VexRVMIOp("EVINSERTF32X4",   VINSERTF128);
+        public static final VexRVMIOp EVINSERTI32X4   = new VexRVMIOp("EVINSERTI32X4",   VINSERTI128);
         public static final VexRVMIOp EVINSERTF64X2   = new VexRVMIOp("EVINSERTF64X2",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x18, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT, VEXPrefixConfig.W1, true);
         public static final VexRVMIOp EVINSERTI64X2   = new VexRVMIOp("EVINSERTI64X2",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1,  0x38, VEXOpAssertion.AVX512DQ_VL_256_512,      EVEXTuple.T2_64BIT, VEXPrefixConfig.W1, true);
         public static final VexRVMIOp EVINSERTF32X8   = new VexRVMIOp("EVINSERTF32X8",   VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0,  0x1A, VEXOpAssertion.AVX512DQ_512ONLY,         EVEXTuple.T8_32BIT, VEXPrefixConfig.W0, true);
@@ -2905,22 +3141,97 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexRVMIOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, src2), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, int imm8) {
             assert (imm8 & 0xFF) == imm8 : imm8;
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
             asm.emitByte(imm8);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2, int imm8) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, int imm8) {
             assert (imm8 & 0xFF) == imm8 : imm8;
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(isEvex, size));
             asm.emitByte(imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int imm8) {
+            emit(asm, size, dst, src1, src2, mask, imm8, Z0, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int imm8, int z, int b) {
+            assert (imm8 & 0xFF) == imm8 : imm8;
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src2);
+            asm.emitByte(imm8);
+        }
+    }
+
+    /**
+     * VEX-encoded comparison operation with an operand order of RVMI. The immediate operand is a
+     * comparison operator.
+     */
+    public static final class VexIntegerCompareOp extends VexOp {
+        // @formatter:off
+        public static final VexIntegerCompareOp EVPCMPB  = new VexIntegerCompareOp("EVPCMPB",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x3F, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL, EVEXTuple.FVM);
+        public static final VexIntegerCompareOp EVPCMPW  = new VexIntegerCompareOp("EVPCMPW",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x3F, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL, EVEXTuple.FVM);
+        public static final VexIntegerCompareOp EVPCMPD  = new VexIntegerCompareOp("EVPCMPD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x1F, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM);
+        public static final VexIntegerCompareOp EVPCMPQ  = new VexIntegerCompareOp("EVPCMPQ",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x1F, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM);
+
+        public static final VexIntegerCompareOp EVPCMPUB = new VexIntegerCompareOp("EVPCMPUB", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x3E, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL, EVEXTuple.FVM);
+        public static final VexIntegerCompareOp EVPCMPUW = new VexIntegerCompareOp("EVPCMPUW", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x3E, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL, EVEXTuple.FVM);
+        public static final VexIntegerCompareOp EVPCMPUD = new VexIntegerCompareOp("EVPCMPUD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x1E, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM);
+        public static final VexIntegerCompareOp EVPCMPUQ = new VexIntegerCompareOp("EVPCMPUQ", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x1E, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM);
+        // @formatter:on
+
+        public enum Predicate {
+            EQ(0),
+            LT(1),
+            LE(2),
+            FALSE(3),
+            NEQ(4),
+            NLT(5),
+            NLE(6),
+            TRUE(7);
+
+            private int imm8;
+
+            Predicate(int imm8) {
+                this.imm8 = imm8;
+            }
+
+            public static Predicate getPredicate(Condition condition) {
+                return switch (condition) {
+                    case EQ -> EQ;
+                    case NE -> NEQ;
+                    case LT, BT -> LT;
+                    case LE, BE -> LE;
+                    case GT, AT -> NLE;
+                    case GE, AE -> NLT;
+                    default -> throw GraalError.shouldNotReachHereUnexpectedValue(condition);
+                };
+            }
+        }
+
+        private VexIntegerCompareOp(String opcode, int pp, int mmmmm, int wEvex, int op, VEXOpAssertion assertion, EVEXTuple evexTuple) {
+            super(opcode, pp, mmmmm, wEvex, op, assertion, evexTuple, wEvex, true);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, Predicate p) {
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, Z0, B0);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src2);
+            asm.emitByte(p.imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, Predicate p, int b) {
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, Z0, b);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(isEvex, size));
+            asm.emitByte(p.imm8);
         }
     }
 
@@ -2930,16 +3241,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexFloatCompareOp extends VexOp {
         // @formatter:off
-        public static final VexFloatCompareOp VCMPPS  = new VexFloatCompareOp("VCMPPS",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2);
-        public static final VexFloatCompareOp VCMPPD  = new VexFloatCompareOp("VCMPPD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2);
-        public static final VexFloatCompareOp VCMPSS  = new VexFloatCompareOp("VCMPSS",  VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2);
-        public static final VexFloatCompareOp VCMPSD  = new VexFloatCompareOp("VCMPSD",  VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2);
+        public static final VexFloatCompareOp VCMPPS  = new VexFloatCompareOp("VCMPPS",  VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2, VEXOpAssertion.AVX1);
+        public static final VexFloatCompareOp VCMPPD  = new VexFloatCompareOp("VCMPPD",  VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2, VEXOpAssertion.AVX1);
+        public static final VexFloatCompareOp VCMPSS  = new VexFloatCompareOp("VCMPSS",  VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2, VEXOpAssertion.AVX1_128ONLY);
+        public static final VexFloatCompareOp VCMPSD  = new VexFloatCompareOp("VCMPSD",  VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, 0xC2, VEXOpAssertion.AVX1_128ONLY);
 
         // EVEX encoded instructions
-        public static final VexFloatCompareOp EVCMPPS = new VexFloatCompareOp("EVCMPPS", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       VEXPrefixConfig.W0, VCMPPS);
-        public static final VexFloatCompareOp EVCMPPD = new VexFloatCompareOp("EVCMPPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       VEXPrefixConfig.W1, VCMPPD);
-        public static final VexFloatCompareOp EVCMPSS = new VexFloatCompareOp("EVCMPSS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0, VCMPSS);
-        public static final VexFloatCompareOp EVCMPSD = new VexFloatCompareOp("EVCMPSD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1, VCMPSD);
+        public static final VexFloatCompareOp EVCMPPS = new VexFloatCompareOp("EVCMPPS", VEXPrefixConfig.P_,   VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM,       VEXPrefixConfig.W0, VCMPPS);
+        public static final VexFloatCompareOp EVCMPPD = new VexFloatCompareOp("EVCMPPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM,       VEXPrefixConfig.W1, VCMPPD);
+        public static final VexFloatCompareOp EVCMPSS = new VexFloatCompareOp("EVCMPSS", VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_128, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0, VCMPSS);
+        public static final VexFloatCompareOp EVCMPSD = new VexFloatCompareOp("EVCMPSD", VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_128, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1, VCMPSD);
         // @formatter:on
 
         public enum Predicate {
@@ -3021,8 +3332,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             }
         }
 
-        private VexFloatCompareOp(String opcode, int pp, int mmmmm, int w, int op) {
-            super(opcode, pp, mmmmm, w, op, VEXOpAssertion.AVX1);
+        private VexFloatCompareOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+            super(opcode, pp, mmmmm, w, op, assertion);
         }
 
         /**
@@ -3040,286 +3351,54 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return (VexFloatCompareOp) encodingLogic(encoding);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, Register src2, Predicate p) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, src2), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Predicate p) {
+            emit(asm, size, dst, src1, src2, Register.None, p);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Predicate p) {
+            emit(asm, size, dst, src1, src2, Register.None, p, B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, Predicate p) {
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, Z0, B0);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
             asm.emitByte(p.imm8);
         }
 
-        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src1, AMD64Address src2, Predicate p) {
-            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, src1, null), "emitting invalid instruction");
-            emitVexOrEvex(asm, dst, src1, src2, size, pp, mmmmm, w, wEvex, false);
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, Predicate p, int b) {
+            emitVexOrEvex(asm, dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, Z0, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(isEvex, size));
             asm.emitByte(p.imm8);
         }
     }
 
-    public final void emit(VexRMOp op, Register dst, Register src, AVXKind.AVXSize size) {
+    public final void emit(VexRMOp op, Register dst, Register src, AVXSize size) {
         op.emit(this, size, dst, src);
     }
 
-    public final void emit(VexRMOp op, Register dst, AMD64Address src, AVXKind.AVXSize size) {
+    public final void emit(VexRMOp op, Register dst, AMD64Address src, AVXSize size) {
         op.emit(this, size, dst, src);
     }
 
-    public final void emit(VexRMIOp op, Register dst, Register src, int imm8, AVXKind.AVXSize size) {
+    public final void emit(VexRMIOp op, Register dst, Register src, int imm8, AVXSize size) {
         op.emit(this, size, dst, src, imm8);
     }
 
-    public final void emit(VexMRIOp op, Register dst, Register src, int imm8, AVXKind.AVXSize size) {
+    public final void emit(VexMRIOp op, Register dst, Register src, int imm8, AVXSize size) {
         op.emit(this, size, dst, src, imm8);
     }
 
-    public final void emit(VexRVMOp op, Register dst, Register src1, Register src2, AVXKind.AVXSize size) {
+    public final void emit(VexRVMOp op, Register dst, Register src1, Register src2, AVXSize size) {
         op.emit(this, size, dst, src1, src2);
     }
 
-    public final void emit(VexGeneralPurposeRMVOp op, Register dst, Register src1, Register src2, AVXKind.AVXSize size) {
+    public final void emit(VexGeneralPurposeRMVOp op, Register dst, Register src1, Register src2, AVXSize size) {
         op.emit(this, size, dst, src1, src2);
     }
 
-    public final void addl(AMD64Address dst, int imm32) {
-        ADD.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void addl(Register dst, int imm32) {
-        ADD.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void addl(Register dst, Register src) {
-        ADD.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void addl(Register dst, AMD64Address src) {
-        ADD.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void adcl(Register dst, int imm32) {
-        ADC.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void addpd(Register dst, Register src) {
-        SSEOp.ADD.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void addpd(Register dst, AMD64Address src) {
-        SSEOp.ADD.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void addsd(Register dst, Register src) {
-        SSEOp.ADD.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void addsd(Register dst, AMD64Address src) {
-        SSEOp.ADD.emit(this, OperandSize.SD, dst, src);
-    }
-
-    private void addrNop4() {
-        // 4 bytes: NOP DWORD PTR [EAX+0]
-        emitByte(0x0F);
-        emitByte(0x1F);
-        emitByte(0x40); // emitRm(cbuf, 0x1, EAXEnc, EAXEnc);
-        emitByte(0); // 8-bits offset (1 byte)
-    }
-
-    private void addrNop5() {
-        // 5 bytes: NOP DWORD PTR [EAX+EAX*0+0] 8-bits offset
-        emitByte(0x0F);
-        emitByte(0x1F);
-        emitByte(0x44); // emitRm(cbuf, 0x1, EAXEnc, 0x4);
-        emitByte(0x00); // emitRm(cbuf, 0x0, EAXEnc, EAXEnc);
-        emitByte(0); // 8-bits offset (1 byte)
-    }
-
-    private void addrNop7() {
-        // 7 bytes: NOP DWORD PTR [EAX+0] 32-bits offset
-        emitByte(0x0F);
-        emitByte(0x1F);
-        emitByte(0x80); // emitRm(cbuf, 0x2, EAXEnc, EAXEnc);
-        emitInt(0); // 32-bits offset (4 bytes)
-    }
-
-    private void addrNop8() {
-        // 8 bytes: NOP DWORD PTR [EAX+EAX*0+0] 32-bits offset
-        emitByte(0x0F);
-        emitByte(0x1F);
-        emitByte(0x84); // emitRm(cbuf, 0x2, EAXEnc, 0x4);
-        emitByte(0x00); // emitRm(cbuf, 0x0, EAXEnc, EAXEnc);
-        emitInt(0); // 32-bits offset (4 bytes)
-    }
-
-    public final void andl(Register dst, int imm32) {
-        AND.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void andl(Register dst, Register src) {
-        AND.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void mull(Register src) {
-        MUL.emit(this, OperandSize.DWORD, src);
-    }
-
-    public final void andpd(Register dst, Register src) {
-        SSEOp.AND.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void andpd(Register dst, AMD64Address src) {
-        SSEOp.AND.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void bsfq(Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitModRM(dst, src);
-    }
-
-    public final void bsrl(Register dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitModRM(dst, src);
-    }
-
-    public final void popcntl(Register dst, Register src) {
-        AMD64RMOp.POPCNT.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void bswapl(Register reg) {
-        prefix(reg);
-        emitByte(0x0F);
-        emitModRM(1, reg);
-    }
-
-    public final void cdql() {
-        emitByte(0x99);
-    }
-
-    public final void cmovl(ConditionFlag cc, Register dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0x40 | cc.getValue());
-        emitModRM(dst, src);
-    }
-
-    public final void cmovl(ConditionFlag cc, Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x40 | cc.getValue());
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void cmpb(Register dst, Register src) {
-        CMP.byteRmOp.emit(this, OperandSize.BYTE, dst, src);
-    }
-
-    public final void cmpb(AMD64Address dst, int imm) {
-        CMP.byteImmOp.emit(this, OperandSize.BYTE, dst, imm);
-    }
-
-    public final void cmpw(AMD64Address dst, int imm16) {
-        CMP.getMIOpcode(OperandSize.WORD, isByte(imm16)).emit(this, OperandSize.WORD, dst, imm16);
-    }
-
-    /**
-     * Emit a cmpw with an imm16 operand regardless of the input value.
-     */
-    public final void cmpwImm16(AMD64Address dst, int imm16) {
-        CMP.getMIOpcode(OperandSize.WORD, false).emit(this, OperandSize.WORD, dst, imm16);
-    }
-
-    public final void cmpw(Register dst, Register src) {
-        CMP.rmOp.emit(this, OperandSize.WORD, dst, src);
-    }
-
-    public final void cmpl(Register dst, int imm32) {
-        CMP.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void cmpl(Register dst, Register src) {
-        CMP.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void cmpl(Register dst, AMD64Address src) {
-        CMP.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void cmpl(AMD64Address dst, int imm32) {
-        CMP.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    /**
-     * The 8-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg into
-     * adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the compared
-     * values were equal, and cleared otherwise.
-     */
-    public final void cmpxchgb(Register reg, AMD64Address adr) { // cmpxchg
-        prefixb(adr, reg);
-        emitByte(0x0F);
-        emitByte(0xB0);
-        emitOperandHelper(reg, adr, 0);
-    }
-
-    /**
-     * The 16-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg
-     * into adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the
-     * compared values were equal, and cleared otherwise.
-     */
-    public final void cmpxchgw(Register reg, AMD64Address adr) { // cmpxchg
-        emitByte(0x66); // Switch to 16-bit mode.
-        prefix(adr, reg);
-        emitByte(0x0F);
-        emitByte(0xB1);
-        emitOperandHelper(reg, adr, 0);
-    }
-
-    /**
-     * The 32-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg
-     * into adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the
-     * compared values were equal, and cleared otherwise.
-     */
-    public final void cmpxchgl(Register reg, AMD64Address adr) { // cmpxchg
-        prefix(adr, reg);
-        emitByte(0x0F);
-        emitByte(0xB1);
-        emitOperandHelper(reg, adr, 0);
-    }
-
-    public final void cvtsi2sdl(Register dst, Register src) {
-        SSEOp.CVTSI2SD.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void cvttsd2sil(Register dst, Register src) {
-        SSEOp.CVTTSD2SI.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void decl(AMD64Address dst) {
-        DEC.emit(this, OperandSize.DWORD, dst);
-    }
-
-    public final void divsd(Register dst, Register src) {
-        SSEOp.DIV.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void hlt() {
-        emitByte(0xF4);
-    }
-
-    public final void imull(Register dst, Register src, int value) {
-        if (isByte(value)) {
-            AMD64RMIOp.IMUL_SX.emit(this, OperandSize.DWORD, dst, src, value);
-        } else {
-            AMD64RMIOp.IMUL.emit(this, OperandSize.DWORD, dst, src, value);
-        }
-    }
-
-    public final void incl(AMD64Address dst) {
-        INC.emit(this, OperandSize.DWORD, dst);
-    }
+    // Instructions, optimizations and erratum related to jumps
 
     public static final int JCC_ERRATUM_MITIGATION_BOUNDARY = 0x20;
     public static final int OPCODE_IN_BYTES = 1;
@@ -3539,11 +3618,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     @Override
-    public void halt() {
-        hlt();
-    }
-
-    @Override
     public final void jmp(Label l) {
         if (l.isBound()) {
             jmp(l.position(), false);
@@ -3663,1876 +3737,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    public final void lead(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x8D);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void leaq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x8D);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void leave() {
-        emitByte(0xC9);
-    }
-
-    public final void lock() {
-        emitByte(0xF0);
-    }
-
-    public final void movapd(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
-        emitByte(0x28);
-        emitModRM(dst, src);
-    }
-
-    public final void movaps(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PS, P_0F, false);
-        emitByte(0x28);
-        emitModRM(dst, src);
-    }
-
-    public final void movb(Register dst, AMD64Address src) {
-        prefixb(src, dst);
-        emitByte(0x8A);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movb(AMD64Address dst, int imm8) {
-        prefix(dst);
-        emitByte(0xC6);
-        emitOperandHelper(0, dst, 1);
-        emitByte(imm8);
-    }
-
-    public final void movb(AMD64Address dst, Register src) {
-        assert inRC(CPU, src) : "must have byte register";
-        prefixb(dst, src);
-        emitByte(0x88);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void movl(Register dst, int imm32) {
-        movl(dst, imm32, false);
-    }
-
-    public final void movl(Register dst, int imm32, boolean annotateImm) {
-        int insnPos = position();
-        prefix(dst);
-        emitByte(0xB8 + encode(dst));
-        int immPos = position();
-        emitInt(imm32);
-        int nextInsnPos = position();
-        if (annotateImm && codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
-        }
-    }
-
-    public final void movl(Register dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x8B);
-        emitModRM(dst, src);
-    }
-
-    public final void movl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x8B);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    /**
-     * @param wide use 4 byte encoding for displacements that would normally fit in a byte
-     */
-    public final void movl(Register dst, AMD64Address src, boolean wide) {
-        prefix(src, dst);
-        emitByte(0x8B);
-        emitOperandHelper(dst, src, wide, 0);
-    }
-
-    public final void movl(AMD64Address dst, int imm32) {
-        prefix(dst);
-        emitByte(0xC7);
-        emitOperandHelper(0, dst, 4);
-        emitInt(imm32);
-    }
-
-    public final void movl(AMD64Address dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x89);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    /**
-     * New CPUs require use of movsd and movss to avoid partial register stall when loading from
-     * memory. But for old Opteron use movlpd instead of movsd. The selection is done in
-     * {@link AMD64MacroAssembler#movdbl(Register, AMD64Address)} and
-     * {@link AMD64MacroAssembler#movflt(Register, Register)}.
-     */
-    public final void movlpd(Register dst, AMD64Address src) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x12);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movlhps(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PS, P_0F, false);
-        emitByte(0x16);
-        emitModRM(dst, src);
-    }
-
-    public final void movq(Register dst, AMD64Address src) {
-        movq(dst, src, false);
-    }
-
-    public final void movq(Register dst, AMD64Address src, boolean force4BytesDisplacement) {
-        if (inRC(XMM, dst)) {
-            // Insn: MOVQ xmm, r/m64
-            // Code: F3 0F 7E /r
-            // An alternative instruction would be 66 REX.W 0F 6E /r. We prefer the REX.W free
-            // format, because it would allow us to emit 2-bytes-prefixed vex-encoding instruction
-            // when applicable.
-            simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
-            emitByte(0x7E);
-            emitOperandHelper(dst, src, force4BytesDisplacement, 0);
-        } else {
-            // gpr version of movq
-            prefixq(src, dst);
-            emitByte(0x8B);
-            emitOperandHelper(dst, src, force4BytesDisplacement, 0);
-        }
-    }
-
-    public final void movq(Register dst, Register src) {
-        assert inRC(CPU, dst) && inRC(CPU, src) : src + " " + dst;
-        prefixq(dst, src);
-        emitByte(0x8B);
-        emitModRM(dst, src);
-    }
-
-    public final void movq(AMD64Address dst, Register src) {
-        if (inRC(XMM, src)) {
-            // Insn: MOVQ r/m64, xmm
-            // Code: 66 0F D6 /r
-            // An alternative instruction would be 66 REX.W 0F 7E /r. We prefer the REX.W free
-            // format, because it would allow us to emit 2-bytes-prefixed vex-encoding instruction
-            // when applicable.
-            simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F, false);
-            emitByte(0xD6);
-            emitOperandHelper(src, dst, 0);
-        } else {
-            // gpr version of movq
-            prefixq(dst, src);
-            emitByte(0x89);
-            emitOperandHelper(src, dst, 0);
-        }
-    }
-
-    public final void movsbl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBE);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movsbl(Register dst, Register src) {
-        prefix(dst, false, src, true);
-        emitByte(0x0F);
-        emitByte(0xBE);
-        emitModRM(dst, src);
-    }
-
-    public final void movsbq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBE);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movsbq(Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0xBE);
-        emitModRM(dst, src);
-    }
-
-    public final void movsd(Register dst, Register src) {
-        SSEOp.MOVSD.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void movsd(Register dst, AMD64Address src) {
-        SSEOp.MOVSD.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void movsd(AMD64Address dst, Register src) {
-        SSEMROp.MOVSD.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void movss(Register dst, Register src) {
-        SSEOp.MOVSS.emit(this, OperandSize.SS, dst, src);
-    }
-
-    public final void movss(Register dst, AMD64Address src) {
-        SSEOp.MOVSS.emit(this, OperandSize.SS, dst, src);
-    }
-
-    public final void movss(AMD64Address dst, Register src) {
-        SSEMROp.MOVSS.emit(this, OperandSize.SS, dst, src);
-    }
-
-    public final void mulpd(Register dst, Register src) {
-        SSEOp.MUL.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void mulpd(Register dst, AMD64Address src) {
-        SSEOp.MUL.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void mulsd(Register dst, Register src) {
-        SSEOp.MUL.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void mulsd(Register dst, AMD64Address src) {
-        SSEOp.MUL.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void mulss(Register dst, Register src) {
-        SSEOp.MUL.emit(this, OperandSize.SS, dst, src);
-    }
-
-    public final void movswl(Register dst, Register src) {
-        AMD64RMOp.MOVSX.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void movswl(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVSX.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void movswq(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVSX.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void movw(AMD64Address dst, int imm16) {
-        emitByte(0x66); // switch to 16-bit mode
-        prefix(dst);
-        emitByte(0xC7);
-        emitOperandHelper(0, dst, 2);
-        emitShort(imm16);
-    }
-
-    public final void movw(AMD64Address dst, Register src) {
-        emitByte(0x66);
-        prefix(dst, src);
-        emitByte(0x89);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void movw(Register dst, AMD64Address src) {
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x8B);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movzbl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xB6);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movzbl(Register dst, Register src) {
-        AMD64RMOp.MOVZXB.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void movzbq(Register dst, Register src) {
-        AMD64RMOp.MOVZXB.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void movzbq(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVZXB.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void movzwl(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVZX.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void movzwq(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVZX.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void negl(Register dst) {
-        NEG.emit(this, OperandSize.DWORD, dst);
-    }
-
-    public final void notl(Register dst) {
-        NOT.emit(this, OperandSize.DWORD, dst);
-    }
-
-    public final void notq(Register dst) {
-        NOT.emit(this, OperandSize.QWORD, dst);
-    }
-
-    @Override
-    public final void ensureUniquePC() {
-        nop();
-    }
-
-    public final void nop() {
-        nop(1);
-    }
-
-    public void nop(int count) {
-        intelNops(count);
-    }
-
-    @SuppressWarnings("fallthrough")
-    private void intelNops(int count) {
-        //
-        // Using multi-bytes nops "0x0F 0x1F [address]" for Intel
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90 (don't use "0x0F 0x1F 0x00" - need patching safe padding)
-        // 4: 0x0F 0x1F 0x40 0x00
-        // 5: 0x0F 0x1F 0x44 0x00 0x00
-        // 6: 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 7: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 8: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 9: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 10: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 11: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-
-        // The rest coding is Intel specific - don't use consecutive address nops
-
-        // 12: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
-        // 13: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
-        // 14: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
-        // 15: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
-
-        int i = count;
-        while (i >= 15) {
-            // For Intel don't generate consecutive addess nops (mix with regular nops)
-            i -= 15;
-            emitByte(0x66);   // size prefix
-            emitByte(0x66);   // size prefix
-            emitByte(0x66);   // size prefix
-            addrNop8();
-            emitByte(0x66);   // size prefix
-            emitByte(0x66);   // size prefix
-            emitByte(0x66);   // size prefix
-            emitByte(0x90);
-            // nop
-        }
-        switch (i) {
-            case 14:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 13:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 12:
-                addrNop8();
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x90);
-                // nop
-                break;
-            case 11:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 10:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 9:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 8:
-                addrNop8();
-                break;
-            case 7:
-                addrNop7();
-                break;
-            case 6:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 5:
-                addrNop5();
-                break;
-            case 4:
-                addrNop4();
-                break;
-            case 3:
-                // Don't use "0x0F 0x1F 0x00" - need patching safe padding
-                emitByte(0x66); // size prefix
-                // fall through
-            case 2:
-                emitByte(0x66); // size prefix
-                // fall through
-            case 1:
-                emitByte(0x90);
-                // nop
-                break;
-            default:
-                assert i == 0 : i;
-        }
-    }
-
-    public final void orl(Register dst, Register src) {
-        OR.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void orl(Register dst, AMD64Address src) {
-        OR.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void orl(AMD64Address dst, Register src) {
-        OR.mrOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void orl(Register dst, int imm32) {
-        OR.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void packuswb(Register dst, Register src) {
-        SSEOp.PACKUSWB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void packusdw(Register dst, Register src) {
-        SSEOp.PACKUSDW.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void pop(Register dst) {
-        prefix(dst);
-        emitByte(0x58 + encode(dst));
-    }
-
-    public void popfq() {
-        emitByte(0x9D);
-    }
-
-    public final void ptest(Register dst, Register src) {
-        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F38, false);
-        emitByte(0x17);
-        emitModRM(dst, src);
-    }
-
-    public final void ptest(Register dst, AMD64Address src) {
-        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
-        assert inRC(XMM, dst);
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F38, false);
-        emitByte(0x17);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void pcmpeqb(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x74);
-        emitModRM(dst, src);
-    }
-
-    public final void pcmpeqb(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x74);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void pcmpeqw(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x75);
-        emitModRM(dst, src);
-    }
-
-    public final void pcmpeqw(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x75);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void pcmpeqd(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x76);
-        emitModRM(dst, src);
-    }
-
-    public final void pcmpeqd(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x76);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void pminub(Register dst, Register src) {
-        SSEOp.PMINUB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void pminuw(Register dst, Register src) {
-        SSEOp.PMINUW.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void pminud(Register dst, Register src) {
-        SSEOp.PMINUD.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void pcmpgtb(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x64);
-        emitModRM(dst, src);
-    }
-
-    public final void pcmpgtd(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x66);
-        emitModRM(dst, src);
-    }
-
-    public final void pcmpestri(Register dst, AMD64Address src, int imm8) {
-        assert supports(CPUFeature.SSE4_2);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x61);
-        emitOperandHelper(dst, src, 0);
-        emitByte(imm8);
-    }
-
-    public final void pcmpestri(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x61);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pmovmskb(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(CPU, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
-        emitByte(0xD7);
-        emitModRM(dst, src);
-    }
-
-    private void pmovSZx(Register dst, AMD64Address src, int op) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F38, false);
-        emitByte(op);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    private void pmovSZx(Register dst, Register src, int op) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F38, false);
-        emitByte(op);
-        emitModRM(dst, src);
-    }
-
-    public final void pmovsxbw(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x20);
-    }
-
-    public final void pmovsxbd(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x21);
-    }
-
-    public final void pmovsxbq(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x22);
-    }
-
-    public final void pmovsxwd(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x23);
-    }
-
-    public final void pmovsxwq(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x24);
-    }
-
-    public final void pmovsxdq(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x25);
-    }
-
-    public final void pmovzxbw(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x30);
-    }
-
-    public final void pmovzxbd(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x31);
-    }
-
-    public final void pmovzxbq(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x32);
-    }
-
-    public final void pmovzxwd(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x33);
-    }
-
-    public final void pmovzxwq(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x34);
-    }
-
-    public final void pmovzxdq(Register dst, AMD64Address src) {
-        pmovSZx(dst, src, 0x35);
-    }
-
-    public final void pmovsxbw(Register dst, Register src) {
-        pmovSZx(dst, src, 0x20);
-    }
-
-    public final void pmovsxbd(Register dst, Register src) {
-        pmovSZx(dst, src, 0x21);
-    }
-
-    public final void pmovsxbq(Register dst, Register src) {
-        pmovSZx(dst, src, 0x22);
-    }
-
-    public final void pmovsxwd(Register dst, Register src) {
-        pmovSZx(dst, src, 0x23);
-    }
-
-    public final void pmovsxwq(Register dst, Register src) {
-        pmovSZx(dst, src, 0x24);
-    }
-
-    public final void pmovsxdq(Register dst, Register src) {
-        pmovSZx(dst, src, 0x25);
-    }
-
-    public final void pmovzxbw(Register dst, Register src) {
-        pmovSZx(dst, src, 0x30);
-    }
-
-    public final void pmovzxbd(Register dst, Register src) {
-        pmovSZx(dst, src, 0x31);
-    }
-
-    public final void pmovzxbq(Register dst, Register src) {
-        pmovSZx(dst, src, 0x32);
-    }
-
-    public final void pmovzxwd(Register dst, Register src) {
-        pmovSZx(dst, src, 0x33);
-    }
-
-    public final void pmovzxwq(Register dst, Register src) {
-        pmovSZx(dst, src, 0x34);
-    }
-
-    public final void pmovzxdq(Register dst, Register src) {
-        pmovSZx(dst, src, 0x35);
-    }
-
-    public final void gf2p8affineqb(Register dst, Register src, int imm8) {
-        GraalError.guarantee(supports(GFNI), "gf2p8affineqb requires GFNI");
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-
-        if (supports(CPUFeature.AVX)) {
-            VGF2P8AFFINEQB.emit(this, AVXKind.AVXSize.XMM, dst, dst, src, imm8);
-        } else {
-            simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, false);
-            emitByte(0xCE);
-            emitModRM(dst, src);
-            emitByte(imm8);
-        }
-    }
-
-    public final void vcvtps2ph(Register dst, Register src, int imm8) {
-        GraalError.guarantee(supports(F16C), "vcvtps2ph requires F16C");
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-
-        VCVTPS2PH.emit(this, AVXKind.AVXSize.XMM, dst, src, imm8);
-    }
-
-    public final void vcvtph2ps(Register dst, Register src) {
-        GraalError.guarantee(supports(F16C), "vcvtph2ps requires F16C");
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-
-        VCVTPH2PS.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void push(Register src) {
-        assert inRC(CPU, src);
-        prefix(src);
-        emitByte(0x50 + encode(src));
-    }
-
-    public final void push(int imm32) {
-        emitByte(0x68);
-        emitInt(imm32);
-    }
-
-    public void pushfq() {
-        emitByte(0x9c);
-    }
-
-    public final void paddd(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xFE);
-        emitModRM(dst, src);
-    }
-
-    public final void paddd(Register dst, AMD64Address src) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xFE);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void paddq(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xD4);
-        emitModRM(dst, src);
-    }
-
-    public final void pextrb(AMD64Address dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, src);
-        simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F3A, false);
-        emitByte(0x14);
-        emitOperandHelper(src, dst, 0);
-        emitByte(imm8);
-    }
-
-    public final void pextrw(Register dst, Register src, int imm8) {
-        assert inRC(CPU, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
-        emitByte(0xC5);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pextrw(AMD64Address dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, src);
-        simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F3A, false);
-        emitByte(0x15);
-        emitOperandHelper(src, dst, 0);
-        emitByte(imm8);
-    }
-
-    public final void pextrd(AMD64Address dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, src);
-        simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F3A, false);
-        emitByte(0x16);
-        emitOperandHelper(src, dst, 0);
-        emitByte(imm8);
-    }
-
-    public final void pextrq(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(CPU, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F3A, true);
-        emitByte(0x16);
-        emitModRM(src, dst);
-        emitByte(imm8);
-    }
-
-    public final void pextrq(AMD64Address dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, src);
-        simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F3A, true);
-        emitByte(0x16);
-        emitOperandHelper(src, dst, 0);
-        emitByte(imm8);
-    }
-
-    public final void pinsrb(Register dst, AMD64Address src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x20);
-        emitOperandHelper(dst, src, 0);
-        emitByte(imm8);
-    }
-
-    public final void pinsrw(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(CPU, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xC4);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pinsrw(Register dst, AMD64Address src, int imm8) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xC4);
-        emitOperandHelper(dst, src, 0);
-        emitByte(imm8);
-    }
-
-    public final void pinsrd(Register dst, AMD64Address src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x22);
-        emitOperandHelper(dst, src, 0);
-        emitByte(imm8);
-    }
-
-    public final void pinsrq(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, dst) && inRC(CPU, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, true);
-        emitByte(0x22);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pinsrq(Register dst, AMD64Address src, int imm8) {
-        assert supports(CPUFeature.SSE4_1);
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, true);
-        emitByte(0x22);
-        emitOperandHelper(dst, src, 0);
-        emitByte(imm8);
-    }
-
-    public final void por(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xEB);
-        emitModRM(dst, src);
-    }
-
-    public final void palignr(Register dst, Register src, int imm8) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x0F);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pblendw(Register dst, Register src, int imm8) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x0E);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pand(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xDB);
-        emitModRM(dst, src);
-    }
-
-    public final void pand(Register dst, AMD64Address src) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xDB);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void pandn(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xDF);
-        emitModRM(dst, src);
-    }
-
-    public final void pxor(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xEF);
-        emitModRM(dst, src);
-    }
-
-    public final void psllw(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM6 is for /6 encoding: 66 0F 71 /6 ib
-        simdPrefix(AMD64.xmm6, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x71);
-        emitModRM(6, dst);
-        emitByte(imm8 & 0xFF);
-    }
-
-    public final void pslld(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM6 is for /6 encoding: 66 0F 72 /6 ib
-        simdPrefix(AMD64.xmm6, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x72);
-        emitModRM(6, dst);
-        emitByte(imm8 & 0xFF);
-    }
-
-    public final void pslldq(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM7 is for /7 encoding: 66 0F 73 /7 ib
-        simdPrefix(AMD64.xmm7, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x73);
-        emitModRM(7, dst);
-        emitByte(imm8 & 0xFF);
-    }
-
-    public final void psllq(Register dst, Register shift) {
-        assert inRC(XMM, dst) && inRC(XMM, shift) : dst + " " + shift;
-        simdPrefix(dst, dst, shift, OperandSize.PD, P_0F, false);
-        emitByte(0xF3);
-        emitModRM(dst, shift);
-    }
-
-    public final void psllq(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM6 is for /6 encoding: 66 0F 73 /6 ib
-        simdPrefix(AMD64.xmm6, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x73);
-        emitModRM(6, dst);
-        emitByte(imm8);
-    }
-
-    public final void psrad(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM4 is for /4 encoding: 66 0F 72 /4 ib
-        simdPrefix(AMD64.xmm4, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x72);
-        emitModRM(4, dst);
-        emitByte(imm8);
-    }
-
-    public final void psrlw(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM2 is for /2 encoding: 66 0F 72 /2 ib
-        simdPrefix(AMD64.xmm2, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x71);
-        emitModRM(2, dst);
-        emitByte(imm8);
-    }
-
-    public final void psrld(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM2 is for /2 encoding: 66 0F 72 /2 ib
-        simdPrefix(AMD64.xmm2, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x72);
-        emitModRM(2, dst);
-        emitByte(imm8);
-    }
-
-    public final void psrlq(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        // XMM2 is for /2 encoding: 66 0F 73 /2 ib
-        simdPrefix(AMD64.xmm2, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x73);
-        emitModRM(2, dst);
-        emitByte(imm8);
-    }
-
-    public final void psrldq(Register dst, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst);
-        simdPrefix(AMD64.xmm3, dst, dst, OperandSize.PD, P_0F, false);
-        emitByte(0x73);
-        emitModRM(3, dst);
-        emitByte(imm8);
-    }
-
-    public final void pshufb(Register dst, Register src) {
-        SSEOp.PSHUFB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void pshufb(Register dst, AMD64Address src) {
-        SSEOp.PSHUFB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void pshuflw(Register dst, Register src, int imm8) {
-        GraalError.guarantee(supports(CPUFeature.SSE2), "pshuflw requires SSE2");
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.SD, P_0F, false);
-        emitByte(0x70);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void pshufd(Register dst, Register src, int imm8) {
-        assert isUByte(imm8) : "invalid value";
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
-        emitByte(0x70);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void psubusb(Register dst, Register src) {
-        SSEOp.PSUBUSB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void psubusb(Register dst, AMD64Address src) {
-        SSEOp.PSUBUSB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void psubusw(Register dst, Register src) {
-        SSEOp.PSUBUSW.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void psubusw(Register dst, AMD64Address src) {
-        SSEOp.PSUBUSW.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void psubd(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0xFA);
-        emitModRM(dst, src);
-    }
-
-    public final void punpcklbw(Register dst, Register src) {
-        assert supports(CPUFeature.SSE2);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x60);
-        emitModRM(dst, src);
-    }
-
-    public final void pclmulqdq(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.CLMUL);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F3A, false);
-        emitByte(0x44);
-        emitModRM(dst, src);
-        emitByte(imm8);
-    }
-
-    public final void vpshufb(Register dst, Register src1, Register src2, AVXKind.AVXSize size) {
-        VexRVMOp.VPSHUFB.emit(this, size, dst, src1, src2);
-    }
-
-    public final void vpshufd(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexRMIOp.VPSHUFD.emit(this, size, dst, src, imm8);
-    }
-
-    public final void vpclmulqdq(Register dst, Register nds, Register src, int imm8) {
-        VexRVMIOp.VPCLMULQDQ.emit(this, AVXKind.AVXSize.XMM, dst, nds, src, imm8);
-    }
-
-    public final void vpblendd(Register dst, Register nds, Register src, int imm8, AVXKind.AVXSize size) {
-        VexRVMIOp.VPBLENDD.emit(this, size, dst, nds, src, imm8);
-    }
-
-    public final void vpclmullqlqdq(Register dst, Register nds, Register src) {
-        VexRVMIOp.VPCLMULQDQ.emit(this, AVXKind.AVXSize.XMM, dst, nds, src, 0x00);
-    }
-
-    public final void vpclmulhqlqdq(Register dst, Register nds, Register src) {
-        VexRVMIOp.VPCLMULQDQ.emit(this, AVXKind.AVXSize.XMM, dst, nds, src, 0x01);
-    }
-
-    public final void vpclmullqhqdq(Register dst, Register nds, Register src) {
-        VexRVMIOp.VPCLMULQDQ.emit(this, AVXKind.AVXSize.XMM, dst, nds, src, 0x10);
-    }
-
-    public final void vpclmulhqhqdq(Register dst, Register nds, Register src) {
-        VexRVMIOp.VPCLMULQDQ.emit(this, AVXKind.AVXSize.XMM, dst, nds, src, 0x11);
-    }
-
-    public final void vpsrlq(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexShiftOp.VPSRLQ.emit(this, size, dst, src, imm8);
-    }
-
-    public final void vpsllq(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexShiftOp.VPSLLQ.emit(this, size, dst, src, imm8);
-    }
-
-    public final void rcpps(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PS, P_0F, false);
-        emitByte(0x53);
-        emitModRM(dst, src);
-    }
-
-    public void ret(int imm16) {
-        if (imm16 == 0) {
-            mitigateJCCErratum(1);
-            emitByte(0xC3);
-        } else {
-            mitigateJCCErratum(3);
-            emitByte(0xC2);
-            emitShort(imm16);
-        }
-    }
-
-    public final void sarl(Register dst, int imm8) {
-        prefix(dst);
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitModRM(7, dst);
-        } else {
-            emitByte(0xC1);
-            emitModRM(7, dst);
-            emitByte(imm8);
-        }
-    }
-
-    public final void sarl(Register dst) {
-        // Signed divide dst by 2, CL times.
-        prefix(dst);
-        emitByte(0xD3);
-        emitModRM(7, dst);
-    }
-
-    public final void shll(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        prefix(dst);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitModRM(4, dst);
-        } else {
-            emitByte(0xC1);
-            emitModRM(4, dst);
-            emitByte(imm8);
-        }
-    }
-
-    public final void shll(Register dst) {
-        // Multiply dst by 2, CL times.
-        prefix(dst);
-        emitByte(0xD3);
-        emitModRM(4, dst);
-    }
-
-    // Insn: SHLX r32a, r/m32, r32b
-
-    public final void shlxl(Register dst, Register src1, Register src2) {
-        VexGeneralPurposeRMVOp.SHLX.emit(this, AVXKind.AVXSize.DWORD, dst, src1, src2);
-    }
-
-    public final void shrl(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        prefix(dst);
-        emitByte(0xC1);
-        emitModRM(5, dst);
-        emitByte(imm8);
-    }
-
-    public final void shrl(Register dst) {
-        // Unsigned divide dst by 2, CL times.
-        prefix(dst);
-        emitByte(0xD3);
-        emitModRM(5, dst);
-    }
-
-    public final void subl(AMD64Address dst, int imm32) {
-        SUB.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void subl(Register dst, int imm32) {
-        SUB.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void subl(Register dst, Register src) {
-        SUB.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void subpd(Register dst, Register src) {
-        SSEOp.SUB.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void subsd(Register dst, Register src) {
-        SSEOp.SUB.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void subsd(Register dst, AMD64Address src) {
-        SSEOp.SUB.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void testl(Register dst, int imm32) {
-        // not using emitArith because test
-        // doesn't support sign-extension of
-        // 8bit operands
-        if (dst.encoding == 0) {
-            emitByte(0xA9);
-            emitInt(imm32);
-        } else {
-            AMD64MIOp.TEST.emit(this, OperandSize.DWORD, dst, imm32);
-        }
-    }
-
-    public final void testl(Register dst, Register src) {
-        AMD64RMOp.TEST.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void testl(Register dst, AMD64Address src) {
-        AMD64RMOp.TEST.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void testl(AMD64Address dst, int imm32) {
-        AMD64MIOp.TEST.emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void unpckhpd(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x15);
-        emitModRM(dst, src);
-    }
-
-    public final void unpcklpd(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
-        emitByte(0x14);
-        emitModRM(dst, src);
-    }
-
-    public final void xorb(Register dst, AMD64Address src) {
-        XOR.byteRmOp.emit(this, OperandSize.BYTE, dst, src);
-    }
-
-    public final void xorl(Register dst, Register src) {
-        XOR.rmOp.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void xorl(Register dst, int imm32) {
-        XOR.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
-    }
-
-    public final void xorq(Register dst, Register src) {
-        XOR.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void xorpd(Register dst, Register src) {
-        SSEOp.XOR.emit(this, OperandSize.PD, dst, src);
-    }
-
-    /**
-     * Caller needs to ensure that loading 128-bit memory from src won't cause a segment fault.
-     * E.g., constants stored into the data section should be aligned to 16 bytes.
-     */
-    public final void xorpd(Register dst, AMD64Address src) {
-        SSEOp.XOR.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void xorps(Register dst, Register src) {
-        SSEOp.XOR.emit(this, OperandSize.PS, dst, src);
-    }
-
-    /**
-     * Caller needs to ensure that loading 128-bit memory from src won't cause a segment fault.
-     * E.g., constants stored into the data section should be aligned to 16 bytes.
-     */
-    public final void xorps(Register dst, AMD64Address src) {
-        SSEOp.XOR.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void ucomiss(Register dst, Register src) {
-        SSEOp.UCOMIS.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void ucomisd(Register dst, Register src) {
-        SSEOp.UCOMIS.emit(this, OperandSize.PD, dst, src);
-    }
-
-    public final void decl(Register dst) {
-        // Use two-byte form (one-byte form is a REX prefix in 64-bit mode)
-        DEC.emit(this, OperandSize.DWORD, dst);
-    }
-
-    public final void incl(Register dst) {
-        // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
-        INC.emit(this, OperandSize.DWORD, dst);
-    }
-
-    public final void imull(Register dst, Register src) {
-        IMUL.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void addq(Register dst, int imm32) {
-        ADD.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void addq(AMD64Address dst, int imm32) {
-        ADD.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void addq(Register dst, Register src) {
-        ADD.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void addq(Register dst, AMD64Address src) {
-        ADD.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void addq(AMD64Address dst, Register src) {
-        ADD.mrOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void adcq(Register dst, int imm32) {
-        ADC.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void adcxq(Register dst, Register src) {
-        ADCX.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void adoxq(Register dst, Register src) {
-        ADOX.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void andq(Register dst, int imm32) {
-        AND.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void andq(Register dst, AMD64Address src) {
-        AND.getRMOpcode(OperandSize.QWORD).emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void andq(Register dst, Register src) {
-        AND.getRMOpcode(OperandSize.QWORD).emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void mulq(Register src) {
-        MUL.emit(this, OperandSize.QWORD, src);
-    }
-
-    public final void mulxq(Register dst1, Register dst2, Register src) {
-        MULX.emit(this, AVXKind.AVXSize.QWORD, dst1, dst2, src);
-    }
-
-    public final void roll(Register dst, int imm8) {
-        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
-        ROL.miOp.emit(this, OperandSize.DWORD, dst, (byte) imm8);
-    }
-
-    public final void rorq(Register dst, int imm8) {
-        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
-        ROR.miOp.emit(this, OperandSize.QWORD, dst, (byte) imm8);
-    }
-
-    public final void rorxl(Register dst, Register src, int imm8) {
-        RORXL.emit(this, AVXKind.AVXSize.QWORD, dst, src, (byte) imm8);
-    }
-
-    public final void rorxq(Register dst, Register src, int imm8) {
-        RORXQ.emit(this, AVXKind.AVXSize.QWORD, dst, src, (byte) imm8);
-    }
-
-    public final void rclq(Register dst, int imm8) {
-        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
-        RCL.miOp.emit(this, OperandSize.QWORD, dst, (byte) imm8);
-    }
-
-    public final void rcrq(Register dst, int imm8) {
-        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
-        RCR.miOp.emit(this, OperandSize.QWORD, dst, (byte) imm8);
-    }
-
-    public final void bsrq(Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitModRM(dst, src);
-    }
-
-    public final void bswapq(Register reg) {
-        prefixq(reg);
-        emitByte(0x0F);
-        emitByte(0xC8 + encode(reg));
-    }
-
-    public final void cdqq() {
-        rexw();
-        emitByte(0x99);
-    }
-
-    public final void repStosb() {
-        emitByte(0xf3);
-        rexw();
-        emitByte(0xaa);
-    }
-
-    public final void repStosq() {
-        emitByte(0xf3);
-        rexw();
-        emitByte(0xab);
-    }
-
-    public final void cmovq(ConditionFlag cc, Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0x40 | cc.getValue());
-        emitModRM(dst, src);
-    }
-
-    public final void setb(ConditionFlag cc, Register dst) {
-        prefix(dst, true);
-        emitByte(0x0F);
-        emitByte(0x90 | cc.getValue());
-        emitModRM(0, dst);
-    }
-
-    public final void cmovq(ConditionFlag cc, Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0x40 | cc.getValue());
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void cmpq(Register dst, int imm32) {
-        CMP.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void cmpq(AMD64Address dst, int imm32) {
-        CMP.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void cmpq(Register dst, Register src) {
-        CMP.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void cmpq(Register dst, AMD64Address src) {
-        CMP.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void cmpxchgq(Register reg, AMD64Address adr) {
-        prefixq(adr, reg);
-        emitByte(0x0F);
-        emitByte(0xB1);
-        emitOperandHelper(reg, adr, 0);
-    }
-
-    public final void cvtdq2pd(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
-        emitByte(0xE6);
-        emitModRM(dst, src);
-    }
-
-    public final void cvtsi2sdq(Register dst, Register src) {
-        SSEOp.CVTSI2SD.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void cvttss2sil(Register dst, Register src) {
-        SSEOp.CVTTSS2SI.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void cvttsd2siq(Register dst, Register src) {
-        SSEOp.CVTTSD2SI.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void cvttpd2dq(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
-        emitByte(0xE6);
-        emitModRM(dst, src);
-    }
-
-    public final void decq(Register dst) {
-        // Use two-byte form (one-byte form is a REX prefix in 64-bit mode)
-        DEC.emit(this, OperandSize.QWORD, dst);
-    }
-
-    public final void decq(AMD64Address dst) {
-        DEC.emit(this, OperandSize.QWORD, dst);
-    }
-
-    public final void imulq(Register dst, Register src) {
-        IMUL.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void incq(Register dst) {
-        // Don't use it directly. Use Macroincrementq() instead.
-        // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
-        INC.emit(this, OperandSize.QWORD, dst);
-    }
-
-    public final void incq(AMD64Address dst) {
-        INC.emit(this, OperandSize.QWORD, dst);
-    }
-
-    public final void movq(Register dst, long imm64) {
-        movq(dst, imm64, false);
-    }
-
-    public final void movq(Register dst, long imm64, boolean annotateImm) {
-        int insnPos = position();
-        prefixq(dst);
-        emitByte(0xB8 + encode(dst));
-        int immPos = position();
-        emitLong(imm64);
-        int nextInsnPos = position();
-        if (annotateImm && codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
-        }
-    }
-
-    public final void movslq(Register dst, int imm32) {
-        prefixq(dst);
-        emitByte(0xC7);
-        emitModRM(0, dst);
-        emitInt(imm32);
-    }
-
-    public final void movdq(Register dst, AMD64Address src) {
-        SSEOp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void movdq(AMD64Address dst, Register src) {
-        SSEMROp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void movdq(Register dst, Register src) {
-        if (inRC(XMM, dst) && inRC(CPU, src)) {
-            SSEOp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
-        } else if (inRC(XMM, src) && inRC(CPU, dst)) {
-            SSEMROp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
-        } else {
-            throw new InternalError("should not reach here");
-        }
-    }
-
-    public final void movdl(Register dst, Register src) {
-        if (inRC(XMM, dst) && inRC(CPU, src)) {
-            SSEOp.MOVD.emit(this, OperandSize.DWORD, dst, src);
-        } else if (inRC(XMM, src) && inRC(CPU, dst)) {
-            SSEMROp.MOVD.emit(this, OperandSize.DWORD, dst, src);
-        } else {
-            throw new InternalError("should not reach here");
-        }
-    }
-
-    public final void movdl(Register dst, AMD64Address src) {
-        SSEOp.MOVD.emit(this, OperandSize.DWORD, dst, src);
-    }
-
-    public final void movddup(Register dst, Register src) {
-        assert supports(CPUFeature.SSE3);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.SD, P_0F, false);
-        emitByte(0x12);
-        emitModRM(dst, src);
-    }
-
-    public final void movdqu(Register dst, AMD64Address src) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movdqu(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
-        emitByte(0x6F);
-        emitModRM(dst, src);
-    }
-
-    // Insn: VMOVDQU xmm2/m128, xmm1
-
-    public final void movdqu(AMD64Address dst, Register src) {
-        assert inRC(XMM, src);
-        // Code: VEX.128.F3.0F.WIG 7F /r
-        simdPrefix(src, Register.None, dst, OperandSize.SS, P_0F, false);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void movdqa(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
-        emitByte(0x6F);
-        emitModRM(dst, src);
-    }
-
-    public final void movslq(AMD64Address dst, int imm32) {
-        prefixq(dst);
-        emitByte(0xC7);
-        emitOperandHelper(0, dst, 4);
-        emitInt(imm32);
-    }
-
-    public final void movslq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x63);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void movslq(Register dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x63);
-        emitModRM(dst, src);
-    }
-
-    public final void negq(Register dst) {
-        prefixq(dst);
-        emitByte(0xF7);
-        emitModRM(3, dst);
-    }
-
-    public final void orq(Register dst, Register src) {
-        OR.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void orq(Register dst, AMD64Address src) {
-        OR.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void orq(Register dst, int imm32) {
-        OR.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void orqImm32(Register dst, int imm32) {
-        OR.getMIOpcode(OperandSize.QWORD, false).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void shlq(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        prefixq(dst);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitModRM(4, dst);
-        } else {
-            emitByte(0xC1);
-            emitModRM(4, dst);
-            emitByte(imm8);
-        }
-    }
-
-    public final void shlq(Register dst) {
-        // Multiply dst by 2, CL times.
-        prefixq(dst);
-        emitByte(0xD3);
-        emitModRM(4, dst);
-    }
-
-    public final void shrq(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        prefixq(dst);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitModRM(5, dst);
-        } else {
-            emitByte(0xC1);
-            emitModRM(5, dst);
-            emitByte(imm8);
-        }
-    }
-
-    public final void shrq(Register dst) {
-        prefixq(dst);
-        emitByte(0xD3);
-        // Unsigned divide dst by 2, CL times.
-        emitModRM(5, dst);
-    }
-
-    public final void sarq(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        prefixq(dst);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitModRM(7, dst);
-        } else {
-            emitByte(0xC1);
-            emitModRM(7, dst);
-            emitByte(imm8);
-        }
-    }
-
-    public final void sarq(Register dst) {
-        // signed divide dst by 2, CL times.
-        prefixq(dst);
-        emitByte(0xD3);
-        emitModRM(7, dst);
-    }
-
-    public final void sbbq(Register dst, Register src) {
-        SBB.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void subq(Register dst, int imm32) {
-        SUB.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void subq(AMD64Address dst, int imm32) {
-        SUB.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void subqWide(Register dst, int imm32) {
-        // don't use the sign-extending version, forcing a 32-bit immediate
-        SUB.getMIOpcode(OperandSize.QWORD, false).emit(this, OperandSize.QWORD, dst, imm32);
-    }
-
-    public final void subq(Register dst, Register src) {
-        SUB.rmOp.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void sqrtsd(Register dst, Register src) {
-        SSEOp.SQRT.emit(this, OperandSize.SD, dst, src);
-    }
-
-    public final void testq(Register dst, Register src) {
-        AMD64RMOp.TEST.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void testq(Register dst, AMD64Address src) {
-        AMD64RMOp.TEST.emit(this, OperandSize.QWORD, dst, src);
-    }
-
-    public final void btq(Register src, int imm8) {
-        prefixq(src);
-        emitByte(0x0F);
-        emitByte(0xBA);
-        emitModRM(4, src);
-        emitByte(imm8);
-    }
-
-    public final void btrq(Register src, int imm8) {
-        prefixq(src);
-        emitByte(0x0F);
-        emitByte(0xBA);
-        emitModRM(6, src);
-        emitByte(imm8);
-    }
-
-    public final void xaddb(AMD64Address dst, Register src) {
-        prefixb(dst, src);
-        emitByte(0x0F);
-        emitByte(0xC0);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void xaddw(AMD64Address dst, Register src) {
-        emitByte(0x66); // Switch to 16-bit mode.
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0xC1);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void xaddl(AMD64Address dst, Register src) {
-        prefix(dst, src);
-        emitByte(0x0F);
-        emitByte(0xC1);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void xaddq(AMD64Address dst, Register src) {
-        prefixq(dst, src);
-        emitByte(0x0F);
-        emitByte(0xC1);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void xchgb(Register dst, AMD64Address src) {
-        prefixb(src, dst);
-        emitByte(0x86);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void xchgw(Register dst, AMD64Address src) {
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x87);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void xchgl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x87);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void xchgq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x87);
-        emitOperandHelper(dst, src, 0);
-    }
-
-    public final void sha1msg1(Register dst, Register src) {
-        SHA1MSG1.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void sha1msg2(Register dst, Register src) {
-        SHA1MSG2.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void sha1nexte(Register dst, Register src) {
-        SHA1NEXTE.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void sha1rnds4(Register dst, Register src, int imm8) {
-        SHA1RNDS4.emit(this, OperandSize.PS, dst, src, imm8);
-    }
-
-    public final void sha256msg1(Register dst, Register src) {
-        SHA256MSG1.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void sha256msg2(Register dst, Register src) {
-        SHA256MSG2.emit(this, OperandSize.PS, dst, src);
-    }
-
-    public final void sha256rnds2(Register dst, Register src) {
-        SHA256RNDS2.emit(this, OperandSize.PS, dst, src);
-    }
-
-    // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/08d51003d142e89b9d2f66187a4ea50e12b94fbb/src/hotspot/cpu/x86/assembler_x86.cpp#L234-L268",
-              sha1 = "7e213e437f5d3e7740874d69457de4ffebbee1c5")
-    // @formatter:on
-    public final void membar(int barriers) {
-        if (isTargetMP()) {
-            // We only have to handle StoreLoad
-            if ((barriers & STORE_LOAD) != 0) {
-                lock();
-                // Assert the lock# signal here
-                addl(new AMD64Address(AMD64.rsp, membarOffset()), 0);
-            }
-        }
-    }
-
-    protected int membarOffset() {
-        return 0;
-    }
-
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
         // @formatter:off
         assert op == 0xE8 // call
-                        || op == 0x00 // jump table entry
-                        || op == 0xE9 // jmp
-                        || op == 0xEB // short jmp
-                        || (op & 0xF0) == 0x70 // short jcc
-                        || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
-                        : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
+                || op == 0x00 // jump table entry
+                || op == 0xE9 // jmp
+                || op == 0xEB // short jmp
+                || (op & 0xF0) == 0x70 // short jcc
+                || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
+                : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
         // @formatter:on
 
         if (op == 0x00) {
@@ -5565,702 +3780,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    public void nullCheck(AMD64Address address) {
-        testl(AMD64.rax, address);
-    }
-
-    @Override
-    public void align(int modulus) {
-        align(modulus, position());
-    }
-
-    /**
-     * Ensure that the code at {@code target} bytes offset from the current {@link #position()} is
-     * aligned according to {@code modulus}.
-     */
-    public void align(int modulus, int target) {
-        if (target % modulus != 0) {
-            nop(modulus - (target % modulus));
-        }
-    }
-
-    /**
-     * Emits a direct call instruction. Note that the actual call target is not specified, because
-     * all calls need patching anyway. Therefore, 0 is emitted as the call target, and the user is
-     * responsible to add the call address to the appropriate patching tables.
-     */
-    protected final void call() {
-        annotatePatchingImmediate(1, 4);
-        emitByte(0xE8);
-        emitInt(0);
-    }
-
-    public final void call(Label l) {
-        if (l.isBound()) {
-            emitByte(0xE8);
-            emitInt(l.position());
+    public void ret(int imm16) {
+        if (imm16 == 0) {
+            mitigateJCCErratum(1);
+            emitByte(0xC3);
         } else {
-            l.addPatchAt(position(), this);
-            emitByte(0xE8);
-            emitInt(0);
+            mitigateJCCErratum(3);
+            emitByte(0xC2);
+            emitShort(imm16);
         }
-    }
-
-    public final void call(Register src) {
-        prefix(src);
-        emitByte(0xFF);
-        emitModRM(2, src);
-    }
-
-    public final void endbranch() {
-        emitByte(0xf3);
-        emitByte(0x0f);
-        emitByte(0x1e);
-        emitByte(0xfa);
-    }
-
-    public final void int3() {
-        emitByte(0xCC);
-    }
-
-    public final void pause() {
-        emitByte(0xF3);
-        emitByte(0x90);
-    }
-
-    private void emitx87(int b1, int b2, int i) {
-        assert 0 <= i && i < 8 : "illegal stack offset";
-        emitByte(b1);
-        emitByte(b2 + i);
-    }
-
-    public final void fldd(AMD64Address src) {
-        emitByte(0xDD);
-        emitOperandHelper(0, src, 0);
-    }
-
-    public final void flds(AMD64Address src) {
-        emitByte(0xD9);
-        emitOperandHelper(0, src, 0);
-    }
-
-    public final void fldln2() {
-        emitByte(0xD9);
-        emitByte(0xED);
-    }
-
-    public final void fldlg2() {
-        emitByte(0xD9);
-        emitByte(0xEC);
-    }
-
-    public final void fyl2x() {
-        emitByte(0xD9);
-        emitByte(0xF1);
-    }
-
-    public final void fstps(AMD64Address src) {
-        emitByte(0xD9);
-        emitOperandHelper(3, src, 0);
-    }
-
-    public final void fstpd(AMD64Address src) {
-        emitByte(0xDD);
-        emitOperandHelper(3, src, 0);
-    }
-
-    private void emitFPUArith(int b1, int b2, int i) {
-        assert 0 <= i && i < 8 : "illegal FPU register: " + i;
-        emitByte(b1);
-        emitByte(b2 + i);
-    }
-
-    public void ffree(int i) {
-        emitFPUArith(0xDD, 0xC0, i);
-    }
-
-    public void fincstp() {
-        emitByte(0xD9);
-        emitByte(0xF7);
-    }
-
-    public void fxch(int i) {
-        emitFPUArith(0xD9, 0xC8, i);
-    }
-
-    public void fnstswAX() {
-        emitByte(0xDF);
-        emitByte(0xE0);
-    }
-
-    public void fwait() {
-        emitByte(0x9B);
-    }
-
-    public void fprem() {
-        emitByte(0xD9);
-        emitByte(0xF8);
-    }
-
-    public final void fsin() {
-        emitByte(0xD9);
-        emitByte(0xFE);
-    }
-
-    public final void fcos() {
-        emitByte(0xD9);
-        emitByte(0xFF);
-    }
-
-    public final void fptan() {
-        emitByte(0xD9);
-        emitByte(0xF2);
-    }
-
-    public final void fstp(int i) {
-        emitx87(0xDD, 0xD8, i);
-    }
-
-    @Override
-    public AMD64Address makeAddress(int transferSize, Register base, int displacement) {
-        return makeAddress(base, displacement);
-    }
-
-    public AMD64Address makeAddress(Register base, int displacement) {
-        return new AMD64Address(base, displacement);
-    }
-
-    @Override
-    public AMD64Address getPlaceholder(int instructionStartPosition) {
-        return new AMD64Address(AMD64.rip, Register.None, Stride.S1, 0, null, instructionStartPosition);
-    }
-
-    private void prefetchPrefix(AMD64Address src) {
-        prefix(src);
-        emitByte(0x0F);
-    }
-
-    public void prefetchnta(AMD64Address src) {
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(0, src, 0);
-    }
-
-    void prefetchr(AMD64Address src) {
-        assert supports(CPUFeature.AMD_3DNOW_PREFETCH);
-        prefetchPrefix(src);
-        emitByte(0x0D);
-        emitOperandHelper(0, src, 0);
-    }
-
-    public void prefetcht0(AMD64Address src) {
-        assert supports(CPUFeature.SSE);
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(1, src, 0);
-    }
-
-    public void prefetcht1(AMD64Address src) {
-        assert supports(CPUFeature.SSE);
-        prefetchPrefix(src);
-        emitByte(0x18);
-        emitOperandHelper(2, src, 0);
-    }
-
-    public void prefetcht2(AMD64Address src) {
-        assert supports(CPUFeature.SSE);
-        prefix(src);
-        emitByte(0x0f);
-        emitByte(0x18);
-        emitOperandHelper(3, src, 0);
-    }
-
-    public void prefetchw(AMD64Address src) {
-        assert supports(CPUFeature.AMD_3DNOW_PREFETCH);
-        prefix(src);
-        emitByte(0x0f);
-        emitByte(0x0D);
-        emitOperandHelper(1, src, 0);
-    }
-
-    public void rdtsc() {
-        emitByte(0x0F);
-        emitByte(0x31);
-    }
-
-    public void rdtscp() {
-        emitByte(0x0F);
-        emitByte(0x01);
-        emitByte(0xF9);
-    }
-
-    public void rdpid(Register dst) {
-        // GR-43733: Replace string by feature when we remove support for Java 17
-        assert supports("RDPID");
-        emitByte(0xF3);
-        prefix(dst);
-        emitByte(0x0F);
-        emitByte(0xC7);
-        emitModRM(7, dst);
-    }
-
-    /**
-     * Emits an instruction which is considered to be illegal. This is used if we deliberately want
-     * to crash the program (debugging etc.).
-     */
-    public void illegal() {
-        emitByte(0x0f);
-        emitByte(0x0b);
-    }
-
-    public void lfence() {
-        emitByte(0x0f);
-        emitByte(0xae);
-        emitByte(0xe8);
-    }
-
-    public void sfence() {
-        assert supports(CPUFeature.SSE2);
-        emitByte(0x0f);
-        emitByte(0xae);
-        emitByte(0xf8);
-    }
-
-    public void clflush(AMD64Address adr) {
-        prefix(adr);
-        // opcode family is 0x0F 0xAE
-        emitByte(0x0f);
-        emitByte(0xae);
-        // extended opcode byte is 7
-        emitOperandHelper(7, adr, 0);
-    }
-
-    public void wrpkru() {
-        emitByte(0x0F);
-        emitByte(0x01);
-        emitByte(0xEF);
-    }
-
-    public void rdpkru() {
-        emitByte(0x0F);
-        emitByte(0x01);
-        emitByte(0xEE);
-    }
-
-    public final void vpaddd(Register dst, Register nds, Register src, AVXKind.AVXSize size) {
-        VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpaddd(Register dst, Register nds, AMD64Address src, AVXKind.AVXSize size) {
-        VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpaddq(Register dst, Register nds, Register src, AVXKind.AVXSize size) {
-        VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpaddq(Register dst, Register nds, AMD64Address src, AVXKind.AVXSize size) {
-        VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpand(Register dst, Register nds, Register src, AVXKind.AVXSize size) {
-        VexRVMOp.VPAND.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpandn(Register dst, Register nds, Register src) {
-        VexRVMOp.VPANDN.emit(this, AVXKind.AVXSize.YMM, dst, nds, src);
-    }
-
-    public final void vpor(Register dst, Register nds, Register src, AVXKind.AVXSize size) {
-        VexRVMOp.VPOR.emit(this, size, dst, nds, src);
-    }
-
-    public final void vptest(Register dst, Register src, AVXKind.AVXSize size) {
-        VexRMOp.VPTEST.emit(this, size, dst, src);
-    }
-
-    public final void vpxor(Register dst, Register nds, Register src, AVXKind.AVXSize size) {
-        VexRVMOp.VPXOR.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpxor(Register dst, Register nds, AMD64Address src, AVXKind.AVXSize size) {
-        VexRVMOp.VPXOR.emit(this, size, dst, nds, src);
-    }
-
-    public final void vpsllw(Register dst, Register src, int imm8) {
-        VexShiftOp.VPSLLW.emit(this, AVXKind.AVXSize.YMM, dst, src, imm8);
-    }
-
-    public final void vpsrlw(Register dst, Register src, int imm8) {
-        VexShiftOp.VPSRLW.emit(this, AVXKind.AVXSize.YMM, dst, src, imm8);
-    }
-
-    public final void vpslld(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexShiftOp.VPSLLD.emit(this, size, dst, src, imm8);
-    }
-
-    public final void vpslldq(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexShiftImmOp.VPSLLDQ.emit(this, size, dst, src, imm8);
-    }
-
-    public final void vpsrld(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexShiftOp.VPSRLD.emit(this, size, dst, src, imm8);
-    }
-
-    public final void vpsrldq(Register dst, Register src, int imm8, AVXKind.AVXSize size) {
-        VexShiftImmOp.VPSRLDQ.emit(this, size, dst, src, imm8);
-    }
-
-    public final void vpcmpeqb(Register dst, Register src1, Register src2) {
-        VexRVMOp.VPCMPEQB.emit(this, AVXKind.AVXSize.YMM, dst, src1, src2);
-    }
-
-    public final void vpcmpeqw(Register dst, Register src1, Register src2) {
-        VexRVMOp.VPCMPEQW.emit(this, AVXKind.AVXSize.YMM, dst, src1, src2);
-    }
-
-    public final void vpcmpeqd(Register dst, Register src1, Register src2) {
-        VexRVMOp.VPCMPEQD.emit(this, AVXKind.AVXSize.YMM, dst, src1, src2);
-    }
-
-    public final void vpmovmskb(Register dst, Register src) {
-        VexRMOp.VPMOVMSKB.emit(this, AVXKind.AVXSize.YMM, dst, src);
-    }
-
-    public final void vmovdqu(Register dst, AMD64Address src) {
-        VexMoveOp.VMOVDQU32.emit(this, AVXKind.AVXSize.YMM, dst, src);
-    }
-
-    public final void vmovdqu(Register dst, Register src) {
-        VexMoveOp.VMOVDQU32.emit(this, AVXKind.AVXSize.YMM, dst, src);
-    }
-
-    public final void vmovdqu(AMD64Address dst, Register src) {
-        assert inRC(XMM, src);
-        VexMoveOp.VMOVDQU32.emit(this, AVXKind.AVXSize.YMM, dst, src);
-    }
-
-    public final void vmovdqu64(Register dst, AMD64Address src) {
-        VexMoveOp.VMOVDQU64.emit(this, AVXKind.AVXSize.ZMM, dst, src);
-    }
-
-    public final void vmovdqu64(AMD64Address dst, Register src) {
-        assert inRC(XMM, src);
-        VexMoveOp.VMOVDQU64.emit(this, AVXKind.AVXSize.ZMM, dst, src);
-    }
-
-    public final void vpmovzxbw(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX2);
-        VexRMOp.VPMOVZXBW.emit(this, AVXKind.AVXSize.YMM, dst, src);
-    }
-
-    public final void vpalignr(Register dst, Register nds, Register src, int imm8, AVXKind.AVXSize size) {
-        VexRVMIOp.VPALIGNR.emit(this, size, dst, nds, src, imm8);
-    }
-
-    public final void vperm2f128(Register dst, Register nds, Register src, int imm8) {
-        VexRVMIOp.VPERM2F128.emit(this, AVXKind.AVXSize.YMM, dst, nds, src, imm8);
-    }
-
-    public final void vperm2i128(Register dst, Register nds, Register src, int imm8) {
-        VexRVMIOp.VPERM2I128.emit(this, AVXKind.AVXSize.YMM, dst, nds, src, imm8);
-    }
-
-    public final void vzeroupper() {
-        emitVEX(VEXPrefixConfig.L128, VEXPrefixConfig.P_, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0, 0, true);
-        emitByte(0x77);
-    }
-
-    public final void aesenc(Register dst, Register src) {
-        assert supports(CPUFeature.AES);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F38, false);
-        emitByte(0xDC);
-        emitModRM(dst, src);
-    }
-
-    public final void aesenclast(Register dst, Register src) {
-        assert supports(CPUFeature.AES);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F38, false);
-        emitByte(0xDD);
-        emitModRM(dst, src);
-    }
-
-    public final void aesdec(Register dst, Register src) {
-        assert supports(CPUFeature.AES);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F38, false);
-        emitByte(0xDE);
-        emitModRM(dst, src);
-    }
-
-    public final void aesdeclast(Register dst, Register src) {
-        assert supports(CPUFeature.AES);
-        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
-        simdPrefix(dst, dst, src, OperandSize.PD, P_0F38, false);
-        emitByte(0xDF);
-        emitModRM(dst, src);
-    }
-
-    // Insn: KORTESTD k1, k2
-
-    // This instruction produces ZF or CF flags
-    public final void kortestd(Register src1, Register src2) {
-        VexRROp.KORTESTD.emit(this, AVXSize.XMM, src1, src2);
-    }
-
-    // Insn: KORTESTQ k1, k2
-
-    // This instruction produces ZF or CF flags
-    public final void kortestq(Register src1, Register src2) {
-        VexRROp.KORTESTQ.emit(this, AVXSize.XMM, src1, src2);
-    }
-
-    public final void kmovb(Register dst, Register src) {
-        VexMoveMaskOp.KMOVB.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovb(AMD64Address dst, Register src) {
-        VexMoveMaskOp.KMOVB.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovb(Register dst, AMD64Address src) {
-        VexMoveMaskOp.KMOVB.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovw(Register dst, Register src) {
-        VexMoveMaskOp.KMOVW.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovw(AMD64Address dst, Register src) {
-        VexMoveMaskOp.KMOVW.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovw(Register dst, AMD64Address src) {
-        VexMoveMaskOp.KMOVW.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovd(Register dst, Register src) {
-        VexMoveMaskOp.KMOVD.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovd(AMD64Address dst, Register src) {
-        VexMoveMaskOp.KMOVD.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovd(Register dst, AMD64Address src) {
-        VexMoveMaskOp.KMOVD.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovq(Register dst, Register src) {
-        VexMoveMaskOp.KMOVQ.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovq(AMD64Address dst, Register src) {
-        VexMoveMaskOp.KMOVQ.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    public final void kmovq(Register dst, AMD64Address src) {
-        VexMoveMaskOp.KMOVQ.emit(this, AVXKind.AVXSize.XMM, dst, src);
-    }
-
-    // Insn: KTESTD k1, k2
-    public final void ktestd(Register src1, Register src2) {
-        VexRROp.KTESTD.emit(this, AVXSize.XMM, src1, src2);
-    }
-
-    // Insn: KTESTQ k1, k2
-    public final void ktestq(Register src1, Register src2) {
-        VexRROp.KTESTQ.emit(this, AVXSize.XMM, src1, src2);
-    }
-
-    public final void evmovdqu64(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX512F);
-        assert inRC(XMM, dst);
-        evexPrefix(dst, Register.None, Register.None, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    public final void evmovdqu64(AMD64Address dst, Register src) {
-        assert supports(CPUFeature.AVX512F);
-        assert inRC(XMM, src);
-        evexPrefix(src, Register.None, Register.None, dst, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VPMOVZXBW zmm1, m256
-    public final void evpmovzxbw(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, dst);
-        // Code: EVEX.512.66.0F38.WIG 30 /r
-        evexPrefix(dst, Register.None, Register.None, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x30);
-        emitOperandHelper(dst, src, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    public final void evpcmpeqb(Register kdst, Register nds, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst) && inRC(XMM, nds) : kdst + " " + nds;
-        evexPrefix(kdst, Register.None, nds, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x74);
-        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VMOVDQU16 zmm1 {k1}{z}, zmm2/m512
-    // -----
-    // Insn: VMOVDQU16 zmm1, m512
-    public final void evmovdqu16(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, dst);
-        // Code: EVEX.512.F2.0F.W1 6F /r
-        evexPrefix(dst, Register.None, Register.None, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VMOVDQU16 zmm1, k1:z, m512
-    public final void evmovdqu16(Register dst, Register mask, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, dst) && inRC(MASK, mask) : dst + " " + mask;
-        // Code: EVEX.512.F2.0F.W1 6F /r
-        evexPrefix(dst, mask, Register.None, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, EVEXPrefixConfig.Z1, EVEXPrefixConfig.B0);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VMOVDQU16 zmm2/m512 {k1}{z}, zmm1
-    // -----
-    // Insn: VMOVDQU16 m512, zmm1
-    public final void evmovdqu16(AMD64Address dst, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, src);
-        // Code: EVEX.512.F2.0F.W1 7F /r
-        evexPrefix(src, Register.None, Register.None, dst, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VMOVDQU16 m512, k1, zmm1
-    public final void evmovdqu16(AMD64Address dst, Register mask, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, mask) && inRC(XMM, src) : mask + " " + src;
-        // Code: EVEX.512.F2.0F.W1 7F /r
-        evexPrefix(src, mask, Register.None, dst, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F2, VEXPrefixConfig.M_0F, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VPBROADCASTW zmm1 {k1}{z}, reg
-    // -----
-    // Insn: VPBROADCASTW zmm1, reg
-    public final void evpbroadcastw(Register dst, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, dst) && inRC(CPU, src) : dst + " " + src;
-        // Code: EVEX.512.66.0F38.W0 7B /r
-        evexPrefix(dst, Register.None, Register.None, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x7B);
-        emitModRM(dst, src);
-    }
-
-    // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
-    // -----
-    // Insn: VPCMPUW k1, zmm2, zmm3, imm8
-    public final void evpcmpuw(Register kdst, Register nds, Register src, int vcc) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst) && inRC(XMM, nds) && inRC(XMM, src) : kdst + " " + src;
-        // Code: EVEX.NDS.512.66.0F3A.W1 3E /r ib
-        evexPrefix(kdst, Register.None, nds, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x3E);
-        emitModRM(kdst, src);
-        emitByte(vcc);
-    }
-
-    // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
-    // -----
-    // Insn: VPCMPUW k1, k2, zmm2, zmm3, imm8
-    public final void evpcmpuw(Register kdst, Register mask, Register nds, Register src, int vcc) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst) && inRC(MASK, mask) : kdst + " " + mask;
-        assert inRC(XMM, nds) && inRC(XMM, src) : nds + " " + src;
-        // Code: EVEX.NDS.512.66.0F3A.W1 3E /r ib
-        evexPrefix(kdst, mask, nds, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x3E);
-        emitModRM(kdst, src);
-        emitByte(vcc);
-    }
-
-    // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
-    // -----
-    // Insn: VPCMPQTB k1, zmm2, m512
-    public final void evpcmpgtb(Register kdst, Register nds, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst);
-        assert inRC(XMM, nds);
-        // Code: EVEX.NDS.512.66.0F.WIG 64 /r
-        evexPrefix(kdst, Register.None, nds, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x64);
-        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
-    // -----
-    // Insn: VPCMPQTB k1, k2, zmm2, m512
-    public final void evpcmpgtb(Register kdst, Register mask, Register nds, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst) && inRC(MASK, mask) : kdst + " " + mask;
-        assert inRC(XMM, nds);
-        // Code: EVEX.NDS.512.66.0F.WIG 64 /r
-        evexPrefix(kdst, mask, nds, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F, VEXPrefixConfig.WIG, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x64);
-        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VPMOVWB ymm1/m256 {k1}{z}, zmm2
-    // -----
-    // Insn: VPMOVWB m256, zmm2
-    public final void evpmovwb(AMD64Address dst, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, src);
-        // Code: EVEX.512.F3.0F38.W0 30 /r
-        evexPrefix(src, Register.None, Register.None, dst, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x30);
-        emitOperandHelper(src, dst, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VPMOVWB m256, k1, zmm2
-    public final void evpmovwb(AMD64Address dst, Register mask, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, mask) && inRC(XMM, src) : mask + " " + src;
-        // Code: EVEX.512.F3.0F38.W0 30 /r
-        evexPrefix(src, mask, Register.None, dst, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_F3, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W0, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x30);
-        emitOperandHelper(src, dst, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: VPMOVZXBW zmm1 {k1}{z}, ymm2/m256
-    // -----
-    // Insn: VPMOVZXBW zmm1, k1, m256
-    public final void evpmovzxbw(Register dst, Register mask, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, mask) && inRC(XMM, dst) : mask + " " + dst;
-        // Code: EVEX.512.66.0F38.WIG 30 /r
-        evexPrefix(dst, mask, Register.None, src, AVXKind.AVXSize.ZMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.WIG, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x30);
-        emitOperandHelper(dst, src, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXKind.AVXSize.ZMM));
-    }
-
-    // Insn: vfpclassss k2 {k1}, xmm2/m32, imm8
-    public final void vfpclassss(Register dst, Register mask, Register src, int imm8) {
-        assert supports(CPUFeature.AVX512DQ);
-        assert inRC(MASK, mask) && inRC(MASK, mask) && inRC(XMM, src) : mask + " " + src;
-        // Code: EVEX.LIG.66.0F3A.W0 67 /r
-        evexPrefix(dst, mask, Register.None, src, AVXKind.AVXSize.XMM, VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
-        emitByte(0x67);
-        emitModRM(dst, src);
-        emitByte(imm8);
     }
 
     /**
@@ -6460,6 +3988,2328 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         super.reset();
         nextJumpIdx = 0;
         jumpInfo = new ArrayList<>();
+    }
+
+    @Override
+    public AMD64Address makeAddress(int transferSize, Register base, int displacement) {
+        return makeAddress(base, displacement);
+    }
+
+    public AMD64Address makeAddress(Register base, int displacement) {
+        return new AMD64Address(base, displacement);
+    }
+
+    @Override
+    public AMD64Address getPlaceholder(int instructionStartPosition) {
+        return new AMD64Address(AMD64.rip, Register.None, Stride.S1, 0, null, instructionStartPosition);
+    }
+
+    // Instructions with direct byte emission
+
+    @Override
+    public void align(int modulus) {
+        align(modulus, position());
+    }
+
+    @Override
+    public final void ensureUniquePC() {
+        nop();
+    }
+
+    @Override
+    public void halt() {
+        hlt();
+    }
+
+    @SuppressWarnings("fallthrough")
+    private void intelNops(int count) {
+        //
+        // Using multi-bytes nops "0x0F 0x1F [address]" for Intel
+        // 1: 0x90
+        // 2: 0x66 0x90
+        // 3: 0x66 0x66 0x90 (don't use "0x0F 0x1F 0x00" - need patching safe padding)
+        // 4: 0x0F 0x1F 0x40 0x00
+        // 5: 0x0F 0x1F 0x44 0x00 0x00
+        // 6: 0x66 0x0F 0x1F 0x44 0x00 0x00
+        // 7: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
+        // 8: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
+        // 9: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
+        // 10: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
+        // 11: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
+
+        // The rest coding is Intel specific - don't use consecutive address nops
+
+        // 12: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
+        // 13: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
+        // 14: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
+        // 15: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x66 0x66 0x66 0x90
+
+        int i = count;
+        while (i >= 15) {
+            // For Intel don't generate consecutive addess nops (mix with regular nops)
+            i -= 15;
+            emitByte(0x66);   // size prefix
+            emitByte(0x66);   // size prefix
+            emitByte(0x66);   // size prefix
+            addrNop8();
+            emitByte(0x66);   // size prefix
+            emitByte(0x66);   // size prefix
+            emitByte(0x66);   // size prefix
+            emitByte(0x90);
+            // nop
+        }
+        switch (i) {
+            case 14:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 13:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 12:
+                addrNop8();
+                emitByte(0x66); // size prefix
+                emitByte(0x66); // size prefix
+                emitByte(0x66); // size prefix
+                emitByte(0x90);
+                // nop
+                break;
+            case 11:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 10:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 9:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 8:
+                addrNop8();
+                break;
+            case 7:
+                addrNop7();
+                break;
+            case 6:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 5:
+                addrNop5();
+                break;
+            case 4:
+                addrNop4();
+                break;
+            case 3:
+                // Don't use "0x0F 0x1F 0x00" - need patching safe padding
+                emitByte(0x66); // size prefix
+                // fall through
+            case 2:
+                emitByte(0x66); // size prefix
+                // fall through
+            case 1:
+                emitByte(0x90);
+                // nop
+                break;
+            default:
+                assert i == 0 : i;
+        }
+    }
+
+    private void addrNop8() {
+        // 8 bytes: NOP DWORD PTR [EAX+EAX*0+0] 32-bits offset
+        emitByte(0x0F);
+        emitByte(0x1F);
+        emitByte(0x84); // emitRm(cbuf, 0x2, EAXEnc, 0x4);
+        emitByte(0x00); // emitRm(cbuf, 0x0, EAXEnc, EAXEnc);
+        emitInt(0); // 32-bits offset (4 bytes)
+    }
+
+    private void addrNop7() {
+        // 7 bytes: NOP DWORD PTR [EAX+0] 32-bits offset
+        emitByte(0x0F);
+        emitByte(0x1F);
+        emitByte(0x80); // emitRm(cbuf, 0x2, EAXEnc, EAXEnc);
+        emitInt(0); // 32-bits offset (4 bytes)
+    }
+
+    private void addrNop5() {
+        // 5 bytes: NOP DWORD PTR [EAX+EAX*0+0] 8-bits offset
+        emitByte(0x0F);
+        emitByte(0x1F);
+        emitByte(0x44); // emitRm(cbuf, 0x1, EAXEnc, 0x4);
+        emitByte(0x00); // emitRm(cbuf, 0x0, EAXEnc, EAXEnc);
+        emitByte(0); // 8-bits offset (1 byte)
+    }
+
+    private void addrNop4() {
+        // 4 bytes: NOP DWORD PTR [EAX+0]
+        emitByte(0x0F);
+        emitByte(0x1F);
+        emitByte(0x40); // emitRm(cbuf, 0x1, EAXEnc, EAXEnc);
+        emitByte(0); // 8-bits offset (1 byte)
+    }
+
+    /**
+     * Ensure that the code at {@code target} bytes offset from the current {@link #position()} is
+     * aligned according to {@code modulus}.
+     */
+    public void align(int modulus, int target) {
+        if (target % modulus != 0) {
+            nop(modulus - (target % modulus));
+        }
+    }
+
+    /**
+     * Emits a direct call instruction. Note that the actual call target is not specified, because
+     * all calls need patching anyway. Therefore, 0 is emitted as the call target, and the user is
+     * responsible to add the call address to the appropriate patching tables.
+     */
+    protected final void call() {
+        annotatePatchingImmediate(1, 4);
+        emitByte(0xE8);
+        emitInt(0);
+    }
+
+    public final void bswapl(Register reg) {
+        prefix(reg);
+        emitByte(0x0F);
+        emitModRM(1, reg);
+    }
+
+    public final void bswapq(Register reg) {
+        prefixq(reg);
+        emitByte(0x0F);
+        emitByte(0xC8 + encode(reg));
+    }
+
+    public final void call(Label l) {
+        if (l.isBound()) {
+            emitByte(0xE8);
+            emitInt(l.position());
+        } else {
+            l.addPatchAt(position(), this);
+            emitByte(0xE8);
+            emitInt(0);
+        }
+    }
+
+    public final void call(Register src) {
+        prefix(src);
+        emitByte(0xFF);
+        emitModRM(2, src);
+    }
+
+    public final void cdql() {
+        emitByte(0x99);
+    }
+
+    public final void cdqq() {
+        rexw();
+        emitByte(0x99);
+    }
+
+    public final void clflush(AMD64Address adr) {
+        prefix(adr);
+        // opcode family is 0x0F 0xAE
+        emitByte(0x0f);
+        emitByte(0xae);
+        // extended opcode byte is 7
+        emitOperandHelper(7, adr, 0);
+    }
+
+    public final void cmovl(ConditionFlag cc, Register dst, Register src) {
+        prefix(dst, src);
+        emitByte(0x0F);
+        emitByte(0x40 | cc.getValue());
+        emitModRM(dst, src);
+    }
+
+    public final void cmovl(ConditionFlag cc, Register dst, AMD64Address src) {
+        interceptMemorySrcOperands(src);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x40 | cc.getValue());
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void cmovq(ConditionFlag cc, Register dst, Register src) {
+        prefixq(dst, src);
+        emitByte(0x0F);
+        emitByte(0x40 | cc.getValue());
+        emitModRM(dst, src);
+    }
+
+    public final void cmovq(ConditionFlag cc, Register dst, AMD64Address src) {
+        interceptMemorySrcOperands(src);
+        prefixq(src, dst);
+        emitByte(0x0F);
+        emitByte(0x40 | cc.getValue());
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void endbranch() {
+        emitByte(0xf3);
+        emitByte(0x0f);
+        emitByte(0x1e);
+        emitByte(0xfa);
+    }
+
+    public final void fcos() {
+        emitByte(0xD9);
+        emitByte(0xFF);
+    }
+
+    public final void ffree(int i) {
+        emitFPUArith(0xDD, 0xC0, i);
+    }
+
+    public final void fincstp() {
+        emitByte(0xD9);
+        emitByte(0xF7);
+    }
+
+    public final void fldd(AMD64Address src) {
+        interceptMemorySrcOperands(src);
+        emitByte(0xDD);
+        emitOperandHelper(0, src, 0);
+    }
+
+    public final void fldlg2() {
+        emitByte(0xD9);
+        emitByte(0xEC);
+    }
+
+    public final void fldln2() {
+        emitByte(0xD9);
+        emitByte(0xED);
+    }
+
+    public final void flds(AMD64Address src) {
+        interceptMemorySrcOperands(src);
+        emitByte(0xD9);
+        emitOperandHelper(0, src, 0);
+    }
+
+    public final void fnstswAX() {
+        emitByte(0xDF);
+        emitByte(0xE0);
+    }
+
+    public final void fprem() {
+        emitByte(0xD9);
+        emitByte(0xF8);
+    }
+
+    public final void fptan() {
+        emitByte(0xD9);
+        emitByte(0xF2);
+    }
+
+    public final void fsin() {
+        emitByte(0xD9);
+        emitByte(0xFE);
+    }
+
+    public final void fstp(int i) {
+        assert 0 <= i && i < 8 : "illegal stack offset";
+        emitByte(0xDD);
+        emitByte(0xD8 + i);
+    }
+
+    public final void fstpd(AMD64Address src) {
+        interceptMemorySrcOperands(src);
+        emitByte(0xDD);
+        emitOperandHelper(3, src, 0);
+    }
+
+    public final void fstps(AMD64Address src) {
+        interceptMemorySrcOperands(src);
+        emitByte(0xD9);
+        emitOperandHelper(3, src, 0);
+    }
+
+    public final void fwait() {
+        emitByte(0x9B);
+    }
+
+    public final void fxch(int i) {
+        emitFPUArith(0xD9, 0xC8, i);
+    }
+
+    private void emitFPUArith(int b1, int b2, int i) {
+        assert 0 <= i && i < 8 : "illegal FPU register: " + i;
+        emitByte(b1);
+        emitByte(b2 + i);
+    }
+
+    public final void fyl2x() {
+        emitByte(0xD9);
+        emitByte(0xF1);
+    }
+
+    public final void hlt() {
+        emitByte(0xF4);
+    }
+
+    /**
+     * Emits an instruction which is considered to be illegal. This is used if we deliberately want
+     * to crash the program (debugging etc.).
+     */
+    public final void illegal() {
+        emitByte(0x0f);
+        emitByte(0x0b);
+    }
+
+    public final void int3() {
+        emitByte(0xCC);
+    }
+
+    public final void lead(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x8D);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void leaq(Register dst, AMD64Address src) {
+        prefixq(src, dst);
+        emitByte(0x8D);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void leave() {
+        emitByte(0xC9);
+    }
+
+    public void lfence() {
+        emitByte(0x0f);
+        emitByte(0xae);
+        emitByte(0xe8);
+    }
+
+    public void lock() {
+        emitByte(0xF0);
+    }
+
+    public final void membar(int barriers) {
+        if (isTargetMP()) {
+            // We only have to handle StoreLoad
+            if ((barriers & STORE_LOAD) != 0) {
+                lock();
+                // Assert the lock# signal here
+                addl(new AMD64Address(AMD64.rsp, membarOffset()), 0);
+            }
+        }
+    }
+
+    protected int membarOffset() {
+        return 0;
+    }
+
+    // AMD64MIOp.MOV uses an extra prefix
+    public final void movl(Register dst, int imm32) {
+        movl(dst, imm32, false);
+    }
+
+    public final void movl(Register dst, int imm32, boolean annotateImm) {
+        int insnPos = position();
+        prefix(dst);
+        emitByte(0xB8 + encode(dst));
+        int immPos = position();
+        emitInt(imm32);
+        int nextInsnPos = position();
+        if (annotateImm && codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+        }
+    }
+
+    public final void movlhps(Register dst, Register src) {
+        assert inRC(XMM, dst) && inRC(XMM, src) : dst + " " + src;
+        simdPrefix(dst, dst, src, OperandSize.PS, P_0F, false);
+        emitByte(0x16);
+        emitModRM(dst, src);
+    }
+
+    /**
+     * New CPUs require use of movsd and movss to avoid partial register stall when loading from
+     * memory. But for old Opteron use movlpd instead of movsd. The selection is done in
+     * {@link AMD64MacroAssembler#movdbl(Register, AMD64Address)} and
+     * {@link AMD64MacroAssembler#movflt(Register, Register)}.
+     */
+    public final void movlpd(Register dst, AMD64Address src) {
+        assert inRC(XMM, dst);
+        interceptMemorySrcOperands(src);
+        simdPrefix(dst, dst, src, OperandSize.PD, P_0F, false);
+        emitByte(0x12);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void movq(Register dst, AMD64Address src) {
+        movq(dst, src, false);
+    }
+
+    public final void movq(Register dst, AMD64Address src, boolean force4BytesDisplacement) {
+        if (inRC(XMM, dst)) {
+            // Insn: MOVQ xmm, r/m64
+            // Code: F3 0F 7E /r
+            // An alternative instruction would be 66 REX.W 0F 6E /r. We prefer the REX.W free
+            // format, because it would allow us to emit 2-bytes-prefixed vex-encoding instruction
+            // when applicable.
+            interceptMemorySrcOperands(src);
+            simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
+            emitByte(0x7E);
+            emitOperandHelper(dst, src, force4BytesDisplacement, 0);
+        } else {
+            // gpr version of movq
+            AMD64RMOp.MOV.emit(this, OperandSize.QWORD, dst, src, force4BytesDisplacement);
+        }
+    }
+
+    public final void movq(Register dst, long imm64) {
+        movq(dst, imm64, false);
+    }
+
+    public final void movq(Register dst, long imm64, boolean annotateImm) {
+        int insnPos = position();
+        prefixq(dst);
+        emitByte(0xB8 + encode(dst));
+        int immPos = position();
+        emitLong(imm64);
+        int nextInsnPos = position();
+        if (annotateImm && codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+        }
+    }
+
+    public final void movq(Register dst, Register src) {
+        if (inRC(XMM, dst) && inRC(XMM, src)) {
+            // Insn: MOVQ xmm1, xmm2
+            // Code: F3 0F 7E /r
+            simdPrefix(dst, Register.None, src, OperandSize.SS, P_0F, false);
+            emitByte(0x7E);
+            emitModRM(dst, src);
+        } else {
+            AMD64RMOp.MOV.emit(this, OperandSize.QWORD, dst, src);
+        }
+    }
+
+    public final void movq(AMD64Address dst, Register src) {
+        if (inRC(XMM, src)) {
+            // Insn: MOVQ r/m64, xmm
+            // Code: 66 0F D6 /r
+            // An alternative instruction would be 66 REX.W 0F 7E /r. We prefer the REX.W free
+            // format, because it would allow us to emit 2-bytes-prefixed vex-encoding instruction
+            // when applicable.
+            simdPrefix(src, Register.None, dst, OperandSize.PD, P_0F, false);
+            emitByte(0xD6);
+            emitOperandHelper(src, dst, 0);
+        } else {
+            // gpr version of movq
+            AMD64MROp.MOV.emit(this, OperandSize.QWORD, dst, src);
+        }
+    }
+
+    public final void nop() {
+        nop(1);
+    }
+
+    public final void nop(int count) {
+        intelNops(count);
+    }
+
+    public final void pause() {
+        emitByte(0xF3);
+        emitByte(0x90);
+    }
+
+    public final void pextrw(Register dst, Register src, int imm8) {
+        assert inRC(CPU, dst) && inRC(XMM, src) : dst + " " + src;
+        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
+        emitByte(0xC5);
+        emitModRM(dst, src);
+        emitByte(imm8);
+    }
+
+    public final void pmovmskb(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert inRC(CPU, dst) && inRC(XMM, src) : dst + " " + src;
+        simdPrefix(dst, Register.None, src, OperandSize.PD, P_0F, false);
+        emitByte(0xD7);
+        emitModRM(dst, src);
+    }
+
+    public final void pop(Register dst) {
+        prefix(dst);
+        emitByte(0x58 + encode(dst));
+    }
+
+    public final void prefetchnta(AMD64Address src) {
+        prefetchPrefix(src);
+        emitByte(0x18);
+        emitOperandHelper(0, src, 0);
+    }
+
+    private void prefetchPrefix(AMD64Address src) {
+        prefix(src);
+        emitByte(0x0F);
+    }
+
+    public final void prefetcht0(AMD64Address src) {
+        assert supports(CPUFeature.SSE);
+        prefetchPrefix(src);
+        emitByte(0x18);
+        emitOperandHelper(1, src, 0);
+    }
+
+    public final void prefetcht1(AMD64Address src) {
+        assert supports(CPUFeature.SSE);
+        prefetchPrefix(src);
+        emitByte(0x18);
+        emitOperandHelper(2, src, 0);
+    }
+
+    public final void prefetcht2(AMD64Address src) {
+        assert supports(CPUFeature.SSE);
+        prefix(src);
+        emitByte(0x0f);
+        emitByte(0x18);
+        emitOperandHelper(3, src, 0);
+    }
+
+    public final void prefetchw(AMD64Address src) {
+        assert supports(CPUFeature.AMD_3DNOW_PREFETCH);
+        prefix(src);
+        emitByte(0x0f);
+        emitByte(0x0D);
+        emitOperandHelper(1, src, 0);
+    }
+
+    public final void push(int imm32) {
+        emitByte(0x68);
+        emitInt(imm32);
+    }
+
+    public final void push(Register src) {
+        assert inRC(CPU, src);
+        prefix(src);
+        emitByte(0x50 + encode(src));
+    }
+
+    public final void pushfq() {
+        emitByte(0x9c);
+    }
+
+    public final void rdpid(Register dst) {
+        assert supports(CPUFeature.RDPID);
+        emitByte(0xF3);
+        prefix(dst);
+        emitByte(0x0F);
+        emitByte(0xC7);
+        emitModRM(7, dst);
+    }
+
+    public final void rdpkru() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xEE);
+    }
+
+    public final void rdtsc() {
+        emitByte(0x0F);
+        emitByte(0x31);
+    }
+
+    public final void rdtscp() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xF9);
+    }
+
+    public final void repStosb() {
+        emitByte(0xf3);
+        rexw();
+        emitByte(0xaa);
+    }
+
+    public final void repStosq() {
+        emitByte(0xf3);
+        rexw();
+        emitByte(0xab);
+    }
+
+    public final void setb(ConditionFlag cc, Register dst) {
+        prefix(dst, true);
+        emitByte(0x0F);
+        emitByte(0x90 | cc.getValue());
+        emitModRM(0, dst);
+    }
+
+    public final void sfence() {
+        assert supports(CPUFeature.SSE2);
+        emitByte(0x0f);
+        emitByte(0xae);
+        emitByte(0xf8);
+    }
+
+    public final void testl(Register dst, int imm32) {
+        // not using emitArith because test
+        // doesn't support sign-extension of
+        // 8bit operands
+        if (dst.encoding == 0) {
+            emitByte(0xA9);
+            emitInt(imm32);
+        } else {
+            AMD64MIOp.TEST.emit(this, OperandSize.DWORD, dst, imm32);
+        }
+    }
+
+    /**
+     * Emit a UD2 instruction, this signals the processor to stop decoding instructions further in
+     * the fallthrough path (Intel Optimization Reference Manual Volume 1, section 3.4.1.5, Branch
+     * Type Selection, Assembly/Compiler coding rule 13).
+     * <p>
+     * This also helps when we want to emit data in the code section as it prevents mismatched
+     * instructions when decoding from different paths. E.g. consider this piece of hex code:
+     * <p>
+     * {@code 01 48 01 c8}
+     * <p>
+     * With {@code 01} being the data and {@code 48 01 c8} being {@code add rax, rcx}. However, if
+     * the decoder starts with {@code 01} it will see the next instruction being {@code 01 48 01}
+     * which is {@code add [rax + 1], ecx}. This mismatch invalidates the uop cache as the CPU
+     * cannot know which instruction sequence is the correct one.
+     */
+    public void ud2() {
+        emitByte(0x0F);
+        emitByte(0x0B);
+    }
+
+    public final void vzeroupper() {
+        emitVEX(VEXPrefixConfig.L128, VEXPrefixConfig.P_, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0, 0);
+        emitByte(0x77);
+    }
+
+    public final void wrpkru() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xEF);
+    }
+
+    // Helper methods delegating to an AMD64Op
+
+    public final void nullCheck(AMD64Address address) {
+        testl(AMD64.rax, address);
+    }
+
+    public final void adcl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.ADC.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void adcq(Register dst, int imm32) {
+        AMD64BinaryArithmetic.ADC.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void adcxq(Register dst, Register src) {
+        AMD64RMOp.ADCX.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void addl(AMD64Address dst, int imm32) {
+        AMD64BinaryArithmetic.ADD.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void addl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.ADD.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void addl(Register dst, Register src) {
+        AMD64BinaryArithmetic.ADD.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void addl(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.ADD.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void addpd(Register dst, Register src) {
+        SSEOp.ADD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void addpd(Register dst, AMD64Address src) {
+        SSEOp.ADD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void addq(Register dst, int imm32) {
+        AMD64BinaryArithmetic.ADD.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void addq(AMD64Address dst, int imm32) {
+        AMD64BinaryArithmetic.ADD.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void addq(Register dst, Register src) {
+        AMD64BinaryArithmetic.ADD.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void addq(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.ADD.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void addq(AMD64Address dst, Register src) {
+        AMD64BinaryArithmetic.ADD.mrOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void addsd(Register dst, Register src) {
+        SSEOp.ADD.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void addsd(Register dst, AMD64Address src) {
+        SSEOp.ADD.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void adoxq(Register dst, Register src) {
+        AMD64RMOp.ADOX.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void aesdec(Register dst, Register src) {
+        SSEOp.AESDEC.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void aesdeclast(Register dst, Register src) {
+        SSEOp.AESDECLAST.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void aesenc(Register dst, Register src) {
+        SSEOp.AESENC.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void aesenclast(Register dst, Register src) {
+        SSEOp.AESENCLAST.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void andl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.AND.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void andl(Register dst, Register src) {
+        AMD64BinaryArithmetic.AND.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void andnpd(Register dst, Register src) {
+        SSEOp.ANDN.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void andpd(Register dst, Register src) {
+        SSEOp.AND.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void andpd(Register dst, AMD64Address src) {
+        SSEOp.AND.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void andq(Register dst, int imm32) {
+        AMD64BinaryArithmetic.AND.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void andq(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.AND.getRMOpcode(OperandSize.QWORD).emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void andq(Register dst, Register src) {
+        AMD64BinaryArithmetic.AND.getRMOpcode(OperandSize.QWORD).emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void bsfl(Register dst, Register src) {
+        AMD64RMOp.BSF.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void bsfq(Register dst, Register src) {
+        AMD64RMOp.BSF.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void bsrl(Register dst, Register src) {
+        AMD64RMOp.BSR.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void bsrq(Register dst, Register src) {
+        AMD64RMOp.BSR.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void btq(Register src, int imm8) {
+        AMD64MIOp.BT.emit(this, OperandSize.QWORD, src, imm8);
+    }
+
+    public final void btrq(Register src, int imm8) {
+        AMD64MIOp.BTR.emit(this, OperandSize.QWORD, src, imm8);
+    }
+
+    public final void cmpb(Register dst, Register src) {
+        AMD64BinaryArithmetic.CMP.byteRmOp.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void cmpb(AMD64Address dst, int imm) {
+        AMD64BinaryArithmetic.CMP.byteImmOp.emit(this, OperandSize.BYTE, dst, imm);
+    }
+
+    public final void cmpl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.CMP.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void cmpl(Register dst, Register src) {
+        AMD64BinaryArithmetic.CMP.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void cmpl(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.CMP.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void cmpl(AMD64Address dst, int imm32) {
+        AMD64BinaryArithmetic.CMP.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void cmpq(Register dst, int imm32) {
+        AMD64BinaryArithmetic.CMP.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void cmpq(AMD64Address dst, int imm32) {
+        AMD64BinaryArithmetic.CMP.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void cmpq(Register dst, Register src) {
+        AMD64BinaryArithmetic.CMP.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void cmpq(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.CMP.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void cmpw(AMD64Address dst, int imm16) {
+        AMD64BinaryArithmetic.CMP.getMIOpcode(OperandSize.WORD, isByte(imm16)).emit(this, OperandSize.WORD, dst, imm16);
+    }
+
+    public final void cmpw(Register dst, Register src) {
+        AMD64BinaryArithmetic.CMP.rmOp.emit(this, OperandSize.WORD, dst, src);
+    }
+
+    /**
+     * Emit a cmpw with an imm16 operand regardless of the input value.
+     */
+    public final void cmpwImm16(AMD64Address dst, int imm16) {
+        AMD64BinaryArithmetic.CMP.getMIOpcode(OperandSize.WORD, false).emit(this, OperandSize.WORD, dst, imm16);
+    }
+
+    /**
+     * The 8-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg into
+     * adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the compared
+     * values were equal, and cleared otherwise.
+     */
+    public final void cmpxchgb(AMD64Address adr, Register reg) { // cmpxchg
+        AMD64MROp.CMPXCHGB.emit(this, OperandSize.BYTE, adr, reg);
+    }
+
+    /**
+     * The 32-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg
+     * into adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the
+     * compared values were equal, and cleared otherwise.
+     */
+    public final void cmpxchgl(AMD64Address adr, Register reg) { // cmpxchg
+        AMD64MROp.CMPXCHG.emit(this, OperandSize.DWORD, adr, reg);
+    }
+
+    public final void cmpxchgq(Register reg, AMD64Address adr) {
+        AMD64RMOp.CMPXCHG.emit(this, OperandSize.QWORD, reg, adr);
+    }
+
+    /**
+     * The 16-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg
+     * into adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the
+     * compared values were equal, and cleared otherwise.
+     */
+    public final void cmpxchgw(AMD64Address adr, Register reg) { // cmpxchg
+        AMD64MROp.CMPXCHG.emit(this, OperandSize.WORD, adr, reg);
+    }
+
+    public final void cvtdq2pd(Register dst, Register src) {
+        SSEOp.CVTDQ2PD.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void cvtsd2siq(Register dst, Register src) {
+        SSEOp.CVTSD2SI.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void cvtsi2sdl(Register dst, Register src) {
+        SSEOp.CVTSI2SD.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void cvtsi2sdq(Register dst, Register src) {
+        SSEOp.CVTSI2SD.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void cvttpd2dq(Register dst, Register src) {
+        SSEOp.CVTTPD2DQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void cvttsd2sil(Register dst, Register src) {
+        SSEOp.CVTTSD2SI.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void cvttsd2siq(Register dst, Register src) {
+        SSEOp.CVTTSD2SI.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void cvttss2sil(Register dst, Register src) {
+        SSEOp.CVTTSS2SI.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void decl(AMD64Address dst) {
+        AMD64MOp.DEC.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void decl(Register dst) {
+        // Use two-byte form (one-byte form is a REX prefix in 64-bit mode)
+        AMD64MOp.DEC.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void decq(Register dst) {
+        // Use two-byte form (one-byte form is a REX prefix in 64-bit mode)
+        AMD64MOp.DEC.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void decq(AMD64Address dst) {
+        AMD64MOp.DEC.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void divsd(Register dst, Register src) {
+        SSEOp.DIV.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void gf2p8affineqb(Register dst, Register src, int imm8) {
+        if (supports(CPUFeature.AVX)) {
+            VexRVMIOp.VGF2P8AFFINEQB.emit(this, AVXSize.XMM, dst, dst, src, imm8);
+        } else {
+            SSERMIOp.GF2P8AFFINEQB.emit(this, OperandSize.PD, dst, src, imm8);
+        }
+    }
+
+    public final void imull(Register dst, Register src, int value) {
+        if (isByte(value)) {
+            AMD64RMIOp.IMUL_SX.emit(this, OperandSize.DWORD, dst, src, value);
+        } else {
+            AMD64RMIOp.IMUL.emit(this, OperandSize.DWORD, dst, src, value);
+        }
+    }
+
+    public final void imull(Register dst, Register src) {
+        AMD64RMOp.IMUL.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void imulq(Register dst, Register src) {
+        AMD64RMOp.IMUL.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void incl(AMD64Address dst) {
+        AMD64MOp.INC.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void incl(Register dst) {
+        // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
+        AMD64MOp.INC.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void incq(Register dst) {
+        // Don't use it directly. Use Macroincrementq() instead.
+        // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
+        AMD64MOp.INC.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void incq(AMD64Address dst) {
+        AMD64MOp.INC.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void movapd(Register dst, Register src) {
+        SSEOp.MOVAPD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void movaps(Register dst, Register src) {
+        SSEOp.MOVAPS.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void movb(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVB.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void movb(AMD64Address dst, int imm8) {
+        AMD64MIOp.MOVB.emit(this, OperandSize.BYTE, dst, imm8);
+    }
+
+    public final void movb(AMD64Address dst, Register src) {
+        AMD64MROp.MOVB.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void movddup(Register dst, Register src) {
+        SSEOp.MOVDDUP.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void movdl(Register dst, Register src) {
+        if (inRC(XMM, dst) && inRC(CPU, src)) {
+            SSEOp.MOVD.emit(this, OperandSize.DWORD, dst, src);
+        } else if (inRC(XMM, src) && inRC(CPU, dst)) {
+            SSEMROp.MOVD.emit(this, OperandSize.DWORD, dst, src);
+        } else {
+            throw new InternalError("should not reach here");
+        }
+    }
+
+    public final void movdl(Register dst, AMD64Address src) {
+        SSEOp.MOVD.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movdq(Register dst, AMD64Address src) {
+        SSEOp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movdq(AMD64Address dst, Register src) {
+        SSEMROp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movdq(Register dst, Register src) {
+        if (inRC(XMM, dst) && inRC(CPU, src)) {
+            SSEOp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
+        } else if (inRC(XMM, src) && inRC(CPU, dst)) {
+            SSEMROp.MOVQ.emit(this, OperandSize.QWORD, dst, src);
+        } else {
+            throw new InternalError("should not reach here");
+        }
+    }
+
+    public final void movdqa(Register dst, Register src) {
+        SSEOp.MOVDQA.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void movdqu(Register dst, AMD64Address src) {
+        SSEOp.MOVDQU.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void movdqu(Register dst, Register src) {
+        SSEOp.MOVDQU.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void movdqu(AMD64Address dst, Register src) {
+        SSEMROp.MOVDQU.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void movl(Register dst, Register src) {
+        AMD64RMOp.MOV.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movl(Register dst, AMD64Address src) {
+        AMD64RMOp.MOV.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    /**
+     * @param wide use 4 byte encoding for displacements that would normally fit in a byte
+     */
+    public final void movl(Register dst, AMD64Address src, boolean wide) {
+        AMD64RMOp.MOV.emit(this, OperandSize.DWORD, dst, src, wide);
+    }
+
+    public final void movl(AMD64Address dst, int imm32) {
+        AMD64MIOp.MOV.emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void movl(AMD64Address dst, Register src) {
+        AMD64MROp.MOV.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movsbl(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVSXB.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movsbl(Register dst, Register src) {
+        AMD64RMOp.MOVSXB.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movsbq(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVSXB.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movsbq(Register dst, Register src) {
+        AMD64RMOp.MOVSXB.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movsd(Register dst, Register src) {
+        SSEOp.MOVSD.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void movsd(Register dst, AMD64Address src) {
+        SSEOp.MOVSD.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void movsd(AMD64Address dst, Register src) {
+        SSEMROp.MOVSD.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void movslq(Register dst, int imm32) {
+        AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void movslq(AMD64Address dst, int imm32) {
+        AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void movslq(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVSXD.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movslq(Register dst, Register src) {
+        AMD64RMOp.MOVSXD.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movss(Register dst, Register src) {
+        SSEOp.MOVSS.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void movss(Register dst, AMD64Address src) {
+        SSEOp.MOVSS.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void movss(AMD64Address dst, Register src) {
+        SSEMROp.MOVSS.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void movswl(Register dst, Register src) {
+        AMD64RMOp.MOVSX.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movswl(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVSX.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movswq(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVSX.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movw(AMD64Address dst, int imm16) {
+        AMD64MIOp.MOV.emit(this, OperandSize.WORD, dst, imm16);
+    }
+
+    public final void movw(AMD64Address dst, Register src) {
+        AMD64MROp.MOV.emit(this, OperandSize.WORD, dst, src);
+    }
+
+    public final void movw(Register dst, AMD64Address src) {
+        AMD64RMOp.MOV.emit(this, OperandSize.WORD, dst, src);
+    }
+
+    public final void movzbl(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVZXB.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movzbl(Register dst, Register src) {
+        AMD64RMOp.MOVZXB.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movzbq(Register dst, Register src) {
+        AMD64RMOp.MOVZXB.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movzbq(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVZXB.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movzwl(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVZX.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void movzwq(Register dst, AMD64Address src) {
+        AMD64RMOp.MOVZX.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void mull(Register src) {
+        AMD64MOp.MUL.emit(this, OperandSize.DWORD, src);
+    }
+
+    public final void mulpd(Register dst, Register src) {
+        SSEOp.MUL.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void mulpd(Register dst, AMD64Address src) {
+        SSEOp.MUL.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void mulq(Register src) {
+        AMD64MOp.MUL.emit(this, OperandSize.QWORD, src);
+    }
+
+    public final void mulsd(Register dst, Register src) {
+        SSEOp.MUL.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void mulsd(Register dst, AMD64Address src) {
+        SSEOp.MUL.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void mulss(Register dst, Register src) {
+        SSEOp.MUL.emit(this, OperandSize.SS, dst, src);
+    }
+
+    public final void mulxq(Register dst1, Register dst2, Register src) {
+        VexGeneralPurposeRVMOp.MULX.emit(this, AVXSize.QWORD, dst1, dst2, src);
+    }
+
+    public final void negl(Register dst) {
+        AMD64MOp.NEG.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void negq(Register dst) {
+        AMD64MOp.NEG.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void notl(Register dst) {
+        AMD64MOp.NOT.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void notq(Register dst) {
+        AMD64MOp.NOT.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void orl(Register dst, Register src) {
+        AMD64BinaryArithmetic.OR.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void orl(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.OR.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void orl(AMD64Address dst, Register src) {
+        AMD64BinaryArithmetic.OR.mrOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void orl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.OR.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void orq(Register dst, Register src) {
+        AMD64BinaryArithmetic.OR.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void orq(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.OR.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void orq(Register dst, int imm32) {
+        AMD64BinaryArithmetic.OR.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void orqImm32(Register dst, int imm32) {
+        AMD64BinaryArithmetic.OR.getMIOpcode(OperandSize.QWORD, false).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void packusdw(Register dst, Register src) {
+        SSEOp.PACKUSDW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void packuswb(Register dst, Register src) {
+        SSEOp.PACKUSWB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void paddd(Register dst, Register src) {
+        SSEOp.PADDD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void paddd(Register dst, AMD64Address src) {
+        SSEOp.PADDD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void paddq(Register dst, Register src) {
+        SSEOp.PADDQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void palignr(Register dst, Register src, int imm8) {
+        SSERMIOp.PALIGNR.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pand(Register dst, Register src) {
+        SSEOp.PAND.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pand(Register dst, AMD64Address src) {
+        SSEOp.PAND.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pandn(Register dst, Register src) {
+        SSEOp.PANDN.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pblendw(Register dst, Register src, int imm8) {
+        SSERMIOp.PBLENDW.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pclmulqdq(Register dst, Register src, int imm8) {
+        SSERMIOp.PCLMULQDQ.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pcmpeqb(Register dst, Register src) {
+        SSEOp.PCMPEQB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpeqb(Register dst, AMD64Address src) {
+        SSEOp.PCMPEQB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpeqd(Register dst, Register src) {
+        SSEOp.PCMPEQD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpeqd(Register dst, AMD64Address src) {
+        SSEOp.PCMPEQD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpeqw(Register dst, Register src) {
+        SSEOp.PCMPEQW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpeqw(Register dst, AMD64Address src) {
+        SSEOp.PCMPEQW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpestri(Register dst, AMD64Address src, int imm8) {
+        SSERMIOp.PCMPESTRI.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pcmpestri(Register dst, Register src, int imm8) {
+        SSERMIOp.PCMPESTRI.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pcmpgtb(Register dst, Register src) {
+        SSEOp.PCMPGTB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pcmpgtd(Register dst, Register src) {
+        SSEOp.PCMPGTD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pextrb(AMD64Address dst, Register src, int imm8) {
+        SSEMRIOp.PEXTRB.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pextrd(AMD64Address dst, Register src, int imm8) {
+        SSEMRIOp.PEXTRD.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pextrq(Register dst, Register src, int imm8) {
+        SSEMRIOp.PEXTRQ.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pextrq(AMD64Address dst, Register src, int imm8) {
+        SSEMRIOp.PEXTRQ.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pextrw(AMD64Address dst, Register src, int imm8) {
+        SSEMRIOp.PEXTRW.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pinsrb(Register dst, AMD64Address src, int imm8) {
+        SSERMIOp.PINSRB.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pinsrd(Register dst, AMD64Address src, int imm8) {
+        SSERMIOp.PINSRD.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pinsrq(Register dst, Register src, int imm8) {
+        SSERMIOp.PINSRQ.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pinsrq(Register dst, AMD64Address src, int imm8) {
+        SSERMIOp.PINSRQ.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pinsrw(Register dst, Register src, int imm8) {
+        SSERMIOp.PINSRW.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pinsrw(Register dst, AMD64Address src, int imm8) {
+        SSERMIOp.PINSRW.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pminub(Register dst, Register src) {
+        SSEOp.PMINUB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pminud(Register dst, Register src) {
+        SSEOp.PMINUD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pminuw(Register dst, Register src) {
+        SSEOp.PMINUW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxbd(Register dst, AMD64Address src) {
+        SSEOp.PMOVSXBD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxbd(Register dst, Register src) {
+        SSEOp.PMOVSXBD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxbq(Register dst, AMD64Address src) {
+        SSEOp.PMOVSXBQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxbq(Register dst, Register src) {
+        SSEOp.PMOVSXBQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxbw(Register dst, AMD64Address src) {
+        SSEOp.PMOVSXBW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxbw(Register dst, Register src) {
+        SSEOp.PMOVSXBW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxdq(Register dst, AMD64Address src) {
+        SSEOp.PMOVSXDQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxdq(Register dst, Register src) {
+        SSEOp.PMOVSXDQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxwd(Register dst, AMD64Address src) {
+        SSEOp.PMOVSXWD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxwd(Register dst, Register src) {
+        SSEOp.PMOVSXWD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxwq(Register dst, AMD64Address src) {
+        SSEOp.PMOVSXWQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovsxwq(Register dst, Register src) {
+        SSEOp.PMOVSXWQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxbd(Register dst, AMD64Address src) {
+        SSEOp.PMOVZXBD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxbd(Register dst, Register src) {
+        SSEOp.PMOVZXBD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxbq(Register dst, AMD64Address src) {
+        SSEOp.PMOVZXBQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxbq(Register dst, Register src) {
+        SSEOp.PMOVZXBQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxbw(Register dst, AMD64Address src) {
+        SSEOp.PMOVZXBW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxbw(Register dst, Register src) {
+        SSEOp.PMOVZXBW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxdq(Register dst, AMD64Address src) {
+        SSEOp.PMOVZXDQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxdq(Register dst, Register src) {
+        SSEOp.PMOVZXDQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxwd(Register dst, AMD64Address src) {
+        SSEOp.PMOVZXWD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxwd(Register dst, Register src) {
+        SSEOp.PMOVZXWD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxwq(Register dst, AMD64Address src) {
+        SSEOp.PMOVZXWQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pmovzxwq(Register dst, Register src) {
+        SSEOp.PMOVZXWQ.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void popcntl(Register dst, Register src) {
+        AMD64RMOp.POPCNT.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void por(Register dst, Register src) {
+        SSEOp.POR.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pshufb(Register dst, Register src) {
+        SSEOp.PSHUFB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pshufb(Register dst, AMD64Address src) {
+        SSEOp.PSHUFB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pshufd(Register dst, Register src, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERMIOp.PSHUFD.emit(this, OperandSize.PD, dst, src, imm8);
+    }
+
+    public final void pshuflw(Register dst, Register src, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERMIOp.PSHUFLW.emit(this, OperandSize.SD, dst, src, imm8);
+    }
+
+    public final void pslld(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSLLD.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void pslldq(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSLLDQ.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psllq(Register dst, Register shift) {
+        SSEOp.PSLLQ.emit(this, OperandSize.PD, dst, shift);
+    }
+
+    public final void psllq(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSLLQ.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psllw(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSLLW.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psrad(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSRAD.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psrld(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSRLD.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psrldq(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSRLDQ.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psrlq(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSRLQ.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psrlw(Register dst, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        SSERIOp.PSRLW.emit(this, OperandSize.PD, dst, imm8);
+    }
+
+    public final void psubd(Register dst, Register src) {
+        SSEOp.PSUBD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void psubusb(Register dst, Register src) {
+        SSEOp.PSUBUSB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void psubusb(Register dst, AMD64Address src) {
+        SSEOp.PSUBUSB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void psubusw(Register dst, Register src) {
+        SSEOp.PSUBUSW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void psubusw(Register dst, AMD64Address src) {
+        SSEOp.PSUBUSW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void ptest(Register dst, Register src) {
+        SSEOp.PTEST.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void ptest(Register dst, AMD64Address src) {
+        SSEOp.PTEST.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void punpcklbw(Register dst, Register src) {
+        SSEOp.PUNPCKLBW.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void pxor(Register dst, Register src) {
+        SSEOp.PXOR.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void rclq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        AMD64Shift.RCL.miOp.emit(this, OperandSize.QWORD, dst, (byte) imm8);
+    }
+
+    public final void rcpps(Register dst, Register src) {
+        SSEOp.RCPPS.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void rcrq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        AMD64Shift.RCR.miOp.emit(this, OperandSize.QWORD, dst, (byte) imm8);
+    }
+
+    public final void roll(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        AMD64Shift.ROL.miOp.emit(this, OperandSize.DWORD, dst, (byte) imm8);
+    }
+
+    public final void rorq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        AMD64Shift.ROR.miOp.emit(this, OperandSize.QWORD, dst, (byte) imm8);
+    }
+
+    public final void rorxl(Register dst, Register src, int imm8) {
+        VexRMIOp.RORXL.emit(this, AVXSize.XMM, dst, src, (byte) imm8);
+    }
+
+    public final void rorxq(Register dst, Register src, int imm8) {
+        VexRMIOp.RORXQ.emit(this, AVXSize.XMM, dst, src, (byte) imm8);
+    }
+
+    public final void sarl(Register dst) {
+        // Signed divide dst by 2, CL times.
+        AMD64MOp.SAR.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void sarl(Register dst, int imm8) {
+        GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
+        if (imm8 == 1) {
+            AMD64MOp.SAR1.emit(this, OperandSize.DWORD, dst);
+        } else {
+            AMD64MIOp.SAR.emit(this, OperandSize.DWORD, dst, imm8);
+        }
+    }
+
+    public final void sarq(Register dst) {
+        // signed divide dst by 2, CL times.
+        AMD64MOp.SAR.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void sarq(Register dst, int imm8) {
+        GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
+        if (imm8 == 1) {
+            AMD64MOp.SAR1.emit(this, OperandSize.QWORD, dst);
+        } else {
+            AMD64MIOp.SAR.emit(this, OperandSize.QWORD, dst, imm8);
+        }
+    }
+
+    public final void sbbq(Register dst, Register src) {
+        AMD64BinaryArithmetic.SBB.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void sha1msg1(Register dst, Register src) {
+        AMD64RMOp.SHA1MSG1.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void sha1msg2(Register dst, Register src) {
+        AMD64RMOp.SHA1MSG2.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void sha1nexte(Register dst, Register src) {
+        AMD64RMOp.SHA1NEXTE.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void sha1rnds4(Register dst, Register src, int imm8) {
+        AMD64RMIOp.SHA1RNDS4.emit(this, OperandSize.PS, dst, src, imm8);
+    }
+
+    public final void sha256msg1(Register dst, Register src) {
+        AMD64RMOp.SHA256MSG1.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void sha256msg2(Register dst, Register src) {
+        AMD64RMOp.SHA256MSG2.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void sha256rnds2(Register dst, Register src) {
+        AMD64RMOp.SHA256RNDS2.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void shll(Register dst, int imm8) {
+        GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
+        if (imm8 == 1) {
+            AMD64MOp.SHL1.emit(this, OperandSize.DWORD, dst);
+        } else {
+            AMD64MIOp.SHL.emit(this, OperandSize.DWORD, dst, imm8);
+        }
+    }
+
+    public final void shll(Register dst) {
+        // Multiply dst by 2, CL times.
+        AMD64MOp.SHL.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void shlq(Register dst, int imm8) {
+        GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
+        if (imm8 == 1) {
+            AMD64MOp.SHL1.emit(this, OperandSize.QWORD, dst);
+        } else {
+            AMD64MIOp.SHL.emit(this, OperandSize.QWORD, dst, imm8);
+        }
+    }
+
+    public final void shlq(Register dst) {
+        // Multiply dst by 2, CL times.
+        AMD64MOp.SHL.emit(this, OperandSize.QWORD, dst);
+    }
+
+    // Insn: SHLX r32a, r/m32, r32b
+    public final void shlxl(Register dst, Register src1, Register src2) {
+        VexGeneralPurposeRMVOp.SHLX.emit(this, AVXSize.DWORD, dst, src1, src2);
+    }
+
+    public final void shrl(Register dst) {
+        // Unsigned divide dst by 2, CL times.
+        AMD64MOp.SHR.emit(this, OperandSize.DWORD, dst);
+    }
+
+    public final void shrl(Register dst, int imm8) {
+        GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
+        AMD64MIOp.SHR.emit(this, OperandSize.DWORD, dst, imm8);
+    }
+
+    public final void shrq(Register dst, int imm8) {
+        GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
+        if (imm8 == 1) {
+            AMD64MOp.SHR1.emit(this, OperandSize.QWORD, dst);
+        } else {
+            AMD64MIOp.SHR.emit(this, OperandSize.QWORD, dst, imm8);
+        }
+    }
+
+    public final void shrq(Register dst) {
+        // Unsigned divide dst by 2, CL times.
+        AMD64MOp.SHR.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void sqrtsd(Register dst, Register src) {
+        SSEOp.SQRT.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void subl(AMD64Address dst, int imm32) {
+        AMD64BinaryArithmetic.SUB.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void subl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.SUB.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void subl(Register dst, Register src) {
+        AMD64BinaryArithmetic.SUB.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void subpd(Register dst, Register src) {
+        SSEOp.SUB.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void subq(Register dst, int imm32) {
+        AMD64BinaryArithmetic.SUB.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void subq(AMD64Address dst, int imm32) {
+        AMD64BinaryArithmetic.SUB.getMIOpcode(OperandSize.QWORD, isByte(imm32)).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void subq(Register dst, Register src) {
+        AMD64BinaryArithmetic.SUB.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void subqWide(Register dst, int imm32) {
+        // don't use the sign-extending version, forcing a 32-bit immediate
+        AMD64BinaryArithmetic.SUB.getMIOpcode(OperandSize.QWORD, false).emit(this, OperandSize.QWORD, dst, imm32);
+    }
+
+    public final void subsd(Register dst, Register src) {
+        SSEOp.SUB.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void subsd(Register dst, AMD64Address src) {
+        SSEOp.SUB.emit(this, OperandSize.SD, dst, src);
+    }
+
+    public final void testl(Register dst, Register src) {
+        AMD64RMOp.TEST.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void testl(Register dst, AMD64Address src) {
+        AMD64RMOp.TEST.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void testl(AMD64Address dst, int imm32) {
+        AMD64MIOp.TEST.emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void testq(Register dst, Register src) {
+        AMD64RMOp.TEST.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void testq(Register dst, AMD64Address src) {
+        AMD64RMOp.TEST.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void ucomisd(Register dst, Register src) {
+        SSEOp.UCOMIS.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void ucomiss(Register dst, Register src) {
+        SSEOp.UCOMIS.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void unpckhpd(Register dst, Register src) {
+        SSEOp.UNPCKHPD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void unpcklpd(Register dst, Register src) {
+        SSEOp.UNPCKLPD.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void vcvtph2ps(Register dst, Register src) {
+        VexRMOp.VCVTPH2PS.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void vcvtps2ph(Register dst, Register src, int imm8) {
+        VexMRIOp.VCVTPS2PH.emit(this, AVXSize.XMM, dst, src, imm8);
+    }
+
+    public final void vmovdqu(Register dst, AMD64Address src) {
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vmovdqu(Register dst, Register src) {
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vmovdqu(AMD64Address dst, Register src) {
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vmovdqu64(Register dst, AMD64Address src) {
+        VexMoveOp.VMOVDQU64.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void vmovdqu64(AMD64Address dst, Register src) {
+        VexMoveOp.VMOVDQU64.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void vpaddd(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpaddd(Register dst, Register nds, AMD64Address src, AVXSize size) {
+        VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpaddq(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpaddq(Register dst, Register nds, AMD64Address src, AVXSize size) {
+        VexRVMOp.VPADDQ.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpalignr(Register dst, Register nds, Register src, int imm8, AVXSize size) {
+        VexRVMIOp.VPALIGNR.emit(this, size, dst, nds, src, imm8);
+    }
+
+    public final void vpand(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPAND.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpandn(Register dst, Register nds, Register src) {
+        VexRVMOp.VPANDN.emit(this, AVXSize.YMM, dst, nds, src);
+    }
+
+    public final void vpblendd(Register dst, Register nds, Register src, int imm8, AVXSize size) {
+        VexRVMIOp.VPBLENDD.emit(this, size, dst, nds, src, imm8);
+    }
+
+    public final void vpclmulhqhqdq(Register dst, Register nds, Register src) {
+        VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, 0x11);
+    }
+
+    public final void vpclmulhqlqdq(Register dst, Register nds, Register src) {
+        VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, 0x01);
+    }
+
+    public final void vpclmullqhqdq(Register dst, Register nds, Register src) {
+        VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, 0x10);
+    }
+
+    public final void vpclmullqlqdq(Register dst, Register nds, Register src) {
+        VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, 0x00);
+    }
+
+    public final void vpclmulqdq(Register dst, Register nds, Register src, int imm8) {
+        VexRVMIOp.VPCLMULQDQ.emit(this, AVXSize.XMM, dst, nds, src, imm8);
+    }
+
+    public final void vpcmpeqb(Register dst, Register src1, Register src2) {
+        VexRVMOp.VPCMPEQB.emit(this, AVXSize.YMM, dst, src1, src2);
+    }
+
+    public final void vpcmpeqd(Register dst, Register src1, Register src2) {
+        VexRVMOp.VPCMPEQD.emit(this, AVXSize.YMM, dst, src1, src2);
+    }
+
+    public final void vpcmpeqw(Register dst, Register src1, Register src2) {
+        VexRVMOp.VPCMPEQW.emit(this, AVXSize.YMM, dst, src1, src2);
+    }
+
+    public final void vperm2f128(Register dst, Register nds, Register src, int imm8) {
+        VexRVMIOp.VPERM2F128.emit(this, AVXSize.YMM, dst, nds, src, imm8);
+    }
+
+    public final void vperm2i128(Register dst, Register nds, Register src, int imm8) {
+        VexRVMIOp.VPERM2I128.emit(this, AVXSize.YMM, dst, nds, src, imm8);
+    }
+
+    public final void vpmovmskb(Register dst, Register src) {
+        VexRMOp.VPMOVMSKB.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vpmovzxbw(Register dst, AMD64Address src) {
+        VexRMOp.VPMOVZXBW.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vpor(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPOR.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpshufb(Register dst, Register src1, Register src2, AVXSize size) {
+        VexRVMOp.VPSHUFB.emit(this, size, dst, src1, src2);
+    }
+
+    public final void vpshufd(Register dst, Register src, int imm8, AVXSize size) {
+        VexRMIOp.VPSHUFD.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpslld(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftOp.VPSLLD.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpslldq(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftImmOp.VPSLLDQ.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpsllq(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftOp.VPSLLQ.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpsllw(Register dst, Register src, int imm8) {
+        VexShiftOp.VPSLLW.emit(this, AVXSize.YMM, dst, src, imm8);
+    }
+
+    public final void vpsrld(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftOp.VPSRLD.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpsrldq(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftImmOp.VPSRLDQ.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpsrlq(Register dst, Register src, int imm8, AVXSize size) {
+        VexShiftOp.VPSRLQ.emit(this, size, dst, src, imm8);
+    }
+
+    public final void vpsrlw(Register dst, Register src, int imm8) {
+        VexShiftOp.VPSRLW.emit(this, AVXSize.YMM, dst, src, imm8);
+    }
+
+    public final void vptest(Register dst, Register src, AVXSize size) {
+        VexRMOp.VPTEST.emit(this, size, dst, src);
+    }
+
+    public final void vpxor(Register dst, Register nds, Register src, AVXSize size) {
+        VexRVMOp.VPXOR.emit(this, size, dst, nds, src);
+    }
+
+    public final void vpxor(Register dst, Register nds, AMD64Address src, AVXSize size) {
+        VexRVMOp.VPXOR.emit(this, size, dst, nds, src);
+    }
+
+    public final void xaddb(AMD64Address dst, Register src) {
+        AMD64MROp.XADDB.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void xaddl(AMD64Address dst, Register src) {
+        AMD64MROp.XADD.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void xaddq(AMD64Address dst, Register src) {
+        AMD64MROp.XADD.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void xaddw(AMD64Address dst, Register src) {
+        AMD64MROp.XADD.emit(this, OperandSize.WORD, dst, src);
+    }
+
+    public final void xchgb(Register dst, AMD64Address src) {
+        AMD64RMOp.XCHGB.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void xchgl(Register dst, AMD64Address src) {
+        AMD64RMOp.XCHG.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void xchgq(Register dst, AMD64Address src) {
+        AMD64RMOp.XCHG.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void xchgw(Register dst, AMD64Address src) {
+        AMD64RMOp.XCHG.emit(this, OperandSize.WORD, dst, src);
+    }
+
+    public final void xorb(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.XOR.byteRmOp.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void xorl(Register dst, Register src) {
+        AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
+    public final void xorl(Register dst, int imm32) {
+        AMD64BinaryArithmetic.XOR.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
+    }
+
+    public final void xorpd(Register dst, Register src) {
+        SSEOp.XOR.emit(this, OperandSize.PD, dst, src);
+    }
+
+    /**
+     * Caller needs to ensure that loading 128-bit memory from src won't cause a segment fault.
+     * E.g., constants stored into the data section should be aligned to 16 bytes.
+     */
+    public final void xorpd(Register dst, AMD64Address src) {
+        SSEOp.XOR.emit(this, OperandSize.PD, dst, src);
+    }
+
+    public final void xorps(Register dst, Register src) {
+        SSEOp.XOR.emit(this, OperandSize.PS, dst, src);
+    }
+
+    /**
+     * Caller needs to ensure that loading 128-bit memory from src won't cause a segment fault.
+     * E.g., constants stored into the data section should be aligned to 16 bytes.
+     */
+    public final void xorps(Register dst, AMD64Address src) {
+        SSEOp.XOR.emit(this, OperandSize.PS, dst, src);
+    }
+
+    public final void xorq(Register dst, Register src) {
+        AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    // Mask register related instructions
+
+    public final void kmovb(Register dst, Register src) {
+        VexMoveMaskOp.KMOVB.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovb(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVB.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovb(Register dst, AMD64Address src) {
+        VexMoveMaskOp.KMOVB.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovd(Register dst, Register src) {
+        VexMoveMaskOp.KMOVD.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovd(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVD.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovd(Register dst, AMD64Address src) {
+        VexMoveMaskOp.KMOVD.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovq(Register dst, Register src) {
+        VexMoveMaskOp.KMOVQ.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovq(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVQ.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovq(Register dst, AMD64Address src) {
+        VexMoveMaskOp.KMOVQ.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovw(Register dst, Register src) {
+        VexMoveMaskOp.KMOVW.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovw(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVW.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovw(Register dst, AMD64Address src) {
+        VexMoveMaskOp.KMOVW.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    // This instruction produces ZF or CF flags
+    public final void kortestd(Register src1, Register src2) {
+        VexRROp.KORTESTD.emit(this, AVXSize.XMM, src1, src2);
+    }
+
+    // This instruction produces ZF or CF flags
+    public final void kortestq(Register src1, Register src2) {
+        VexRROp.KORTESTQ.emit(this, AVXSize.XMM, src1, src2);
+    }
+
+    public final void kshiftrw(Register dst, Register src, int imm8) {
+        VexMaskRRIOp.KSHIFTRW.emit(this, AVXSize.XMM, dst, src, imm8);
+    }
+
+    public final void ktestd(Register src1, Register src2) {
+        VexRROp.KTESTD.emit(this, AVXSize.XMM, src1, src2);
+    }
+
+    public final void ktestq(Register src1, Register src2) {
+        VexRROp.KTESTQ.emit(this, AVXSize.XMM, src1, src2);
+    }
+
+    // AVX512 instructions
+
+    // Insn: VMOVDQU16 zmm1 {k1}{z}, zmm2/m512
+    // -----
+    // Insn: VMOVDQU16 zmm1, m512
+    public final void evmovdqu16(Register dst, AMD64Address src) {
+        VexMoveOp.EVMOVDQU16.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void evmovdqu16(Register dst, Register src) {
+        VexMoveOp.EVMOVDQU16.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    // Insn: VMOVDQU16 zmm1, k1:z, m512
+    public final void evmovdqu16(Register dst, Register mask, AMD64Address src) {
+        VexMoveOp.EVMOVDQU16.emit(this, AVXSize.ZMM, dst, src, mask, Z1, B0);
+    }
+
+    // Insn: VMOVDQU16 zmm2/m512 {k1}{z}, zmm1
+    // -----
+    // Insn: VMOVDQU16 m512, zmm1
+    public final void evmovdqu16(AMD64Address dst, Register src) {
+        VexMoveOp.EVMOVDQU16.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    // Insn: VMOVDQU16 m512, k1, zmm1
+    public final void evmovdqu16(AMD64Address dst, Register mask, Register src) {
+        VexMoveOp.EVMOVDQU16.emit(this, AVXSize.ZMM, dst, src, mask);
+    }
+
+    public final void evmovdqu64(Register dst, AMD64Address src) {
+        VexMoveOp.EVMOVDQU64.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void evmovdqu64(Register dst, Register mask, AMD64Address src) {
+        VexMoveOp.EVMOVDQU64.emit(this, AVXSize.ZMM, dst, src, mask, Z1, B0);
+    }
+
+    public final void evmovdqu64(AMD64Address dst, Register src) {
+        VexMoveOp.EVMOVDQU64.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void evmovdqu64(AMD64Address dst, Register mask, Register src) {
+        VexMoveOp.EVMOVDQU64.emit(this, AVXSize.ZMM, dst, src, mask);
+    }
+
+    // Insn: VPBROADCASTW zmm1 {k1}{z}, reg
+    // -----
+    // Insn: VPBROADCASTW zmm1, reg
+    public final void evpbroadcastw(Register dst, Register src) {
+        VexRROp.EVPBROADCASTW_GPR.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void evpcmpeqb(Register kdst, Register nds, AMD64Address src) {
+        VexRVMOp.EVPCMPEQB.emit(this, AVXSize.ZMM, kdst, nds, src);
+    }
+
+    // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
+    // -----
+    // Insn: VPCMPQTB k1, zmm2, m512
+    public final void evpcmpgtb(Register kdst, Register nds, AMD64Address src) {
+        VexRVMOp.EVPCMPGTB.emit(this, AVXSize.ZMM, kdst, nds, src);
+    }
+
+    // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
+    // -----
+    // Insn: VPCMPQTB k1, k2, zmm2, m512
+    public final void evpcmpgtb(Register kdst, Register mask, Register nds, AMD64Address src) {
+        VexRVMOp.EVPCMPGTB.emit(this, AVXSize.ZMM, kdst, nds, src, mask);
+    }
+
+    // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
+    // -----
+    // Insn: VPCMPUW k1, zmm2, zmm3, imm8
+    public final void evpcmpuw(Register kdst, Register nds, Register src, int vcc) {
+        VexRVMIOp.EVPCMPUW.emit(this, AVXSize.ZMM, kdst, nds, src, vcc);
+    }
+
+    // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
+    // -----
+    // Insn: VPCMPUW k1, k2, zmm2, zmm3, imm8
+    public final void evpcmpuw(Register kdst, Register mask, Register nds, Register src, int vcc) {
+        VexRVMIOp.EVPCMPUW.emit(this, AVXSize.ZMM, kdst, nds, src, mask, vcc);
+    }
+
+    public final void evpermt2q(Register dst, Register src1, Register src2) {
+        VexRVMOp.EVPERMT2Q.emit(this, AVXSize.ZMM, dst, src1, src2);
+    }
+
+    // Insn: VPMOVWB ymm1/m256 {k1}{z}, zmm2
+    // -----
+    // Insn: VPMOVWB m256, zmm2
+    public final void evpmovwb(AMD64Address dst, Register src) {
+        VexMROp.EVPMOVWB.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    // Insn: VPMOVWB m256, k1, zmm2
+    public final void evpmovwb(AMD64Address dst, Register mask, Register src) {
+        VexMROp.EVPMOVWB.emit(this, AVXSize.ZMM, dst, src, mask, Z0, B0);
+    }
+
+    public final void evpmovzxbw(Register dst, AMD64Address src) {
+        VexMoveOp.EVPMOVZXBW.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    // Insn: VPMOVZXBW zmm1 {k1}{z}, ymm2/m256
+    // -----
+    // Insn: VPMOVZXBW zmm1, k1, m256
+    public final void evpmovzxbw(Register dst, Register mask, AMD64Address src) {
+        VexMoveOp.EVPMOVZXBW.emit(this, AVXSize.ZMM, dst, src, mask, Z0, B0);
+    }
+
+    public final void evprolq(Register dst, Register src, int imm8) {
+        EvexRMIExtendOp.EVPROLQ.emit(this, AVXSize.ZMM, dst, src, imm8);
+    }
+
+    public final void evprolvq(Register dst, Register src1, Register src2) {
+        VexRVMOp.EVPROLVQ.emit(this, AVXSize.ZMM, dst, src1, src2);
+    }
+
+    public final void evpternlogq(Register dst, int imm8, Register src1, Register src2) {
+        VexRVMIOp.EVPTERNLOGQ.emit(this, AVXSize.ZMM, dst, src1, src2, imm8);
+    }
+
+    public final void evpxorq(Register dst, Register mask, Register nds, AMD64Address src) {
+        VexRVMOp.EVPXORQ.emit(this, AVXSize.ZMM, dst, nds, src, mask);
     }
 
 }

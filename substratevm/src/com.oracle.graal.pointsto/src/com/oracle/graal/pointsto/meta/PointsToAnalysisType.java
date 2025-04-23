@@ -62,7 +62,7 @@ public class PointsToAnalysisType extends AnalysisType {
             var bb = (PointsToAnalysis) universe.getBigbang();
             for (var f : getInstanceFields(true)) {
                 var field = (AnalysisField) f;
-                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
             }
         }
         return result;
@@ -103,6 +103,7 @@ public class PointsToAnalysisType extends AnalysisType {
          */
         UnsafeStoreTypeFlow store = new UnsafeStoreTypeFlow(originalLocation, this, componentType, objectFlow, null);
         store.markAsContextInsensitive();
+        store.enableFlow(bb);
         return store;
     }
 
@@ -133,6 +134,7 @@ public class PointsToAnalysisType extends AnalysisType {
          */
         StoreIndexedTypeFlow store = new StoreIndexedTypeFlow(originalLocation, this, objectFlow, null);
         store.markAsContextInsensitive();
+        store.enableFlow(bb);
         return store;
     }
 

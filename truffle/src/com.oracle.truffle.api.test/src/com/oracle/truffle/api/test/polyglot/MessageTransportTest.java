@@ -204,7 +204,7 @@ public class MessageTransportTest extends AbstractPolyglotTest {
         CLOSE
     }
 
-    private static class MessageHandlerVerifier implements MessageEndpoint {
+    private static final class MessageHandlerVerifier implements MessageEndpoint {
 
         private MessageKind expectedKind;
         private String expectedText;

@@ -26,8 +26,6 @@ package com.oracle.svm.core.option;
 
 import java.util.List;
 
-import org.graalvm.collections.Pair;
-
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.util.VMError;
@@ -59,12 +57,12 @@ public abstract class ReplacingLocatableMultiOptionValue<T> extends LocatableMul
                 VMError.shouldNotReachHere("Cannot update ReplacingLocatableMultiOptionValue of type " + valueType + " with value of type " + newOptionValues.valueType);
             }
 
-            for (Pair<?, String> p : newOptionValues.values) {
-                values.add(Pair.create(valueType.cast(p.getLeft()), p.getRight()));
+            for (var p : newOptionValues.values) {
+                values.add(new ValueWithOrigin<>(valueType.cast(p.value()), p.origin()));
             }
         } else {
 
-            String origin = LocatableOption.valueOrigin(value);
+            OptionOrigin origin = OptionOrigin.from(LocatableOption.valueOrigin(value));
             Class<?> rawValueClass = rawValue.getClass();
             boolean multipleElements = rawValueClass.isArray();
             Class<?> rawValueElementType = multipleElements ? rawValueClass.getComponentType() : rawValueClass;
@@ -73,10 +71,10 @@ public abstract class ReplacingLocatableMultiOptionValue<T> extends LocatableMul
             }
             if (multipleElements) {
                 for (Object singleRawValue : (Object[]) rawValue) {
-                    values.add(Pair.create(valueType.cast(singleRawValue), origin));
+                    values.add(new ValueWithOrigin<>(valueType.cast(singleRawValue), origin));
                 }
             } else {
-                values.add(Pair.create(valueType.cast(rawValue), origin));
+                values.add(new ValueWithOrigin<>(valueType.cast(rawValue), origin));
             }
         }
     }
@@ -95,7 +93,7 @@ public abstract class ReplacingLocatableMultiOptionValue<T> extends LocatableMul
         }
 
         public boolean contains(String s) {
-            return values.stream().map(Pair::getLeft).anyMatch(val -> val.equals(s));
+            return values.stream().map(ValueWithOrigin::value).anyMatch(val -> val.equals(s));
         }
 
         private DelimitedString(String delimiter, List<String> defaultStrings) {
@@ -112,10 +110,6 @@ public abstract class ReplacingLocatableMultiOptionValue<T> extends LocatableMul
 
         public static DelimitedString buildWithCommaDelimiter(String... defaultStrings) {
             return new DelimitedString(",", List.of(defaultStrings));
-        }
-
-        public static DelimitedString buildWithDefaults(String... defaultStrings) {
-            return new DelimitedString(NO_DELIMITER, List.of(defaultStrings));
         }
     }
 

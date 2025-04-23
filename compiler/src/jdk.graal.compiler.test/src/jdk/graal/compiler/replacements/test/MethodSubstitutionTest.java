@@ -36,7 +36,6 @@ import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -129,7 +128,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, false, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClass);
         }

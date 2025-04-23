@@ -47,9 +47,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.jfr.internal.JVM;
-import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
-import jdk.jfr.internal.Logger;
 
 @SuppressWarnings({"static-method", "unused"})
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
@@ -174,13 +172,12 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /**
      * As of 22+27, This method is both used to set cutoff tick values for leak profiling and
-     * for @Deprecated events.
+     * for @Deprecated events. Note that this method is called during JFR startup.
      */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
     public static void setMiscellaneous(long eventTypeId, long value) {
-        Logger.log(LogTag.JFR_SETTING, LogLevel.WARN, "@Deprecated JFR events, and leak profiling are not yet supported.");
-        /* Explicitly don't throw an exception (would result in an unspecific warning). */
+        /* Ignore the call and don't throw an exception (would result in an unspecific warning). */
     }
 
     /** See {@link JVM#getThreadId}. */
@@ -549,6 +546,16 @@ public final class Target_jdk_jfr_internal_JVM {
     public static long hostTotalSwapMemory() {
         /* Not implemented at the moment. */
         return -1;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDKLatest.class) //
+    public static boolean isProduct() {
+        /*
+         * Currently only used for jdk.jfr.internal.tool.Command, which is not relevant for us. We
+         * implement it nevertheless and return true to disable non-product features.
+         */
+        return true;
     }
 }
 

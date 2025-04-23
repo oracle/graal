@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle.test.builtins;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -32,7 +33,9 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -47,9 +50,10 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
     public SLNull runTests(TruffleString startsWith, SLFunction harness,
-                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualNode) {
+                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualNode,
+                    @Bind SLContext context) {
         boolean found = false;
-        for (SLFunction function : SLContext.get(this).getFunctionRegistry().getFunctions()) {
+        for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
             int length = startsWith.byteLength(SLLanguage.STRING_ENCODING);
             if (function.getName().byteLength(SLLanguage.STRING_ENCODING) >= length && regionEqualNode.execute(function.getName(), 0, startsWith, 0, length, SLLanguage.STRING_ENCODING) &&
                             getSource(function) == getSource(harness) && getSource(function) != null) {
@@ -58,13 +62,13 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
             }
         }
         if (!found) {
-            throw new SLAssertionError("No tests found to execute.", this);
+            throw SLException.create("No tests found to execute.", this);
         }
         return SLNull.SINGLETON;
     }
 
     private static Source getSource(SLFunction function) {
-        SourceSection section = function.getCallTarget().getRootNode().getSourceSection();
+        SourceSection section = ((SLRootNode) function.getCallTarget().getRootNode()).ensureSourceSection();
         if (section != null) {
             return section.getSource();
         }

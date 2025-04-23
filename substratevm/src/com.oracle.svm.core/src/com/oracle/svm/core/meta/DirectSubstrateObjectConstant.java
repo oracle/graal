@@ -50,9 +50,6 @@ public final class DirectSubstrateObjectConstant extends SubstrateObjectConstant
         this.object = object;
         this.identityHashCode = identityHashCode;
         assert object != null;
-        if (SubstrateUtil.isInLibgraal()) {
-            throw new InternalError();
-        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -35,7 +35,7 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isSupported(int version, boolean builtInLibrary) {
-        if (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDKLatest.JNI_VERSION_LATEST()) {
+        if (JavaVersionUtil.JAVA_SPEC > 21 && version == JNIVersionJDKLatest.JNI_VERSION_LATEST()) {
             return true;
         }
         if (version == JNI_VERSION_21() || version == JNI_VERSION_20() || version == JNI_VERSION_19() || version == JNI_VERSION_10() || version == JNI_VERSION_9() || version == JNI_VERSION_1_8()) {

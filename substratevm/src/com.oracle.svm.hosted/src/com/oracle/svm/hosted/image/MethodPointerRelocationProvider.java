@@ -24,23 +24,33 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.hosted.image.NativeImage.localSymbolNameForMethod;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public class MethodPointerRelocationProvider {
+
+    private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
 
     public static MethodPointerRelocationProvider singleton() {
         return ImageSingletons.lookup(MethodPointerRelocationProvider.class);
     }
 
     public void markMethodPointerRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target,
-                    long addend, @SuppressWarnings("unused") boolean isStaticallyResolved) {
-        section.markRelocationSite(offset, relocationKind, localSymbolNameForMethod(target), addend);
+                    long addend, MethodPointer methodPointer, boolean isInjectedNotCompiled) {
+        String symbolName;
+        if (imageLayer) {
+            symbolName = LayeredDispatchTableSupport.singleton().getSymbolName(methodPointer, target, isInjectedNotCompiled);
+        } else {
+            symbolName = NativeImage.localSymbolNameForMethod(target);
+        }
+        section.markRelocationSite(offset, relocationKind, symbolName, addend);
     }
 }
 

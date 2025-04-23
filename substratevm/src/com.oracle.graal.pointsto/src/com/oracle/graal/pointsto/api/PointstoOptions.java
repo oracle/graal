@@ -37,7 +37,10 @@ import jdk.graal.compiler.options.OptionKey;
 public class PointstoOptions {
 
     @Option(help = "Track primitive values using the infrastructure of points-to analysis.")//
-    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(true);
+
+    @Option(help = "Use predicates in points-to analysis.")//
+    public static final OptionKey<Boolean> UsePredicates = new OptionKey<>(true);
 
     @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
     public static final OptionKey<Boolean> UseExperimentalReachabilityAnalysis = new OptionKey<>(false);
@@ -131,6 +134,15 @@ public class PointstoOptions {
     @Option(help = "Allow a type flow state to contain types not compatible with its declared type.")//
     public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
+    /**
+     * This flag enables conservative modeling of unsafe access during the analysis. First, the type
+     * state of unsafe accessed fields now contains all instantiated subtypes of their declared
+     * type. Second, all unsafe loads are saturated by default; we do this because we assume we
+     * cannot accurately track which fields can be unsafe accessed.
+     */
+    @Option(help = "Conservative unsafe access injects all unsafe accessed fields with the instantiated subtypes of their declared type and saturates all unsafe loads.")//
+    public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(false);
+
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//
     static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 
@@ -221,6 +233,11 @@ public class PointstoOptions {
 
                 default:
                     throw shouldNotReachHere("Unknown context sensitivity setting:" + newValue);
+            }
+            if (!newValue.toLowerCase(Locale.ROOT).equals("insens")) {
+                /* GR-58495: WP-SCCP is not yet compatible with context-sensitive analysis. */
+                TrackPrimitiveValues.update(values, false);
+                UsePredicates.update(values, false);
             }
         }
     };

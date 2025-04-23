@@ -50,9 +50,13 @@
     # The extra steps and mx arguments to be applied to build libgraal with PGO
     local is_libgraal = std.objectHasAll(self, "platform") && std.findSubstr("libgraal", self.platform) != [],
     local with_profiling = !std.objectHasAll(self, "disable_profiling") || !self.disable_profiling,
+    local libgraal_only(value) = if is_libgraal then value else [],
     local libgraal_profiling_only(value) = if is_libgraal && with_profiling then value else [],
     local collect_libgraal_profile = libgraal_profiling_only(config.compiler.collect_libgraal_profile()),
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
+    local measure_libgraal_size = libgraal_profiling_only([
+      self.plain_benchmark_cmd + ["file-size:*", "--"] + self.extra_vm_args,
+    ] + self._maybe_bench_upload()),
 
     job_prefix:: "bench-compiler",
     tags+: {opt_post_merge+: ["bench-compiler"]},
@@ -91,13 +95,14 @@
     ]
     + if self.should_mx_build then collect_libgraal_profile + [
       ["mx", "hsdis", "||", "true"],
-      ["mx"] + use_libgraal_profile + ["build"]
-    ] else [],
+      ["mx"] + use_libgraal_profile + ["build"],
+    ] + measure_libgraal_size else [],
     should_upload_results:: true,
     _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
-    teardown+: if self.should_upload_results then [
-      self._bench_upload()
-    ] else []
+    _maybe_bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: if self.should_upload_results then [
+      self._bench_upload(filename)
+    ] else [],
+    teardown+: self._maybe_bench_upload()
   },
 
   // JVM configurations
@@ -175,13 +180,6 @@
     platform+:: "-zgc",
     environment+: {
       "JVM_CONFIG"+: "-zgc",
-    }
-  },
-
-  gen_zgc_mode:: {
-    platform+:: "-gen-zgc",
-    environment+: {
-      "JVM_CONFIG"+: "-gen-zgc",
     }
   },
 

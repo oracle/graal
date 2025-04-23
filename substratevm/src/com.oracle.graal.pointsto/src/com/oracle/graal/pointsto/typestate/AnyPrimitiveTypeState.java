@@ -24,14 +24,6 @@
  */
 package com.oracle.graal.pointsto.typestate;
 
-import java.util.Iterator;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.AnalysisError;
-
 /**
  * Represents 'any' primitive value - a value, about which we do not maintain any useful
  * information.
@@ -48,69 +40,30 @@ import com.oracle.graal.pointsto.util.AnalysisError;
  * </br>
  * When a type flow receives this state, it leads to immediate saturation.
  */
-public class AnyPrimitiveTypeState extends TypeState {
+public final class AnyPrimitiveTypeState extends PrimitiveTypeState {
 
     static final AnyPrimitiveTypeState SINGLETON = new AnyPrimitiveTypeState();
 
-    protected AnyPrimitiveTypeState() {
-    }
-
-    private static RuntimeException shouldNotReachHere() {
-        throw AnalysisError.shouldNotReachHere("This method should never be called.");
-    }
-
-    @Override
-    public int typesCount() {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    public AnalysisType exactType() {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    protected Iterator<AnalysisType> typesIterator(BigBang bb) {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    public boolean containsType(AnalysisType exactType) {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    public int objectsCount() {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    protected Iterator<AnalysisObject> objectsIterator(BigBang bb) {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    protected Iterator<AnalysisObject> objectsIterator(AnalysisType type) {
-        throw shouldNotReachHere();
-    }
-
-    @Override
-    public boolean canBeNull() {
-        return false;
-    }
-
-    @Override
-    public TypeState forCanBeNull(PointsToAnalysis bb, boolean stateCanBeNull) {
-        throw shouldNotReachHere();
+    private AnyPrimitiveTypeState() {
     }
 
     @Override
     public String toString() {
-        return "PrimitiveTypeState";
+        return "AnyPrimitiveTypeState";
     }
 
     @Override
     public boolean equals(Object o) {
         return this == o;
+    }
+
+    @Override
+    public boolean canBeFalse() {
+        return true;
+    }
+
+    @Override
+    public boolean canBeTrue() {
+        return true;
     }
 }

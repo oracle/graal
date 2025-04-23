@@ -463,13 +463,13 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         public String m0(String argument, @Exclusive @Cached InlinableNode inlinableNode,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             return inlinableNode.execute(node, argument);
         }
 
         @ExportMessage
         public String m1(String argument, @Exclusive @Cached InlinableNode inlinableNode,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             return inlinableNode.execute(node, argument);
         }
 
@@ -478,7 +478,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
             @Specialization(guards = "argument == cachedArgument", limit = "3")
             static String doCached(ExportInlinedObject1 receiver, String argument,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached("argument") String cachedArgument,
                             @Cached InlinableNode inlinableNode) {
                 return inlinableNode.execute(node, argument);
@@ -487,7 +487,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
             @Specialization(replaces = "doCached")
             static String doGeneric(ExportInlinedObject1 receiver, String argument,
                             @Exclusive @Cached InlinableNode node,
-                            @Bind("this") Node library) {
+                            @Bind Node library) {
                 return node.execute(library, argument);
             }
         }
@@ -551,7 +551,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         @ExpectError("Exported message node class must not be private.")
-        private static class Foo {
+        private static final class Foo {
 
             static Foo create() {
                 return null;

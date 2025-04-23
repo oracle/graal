@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -671,6 +671,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             } else {
                 assert curState instanceof DFAFindInnerLiteralStateNode;
                 assert isForward();
+                inputAdvance(locals);
                 DFAFindInnerLiteralStateNode state = (DFAFindInnerLiteralStateNode) curState;
                 while (true) {
                     if (injectBranchProbability(EXIT_PROBABILITY, !inputHasNext(locals))) {
@@ -734,6 +735,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             short lastTransition = ((DFAInitialStateNode) curState).getCgLastTransition()[i];
             if (lastTransition >= 0) {
                 locals.setLastTransition(lastTransition);
+            }
+        } else if (isSimpleCG()) {
+            DFASimpleCG simpleCG = ((DFAInitialStateNode) curState).getSimpleCG();
+            if (simpleCG != null) {
+                simpleCG.getTransitions()[i].apply(locals.getCGData().results, locals.getIndex(), getProperties().tracksLastGroup(), isForward());
             }
         }
         return successors[i];

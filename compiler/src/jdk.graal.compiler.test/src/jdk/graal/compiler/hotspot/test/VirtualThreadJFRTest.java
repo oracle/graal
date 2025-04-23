@@ -44,12 +44,13 @@ import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingFile;
 import jdk.vm.ci.code.InstalledCode;
 
+// Ported from openjdk/test/jdk/jdk/jfr/threading/TestManyVirtualThreads.java
 public class VirtualThreadJFRTest extends SubprocessTest {
     private static final int VIRTUAL_THREAD_COUNT = 100_000;
     private static final int STARTER_THREADS = 10;
 
     @Name("test.Tester")
-    private static class TestEvent extends Event {
+    private static final class TestEvent extends Event {
     }
 
     private static boolean isJFRAvailable() {
@@ -117,8 +118,6 @@ public class VirtualThreadJFRTest extends SubprocessTest {
                             new OptionValues(getInitialOptions(), GraalOptions.RemoveNeverExecutedCode, false));
             assertTrue(code.isValid());
             testSnippet();
-            assertTrue(code.isValid());
-            code.invalidate();
         } catch (ClassNotFoundException e) {
             fail(e.getMessage());
         }

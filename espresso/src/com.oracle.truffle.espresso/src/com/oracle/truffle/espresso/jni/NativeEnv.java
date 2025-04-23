@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.jni;
 
 import java.util.Collections;
@@ -29,7 +28,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CallTarget;
@@ -105,16 +103,12 @@ public abstract class NativeEnv extends ContextAccessImpl {
         assert args.length == lookupCallBackArgsCount();
     }
 
-    public JNIHandles getHandles() {
-        return jni().getHandles();
+    public final JNIHandles getHandles() {
+        return getContext().getHandles();
     }
 
     protected final InteropLibrary getUncached() {
         return uncached;
-    }
-
-    protected JniEnv jni() {
-        return getContext().getJNI();
     }
 
     // endregion Exposed interface
@@ -213,7 +207,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
     private TruffleObject createNativeClosureForFactory(CallableFromNative.Factory factory, String methodName) {
         // Dummy placeholder for unimplemented/unknown methods.
         if (factory == null) {
-            String envName = NativeEnv.this.getClass().getSimpleName();
+            String envName = getClass().getSimpleName();
             getLogger().log(Level.FINER, "Fetching unknown/unimplemented {0} method: {1}", new Object[]{envName, methodName});
             @Pointer
             TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(0, new Callback.Function() {
@@ -237,48 +231,21 @@ public abstract class NativeEnv extends ContextAccessImpl {
     }
 
     private static class NativeRootNode extends RootNode {
-
-        @FunctionalInterface
-        private interface NativeEnvComputer extends Function<EspressoContext, Object> {
-            NativeEnvComputer getVM = EspressoContext::getVM;
-            NativeEnvComputer getManagement = context -> context.getVM().getManagement();
-            NativeEnvComputer getJNI = EspressoContext::getJNI;
-            NativeEnvComputer getJvmti = context -> context.getVM().getJvmti();
-        }
-
         @SuppressWarnings("FieldMayBeFinal") //
         @Child private CallableFromNative node;
-        private final NativeEnvComputer getNativeEnvFromContext;
         private final String name;
+        private final NativeEnv env;
 
-        NativeRootNode(EspressoLanguage language, CallableFromNative node, String name) {
-            super(language);
+        NativeRootNode(NativeEnv env, CallableFromNative node, String name) {
+            super(env.getLanguage());
             this.node = node;
             this.name = name;
-            String generatedBy = node.generatedBy();
-            switch (generatedBy) {
-                case "VmImpl":
-                    getNativeEnvFromContext = NativeEnvComputer.getVM;
-                    break;
-                case "ManagementImpl":
-                    getNativeEnvFromContext = NativeEnvComputer.getManagement;
-                    break;
-                case "JniImpl":
-                    getNativeEnvFromContext = NativeEnvComputer.getJNI;
-                    break;
-                case "JvmtiImpl":
-                    getNativeEnvFromContext = NativeEnvComputer.getJvmti;
-                    break;
-                default:
-                    throw EspressoError.shouldNotReachHere("Unknown NativeEnv subclass found " + generatedBy);
-            }
+            this.env = env;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            EspressoContext context = EspressoContext.get(this);
-            Object nativeEnv = getNativeEnvFromContext.apply(context);
-            return node.invoke(nativeEnv, frame.getArguments());
+            return node.invoke(env, frame.getArguments());
         }
 
         @Override
@@ -311,7 +278,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
                             if (actualTarget == null) {
                                 CallableFromNative subst = factory.create();
                                 String name = getName() + '.' + factory.methodName();
-                                NativeRootNode rootNode = new NativeRootNode(getLanguage(), subst, name);
+                                NativeRootNode rootNode = new NativeRootNode(NativeEnv.this, subst, name);
                                 target = actualTarget = rootNode.getCallTarget();
                             }
                         }
@@ -326,7 +293,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
                                         : (e instanceof StackOverflowError)
                                                         ? getContext().getStackOverflow()
                                                         : getContext().getOutOfMemory();
-                        jni().setPendingException(wrappedError);
+                        EspressoLanguage.get(null).setPendingException(wrappedError);
                         return defaultValue(factory.returnType());
                     }
                     throw e;

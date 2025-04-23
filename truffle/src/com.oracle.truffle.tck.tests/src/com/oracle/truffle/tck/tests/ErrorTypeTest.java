@@ -63,6 +63,33 @@ import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.AfterClass;
 import org.junit.Assume;
 
+/**
+ * This test class is designed to validate how language expressions and statements handle invalid
+ * values. Unlike other TCK tests, this test explicitly examines scenarios where values passed to
+ * language operators or statements are not assignable to their expected parameter types. The goal
+ * is to ensure that the language correctly throws exceptions when processing these invalid values.
+ * <p>
+ * The expected behavior is that the execution of the code snippets under test will throw a
+ * {@link PolyglotException} when invalid values are encountered. All types not explicitly listed as
+ * valid in expression or statement snippet are considered invalid, and the test expects the
+ * execution to fail with a {@link PolyglotException} in such cases.
+ * <p>
+ * The following features may help {@link org.graalvm.polyglot.tck.LanguageProvider} implementers in
+ * specifying all valid snippet types, ensuring this test passes successfully.
+ * <ul>
+ * <li><b>Overloaded Snippets:</b> Expression and statement snippets may support multiple overloads,
+ * where more snippets with the same name and different parameter types are provided. The test
+ * framework considers all valid parameter types across these overloads and removes them from an
+ * invalid values set. An example can be found in the <a href=
+ * "https://github.com/oracle/graaljs/blob/fad9af323bbf014168bda8f1aae3c96b08c7d33e//graal-js/src/com.oracle.truffle.js.test.sdk/src/com/oracle/truffle/js/test/sdk/tck/JavaScriptTCKLanguageProvider.java#L185">
+ * JavaScript '+' expression</a>.</li>
+ * <li><b>Custom Result Verification:</b> Snippets may register a custom implementation of
+ * {@link org.graalvm.polyglot.tck.ResultVerifier} to allow dynamic exception filtering or
+ * additional validation during test execution. An example can be found in the <a href=
+ * "https://github.com/oracle/graaljs/blob/fad9af323bbf014168bda8f1aae3c96b08c7d33e//graal-js/src/com.oracle.truffle.js.test.sdk/src/com/oracle/truffle/js/test/sdk/tck/JavaScriptTCKLanguageProvider.java#L223">
+ * JavaScript '>>>' expression</a>.</li>
+ * </ul>
+ */
 @RunWith(Parameterized.class)
 public class ErrorTypeTest {
 
@@ -256,7 +283,7 @@ public class ErrorTypeTest {
                     } else {
                         throw new AssertionError(
                                         TestUtil.formatErrorMessage(
-                                                        "Unexpected Exception: " + e.getMessage() + ", expected: " + polyglotException.getMessage(),
+                                                        "Unexpected Exception: " + e + ", expected: " + polyglotException,
                                                         testRun,
                                                         context, null, polyglotException),
                                         e);

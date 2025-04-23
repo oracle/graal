@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -141,14 +141,7 @@ public final class DebugStackTraceElement {
         }
         try {
             Object guestObject = traceElement.getGuestObject();
-            if (InteropLibrary.getUncached().hasExecutableName(guestObject)) {
-                try {
-                    return InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExecutableName(guestObject));
-                } catch (UnsupportedMessageException ex) {
-                    throw CompilerDirectives.shouldNotReachHere(ex);
-                }
-            }
-            return null;
+            return getExecutableName(guestObject);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -165,12 +158,32 @@ public final class DebugStackTraceElement {
      * @since 19.0
      */
     public SourceSection getSourceSection() {
+        try {
+            return getSourceSectionImpl();
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            RootNode root = findCurrentRoot();
+            LanguageInfo languageInfo = root != null ? root.getLanguageInfo() : null;
+            throw DebugException.create(session, ex, languageInfo);
+        }
+    }
+
+    private SourceSection getSourceSectionImpl() {
         if (isHost()) {
             return null;
         }
-        Node node = traceElement.getLocation();
-        if (node != null) {
-            return session.resolveSection(node);
+        Object guestObject = traceElement.getGuestObject();
+        SourceSection sc = null;
+        if (InteropLibrary.getUncached().hasSourceLocation(guestObject)) {
+            try {
+                sc = InteropLibrary.getUncached().getSourceLocation(guestObject);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        if (sc != null) {
+            return session.resolveSection(sc);
         }
         return null;
     }
@@ -187,7 +200,7 @@ public final class DebugStackTraceElement {
         if (isHost()) {
             return null;
         }
-        Node node = traceElement.getLocation();
+        Node node = traceElement.getInstrumentableLocation();
         if (node == null) {
             return null;
         }
@@ -241,19 +254,16 @@ public final class DebugStackTraceElement {
                 stackTraceElement = hostTraceElement;
             } else {
                 LanguageInfo language = getLanguage();
-                String declaringClass = language != null ? "<" + language.getId() + ">" : "<unknown>";
-                String methodName;
+                String methodName = null;
+                String metaQualifiedName = null;
+                SourceSection sourceLocation = null;
                 try {
                     Object guestObject = traceElement.getGuestObject();
-                    if (InteropLibrary.getUncached().hasExecutableName(guestObject)) {
-                        try {
-                            methodName = InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExecutableName(guestObject));
-                        } catch (UnsupportedMessageException ex) {
-                            throw CompilerDirectives.shouldNotReachHere(ex);
-                        }
-                    } else {
-                        methodName = "";
+                    if (guestObject != null) {
+                        methodName = getExecutableName(guestObject);
+                        metaQualifiedName = getDeclaringMetaQualifiedName(guestObject);
                     }
+                    sourceLocation = getSourceSectionImpl();
                 } catch (ThreadDeath | AssertionError td) {
                     throw td;
                 } catch (Throwable ex) {
@@ -265,12 +275,49 @@ public final class DebugStackTraceElement {
                         throw ex;
                     }
                 }
-                SourceSection sourceLocation = getSourceSection();
+                StringBuilder declaringClass = new StringBuilder();
+                if (language != null) {
+                    declaringClass.append("<").append(language.getId()).append(">");
+                    if (metaQualifiedName != null) {
+                        declaringClass.append(" ");
+                    }
+                }
+                if (metaQualifiedName != null) {
+                    declaringClass.append(metaQualifiedName);
+                }
+
+                if (methodName == null) {
+                    methodName = "";
+                }
+
                 String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
                 int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
-                stackTraceElement = new StackTraceElement(declaringClass, methodName, fileName, startLine);
+                stackTraceElement = new StackTraceElement(declaringClass.toString(), methodName, fileName, startLine);
             }
         }
         return stackTraceElement;
+    }
+
+    private static String getExecutableName(Object guestObject) {
+        if (InteropLibrary.getUncached().hasExecutableName(guestObject)) {
+            try {
+                return InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExecutableName(guestObject));
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        return null;
+    }
+
+    private static String getDeclaringMetaQualifiedName(Object guestObject) {
+        if (InteropLibrary.getUncached().hasDeclaringMetaObject(guestObject)) {
+            try {
+                Object hostObject = InteropLibrary.getUncached().getDeclaringMetaObject(guestObject);
+                return InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMetaQualifiedName(hostObject));
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        return null;
     }
 }

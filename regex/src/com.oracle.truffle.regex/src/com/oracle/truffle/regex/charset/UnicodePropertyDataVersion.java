@@ -46,6 +46,7 @@ public final class UnicodePropertyDataVersion {
     /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     public static final UnicodePropertyData UNICODE_15_0_0 = UnicodePropertyData.INSTANCE;
     public static final UnicodePropertyData UNICODE_15_1_0 = UnicodePropertyData.populateUNICODE_15_1_0(UNICODE_15_0_0);
+    public static final UnicodePropertyData UNICODE_16_0_0 = UnicodePropertyData.populateUNICODE_16_0_0(UNICODE_15_0_0);
 
     /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 }

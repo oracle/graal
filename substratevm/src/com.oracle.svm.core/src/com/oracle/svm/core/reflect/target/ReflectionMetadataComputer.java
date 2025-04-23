@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.reflect.target;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
 public abstract class ReflectionMetadataComputer implements FieldValueTransformerWithAvailability {
 
     @Override
-    public final ValueAvailability valueAvailability() {
-        return ValueAvailability.AfterCompilation;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isCompilationFinished();
     }
 }

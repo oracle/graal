@@ -28,16 +28,12 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Semaphore;
 
-public final class SocketConnection implements Runnable {
+public final class SocketConnection {
+    private static final PacketStream DISPOSE_PACKET = new PacketStream();
     private final Socket socket;
     private final OutputStream socketOutput;
     private final InputStream socketInput;
-    private final Object receiveLock = new Object();
-    private final Object sendLock = new Object();
-    private final Semaphore isOpen = new Semaphore(1);
-
     private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(4096);
 
     SocketConnection(Socket socket) throws IOException {
@@ -47,50 +43,41 @@ public final class SocketConnection implements Runnable {
         socketOutput = socket.getOutputStream();
     }
 
-    public void close(DebuggerController controller) throws IOException {
-        // send outstanding packets before closing
-        while (!queue.isEmpty()) {
-            for (PacketStream packetStream : queue) {
-                byte[] shipment = packetStream.prepareForShipment();
-                try {
-                    writePacket(shipment);
-                } catch (ConnectionClosedException e) {
-                    controller.finest(() -> "connection was closed when trying to flush queue");
-                }
-            }
+    public void dispose() {
+        // queue the dispose packet
+        queue.add(DISPOSE_PACKET);
+    }
+
+    public void closeSocket() {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            // nothing more we can do at this point really
         }
-        socketOutput.flush();
-        if (!isOpen.tryAcquire()) {
-            return;
-        }
-        controller.fine(() -> "closing socket now");
-        socketOutput.close();
-        socketInput.close();
-        socket.close();
-        queue.clear();
     }
 
     public boolean isOpen() {
-        return isOpen.availablePermits() > 0;
+        return !socket.isClosed();
     }
 
-    @Override
-    public void run() {
+    public void sendPackets() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                PacketStream take = queue.take();
-                byte[] shipment = take.prepareForShipment();
-                writePacket(shipment);
+                PacketStream stream = queue.take();
+                if (stream == DISPOSE_PACKET) {
+                    break;
+                } else {
+                    byte[] shipment = stream.prepareForShipment();
+                    writePacket(shipment);
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (IOException ex) {
                 if (isOpen()) {
                     throw new RuntimeException("Failed sending packet to debugger instance", ex);
                 } else {
-                    Thread.currentThread().interrupt();
+                    break;
                 }
-            } catch (ConnectionClosedException e) {
-                Thread.currentThread().interrupt();
             }
         }
     }
@@ -101,81 +88,56 @@ public final class SocketConnection implements Runnable {
         }
     }
 
-    public byte[] readPacket() throws IOException, ConnectionClosedException {
-        if (!isOpen() || Thread.currentThread().isInterrupted()) {
-            throw new ConnectionClosedException();
+    public byte[] readPacket() throws IOException {
+        int b1;
+        int b2;
+        int b3;
+        int b4;
+
+        // length
+        b1 = socketInput.read();
+        b2 = socketInput.read();
+        b3 = socketInput.read();
+        b4 = socketInput.read();
+
+        // EOF
+        if (b1 < 0) {
+            return new byte[0];
         }
-        synchronized (receiveLock) {
-            int b1;
-            int b2;
-            int b3;
-            int b4;
 
-            // length
-            try {
-                b1 = socketInput.read();
-                b2 = socketInput.read();
-                b3 = socketInput.read();
-                b4 = socketInput.read();
-            } catch (IOException ioe) {
-                if (!isOpen() || Thread.currentThread().isInterrupted()) {
-                    throw new ConnectionClosedException();
-                } else {
-                    throw ioe;
-                }
-            }
+        if (b2 < 0 || b3 < 0 || b4 < 0) {
+            throw new IOException("protocol error - premature EOF");
+        }
 
-            // EOF
-            if (b1 < 0) {
-                return new byte[0];
-            }
+        int len = ((b1 << 24) | (b2 << 16) | (b3 << 8) | (b4 << 0));
 
-            if (b2 < 0 || b3 < 0 || b4 < 0) {
+        if (len < 0) {
+            throw new IOException("protocol error - invalid length");
+        }
+
+        byte[] b = new byte[len];
+        b[0] = (byte) b1;
+        b[1] = (byte) b2;
+        b[2] = (byte) b3;
+        b[3] = (byte) b4;
+
+        int off = 4;
+        len -= off;
+
+        while (len > 0) {
+            int count;
+            count = socketInput.read(b, off, len);
+
+            if (count < 0) {
                 throw new IOException("protocol error - premature EOF");
             }
-
-            int len = ((b1 << 24) | (b2 << 16) | (b3 << 8) | (b4 << 0));
-
-            if (len < 0) {
-                throw new IOException("protocol error - invalid length");
-            }
-
-            byte[] b = new byte[len];
-            b[0] = (byte) b1;
-            b[1] = (byte) b2;
-            b[2] = (byte) b3;
-            b[3] = (byte) b4;
-
-            int off = 4;
-            len -= off;
-
-            while (len > 0) {
-                int count;
-                try {
-                    count = socketInput.read(b, off, len);
-                } catch (IOException ioe) {
-                    if (!isOpen() || Thread.currentThread().isInterrupted()) {
-                        throw new ConnectionClosedException();
-                    } else {
-                        throw ioe;
-                    }
-                }
-                if (count < 0) {
-                    throw new IOException("protocol error - premature EOF");
-                }
-                len -= count;
-                off += count;
-            }
-
-            return b;
+            len -= count;
+            off += count;
         }
+        return b;
     }
 
-    public void writePacket(byte[] b) throws IOException, ConnectionClosedException {
-        if (!isOpen() || Thread.currentThread().isInterrupted()) {
-            throw new ConnectionClosedException();
-        }
-
+    public void writePacket(byte[] b) throws IOException {
         /*
          * Check the packet size
          */
@@ -197,38 +159,9 @@ public final class SocketConnection implements Runnable {
         if (len > b.length) {
             throw new IllegalArgumentException("length mis-match");
         }
-
-        synchronized (sendLock) {
-            try {
-                /*
-                 * Send the packet (ignoring any bytes that follow the packet in the byte array).
-                 */
-                socketOutput.write(b, 0, len);
-            } catch (IOException ioe) {
-                if (!isOpen() || Thread.currentThread().isInterrupted()) {
-                    throw new ConnectionClosedException();
-                } else {
-                    throw ioe;
-                }
-            }
-        }
-    }
-
-    public boolean isAvailable() {
-        try {
-            return socketInput.available() > 0;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    public void sendVMDied(PacketStream stream, DebuggerController controller) {
-        byte[] shipment = stream.prepareForShipment();
-        try {
-            writePacket(shipment);
-            socketOutput.flush();
-        } catch (Exception e) {
-            controller.fine(() -> "sending VM_DEATH packet to client failed");
-        }
+        /*
+         * Send the packet (ignoring any bytes that follow the packet in the byte array).
+         */
+        socketOutput.write(b, 0, len);
     }
 }

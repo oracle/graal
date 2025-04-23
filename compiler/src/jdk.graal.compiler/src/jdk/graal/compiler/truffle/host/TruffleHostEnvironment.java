@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.host;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 
@@ -151,10 +152,36 @@ public abstract class TruffleHostEnvironment {
         return lookup.lookup(relativeTo);
     }
 
+    /**
+     * Opens a scope that permits the Truffle compiler to make calls to the Truffle runtime, even
+     * from threads that are otherwise restricted.
+     *
+     * @see TruffleRuntimeScope
+     */
+    public TruffleRuntimeScope openTruffleRuntimeScope() {
+        return null;
+    }
+
+    @LibGraalService
     public interface Lookup {
 
         TruffleHostEnvironment lookup(ResolvedJavaType type);
 
     }
 
+    /**
+     * A scope enabling calls to the Truffle runtime. This is essential for environments where
+     * certain threads are not permitted to make calls to the Truffle runtime. An example of such an
+     * environment is the libgraal compiler, which prevents CompileBroker threads from making Java
+     * calls.
+     * <p>
+     * This class should be used in conjunction with a try-with-resources statement to ensure the
+     * scope is closed appropriately.
+     * </p>
+     */
+    public interface TruffleRuntimeScope extends AutoCloseable {
+
+        @Override
+        void close();
+    }
 }

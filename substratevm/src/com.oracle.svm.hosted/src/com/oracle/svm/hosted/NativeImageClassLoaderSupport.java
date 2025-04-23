@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,6 @@
  * questions.
  */
 package com.oracle.svm.hosted;
-
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromClassPath;
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
-import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,9 +53,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -72,19 +67,22 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -92,6 +90,9 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
+import com.oracle.svm.hosted.driver.LayerOptionsSupport;
+import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
@@ -99,11 +100,14 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
 
-public class NativeImageClassLoaderSupport {
+public final class NativeImageClassLoaderSupport {
+
+    public static final String ALL_UNNAMED = "ALL-UNNAMED";
 
     private final List<Path> imagecp;
     private final List<Path> buildcp;
@@ -125,11 +129,42 @@ public class NativeImageClassLoaderSupport {
 
     public final AnnotationExtractor annotationExtractor;
 
-    private Set<String> javaModuleNamesToInclude;
-    private Set<Path> javaPathsToInclude;
-    private boolean includeAllFromClassPath;
+    private Path layerFile;
 
-    private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final IncludeSelectors layerSelectors = new IncludeSelectors(SubstrateOptions.LayerCreate);
+    private final IncludeSelectors preserveSelectors = new IncludeSelectors(SubstrateOptions.Preserve);
+    private boolean includeConfigSealed;
+    private boolean preserveAll;
+    private ValueWithOrigin<String> preserveAllOrigin;
+
+    public void clearPreserveSelectors() {
+        preserveSelectors.clear();
+        preserveAll = false;
+        preserveAllOrigin = null;
+    }
+
+    public IncludeSelectors getPreserveSelectors() {
+        return preserveSelectors;
+    }
+
+    public IncludeSelectors getLayerSelectors() {
+        return layerSelectors;
+    }
+
+    private final Set<Class<?>> classesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> classNamesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private LoadClassHandler loadClassHandler;
+
+    private Optional<LibGraalLoader> libGraalLoader;
+    private List<ClassLoader> classLoaders;
+
+    private final Set<Class<?>> classesToIncludeUnconditionally = ConcurrentHashMap.newKeySet();
+    private final Set<String> includedJavaPackages = ConcurrentHashMap.newKeySet();
+
+    private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
+    private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
+    private final Method implAddEnableNativeAccessToAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccessToAllUnnamed");
 
     @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
@@ -171,7 +206,7 @@ public class NativeImageClassLoaderSupport {
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
 
-        ModuleFinder modulePathsFinder = ModuleFinder.of(imagemp.toArray(Path[]::new));
+        ModuleFinder modulePathsFinder = getModulePathsFinder();
         Set<String> moduleNames = modulePathsFinder.findAll().stream()
                         .map(moduleReference -> moduleReference.descriptor().name())
                         .collect(Collectors.toSet());
@@ -197,6 +232,8 @@ public class NativeImageClassLoaderSupport {
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
         annotationExtractor = new SubstrateAnnotationExtractor();
+
+        includeConfigSealed = false;
     }
 
     private static Stream<Path> toRealPath(Path p) {
@@ -219,47 +256,66 @@ public class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
-    private static Path stringToPath(String path) {
-        return Path.of(Path.of(path).toAbsolutePath().toUri().normalize());
+    public LibGraalLoader getLibGraalLoader() {
+        VMError.guarantee(libGraalLoader != null, "Invalid access to libGraalLoader before getting set up");
+        return libGraalLoader.orElse(null);
+    }
+
+    public List<ClassLoader> getClassLoaders() {
+        VMError.guarantee(classLoaders != null, "Invalid access to classLoaders before getting set up");
+        return classLoaders;
+    }
+
+    private ModuleFinder getModulePathsFinder() {
+        return ModuleFinder.of(imagemp.toArray(Path[]::new));
     }
 
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
-        javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(IncludeAllFromModule.getValue(parsedHostedOptions).values()));
-        /* Verify all modules are present */
-        final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
-                        .map(m -> m.descriptor().name())
-                        .collect(Collectors.toSet());
-        javaModuleNamesToInclude.stream()
-                        .filter(m -> !allModules.contains(m))
-                        .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", IncludeAllFromModule));
+        VMError.guarantee(!includeConfigSealed, "This method should be executed only once.");
 
-        javaPathsToInclude = IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
-                        .map(NativeImageClassLoaderSupport::stringToPath)
-                        .map(Path::toAbsolutePath)
-                        .collect(Collectors.toUnmodifiableSet());
-        /* Verify all paths are present */
-        javaPathsToInclude.stream()
-                        .filter(p -> !classpath().contains(p))
-                        .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", IncludeAllFromPath));
+        if (preserveAll) {
+            String msg = """
+                            This image build includes all classes from the classpath and the JDK via the %s option. This will lead to noticeably bigger images and increased startup times.
+                            If you notice '--initialize-at-build-time' related errors during the build, this is because unanticipated types ended up in the image heap.\
+                             The cause is one of the libraries on the classpath does not handle correctly when all elements are included in the image.
+                            If this happens, please open an issue for the library whose field was containing forbidden types and correct the '--initialize-at-build-time' configuration for your build.
+                            """
+                            .replaceAll("\n", System.lineSeparator())
+                            .formatted(SubstrateOptionsParser.commandArgument(SubstrateOptions.Preserve, PreserveOptionsSupport.PRESERVE_ALL));
+            LogUtils.warning(msg);
 
-        includeAllFromClassPath = IncludeAllFromClassPath.getValue(parsedHostedOptions);
+            var origin = new IncludeOptionsSupport.ExtendedOptionWithOrigin(new IncludeOptionsSupport.ExtendedOption("", PreserveOptionsSupport.PRESERVE_ALL), preserveAllOrigin);
+            getModulePathsFinder().findAll().forEach(m -> preserveSelectors.addModule(m.descriptor().name(), origin));
+            PreserveOptionsSupport.JDK_MODULES_TO_PRESERVE.forEach(moduleName -> preserveSelectors.addModule(moduleName, origin));
+            preserveSelectors.addModule(ALL_UNNAMED, origin);
+        }
 
-        new LoadClassHandler(executor, imageClassLoader).run();
+        layerSelectors.verifyAndResolve();
+        preserveSelectors.verifyAndResolve();
+
+        includeConfigSealed = true;
+
+        loadClassHandler = new LoadClassHandler(executor, imageClassLoader);
+        loadClassHandler.run();
+
+        LibGraalLoader loader = getLibGraalLoader();
+        if (loader != null) {
+            /* If we have a LibGraalLoader, register its classes to the image builder */
+            for (String fqn : loader.getClassModuleMap().keySet()) {
+                try {
+                    var clazz = ((ClassLoader) loader).loadClass(fqn);
+                    imageClassLoader.handleClass(clazz);
+                } catch (ClassNotFoundException e) {
+                    throw GraalError.shouldNotReachHere(e, loader + " could not load class " + fqn);
+                }
+            }
+        }
     }
 
-    private static void missingFromSetOfEntriesError(Object entry, Collection<?> allEntries, String typeOfEntry,
-                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
-        String sortedEntries = allEntries.stream()
-                        .map(Object::toString)
-                        .collect(Collectors.joining(System.lineSeparator() + "   ", "   ", ""));
-
-        throw UserError.abort("The option %s does not match any of the %s entries. To fix, change the option to match one of the %s entries: %s%s",
-                        SubstrateOptionsParser.commandArgument(option, entry.toString()),
-                        typeOfEntry,
-                        typeOfEntry,
-                        System.lineSeparator(),
-                        sortedEntries);
+    private String createOptionStr(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
+        ValueWithOrigin<String> layerCreateValue = option.getValue(getParsedHostedOptions()).lastValueWithOrigin().orElseThrow();
+        String layerCreateArgument = SubstrateOptionsParser.commandArgument(option, layerCreateValue.value());
+        return "specified with '%s' from %s".formatted(layerCreateArgument, layerCreateValue.origin());
     }
 
     private HostedOptionParser hostedOptionParser;
@@ -268,15 +324,21 @@ public class NativeImageClassLoaderSupport {
 
     public void setupHostedOptionParser(List<String> arguments) {
         hostedOptionParser = new HostedOptionParser(getClassLoader(), arguments);
+        // Explicitly set the default value of Optimize as it can modify the default values of other
+        // options
+        SubstrateOptions.Optimize.update(hostedOptionParser.getHostedValues(), SubstrateOptions.Optimize.getDefaultValue());
         remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse()));
+
         /*
          * The image layer support needs to be configured early to correctly set the
          * class-path/module-path options. Note that parsedHostedOptions is a copy-by-value of
          * hostedOptionParser.getHostedValues(), so we want to affect the options map before it is
          * copied.
          */
-        HostedImageLayerBuildingSupport.processLayerOptions(hostedOptionParser.getHostedValues());
-        parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
+        EconomicMap<OptionKey<?>, Object> hostedValues = hostedOptionParser.getHostedValues();
+        HostedImageLayerBuildingSupport.processLayerOptions(hostedValues, this);
+        PreserveOptionsSupport.parsePreserveOption(hostedValues, this);
+        parsedHostedOptions = new OptionValues(hostedValues);
     }
 
     public HostedOptionParser getHostedOptionParser() {
@@ -372,17 +434,6 @@ public class NativeImageClassLoaderSupport {
         serviceProviders.forEach((key, val) -> action.accept(key, Collections.unmodifiableCollection(val)));
     }
 
-    private static void implAddReadsAllUnnamed(Module module) {
-        try {
-            Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
-            implAddReadsAllUnnamed.setAccessible(true);
-            implAddReadsAllUnnamed.invoke(module);
-        } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could reflectively call Module.implAddReadsAllUnnamed", e);
-        }
-    }
-
     protected List<Path> modulepath() {
         return Stream.concat(imagemp.stream(), buildmp.stream()).toList();
     }
@@ -429,17 +480,30 @@ public class NativeImageClassLoaderSupport {
         });
         processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
             if (val.targetModules.isEmpty()) {
-                implAddReadsAllUnnamed(val.module);
+                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, val.module);
             } else {
                 for (Module targetModule : val.targetModules) {
                     Modules.addReads(val.module, targetModule);
                 }
             }
         });
+        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ","))).forEach(moduleName -> {
+            if (ALL_UNNAMED.equals(moduleName)) {
+                ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
+            } else {
+                Module module = findModule(moduleName).orElseThrow(() -> userWarningModuleNotFound(NativeImageClassLoaderOptions.EnableNativeAccess, moduleName));
+                ReflectionUtil.invokeMethod(implAddEnableNativeAccess, module);
+            }
+        });
     }
 
-    private static void warn(String m) {
-        LogUtils.warning("WARNING", m, true);
+    /**
+     * Print a specially-formatted warning to stderr for compatibility with the output of `java`.
+     */
+    private static void warn(String message) {
+        // Checkstyle: Allow raw info or warning printing - begin
+        System.err.println("WARNING: " + message);
+        // Checkstyle: Allow raw info or warning printing - end
     }
 
     private static void processListModulesOption(ModuleLayer layer) {
@@ -520,29 +584,61 @@ public class NativeImageClassLoaderSupport {
     }
 
     private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionKey<AccumulatingLocatableMultiOptionValue.Strings> specificOption) {
-        Stream<Pair<String, OptionOrigin>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
-        Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
+        var valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
+        return valuesWithOrigins.flatMap(valWithOrig -> {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
             } catch (FindException e) {
-                /*
-                 * Print a specially-formatted warning to be 100% compatible with the output of
-                 * `java` in this case.
-                 */
-                LogUtils.warning("WARNING", e.getMessage(), true);
+                warn(e.getMessage());
                 return Stream.empty();
             }
         });
-        return parsedOptions;
+    }
+
+    public void setupLibGraalClassLoader() {
+        var className = SubstrateOptions.LibGraalClassLoader.getValue(parsedHostedOptions);
+        if (!className.isEmpty()) {
+            String nameOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.LibGraalClassLoader, className);
+            try {
+                Class<?> loaderClass = Class.forName(className, true, classLoader);
+                if (!LibGraalLoader.class.isAssignableFrom(loaderClass)) {
+                    throw VMError.shouldNotReachHere("Class named by " + nameOption + " does not implement " + LibGraalLoader.class + '.');
+                }
+                libGraalLoader = Optional.of((LibGraalLoader) ReflectionUtil.newInstance(loaderClass));
+                classLoaders = List.of((ClassLoader) libGraalLoader.get(), getClassLoader());
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere("Class named by " + nameOption + " could not be found.", e);
+            }
+        } else {
+            libGraalLoader = Optional.empty();
+            classLoaders = List.of(getClassLoader());
+        }
+    }
+
+    public void allClassesLoaded() {
+        if (loadClassHandler != null) {
+            loadClassHandler.validatePackageInclusionRequests(loadClassHandler.includePackages, SubstrateOptions.LayerCreate);
+            loadClassHandler.validatePackageInclusionRequests(loadClassHandler.preservePackages, SubstrateOptions.Preserve);
+            loadClassHandler = null;
+        }
+        reportBuilderClassesInApplication();
+    }
+
+    public Path getLayerFile() {
+        return layerFile;
+    }
+
+    public void setLayerFile(Path layerFile) {
+        this.layerFile = layerFile;
     }
 
     private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
                     List<Module> targetModules) {
     }
 
-    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, Pair<String, OptionOrigin> valueOrigin) {
-        OptionOrigin optionOrigin = valueOrigin.getRight();
-        String optionValue = valueOrigin.getLeft();
+    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, ValueWithOrigin<String> valueOrigin) {
+        OptionOrigin optionOrigin = valueOrigin.origin();
+        String optionValue = valueOrigin.value();
 
         boolean reads = option.equals(NativeImageClassLoaderOptions.AddReads);
         String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
@@ -596,14 +692,13 @@ public class NativeImageClassLoaderSupport {
             throw userWarningModuleNotFound(option, moduleName);
         });
         List<Module> targetModules;
-        if (targetModuleNamesList.contains("ALL-UNNAMED")) {
+        if (targetModuleNamesList.contains(ALL_UNNAMED)) {
             targetModules = Collections.emptyList();
         } else {
-            targetModules = targetModuleNamesList.stream().map(mn -> {
-                return findModule(mn).orElseThrow(() -> {
-                    throw userWarningModuleNotFound(option, mn);
-                });
-            }).collect(Collectors.toList());
+            targetModules = targetModuleNamesList.stream()
+                            .map(mn -> findModule(mn)
+                                            .orElseThrow(() -> userWarningModuleNotFound(option, mn)))
+                            .collect(Collectors.toList());
         }
         return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
     }
@@ -634,7 +729,7 @@ public class NativeImageClassLoaderSupport {
         }
     }
 
-    Optional<String> getMainClassFromModule(Object module) {
+    static Optional<String> getMainClassFromModule(Object module) {
         assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         return ((Module) module).getDescriptor().mainClass();
     }
@@ -648,6 +743,37 @@ public class NativeImageClassLoaderSupport {
         volatile String currentlyProcessedEntry;
         boolean initialReport;
 
+        record PackageRequest(Set<String> requestedPackages, List<LayerOptionsSupport.PackageOptionValue> requestedPackageWildcards) {
+            public static PackageRequest create(Set<LayerOptionsSupport.PackageOptionValue> javaPackagesToInclude) {
+                Set<String> tempRequestedPackages = new LinkedHashSet<>();
+                List<LayerOptionsSupport.PackageOptionValue> tempRequestedPackageWildcards = new ArrayList<>();
+                for (LayerOptionsSupport.PackageOptionValue value : javaPackagesToInclude) {
+                    if (value.isWildcard()) {
+                        tempRequestedPackageWildcards.add(value);
+                    } else {
+                        tempRequestedPackages.add(value.name());
+                    }
+                }
+                return new PackageRequest(Collections.unmodifiableSet(tempRequestedPackages), List.copyOf(tempRequestedPackageWildcards));
+            }
+
+            public boolean shouldInclude(String packageName) {
+                if (requestedPackages.contains(packageName)) {
+                    return true;
+                }
+                for (LayerOptionsSupport.PackageOptionValue requestedPackageWildcard : requestedPackageWildcards) {
+                    if (packageName.startsWith(requestedPackageWildcard.name())) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+        }
+
+        PackageRequest includePackages;
+        PackageRequest preservePackages;
+
         private LoadClassHandler(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
@@ -655,6 +781,9 @@ public class NativeImageClassLoaderSupport {
             entriesProcessed = new LongAdder();
             currentlyProcessedEntry = "Unknown Entry";
             initialReport = true;
+
+            includePackages = PackageRequest.create(layerSelectors.packages.keySet());
+            preservePackages = PackageRequest.create(preserveSelectors.packages.keySet());
         }
 
         private void run() {
@@ -668,32 +797,64 @@ public class NativeImageClassLoaderSupport {
                     System.out.println("Total processed entries: " + entriesProcessed.longValue() + ", current entry: " + currentlyProcessedEntry);
                 }, 5, 1, TimeUnit.MINUTES);
 
-                List<String> requiresInit = new ArrayList<>(Arrays.asList(
-                                "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise",
+                var requiresInit = new HashSet<>(List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise",
                                 "org.graalvm.nativeimage", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
                                 "org.graalvm.truffle.compiler", "com.oracle.truffle.enterprise", "org.graalvm.jniutils",
                                 "org.graalvm.nativebridge"));
 
-                Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream().map(v -> v.descriptor().name()).collect(Collectors.toSet());
-                additionalSystemModules.retainAll(getJavaModuleNamesToInclude());
+                Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream()
+                                .map(v -> v.descriptor().name())
+                                .filter(n -> getJavaModuleNamesToInclude().contains(n) || getJavaModuleNamesToPreserve().contains(n))
+                                .collect(Collectors.toSet());
                 requiresInit.addAll(additionalSystemModules);
 
+                Set<String> explicitlyAddedModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
-                    if (requiresInit.contains(moduleReference.descriptor().name())) {
-                        initModule(moduleReference);
+                    String moduleName = moduleReference.descriptor().name();
+                    boolean moduleRequiresInit = requiresInit.contains(moduleName);
+                    if (moduleRequiresInit || explicitlyAddedModules.contains(moduleName)) {
+                        initModule(moduleReference, moduleRequiresInit);
                     }
                 }
                 for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
-                    initModule(moduleReference);
+                    initModule(moduleReference, true);
                 }
 
-                classpath().parallelStream().forEach(this::loadClassesFromPath);
+                classpath().forEach(this::loadClassesFromPath);
             } finally {
                 scheduledExecutor.shutdown();
             }
         }
 
-        private void initModule(ModuleReference moduleReference) {
+        /* Report package inclusion requests that did not have any effect. */
+        void validatePackageInclusionRequests(PackageRequest request, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> optionString) {
+            List<LayerOptionsSupport.PackageOptionValue> unusedRequests = new ArrayList<>();
+            for (String requestedPackage : request.requestedPackages) {
+                if (!NativeImageClassLoaderSupport.this.includedJavaPackages.contains(requestedPackage)) {
+                    unusedRequests.add(new LayerOptionsSupport.PackageOptionValue(requestedPackage, false));
+                }
+            }
+            var unusedWildcardRequests = new LinkedHashSet<>(request.requestedPackageWildcards);
+            if (!unusedWildcardRequests.isEmpty()) {
+                for (String includedPackage : NativeImageClassLoaderSupport.this.includedJavaPackages) {
+                    unusedWildcardRequests.removeIf(wildcardRequest -> includedPackage.startsWith(wildcardRequest.name()));
+                }
+            }
+            if (!(unusedRequests.isEmpty() && unusedWildcardRequests.isEmpty())) {
+                var requestsStrings = Stream.concat(unusedRequests.stream(), unusedWildcardRequests.stream())
+                                .map(packageOptionValue -> '\'' + packageOptionValue.toString() + '\'')
+                                .toList();
+                boolean plural = requestsStrings.size() > 1;
+                String pluralS = plural ? "s" : "";
+                throw UserError.abort("Package request%s (package=...) %s %s could not find requested package%s. " +
+                                "Provide a class/module-path that contains the package%s or remove %s from option.",
+                                pluralS, String.join(", ", requestsStrings), createOptionStr(optionString), pluralS,
+                                pluralS, plural ? "entries" : "entry");
+            }
+        }
+
+        private void initModule(ModuleReference moduleReference, boolean moduleRequiresInit) {
             String moduleReferenceLocation = moduleReference.location().map(URI::toString).orElse("UnknownModuleReferenceLocation");
             currentlyProcessedEntry = moduleReferenceLocation;
             Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
@@ -702,7 +863,8 @@ public class NativeImageClassLoaderSupport {
             }
             try (ModuleReader moduleReader = moduleReference.open()) {
                 Module module = optionalModule.get();
-                final boolean includeUnconditionally = javaModuleNamesToInclude.contains(module.getName());
+                final boolean includeUnconditionally = layerSelectors.moduleNames().contains(module.getName());
+                final boolean preserveModule = preserveSelectors.moduleNames().contains(module.getName());
                 var container = moduleReference.location().orElseThrow();
                 if (ModuleLayer.boot().equals(module.getLayer())) {
                     builderURILocations.add(container);
@@ -712,7 +874,7 @@ public class NativeImageClassLoaderSupport {
                     String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally));
+                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, moduleRequiresInit, preserveModule));
                     }
                     entriesProcessed.increment();
                 });
@@ -722,7 +884,8 @@ public class NativeImageClassLoaderSupport {
         }
 
         private void loadClassesFromPath(Path path) {
-            final boolean includeUnconditionally = javaPathsToInclude.contains(path) || includeAllFromClassPath;
+            final boolean includeUnconditionally = layerSelectors.classpathEntries().contains(path);
+            final boolean includeAllMetadata = preserveSelectors.classpathEntries().contains(path);
             if (ClasspathUtils.isJar(path)) {
                 try {
                     URI container = path.toAbsolutePath().toUri();
@@ -736,23 +899,24 @@ public class NativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally);
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally, includeAllMetadata);
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
                     throw new InterruptImageBuilding();
                 } catch (IOException | URISyntaxException e) {
-                    throw shouldNotReachHere(e);
+                    throw VMError.shouldNotReachHere(e);
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally);
+                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally,
+                                includeAllMetadata);
             }
         }
 
         private static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally) {
+        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally, boolean includeAllMetadata) {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
@@ -778,7 +942,7 @@ public class NativeImageClassLoaderSupport {
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
-                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally));
+                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true, includeAllMetadata));
                     }
                     entriesProcessed.increment();
                     return FileVisitResult.CONTINUE;
@@ -794,7 +958,7 @@ public class NativeImageClassLoaderSupport {
             try {
                 Files.walkFileTree(root, visitor);
             } catch (IOException ex) {
-                throw shouldNotReachHere(ex);
+                throw VMError.shouldNotReachHere(ex);
             }
         }
 
@@ -862,24 +1026,24 @@ public class NativeImageClassLoaderSupport {
             return strippedClassFileName.equals("module-info") ? null : strippedClassFileName.replace(fileSystemSeparatorChar, '.');
         }
 
-        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally) {
-            synchronized (classes) {
-                EconomicSet<String> classNames = classes.get(container);
-                if (classNames == null) {
-                    classNames = EconomicSet.create();
-                    classes.put(container, classNames);
+        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally, boolean classRequiresInit, boolean preserveReflectionMetadata) {
+            if (classRequiresInit) {
+                synchronized (classes) {
+                    EconomicSet<String> classNames = classes.get(container);
+                    if (classNames == null) {
+                        classNames = EconomicSet.create();
+                        classes.put(container, classNames);
+                    }
+                    classNames.add(className);
                 }
-                classNames.add(className);
-            }
-            int packageSep = className.lastIndexOf('.');
-            String packageName = packageSep > 0 ? className.substring(0, packageSep) : "";
-            synchronized (packages) {
-                EconomicSet<String> packageNames = packages.get(container);
-                if (packageNames == null) {
-                    packageNames = EconomicSet.create();
-                    packages.put(container, packageNames);
+                synchronized (packages) {
+                    EconomicSet<String> packageNames = packages.get(container);
+                    if (packageNames == null) {
+                        packageNames = EconomicSet.create();
+                        packages.put(container, packageNames);
+                    }
+                    packageNames.add(packageName(className));
                 }
-                packageNames.add(packageName);
             }
 
             Class<?> clazz = null;
@@ -888,16 +1052,32 @@ public class NativeImageClassLoaderSupport {
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
             } catch (Throwable t) {
+                if (preserveReflectionMetadata) {
+                    classNamesToPreserve.add(className);
+                }
                 ImageClassLoader.handleClassLoadingError(t);
             }
+
             if (clazz != null) {
-                if (includeUnconditionally) {
+                String packageName = clazz.getPackageName();
+                includedJavaPackages.add(packageName);
+                if (includeUnconditionally || includePackages.shouldInclude(packageName)) {
                     classesToIncludeUnconditionally.add(clazz);
                 }
-                imageClassLoader.handleClass(clazz);
+                if (classRequiresInit) {
+                    imageClassLoader.handleClass(clazz);
+                }
+                if (preserveReflectionMetadata || preservePackages.shouldInclude(packageName)) {
+                    classesToPreserve.add(clazz);
+                }
             }
             imageClassLoader.watchdog.recordActivity();
         }
+    }
+
+    private static String packageName(String className) {
+        int packageSep = className.lastIndexOf('.');
+        return packageSep > 0 ? className.substring(0, packageSep) : "";
     }
 
     public void reportBuilderClassesInApplication() {
@@ -934,20 +1114,177 @@ public class NativeImageClassLoaderSupport {
     }
 
     public Set<String> getJavaModuleNamesToInclude() {
-        return javaModuleNamesToInclude;
+        return layerSelectors.moduleNames();
+    }
+
+    public Set<String> getJavaModuleNamesToPreserve() {
+        return preserveSelectors.moduleNames();
     }
 
     public Set<Path> getJavaPathsToInclude() {
-        return javaPathsToInclude;
+        return layerSelectors.classpathEntries();
     }
 
-    public boolean includeAllFromClassPath() {
-        return includeAllFromClassPath;
+    public Set<Path> getClassPathEntriesToPreserve() {
+        return preserveSelectors.classpathEntries();
     }
 
-    public List<Class<?>> getClassesToIncludeUnconditionally() {
+    public Set<String> getClassNamesToPreserve() {
+        return Collections.unmodifiableSet(classNamesToPreserve);
+    }
+
+    public void setPreserveAll(ValueWithOrigin<String> valueWithOrigin) {
+        this.preserveAllOrigin = valueWithOrigin;
+        preserveAll = true;
+
+    }
+
+    public Stream<Class<?>> getClassesToIncludeUnconditionally() {
         return classesToIncludeUnconditionally.stream()
-                        .sorted(Comparator.comparing(Class::getTypeName))
-                        .collect(Collectors.toList());
+                        .sorted(Comparator.comparing(Class::getTypeName));
+    }
+
+    public Stream<Class<?>> getClassesToPreserve() {
+        return classesToPreserve.stream()
+                        .sorted(Comparator.comparing(Class::getTypeName));
+    }
+
+    public class IncludeSelectors {
+        private static final String CLASS_INCLUSION_SEALED_MSG = "Class inclusion configuration is already sealed.";
+
+        private final Map<String, IncludeOptionsSupport.ExtendedOptionWithOrigin> moduleNames = new LinkedHashMap<>();
+        private final Map<IncludeOptionsSupport.PackageOptionValue, IncludeOptionsSupport.ExtendedOptionWithOrigin> packages = new LinkedHashMap<>();
+        private final Map<Path, IncludeOptionsSupport.ExtendedOptionWithOrigin> classpathEntries = new LinkedHashMap<>();
+        private final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option;
+
+        public IncludeSelectors(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
+            this.option = option;
+        }
+
+        public void verifyAndResolve() {
+            verifyAllRequestedModulesPresent();
+            verifyClasspathEntriesPresentAndResolve();
+        }
+
+        /**
+         * Verify all requested class-path entries are on the application class-path and resolve
+         * them.
+         */
+        private void verifyClasspathEntriesPresentAndResolve() {
+            Set<Path> resolvedJavaPathsToInclude = new HashSet<>();
+            List<String> missingClassPathEntries = new ArrayList<>();
+            classpathEntries.keySet().forEach(requestedCPEntry -> {
+                Optional<Path> optResolvedEntry = toRealPath(requestedCPEntry).findAny();
+                if (optResolvedEntry.isPresent()) {
+                    Path resolvedEntry = optResolvedEntry.get();
+                    if (applicationClassPath().contains(resolvedEntry)) {
+                        resolvedJavaPathsToInclude.add(resolvedEntry);
+                        return;
+                    }
+                }
+                missingClassPathEntries.add(requestedCPEntry.toString());
+            });
+
+            if (!missingClassPathEntries.isEmpty()) {
+                boolean plural = missingClassPathEntries.size() > 1;
+                String pluralS = plural ? "s" : "";
+                String pluralEntries = plural ? "entries" : "entry";
+                String msg = String.format("Class-path entry request%s (path=...) %s do not match the application class-path %s. Provide a class-path that contains the %s or remove %s from option.",
+                                pluralS, String.join(", ", missingClassPathEntries), pluralEntries,
+                                pluralEntries, pluralEntries);
+                String listOfOptions = missingClassPathEntries.stream()
+                                .map(Path::of)
+                                .map(classpathEntries::get)
+                                .map(this::originatingOptionString)
+                                .distinct()
+                                .collect(singleOrMultiLine(plural));
+                msg += String.format(" The missing classpath entries were requested in the following option%s: %s", pluralS, listOfOptions);
+                throw UserError.abort(msg);
+            } else {
+                /*
+                 * Replace entries with resolved ones so that they are correctly matched in
+                 * LoadClassHandler.loadClassesFromPath.
+                 */
+                classpathEntries.clear();
+                for (Path path : resolvedJavaPathsToInclude) {
+                    /* ExtendedOptionWithOrigin of resolved entries are not needed anymore */
+                    classpathEntries.put(path, null);
+                }
+            }
+        }
+
+        private static Collector<CharSequence, ?, String> singleOrMultiLine(boolean plural) {
+            if (plural) {
+                String indentation = "  ";
+                return Collectors.joining(System.lineSeparator() + indentation, System.lineSeparator() + indentation, "");
+            } else {
+                return Collectors.joining(", ");
+            }
+        }
+
+        /* Verify all requested modules are present on the module path */
+        private void verifyAllRequestedModulesPresent() {
+            List<Map.Entry<String, IncludeOptionsSupport.ExtendedOptionWithOrigin>> missingModules = moduleNames.entrySet().stream()
+                            .filter(e -> findModule(e.getKey()).isEmpty())
+                            .toList();
+            if (!missingModules.isEmpty()) {
+                boolean plural = missingModules.size() > 1;
+                String pluralS = plural ? "s" : "";
+                String listOfModules = missingModules.stream().map(Map.Entry::getKey).collect(Collectors.joining(", "));
+                String msg = String.format("Module request%s (module=...) %s could not find requested module%s. " +
+                                "Provide a module-path that contains the specified module%s or remove %s from option.",
+                                pluralS, listOfModules, pluralS,
+                                pluralS, plural ? "entries" : "entry");
+                String listOfOptions = missingModules.stream()
+                                .map(Map.Entry::getValue)
+                                .map(this::originatingOptionString)
+                                .distinct()
+                                .collect(singleOrMultiLine(plural));
+                msg += String.format(" The missing modules were requested in the following option%s: %s", pluralS, listOfOptions);
+                throw UserError.abort(msg);
+            }
+        }
+
+        private String originatingOptionString(IncludeOptionsSupport.ExtendedOptionWithOrigin v) {
+            return SubstrateOptionsParser.commandArgument(option, v.valueWithOrigin().value().toString()) + " from " + v.valueWithOrigin().origin();
+        }
+
+        public void addModule(String moduleName, IncludeOptionsSupport.ExtendedOptionWithOrigin extendedOptionWithOrigin) {
+            VMError.guarantee(!includeConfigSealed, CLASS_INCLUSION_SEALED_MSG);
+            if (moduleName.equals(ALL_UNNAMED)) {
+                IncludeOptionsSupport.ExtendedOptionWithOrigin includeOptionsSupport = extendedOptionWithOrigin == null ? null
+                                : new IncludeOptionsSupport.ExtendedOptionWithOrigin(extendedOptionWithOrigin.option(),
+                                                extendedOptionWithOrigin.valueWithOrigin());
+                for (Path path : applicationClassPath()) {
+                    classpathEntries.put(path, includeOptionsSupport);
+                }
+            } else {
+                moduleNames.put(moduleName, extendedOptionWithOrigin);
+            }
+        }
+
+        public void addPackage(LayerOptionsSupport.PackageOptionValue packageOptionValue) {
+            VMError.guarantee(!includeConfigSealed, CLASS_INCLUSION_SEALED_MSG);
+            packages.put(packageOptionValue, null);
+        }
+
+        public void addClassPathEntry(String cpEntry, IncludeOptionsSupport.ExtendedOptionWithOrigin extendedOptionWithOrigin) {
+            VMError.guarantee(!includeConfigSealed, CLASS_INCLUSION_SEALED_MSG);
+            classpathEntries.put(Path.of(cpEntry), extendedOptionWithOrigin);
+        }
+
+        public void clear() {
+            packages.clear();
+            moduleNames.clear();
+            classpathEntries.clear();
+        }
+
+        public Set<Path> classpathEntries() {
+            return classpathEntries.keySet();
+        }
+
+        public Set<String> moduleNames() {
+            return moduleNames.keySet();
+        }
     }
 }

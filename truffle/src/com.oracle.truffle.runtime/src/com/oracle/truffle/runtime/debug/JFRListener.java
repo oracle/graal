@@ -55,7 +55,7 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
-import com.oracle.truffle.runtime.ModuleUtil;
+import com.oracle.truffle.runtime.ModulesSupport;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.jfr.CompilationEvent;
@@ -171,6 +171,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             event.setGraalNodeCount(graph.getNodeCount());
             event.setPartialEvaluationNodeCount(data.partialEvalNodeCount);
             event.setPartialEvaluationTime((data.timePartialEvaluationFinished - data.timeCompilationStarted) / 1_000_000);
+            event.setCompilationId(TraceCompilationListener.getCompilationId(result));
             event.publish();
             currentCompilation.remove();
         }
@@ -254,7 +255,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             Iterator<EventFactory.Provider> it = TruffleRuntimeServices.load(EventFactory.Provider.class).iterator();
             EventFactory.Provider provider = it.hasNext() ? it.next() : null;
             if (provider != null) {
-                ModuleUtil.exportTo(provider.getClass());
+                ModulesSupport.exportTruffleRuntimeTo(provider.getClass());
                 return provider.getEventFactory();
             } else {
                 return null;

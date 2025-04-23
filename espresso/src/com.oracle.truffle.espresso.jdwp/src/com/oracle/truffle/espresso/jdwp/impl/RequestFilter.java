@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-
 import java.util.Arrays;
 import java.util.regex.Pattern;
+
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public final class RequestFilter {
 

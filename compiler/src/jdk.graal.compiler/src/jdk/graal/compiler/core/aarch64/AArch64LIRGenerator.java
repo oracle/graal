@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCopyWithConversionsOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ArrayFillOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayEqualsOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
@@ -88,6 +89,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64MD5Op;
 import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.graal.compiler.lir.aarch64.AArch64Move.MembarOp;
 import jdk.graal.compiler.lir.aarch64.AArch64PauseOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ReadTimestampCounter;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA1Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA256Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA3Op;
@@ -383,6 +385,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         append(new BranchOp(cmpCondition, trueDestination, falseDestination, trueDestinationProbability));
     }
 
+    @Override
+    public Value emitTimeStamp() {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.QWORD));
+        append(new AArch64ReadTimestampCounter(result));
+        return result;
+    }
+
     private static ConditionFlag toConditionFlag(boolean isInt, Condition cond, boolean unorderedIsTrue) {
         return isInt ? toIntConditionFlag(cond) : toFloatConditionFlag(cond, unorderedIsTrue);
     }
@@ -414,7 +423,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     /**
      * Takes a Condition and returns the correct AArch64 specific ConditionFlag.
      */
-    private static ConditionFlag toIntConditionFlag(Condition cond) {
+    public static ConditionFlag toIntConditionFlag(Condition cond) {
         switch (cond) {
             case EQ:
                 return ConditionFlag.EQ;
@@ -557,8 +566,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
-        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key));
     }
 
     @Override
@@ -621,6 +630,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
         append(new AArch64ArrayCopyWithConversionsOp(this, null, null,
                         emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
+    }
+
+    @Override
+    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+        append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
     }
 
     @Override
@@ -913,5 +927,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(regAddress, address);
         emitMove(regLength, length);
         append(new AArch64ZeroMemoryOp(regAddress, regLength, isAligned, useDcZva, zvaLength));
+    }
+
+    public boolean supportsCPUFeature(AArch64.CPUFeature feature) {
+        return ((AArch64) target().arch).getFeatures().contains(feature);
+    }
+
+    public boolean useLSE() {
+        return supportsCPUFeature(AArch64.CPUFeature.LSE);
     }
 }

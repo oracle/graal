@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.common.util;
 
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.util.EventCounter.EventCounterMarker;
@@ -35,8 +36,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.services.Services;
 
 /**
  * Utility class that allows the compiler to monitor compilations that take a very long time.
@@ -60,12 +61,44 @@ public final class CompilationAlarm implements AutoCloseable {
         // @formatter:on
     }
 
-    public static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
-                    Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
+    public static final boolean LOG_PROGRESS_DETECTION = Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
+    /**
+     * The previously installed alarm.
+     */
+    private final CompilationAlarm previous;
+
+    @SuppressWarnings("this-escape")
     private CompilationAlarm(double period) {
-        this.period = period;
-        this.expiration = period == 0.0D ? 0L : System.currentTimeMillis() + (long) (period * 1000);
+        this.previous = currentAlarm.get();
+        reset(period);
+    }
+
+    /**
+     * Use the option value defined compilation expiration period and reset this alarm. See
+     * {@link #reset(double)}.
+     */
+    public void reset(OptionValues options) {
+        double optionPeriod = Options.CompilationExpirationPeriod.getValue(options);
+        if (optionPeriod > 0) {
+            reset(scaleExpirationPeriod(optionPeriod, options));
+        }
+    }
+
+    /**
+     * Scale the compilation alarm expiration period to account for different system properties. The
+     * period has a default value or can be set by users. Global context flags like assertions can
+     * slow down compilation significantly and we want to avoid false positives of the alarm.
+     */
+    public static double scaleExpirationPeriod(double period, OptionValues options) {
+        double p = period;
+        if (Assertions.assertionsEnabled()) {
+            p *= 2;
+        }
+        if (Assertions.detailedAssertionsEnabled(options)) {
+            p *= 2;
+        }
+        return p;
     }
 
     /**
@@ -98,7 +131,43 @@ public final class CompilationAlarm implements AutoCloseable {
      *         period} seconds, {@code false} otherwise
      */
     public boolean hasExpired() {
-        return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+        /*
+         * We have multiple ways to mark a disabled alarm: it can be NEVER_EXPIRES which is shared
+         * among all threads and thus must not be altered, or it can be an Alarm object with an
+         * expiration=0. We cannot share disabled timers across threads because we record the
+         * previous timer to continue afterwards with the actual timer.
+         */
+        return this != NEVER_EXPIRES && expirationNS != 0 && System.nanoTime() > expirationNS;
+    }
+
+    public long elapsed() {
+        return this == NEVER_EXPIRES ? -1 : System.nanoTime() - start();
+    }
+
+    /**
+     * Convert a period in seconds to the equivalent in nanoseconds.
+     */
+    static long periodNanoSeconds(double period) {
+        return (long) (period * TimeUnit.SECONDS.toNanos(1));
+    }
+
+    private long start() {
+        return this == NEVER_EXPIRES ? -1 : expirationNS - periodNanoSeconds(period);
+    }
+
+    /**
+     * Resets the compilation alarm with a new period for expiration. See
+     * {@link #trackCompilationPeriod} for details about tracking compilation periods.
+     */
+    public void reset(double newPeriod) {
+        if (this != NEVER_EXPIRES) {
+            this.period = newPeriod;
+            this.expirationNS = newPeriod == 0.0D ? 0L : System.nanoTime() + periodNanoSeconds(newPeriod);
+        }
+    }
+
+    public boolean isEnabled() {
+        return this != NEVER_EXPIRES;
     }
 
     /**
@@ -106,27 +175,195 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public void checkExpiration() {
         if (hasExpired()) {
-            throw new PermanentBailoutException("Compilation exceeded %.3f seconds", period);
+
+            setCurrentNodeDuration(currentNode.name);
+
+            /*
+             * We clone the phase tree here for the sake of the error message. We want to fix up the
+             * root timings and also annotate in which phase(s) the timeout happens. We do not do
+             * this on the original tree because that one can still be in IGV dumps.
+             */
+            PhaseTreeNode cloneTree = cloneTree(root, null);
+            StringBuilder sb = new StringBuilder();
+            // also update the root time to be consistent for the error message
+            cloneTree.durationNS = elapsed();
+            printTree("", sb, cloneTree, true);
+
+            throw new PermanentBailoutException("Compilation exceeded %.3f seconds. %n Phase timings:%n %s <===== TIMEOUT HERE", period, sb.toString().trim());
         }
     }
 
     @Override
     public void close() {
-        if (this != NEVER_EXPIRES) {
-            currentAlarm.set(null);
-            resetProgressDetection();
-        }
+        currentAlarm.set(previous);
+        resetProgressDetection();
     }
 
     /**
      * Expiration period (in seconds) of this alarm.
      */
-    private final double period;
+    private double period;
 
     /**
-     * The time at which this alarm expires.
+     * The time at which this alarm expires in nanoseconds.
      */
-    private final long expiration;
+    private long expirationNS;
+
+    /**
+     * Signal the execution of the phase identified by {@code name} starts.
+     */
+    public void enterPhase(CharSequence name) {
+        if (!isEnabled()) {
+            return;
+        }
+        PhaseTreeNode node = new PhaseTreeNode(name);
+        node.parent = currentNode;
+        node.startTimeNS = System.nanoTime();
+        currentNode.addChild(node);
+        currentNode = node;
+    }
+
+    /**
+     * Signal the execution of the phase identified by {@code name} is over.
+     */
+    public void exitPhase(CharSequence name) {
+        if (!isEnabled()) {
+            return;
+        }
+        assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
+        setCurrentNodeDuration(name);
+        currentNode.closed = true;
+        currentNode.parent.durationNS += currentNode.durationNS;
+        currentNode = currentNode.parent;
+    }
+
+    private void setCurrentNodeDuration(CharSequence name) {
+        assert currentNode.startTimeNS >= 0 : Assertions.errorMessage("Must have a positive start time", name, elapsedPhaseTreeAsString());
+        currentNode.durationNS = System.nanoTime() - currentNode.startTimeNS;
+    }
+
+    /**
+     * The phase tree root node during compilation. Special marker node to avoid null checking
+     * logic.
+     */
+    private PhaseTreeNode root = new PhaseTreeNode("Root");
+
+    /**
+     * The current tree node to add children to. That is, the phase that currently runs in the
+     * compiler.
+     */
+    private PhaseTreeNode currentNode = root;
+
+    /**
+     * Tree data structure representing phase nesting and the respective wall clock time of each
+     * phase.
+     */
+    private class PhaseTreeNode {
+
+        /**
+         * Link to the parent node.
+         */
+        private PhaseTreeNode parent;
+
+        /**
+         * All children of this node.
+         */
+        private PhaseTreeNode[] children;
+
+        /**
+         * The next free index to add child nodes.
+         */
+        private int childIndex = 0;
+
+        /**
+         * The name of this node, normally the {@link BasePhase#contractorName()}.
+         */
+        private final CharSequence name;
+
+        /**
+         * The time stamp in ns when this phase started running.
+         */
+        private long startTimeNS = -1L;
+
+        /**
+         * The wall clock time spent in nanoseconds in this phase.
+         */
+        private long durationNS = 0;
+
+        /**
+         * Determines if this phase was already properly closed.
+         */
+        public boolean closed;
+
+        PhaseTreeNode(CharSequence name) {
+            this.name = name;
+        }
+
+        private void addChild(PhaseTreeNode child) {
+            if (children == null) {
+                children = new PhaseTreeNode[CHILD_TREE_INIT_SIZE];
+                children[childIndex++] = child;
+                return;
+            }
+            // double the array if it needs expanding
+            if (childIndex >= children.length) {
+                children = Arrays.copyOf(children, children.length * 2);
+            }
+            children[childIndex++] = child;
+        }
+
+        @Override
+        public String toString() {
+            return name + "->" + TimeUnit.NANOSECONDS.toMillis(durationNS) + "ms elapsed [startMS=" + TimeUnit.NANOSECONDS.toMillis(startTimeNS) + "]";
+        }
+
+    }
+
+    private PhaseTreeNode cloneTree(PhaseTreeNode clonee, PhaseTreeNode parent) {
+        PhaseTreeNode clone = new PhaseTreeNode(clonee.name);
+        clone.parent = parent;
+        if (clone.parent != null) {
+            clone.parent.addChild(clone);
+        }
+        clone.durationNS = clonee.durationNS;
+        clone.startTimeNS = clonee.startTimeNS;
+        clone.closed = clonee.closed;
+        if (clonee.children != null) {
+            for (int i = 0; i < clonee.childIndex; i++) {
+                cloneTree(clonee.children[i], clone);
+            }
+        }
+        return clone;
+    }
+
+    /**
+     * Initial size of a {@link PhaseTreeNode} children array.
+     */
+    private static final int CHILD_TREE_INIT_SIZE = 2;
+
+    /**
+     * Recursively print the phase tree represented by {@code node}.
+     */
+    private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot) {
+        sb.append(indent);
+        if (!printRoot && node == root) {
+            sb.append(node.name);
+        } else {
+            sb.append(node);
+        }
+        sb.append(System.lineSeparator());
+        if (node.children != null) {
+            for (int i = 0; i < node.childIndex; i++) {
+                printTree(indent + "\t", sb, node.children[i], printRoot);
+            }
+        }
+    }
+
+    public StringBuilder elapsedPhaseTreeAsString() {
+        StringBuilder sb = new StringBuilder();
+        printTree("", sb, root, false);
+        return sb;
+    }
 
     /**
      * Starts an alarm for setting a time limit on a compilation if there isn't already an active
@@ -154,6 +391,16 @@ public final class CompilationAlarm implements AutoCloseable {
             }
         }
         return null;
+    }
+
+    /**
+     * Disable the compilation alarm. The returned value should be used in a try-with-resource
+     * statement to restore the previous alarm state.
+     */
+    public static CompilationAlarm disable() {
+        CompilationAlarm current = new CompilationAlarm(0);
+        currentAlarm.set(current);
+        return current;
     }
 
     /**
@@ -205,25 +452,27 @@ public final class CompilationAlarm implements AutoCloseable {
 
         final StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
         if (lastStackTrace == null) {
-            Long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThreadMS.get();
-            if (lastUniqueStackTraceTimeStamp == null) {
+            Long lastUniqueStackTraceTimeStampNS = lastUniqueStackTraceForThreadNS.get();
+            if (lastUniqueStackTraceTimeStampNS == null) {
                 assertProgressNoTracking(opt, counter);
                 return;
             } else {
-                final long delay = noProgressStartPeriodMS.get();
-                final long now = System.currentTimeMillis();
-                final long elapsed = now - lastUniqueStackTraceTimeStamp;
-                if (elapsed <= delay) {
+                final long delayNS = noProgressStartPeriodNS.get();
+                final long nowNS = System.nanoTime();
+                final long elapsedNS = nowNS - lastUniqueStackTraceTimeStampNS;
+                if (elapsedNS <= delayNS) {
                     /*
                      * Still not enough lack of progress before we start doing something.
                      */
                     if (LOG_PROGRESS_DETECTION) {
-                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms not long enough to take stack trace yet%n", counter.eventCounterToString(), elapsed);
+                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms not long enough to take stack trace yet%n", counter.eventCounterToString(),
+                                        TimeUnit.NANOSECONDS.toMillis(elapsedNS));
                     }
                     return;
                 } else {
                     if (LOG_PROGRESS_DETECTION) {
-                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms long enough to take stack trace%n", counter.eventCounterToString(), elapsed);
+                        TTY.printf("CompilationAlarm: Progress detection %s; time diff of %d ms long enough to take stack trace%n", counter.eventCounterToString(),
+                                        TimeUnit.NANOSECONDS.toMillis(elapsedNS));
                     }
                 }
             }
@@ -232,7 +481,7 @@ public final class CompilationAlarm implements AutoCloseable {
         StackTraceElement[] currentStackTrace = Thread.currentThread().getStackTrace();
         if (lastStackTrace == null || lastStackTrace.length != currentStackTrace.length || !Arrays.equals(lastStackTrace, currentStackTrace)) {
             lastStackTraceForThread.set(currentStackTrace);
-            lastUniqueStackTraceForThreadMS.set(System.currentTimeMillis());
+            lastUniqueStackTraceForThreadNS.set(System.nanoTime());
             lastMarkerForThread.set(counter.getEventCounterMarker());
         } else {
             assertProgressSlowPath(opt, lastStackTrace, counter, currentStackTrace);
@@ -244,9 +493,9 @@ public final class CompilationAlarm implements AutoCloseable {
          * First time we assert the progress - do not start collecting the stack traces in the first
          * n seconds
          */
-        lastUniqueStackTraceForThreadMS.set(System.currentTimeMillis());
+        lastUniqueStackTraceForThreadNS.set(System.nanoTime());
         lastMarkerForThread.set(counter.getEventCounterMarker());
-        noProgressStartPeriodMS.set((long) (Options.CompilationNoProgressStartTrackingProgressPeriod.getValue(opt) * 1000));
+        noProgressStartPeriodNS.set(periodNanoSeconds(Options.CompilationNoProgressStartTrackingProgressPeriod.getValue(opt)));
 
         if (LOG_PROGRESS_DETECTION) {
             TTY.printf("CompilationAlarm: Progress detection %s; taking first time stamp, no stack yet%n", counter.eventCounterToString());
@@ -260,7 +509,7 @@ public final class CompilationAlarm implements AutoCloseable {
          * below. In normal compiles we don't often get into this branch in the first place, most is
          * captured above, and the thread local is very fast.
          */
-        final long stuckThreshold = (long) (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+        final long stuckThreshold = periodNanoSeconds(Options.CompilationNoProgressPeriod.getValue(opt));
         if (stuckThreshold == 0) {
             // Feature is disabled, do nothing.
             return;
@@ -271,31 +520,31 @@ public final class CompilationAlarm implements AutoCloseable {
          * We have a similar stack trace - fail once the period is longer than the no progress
          * period.
          */
-        final long lastUniqueStackTraceTime = lastUniqueStackTraceForThreadMS.get();
-        final long now = System.currentTimeMillis();
-        final long elapsed = now - lastUniqueStackTraceTime;
-        boolean stuck = elapsed > stuckThreshold;
+        final long lastUniqueStackTraceTime = lastUniqueStackTraceForThreadNS.get();
+        final long nowNS = System.nanoTime();
+        final long elapsedNS = nowNS - lastUniqueStackTraceTime;
+        boolean stuck = elapsedNS > stuckThreshold;
 
         if (LOG_PROGRESS_DETECTION) {
             TTY.printf("CompilationAlarm: Progress detection %s; no progress for %d ms; stuck? %s; stuck threshold %d ms%n",
-                            counter, elapsed, stuck, stuckThreshold);
+                            counter, TimeUnit.NANOSECONDS.toMillis(elapsedNS), stuck, stuckThreshold);
         }
 
         if (stuck) {
             throw new PermanentBailoutException("Observed identical stack traces for %d ms, indicating a stuck compilation, counter = %s, stack is:%n%s",
-                            elapsed, counter, Util.toString(lastStackTrace));
+                            TimeUnit.NANOSECONDS.toMillis(elapsedNS), counter, Util.toString(lastStackTrace));
         }
     }
 
     public static void resetProgressDetection() {
         lastStackTraceForThread.set(null);
-        lastUniqueStackTraceForThreadMS.set(null);
+        lastUniqueStackTraceForThreadNS.set(null);
         lastMarkerForThread.set(null);
-        noProgressStartPeriodMS.set(null);
+        noProgressStartPeriodNS.set(null);
     }
 
     private static final ThreadLocal<StackTraceElement[]> lastStackTraceForThread = new ThreadLocal<>();
-    private static final ThreadLocal<Long> lastUniqueStackTraceForThreadMS = new ThreadLocal<>();
+    private static final ThreadLocal<Long> lastUniqueStackTraceForThreadNS = new ThreadLocal<>();
     /**
      * Note that all these thread locals are not necessarily reset for a while even if worker
      * threads have moved on to do actual work (but just not compiling graphs). Especially in the
@@ -304,5 +553,5 @@ public final class CompilationAlarm implements AutoCloseable {
      * large data structures like actual Graal graphs or LIR alive.
      */
     private static final ThreadLocal<EventCounterMarker> lastMarkerForThread = new ThreadLocal<>();
-    private static final ThreadLocal<Long> noProgressStartPeriodMS = new ThreadLocal<>();
+    private static final ThreadLocal<Long> noProgressStartPeriodNS = new ThreadLocal<>();
 }

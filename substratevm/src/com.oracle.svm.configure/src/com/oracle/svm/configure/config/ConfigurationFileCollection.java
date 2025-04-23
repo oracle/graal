@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
 
 import java.io.IOException;
 import java.net.URI;
@@ -34,18 +34,29 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConfigurationParserOption;
+
+import jdk.graal.compiler.phases.common.LazyValue;
 
 public class ConfigurationFileCollection {
+
+    private final EnumSet<ConfigurationParserOption> parserOptions;
+
+    public ConfigurationFileCollection() {
+        this.parserOptions = EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION, ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
+    }
+
     public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
 
     private final Set<URI> reachabilityMetadataPaths = new LinkedHashSet<>();
@@ -114,7 +125,7 @@ public class ConfigurationFileCollection {
             case REFLECTION -> uris = getReflectConfigPaths();
             case SERIALIZATION -> uris = getSerializationConfigPaths();
             case PREDEFINED_CLASSES_NAME -> uris = getPredefinedClassesConfigPaths();
-            default -> throw VMError.shouldNotReachHere("Cannot get paths for configuration file " + configurationFile);
+            default -> throw new IllegalArgumentException("Cannot get paths for configuration file " + configurationFile);
         }
         return uris.stream().map(Paths::get).collect(Collectors.toSet());
     }
@@ -157,32 +168,32 @@ public class ConfigurationFileCollection {
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, proxyConfiguration.createParser(false), exceptionHandler);
+        loadConfig(proxyConfigPaths, proxyConfiguration.createParser(false, parserOptions), exceptionHandler);
         return proxyConfiguration;
     }
 
-    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
+    public PredefinedClassesConfiguration loadPredefinedClassesConfig(List<LazyValue<Path>> classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
                     Function<IOException, Exception> exceptionHandler) throws Exception {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
-        loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(false), exceptionHandler);
+        loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(false, parserOptions), exceptionHandler);
         return predefinedClassesConfiguration;
     }
 
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-        loadConfig(reachabilityMetadataPaths, resourceConfiguration.createParser(true), exceptionHandler);
-        loadConfig(resourceConfigPaths, resourceConfiguration.createParser(false), exceptionHandler);
+        loadConfig(reachabilityMetadataPaths, resourceConfiguration.createParser(true, parserOptions), exceptionHandler);
+        loadConfig(resourceConfigPaths, resourceConfiguration.createParser(false, parserOptions), exceptionHandler);
         return resourceConfiguration;
     }
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(reachabilityMetadataPaths, serializationConfiguration.createParser(true), exceptionHandler);
-        loadConfig(serializationConfigPaths, serializationConfiguration.createParser(false), exceptionHandler);
+        loadConfig(reachabilityMetadataPaths, serializationConfiguration.createParser(true, parserOptions), exceptionHandler);
+        loadConfig(serializationConfigPaths, serializationConfiguration.createParser(false, parserOptions), exceptionHandler);
         return serializationConfiguration;
     }
 
-    public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, Path[] predefinedConfigClassDestinationDirs,
+    public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, List<LazyValue<Path>> predefinedConfigClassDestinationDirs,
                     Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
         return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadJniConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
                         loadSerializationConfig(exceptionHandler),
@@ -191,8 +202,8 @@ public class ConfigurationFileCollection {
 
     private TypeConfiguration loadTypeConfig(String combinedFileKey, Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
         TypeConfiguration configuration = new TypeConfiguration(combinedFileKey);
-        loadConfig(reachabilityMetadataPaths, configuration.createParser(true), exceptionHandler);
-        loadConfig(uris, configuration.createParser(false), exceptionHandler);
+        loadConfig(reachabilityMetadataPaths, configuration.createParser(true, parserOptions), exceptionHandler);
+        loadConfig(uris, configuration.createParser(false, parserOptions), exceptionHandler);
         return configuration;
     }
 

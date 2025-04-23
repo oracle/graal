@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.serviceprovider;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -31,6 +32,7 @@ import java.util.List;
  * this abstraction enables avoiding a dependency to the {@code java.management} and
  * {@code jdk.management} modules.
  */
+@LibGraalService
 public abstract class JMXService {
     protected abstract long getThreadAllocatedBytes(long id);
 
@@ -42,7 +44,11 @@ public abstract class JMXService {
 
     protected abstract List<String> getInputArguments();
 
-    // Placing this static field in JMXService (instead of GraalServices)
-    // allows for lazy initialization.
-    static final JMXService instance = GraalServices.loadSingle(JMXService.class, false);
+    /**
+     * Dumps the heap to {@code outputFile} in hprof format.
+     *
+     * @param live if true, performs a full GC first so that only live objects are dumped
+     * @throws IOException if an IO error occurred dyring dumping
+     */
+    protected abstract void dumpHeap(String outputFile, boolean live) throws IOException;
 }

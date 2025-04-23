@@ -33,20 +33,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.common.option.UnsupportedOptionClassException;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 
 public final class PointsToOptionParser {
 
@@ -62,7 +63,8 @@ public final class PointsToOptionParser {
 
     private PointsToOptionParser() {
         ClassLoader appClassLoader = PointsToOptionParser.class.getClassLoader();
-        CommonOptionParser.collectOptions(ServiceLoader.load(OptionDescriptors.class, appClassLoader), descriptor -> {
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(appClassLoader);
+        CommonOptionParser.collectOptions(optionDescriptors, descriptor -> {
             String name = descriptor.getName();
             if (descriptor.getOptionKey() != null) {
                 OptionDescriptor existing = allAnalysisOptions.put(name, descriptor);
@@ -94,9 +96,10 @@ public final class PointsToOptionParser {
             AnalysisError.interruptAnalysis(String.format("Unknown options: %s", Arrays.toString(remainingArgs.toArray(new String[0]))));
         }
         if (!errors.isEmpty()) {
-            StringBuilder errMsg = new StringBuilder("Option format error:\n");
+            StringBuilder errMsg = new StringBuilder("Option format error:");
+            errMsg.append(System.lineSeparator());
             for (String err : errors) {
-                errMsg.append(err).append("\n");
+                errMsg.append(err).append(System.lineSeparator());
             }
             AnalysisError.interruptAnalysis(errMsg.toString());
         }

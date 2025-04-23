@@ -26,10 +26,10 @@ package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Executable;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -106,21 +106,13 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
          * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
          */
-        if (SubstrateOptions.closedTypeWorld()) {
-            CFunctionPointer target;
-            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-            } else if (vtableOffset != STATICALLY_BOUND) {
+        CFunctionPointer target;
+        if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
+            throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
+        } else if (vtableOffset != STATICALLY_BOUND) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
             } else {
-                target = directTarget;
-            }
-            return target;
-        } else {
-            CFunctionPointer target;
-            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-            } else if (vtableOffset != STATICALLY_BOUND) {
                 long tableStartingOffset = LoadOpenTypeWorldDispatchTableStartingOffset.createOpenTypeWorldLoadDispatchTableStartingOffset(obj.getClass(), interfaceTypeID);
 
                 /*
@@ -128,12 +120,12 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
                  */
                 long methodOffset = tableStartingOffset + vtableOffset;
 
-                target = BarrieredAccess.readWord(obj.getClass(), WordFactory.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
-            } else {
-                target = directTarget;
+                target = BarrieredAccess.readWord(obj.getClass(), Word.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
             }
-            return target;
+        } else {
+            target = directTarget;
         }
+        return target;
     }
 
     @Override

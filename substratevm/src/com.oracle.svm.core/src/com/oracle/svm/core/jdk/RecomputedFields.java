@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
-import java.security.AccessControlContext;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -41,15 +40,16 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Unsafe;
 
@@ -59,6 +59,7 @@ import jdk.internal.misc.Unsafe;
  */
 
 @TargetClass(java.nio.charset.CharsetEncoder.class)
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/java/nio/charset/Charset-X-Coder.java.template")
 final class Target_java_nio_charset_CharsetEncoder {
     @Alias @RecomputeFieldValue(kind = Reset) //
     private WeakReference<CharsetDecoder> cachedDecoder;
@@ -259,20 +260,12 @@ final class Target_java_util_concurrent_ForkJoinPool {
     }
 
     @Alias //
-    private static Unsafe U;
-
-    @Alias //
-    private static long POOLIDS;
-
-    @Substitute
-    private static int getAndAddPoolIds(int x) {
-        // Original method wrongly uses ForkJoinPool.class instead of calling U.staticFieldBase()
-        return U.getAndAddInt(StaticFieldsSupport.getStaticPrimitiveFields(), POOLIDS, x);
-    }
-
-    @Alias //
     Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
     }
+
+    @Alias //
+    @TargetElement(onlyWith = JDKLatest.class)
+    public static native ForkJoinPool asyncCommonPool();
 }
 
 /**
@@ -309,15 +302,6 @@ class ForkJoinPoolCommonAccessor {
         }
         return result;
     }
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinPool.class, innerClass = "DefaultForkJoinWorkerThreadFactory", onlyWith = JDKLatest.class)
-@SuppressWarnings("removal")
-final class Target_java_util_concurrent_ForkJoinPool_DefaultForkJoinWorkerThreadFactory {
-    @Alias @RecomputeFieldValue(kind = Reset) //
-    static AccessControlContext regularACC;
-    @Alias @RecomputeFieldValue(kind = Reset) //
-    static AccessControlContext commonACC;
 }
 
 /** Dummy class to have a class with the file's name. */

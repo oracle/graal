@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.threads;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -38,7 +37,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * <li>Fetches the guest {@link Thread#run()} methods and executes it.</li>
  * <li>If an exception escapes the guest thread, call
  * {@code Thread#dispatchUncaughtException(Throwable)}.</li>
- * <li>Upon completion, {@link ThreadsAccess#terminate(StaticObject, DirectCallNode) terminates} the
+ * <li>Upon completion, {@link ThreadAccess#terminate(StaticObject, DirectCallNode) terminates} the
  * guest thread.</li>
  * </ul>
  */
@@ -63,7 +62,7 @@ final class GuestRunnable implements Runnable {
             try {
                 // Execute the payload
                 context.getThreadAccess().fullSafePoint(thread);
-                thread.getKlass().vtableLookup(context.getMeta().java_lang_Thread_run.getVTableIndex()).invokeDirect(thread);
+                context.getMeta().java_lang_Thread_run.invokeDirectVirtual(thread);
                 context.getThreadAccess().fullSafePoint(thread);
             } catch (EspressoException uncaught) {
                 dispatchUncaught.call(thread, uncaught.getGuestException());

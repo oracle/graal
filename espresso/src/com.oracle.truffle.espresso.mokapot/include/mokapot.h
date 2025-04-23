@@ -42,7 +42,7 @@ typedef const struct MokapotNativeInterface_ *MokapotEnv;
 #endif
 
 #define UNIMPLEMENTED(name) \
-  fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
+  fprintf(stderr, "Calling unimplemented mokapot %s" OS_NEWLINE_STR, #name);
 
 #define IMPLEMENTED(name) do {} while (0);
 

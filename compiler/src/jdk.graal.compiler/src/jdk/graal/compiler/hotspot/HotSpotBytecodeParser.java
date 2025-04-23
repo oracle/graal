@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,27 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedNodeIntrinsicInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -67,6 +76,21 @@ public class HotSpotBytecodeParser extends BytecodeParser {
         return doIntrinsicRangeCheck(this, condition, negated);
     }
 
+    public static final String BAD_NODE_INTRINSIC_PLUGIN_CONTEXT = "@NodeIntrinsic plugin can't be used outside of Snippet context: ";
+
+    @Override
+    protected boolean applyInvocationPlugin(CallTargetNode.InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
+        // It's an error to call generated invocation plugins outside of snippets.
+        if (plugin instanceof GeneratedNodeIntrinsicInvocationPlugin nodeIntrinsicPlugin) {
+            // Snippets are never parsed in libgraal, and they are the root of the compilation
+            // in jargraal, so check the root method for the Snippet annotation.
+            if (LibGraalSupport.inLibGraalRuntime() || graph.method().getAnnotation(Snippet.class) == null) {
+                throw new PermanentBailoutException(BAD_NODE_INTRINSIC_PLUGIN_CONTEXT + nodeIntrinsicPlugin.getSource().getSimpleName());
+            }
+        }
+        return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
+    }
+
     public static FixedGuardNode doIntrinsicRangeCheck(GraphBuilderContext context, LogicNode condition, boolean negated) {
         /*
          * On HotSpot it's simplest to always deoptimize. We could dispatch to the fallback code
@@ -88,5 +112,14 @@ public class HotSpotBytecodeParser extends BytecodeParser {
     @Override
     protected boolean mustClearNonLiveLocalsAtOSREntry() {
         return !HotSpotGraalServices.hasGetOopMapAt();
+    }
+
+    @Override
+    protected boolean needBarrierAfterFieldStore(ResolvedJavaField field) {
+        if (method.isConstructor() && field instanceof HotSpotResolvedJavaField hfield && hfield.isStable()) {
+            return true;
+        }
+
+        return super.needBarrierAfterFieldStore(field);
     }
 }

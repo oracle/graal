@@ -58,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
+import org.graalvm.polyglot.Context;
 
 // Information attached by context to each thread which entered the context
 final class PolyglotThreadInfo {
@@ -95,9 +96,21 @@ final class PolyglotThreadInfo {
     final EncapsulatingNodeReference encapsulatingNodeReference;
 
     private final BitSet initializedLanguageContexts;
+    private final BitSet initializingLanguageContexts;
     private boolean finalizationComplete;
 
     private final List<ProbeNode> probesEnterList;
+    /**
+     * Field holding the Context instance to prevent it from being collected while there is an
+     * explicitly entered thread.
+     */
+    volatile Context explicitEnterAnchor;
+
+    /*
+     * Set only for dead embedder threads (Thread#isAlive() == false) to claim the finalization of
+     * the dead embedder threads by another embedder thread that is just entering the context.
+     */
+    boolean finalizingDeadThread;
 
     private static final boolean ASSERT_ENTER_RETURN_PARITY;
 
@@ -120,8 +133,10 @@ final class PolyglotThreadInfo {
             this.fastThreadLocals = PolyglotFastThreadLocals.createFastThreadLocals(this);
         }
         if (context != null) {
+            initializingLanguageContexts = new BitSet(context.contexts.length);
             initializedLanguageContexts = new BitSet(context.contexts.length);
         } else {
+            initializingLanguageContexts = null;
             initializedLanguageContexts = null;
         }
         this.probesEnterList = initProbesEnterList(context);
@@ -157,21 +172,46 @@ final class PolyglotThreadInfo {
         return thread.get();
     }
 
+    boolean isFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        return finalizingDeadThread;
+    }
+
+    void setFinalizingDeadThread() {
+        assert Thread.holdsLock(context);
+        this.finalizingDeadThread = true;
+    }
+
     boolean isLanguageContextInitialized(PolyglotLanguage language) {
         assert Thread.holdsLock(context);
         return initializedLanguageContexts.get(language.engineIndex);
     }
 
-    void initializeLanguageContext(PolyglotLanguageContext languageContext) {
+    void setLanguageContextInitializing(PolyglotLanguageContext languageContext) {
         assert Thread.holdsLock(context);
         assert !finalizationComplete;
-        LANGUAGE.initializeThread(languageContext.env, getThread());
+        initializingLanguageContexts.set(languageContext.language.engineIndex);
+    }
+
+    void clearLanguageContextInitializing(PolyglotLanguageContext languageContext) {
+        assert Thread.holdsLock(context);
+        initializingLanguageContexts.clear(languageContext.language.engineIndex);
+    }
+
+    boolean isLanguageContextInitializing(PolyglotLanguage language) {
+        assert Thread.holdsLock(context);
+        return initializingLanguageContexts.get(language.engineIndex);
+    }
+
+    void setLanguageContextInitialized(PolyglotLanguageContext languageContext) {
+        assert Thread.holdsLock(context);
+        assert !finalizationComplete;
+        assert initializingLanguageContexts.get(languageContext.language.engineIndex);
         initializedLanguageContexts.set(languageContext.language.engineIndex);
     }
 
-    void clearLanguageContextInitialized(PolyglotLanguage language) {
-        assert Thread.holdsLock(context);
-        initializedLanguageContexts.clear(language.engineIndex);
+    void initializeLanguageContext(PolyglotLanguageContext languageContext) {
+        LANGUAGE.initializeThread(languageContext.env, getThread());
     }
 
     int initializedLanguageContextsCount() {
@@ -263,7 +303,7 @@ final class PolyglotThreadInfo {
             setContextClassLoader();
         }
 
-        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.getCreatorTruffleContext());
 
         if (engine.specializationStatistics != null) {
             enterStatistics(engine.specializationStatistics);
@@ -287,7 +327,7 @@ final class PolyglotThreadInfo {
          * Notify might be false if the context was closed already on a second thread.
          */
         try {
-            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.getCreatorTruffleContext());
         } finally {
             if (!engine.customHostClassLoader.isValid()) {
                 restoreContextClassLoader();

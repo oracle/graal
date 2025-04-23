@@ -1,5 +1,0 @@
-Manifest-Version: 1.0
-AutoUpdate-Show-In-Client: false
-OpenIDE-Module: org.graalvm.visualizer.libs.batik
-OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/libs/batik/Bundle.properties
-OpenIDE-Module-Specification-Version: 1.0

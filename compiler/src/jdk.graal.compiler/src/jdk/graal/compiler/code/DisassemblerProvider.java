@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.code;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.graal.compiler.options.OptionValues;
@@ -31,6 +32,7 @@ import jdk.graal.compiler.options.OptionValues;
 /**
  * Interface providing capability for disassembling machine code.
  */
+@LibGraalService
 public interface DisassemblerProvider {
 
     /**

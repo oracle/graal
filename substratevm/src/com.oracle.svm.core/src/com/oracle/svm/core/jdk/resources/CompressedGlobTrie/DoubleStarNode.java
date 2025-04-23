@@ -25,8 +25,10 @@
 
 package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
 
-final class DoubleStarNode extends GlobTrieNode {
+import com.oracle.svm.util.GlobUtils;
+
+final class DoubleStarNode<C> extends GlobTrieNode<C> {
     DoubleStarNode() {
-        super(STAR_STAR);
+        super(GlobUtils.STAR_STAR);
     }
 }

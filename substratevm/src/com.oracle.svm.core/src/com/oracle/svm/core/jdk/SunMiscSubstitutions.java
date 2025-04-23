@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import java.security.ProtectionDomain;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -39,6 +38,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -50,6 +50,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.word.Word;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method", "unused"})
@@ -57,17 +58,17 @@ final class Target_jdk_internal_misc_Unsafe_Core {
 
     @Substitute
     private long allocateMemory0(long bytes) {
-        return NativeMemory.malloc(WordFactory.unsigned(bytes), NmtCategory.Unsafe).rawValue();
+        return NativeMemory.malloc(Word.unsigned(bytes), NmtCategory.Unsafe).rawValue();
     }
 
     @Substitute
     private long reallocateMemory0(long address, long bytes) {
-        return NativeMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes), NmtCategory.Unsafe).rawValue();
+        return NativeMemory.realloc(Word.unsigned(address), Word.unsigned(bytes), NmtCategory.Unsafe).rawValue();
     }
 
     @Substitute
     private void freeMemory0(long address) {
-        NativeMemory.free(WordFactory.unsigned(address));
+        NativeMemory.free(Word.unsigned(address));
     }
 
     @Substitute
@@ -97,8 +98,15 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     }
 
     @Substitute
-    public int arrayBaseOffset(Class<?> clazz) {
+    @TargetElement(name = "arrayBaseOffset", onlyWith = JDK21OrEarlier.class)
+    public int arrayBaseOffsetJDK21(Class<?> clazz) {
         return (int) LayoutEncoding.getArrayBaseOffset(DynamicHub.fromClass(clazz).getLayoutEncoding()).rawValue();
+    }
+
+    @Substitute
+    @TargetElement(name = "arrayBaseOffset", onlyWith = JDKLatest.class)
+    public long arrayBaseOffset(Class<?> clazz) {
+        return LayoutEncoding.getArrayBaseOffset(DynamicHub.fromClass(clazz).getLayoutEncoding()).rawValue();
     }
 
     @Substitute
@@ -153,7 +161,7 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     @Substitute
     public Object getUncompressedObject(long address) {
         /* Adapted from `Unsafe_GetUncompressedObject` in `src/hotspot/share/prims/unsafe.cpp`. */
-        return ReferenceAccess.singleton().readObjectAt(WordFactory.pointer(address), false);
+        return ReferenceAccess.singleton().readObjectAt(Word.pointer(address), false);
     }
 
     /*

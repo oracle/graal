@@ -368,7 +368,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         if (var == null) {
             throw new InvalidExpressionException(String.format("%s cannot be resolved.", variable.getName()));
         } else if (!ElementUtils.isVisible(accessType, var)) {
-            throw new InvalidExpressionException(String.format("%s is not visible.", variable.getName()));
+            throw new InvalidExpressionException(String.format("%s is not visible from %s.", variable.getName(), accessType.getSimpleName()));
         }
         variable.setResolvedVariable(var);
 

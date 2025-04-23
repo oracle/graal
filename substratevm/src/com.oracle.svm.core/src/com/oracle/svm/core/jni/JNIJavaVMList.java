@@ -25,9 +25,9 @@
 package com.oracle.svm.core.jni;
 
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
-import static org.graalvm.word.WordFactory.nullPointer;
-import static org.graalvm.word.WordFactory.unsigned;
-import static org.graalvm.word.WordFactory.zero;
+import static jdk.graal.compiler.word.Word.nullPointer;
+import static jdk.graal.compiler.word.Word.unsigned;
+import static jdk.graal.compiler.word.Word.zero;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;

@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -36,9 +35,11 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.word.Word;
+
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
-    UnsignedWord UNDEFINED = WordFactory.unsigned(-1);
+    UnsignedWord UNDEFINED = Word.unsigned(-1L);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static String getInitialPolicyName() {

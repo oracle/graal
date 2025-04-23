@@ -25,17 +25,16 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import com.oracle.svm.configure.SerializationConfigurationParser;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
-public class SerializationConfigurationLambdaCapturingType implements JsonPrintable {
+public class SerializationConfigurationLambdaCapturingType implements JsonPrintable, Comparable<SerializationConfigurationLambdaCapturingType> {
     private final UnresolvedConfigurationCondition condition;
     private final String qualifiedJavaName;
 
@@ -58,7 +57,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, false);
 
         writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(qualifiedJavaName);
         writer.unindent().newline().append('}');
@@ -82,15 +81,12 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
         return Objects.hash(condition, qualifiedJavaName);
     }
 
-    public static final class SerializationConfigurationLambdaCapturingTypesComparator implements Comparator<SerializationConfigurationLambdaCapturingType> {
-
-        @Override
-        public int compare(SerializationConfigurationLambdaCapturingType o1, SerializationConfigurationLambdaCapturingType o2) {
-            int compareName = o1.qualifiedJavaName.compareTo(o2.qualifiedJavaName);
-            if (compareName != 0) {
-                return compareName;
-            }
-            return o1.condition.compareTo(o2.condition);
+    @Override
+    public int compareTo(SerializationConfigurationLambdaCapturingType other) {
+        int compareName = qualifiedJavaName.compareTo(other.qualifiedJavaName);
+        if (compareName != 0) {
+            return compareName;
         }
+        return condition.compareTo(other.condition);
     }
 }

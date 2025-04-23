@@ -105,8 +105,8 @@ public final class ObjectGroupHistogram {
          * order in which types are prcessed matters.
          */
         processType(DynamicHub.class, "DynamicHub", true, null, ObjectGroupHistogram::filterDynamicHubField);
-        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.getReferenceMapEncoding()), "DynamicHub", true, null, null);
-        processObject(CodeInfoTable.getImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
+        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.currentLayer().getReferenceMapEncoding()), "DynamicHub", true, null, null);
+        processObject(CodeInfoTable.getCurrentLayerImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
         processObject(readTruffleRuntimeCompilationSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
         processObject(readTruffleRuntimeCompilationSupportField("graphObjects"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
@@ -126,7 +126,7 @@ public final class ObjectGroupHistogram {
 
         HeapHistogram totalHistogram = new HeapHistogram();
         for (ObjectInfo info : heap.getObjects()) {
-            if (info.getConstant().isInBaseLayer()) {
+            if (info.getConstant().isWrittenInPreviousLayer()) {
                 continue;
             }
             totalHistogram.add(info, info.getSize());
@@ -162,7 +162,7 @@ public final class ObjectGroupHistogram {
 
     public void processType(Class<?> clazz, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         for (ObjectInfo info : heap.getObjects()) {
-            if (!info.getConstant().isInBaseLayer() && clazz.isInstance(info.getObject())) {
+            if (!info.getConstant().isWrittenInPreviousLayer() && clazz.isInstance(info.getObject())) {
                 processObject(info, group, addObject, 1, objectFilter, fieldFilter);
             }
         }
@@ -185,8 +185,8 @@ public final class ObjectGroupHistogram {
     private void processObject(ObjectInfo info, String group, boolean addObject, int recursionLevel, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         assert info != null;
         ImageHeapConstant ihc = info.getConstant();
-        if (ihc.isInBaseLayer()) {
-            /* Base layer objects don't count towards current layer's statistics. */
+        if (ihc.isWrittenInPreviousLayer()) {
+            /* Written base layer objects don't count towards current layer's statistics. */
             return;
         }
         if (objectFilter != null && !objectFilter.test(info, recursionLevel)) {

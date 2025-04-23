@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.tests.pipe;
 
 import java.io.File;
-
 import java.io.IOException;
 import java.nio.file.Files;
 
+@SuppressWarnings("restricted")
 public final class CaptureNativeOutput implements CaptureOutput {
 
     static {

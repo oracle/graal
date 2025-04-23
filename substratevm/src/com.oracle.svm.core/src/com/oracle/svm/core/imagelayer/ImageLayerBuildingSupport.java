@@ -62,7 +62,7 @@ import jdk.graal.compiler.util.ObjectCopier;
  * Note this is intentionally not a LayeredImageSingleton itself to prevent circular dependencies.
  */
 public abstract class ImageLayerBuildingSupport {
-    protected final boolean buildingImageLayer;
+    public final boolean buildingImageLayer;
     private final boolean buildingInitialLayer;
     private final boolean buildingApplicationLayer;
 
@@ -70,30 +70,18 @@ public abstract class ImageLayerBuildingSupport {
         this.buildingImageLayer = buildingImageLayer;
         this.buildingInitialLayer = buildingInitialLayer;
         this.buildingApplicationLayer = buildingApplicationLayer;
-
-        if (buildingImageLayer) {
-            openModules();
-        }
-
     }
 
     /**
      * To allow the {@link ObjectCopier} to access private fields by reflection, some modules needs
      * to be opened when a layer is built.
      */
-    private static void openModules() {
+    public static void openModules() {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.lang");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.lang.reflect");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.util");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "java.util.concurrent");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.c");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.c.function");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.c.struct");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.graal.code");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.graal.stackvalue");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.snippets");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.threadlocal");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.hosted.imagelayer");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.hosted.meta");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, "java.base", "sun.reflect.annotation");
     }
 
     private static ImageLayerBuildingSupport singleton() {

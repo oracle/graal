@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,9 +50,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The node for function invocation in SL. Since SL has first class functions, the {@link SLFunction
@@ -97,7 +97,7 @@ public final class SLInvokeNode extends SLExpressionNode {
             return library.execute(function, argumentValues);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             /* Execute was not successful. */
-            throw SLUndefinedNameException.undefinedFunction(this, function);
+            throw SLException.undefinedFunction(this, function);
         }
     }
 

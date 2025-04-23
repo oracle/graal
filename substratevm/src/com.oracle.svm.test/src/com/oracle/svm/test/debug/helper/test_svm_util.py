@@ -26,6 +26,7 @@
 import os
 import sys
 import unittest
+
 import gdb
 
 # add test directory to path to allow import of gdb_helper.py
@@ -88,18 +89,17 @@ class TestObjUtils(unittest.TestCase):
         gdb_delete_breakpoints()
         gdb_kill()
 
-    def test_compressed_hub_adr(self):
+    def test_compressed_hub_oop(self):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testArrayList")
         gdb_continue()
         # get a compressed hub
         z_hub = gdb.parse_and_eval('strList.hub')
         self.assertNotEqual(int(z_hub), 0)
         self.assertTrue(SVMUtil.is_compressed(z_hub.type))
-        # get the uncompressed value for the hub
+        # the hub field type does not have an 'uncompressed' type
+        # we can just check if an absolute address is converted correctly to a compressed oop
         hub = z_hub.dereference()
-        hub = hub.cast(SVMUtil.get_uncompressed_type(hub.type))
-        self.assertFalse(SVMUtil.is_compressed(hub.type))
-        self.assertEqual(SVMUtil.get_compressed_adr(hub), int(z_hub))
+        self.assertEqual(SVMUtil.get_compressed_oop(hub), int(z_hub))
 
         hub_str = str(hub)
         SVMUtil.prompt_hook()
@@ -107,7 +107,7 @@ class TestObjUtils(unittest.TestCase):
         SVMUtil.prompt_hook()
         self.assertEqual(hub_str, z_hub_str)
 
-    def test_compressed_adr(self):
+    def test_compressed_oop(self):
         gdb_set_breakpoint("com.oracle.svm.test.debug.helper.PrettyPrinterTest::testArrayList")
         gdb_continue()
         # get a compressed object
@@ -118,7 +118,7 @@ class TestObjUtils(unittest.TestCase):
         name = z_name.dereference()
         name = name.cast(SVMUtil.get_uncompressed_type(name.type))
         self.assertFalse(SVMUtil.is_compressed(name.type))
-        self.assertEqual(SVMUtil.get_compressed_adr(name), int(z_name))
+        self.assertEqual(SVMUtil.get_compressed_oop(name), int(z_name))
 
         name_str = str(name)
         SVMUtil.prompt_hook()
@@ -161,4 +161,6 @@ class TestObjUtils(unittest.TestCase):
 
 
 # redirect unittest output to terminal
-unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__))
+result = unittest.main(testRunner=unittest.TextTestRunner(stream=sys.__stdout__), exit=False)
+# close gdb
+gdb_quit(0 if result.result.wasSuccessful() else 1)

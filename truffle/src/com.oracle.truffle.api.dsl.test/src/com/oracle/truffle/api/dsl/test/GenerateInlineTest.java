@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -341,7 +341,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static int doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("arg") int cachedArg,
                         @Cached InlinedBranchProfile p0) {
             p0.enter(node);
@@ -754,7 +754,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = true) SimpleNode simpleNode2,
                         @Cached("arg") int cachedArg) {
@@ -786,7 +786,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doCached(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = true) SimpleNode simpleNode2,
                         @Cached("arg") int cachedArg) {
@@ -797,7 +797,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static Object doOther(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = true) SimpleNode simpleNode2,
                         @Cached(value = "arg", neverDefault = true) int cachedArg) {
@@ -828,7 +828,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached(inline = false) SimpleNode simpleNode2,
                         @Cached("arg") int cachedArg) {
@@ -1387,7 +1387,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 2")
         static Object s1(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared("innerShared") @Cached(inline = true) InlineInlineCache innerShared,
                         @Shared("innerSharedPrimitive") @Cached("arg") int innerSharedPrimitive,
                         @Shared("innerSharedNotInlined") @Cached(inline = false) InlineInlineCache innerSharedNotInlined,
@@ -1407,7 +1407,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 3")
         static Object s2(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SharedAllInlinedWithSpecializationClassNode bits) {
 
             bits.execute(node, 1);
@@ -1416,7 +1416,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 4")
         static Object s3(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SharedNoneInlinedWithSpecializationClassNode bits) {
 
             bits.execute(node, 1);
@@ -1425,7 +1425,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 5")
         static Object s4(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SharedMixedInlinedWithSpecializationClassNode bits) {
 
             bits.execute(node, 1);
@@ -1643,7 +1643,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization(guards = "sharedNode.execute(this, arg0)")
         @SuppressWarnings("unused")
         static String s0(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Cached InlinedIdentityNode exclusiveNode) {
             assertTrue(sharedNode.execute(inliningTarget, arg0));
@@ -1653,7 +1653,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         String s1(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Exclusive @Cached InlinedIdentityNode exclusiveNode) {
             assertFalse(sharedNode.execute(inliningTarget, arg0));
@@ -1690,7 +1690,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization(guards = "exclusiveNode.execute(this, arg0)", limit = "3")
         @SuppressWarnings("unused")
         static String s0(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Cached InlinedIdentityNode exclusiveNode) {
             assertTrue(exclusiveNode.execute(inliningTarget, arg0));
@@ -1699,7 +1699,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         String s1(Object arg0,
-                        @Bind("this") Node inliningTarget,
+                        @Bind Node inliningTarget,
                         @Shared @Cached InlinedIdentityNode sharedNode,
                         @Exclusive @Cached InlinedIdentityNode exclusiveNode) {
             assertTrue(sharedNode.execute(inliningTarget, arg0));
@@ -1731,7 +1731,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @ExpectError("For this specialization with inlined cache parameters it is recommended to use the static modifier.%")
         @Specialization(guards = "arg == cachedArg", limit = "3")
         Object doInt(int arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) SimpleNode simpleNode,
                         @Cached("arg") int cachedArg) {
             return simpleNode.execute(node, cachedArg);
@@ -2065,7 +2065,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization(guards = {"cachedCompaction ==compaction"}, limit = "2")
         static void doCached(CompactionLevel compaction,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("compaction") CompactionLevel cachedCompaction,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile) {
             errorProfile.enter(node);
@@ -2369,7 +2369,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
                         assumptions = "createAssumption()", //
                         limit = "3")
         protected static Object s0(final Object object,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("object.getClass()") final Class<?> cachedLayout,
                         // need to have one node inlined
                         @Cached InlinedConditionProfile weakRefProfile) {

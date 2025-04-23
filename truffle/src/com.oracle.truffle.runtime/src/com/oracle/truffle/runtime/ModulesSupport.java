@@ -43,29 +43,18 @@ package com.oracle.truffle.runtime;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleDescriptor.Requires;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
+import com.oracle.truffle.api.impl.Accessor.ModulesAccessor;
 
 public final class ModulesSupport {
 
-    private static final boolean ATTACH_AVAILABLE;
-    private static final ModulesAccessor ACCESSOR;
-
-    static {
-        ATTACH_AVAILABLE = loadModulesSupportLibrary();
-        if (ATTACH_AVAILABLE) {
-            // this is the only access we really need to request natively using JNI.
-            // after that we can access through the Modules class
-            ACCESSOR = ModulesAccessor.create(ModulesSupport.class);
-            addExports0(ModuleLayer.boot().findModule("java.base").orElseThrow(), "jdk.internal.module", ACCESSOR.getTargetModule());
-        } else {
-            ACCESSOR = null;
-        }
-    }
+    private static final ModulesAccessor ACCESSOR = initializeModulesAccessor();
 
     private ModulesSupport() {
     }
@@ -105,9 +94,9 @@ public final class ModulesSupport {
             // jvmci not found -> fallback to default runtime
             return "JVMCI is not enabled for this JVM. Enable JVMCI using -XX:+EnableJVMCI.";
         }
-
-        if (!ATTACH_AVAILABLE) {
-            return "The Truffle attach library is not available.";
+        if (ACCESSOR == null) {
+            return "The Truffle attach library is not available or cannot be loaded. " +
+                            "This can happen if the Truffle jar files are invalid or if Truffle is loaded multiple times in separate class loaders.";
         }
         addExportsRecursive(layer, jvmciModule, module, seenModules);
         return null;
@@ -153,24 +142,40 @@ public final class ModulesSupport {
         }
     }
 
-    private static boolean loadModulesSupportLibrary() {
-        String attachLibPath = System.getProperty("truffle.attach.library");
-        try {
-            if (attachLibPath == null) {
-                Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache", false, ModulesSupport.class.getClassLoader());
-                Method installRuntimeResource = resourceCacheClass.getDeclaredMethod("installRuntimeResource", InternalResource.class);
-                installRuntimeResource.setAccessible(true);
-                Path root = (Path) installRuntimeResource.invoke(null, new LibTruffleAttachResource());
-                Path libAttach = root.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
-                attachLibPath = libAttach.toString();
+    public static void exportTruffleRuntimeTo(Class<?> client) {
+        Module truffleModule = ModulesSupport.class.getModule();
+        Module clientModule = client.getModule();
+        if (truffleModule != clientModule) {
+            Set<String> packages = truffleModule.getPackages();
+            for (String pkg : packages) {
+                boolean exported = truffleModule.isExported(pkg, clientModule);
+                if (!exported) {
+                    truffleModule.addExports(pkg, clientModule);
+                }
             }
-            System.load(attachLibPath);
-            return true;
+        }
+    }
+
+    public static JavaLangSupport getJavaLangSupport() {
+        return ACCESSOR.getJavaLangSupport();
+    }
+
+    /**
+     * Gets {@code ModulesAccessor} reflectively.
+     * <p>
+     * The {@code ModulesSupport} class is initialized before {@link TruffleRuntime} is created, so
+     * we cannot use {@link Accessor.EngineSupport#getModulesAccessor()}.
+     * </p>
+     */
+    private static ModulesAccessor initializeModulesAccessor() {
+        // TODO: GR-58671 Make Accessor usable before TruffleRuntime is created.
+        try {
+            Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.JDKSupport", false, ModulesSupport.class.getClassLoader());
+            Method getModulesAccessor = resourceCacheClass.getDeclaredMethod("getModulesAccessor");
+            getModulesAccessor.setAccessible(true);
+            return (ModulesAccessor) getModulesAccessor.invoke(null);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
-
-    private static native void addExports0(Module m1, String pn, Module m2);
-
 }

@@ -48,8 +48,6 @@ import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysis
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
@@ -97,7 +95,6 @@ public final class PointsToAnalyzer {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.org.objectweb.asm");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
@@ -148,7 +145,7 @@ public final class PointsToAnalyzer {
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
-        AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
+        AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider(aUniverse);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider,
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), originalProviders.getReplacements(),
                         originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
@@ -162,15 +159,9 @@ public final class PointsToAnalyzer {
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
-        ImageLayerLoader imageLayerLoader = new ImageLayerLoader();
-        imageLayerLoader.setUniverse(aUniverse);
-        aUniverse.setImageLayerLoader(imageLayerLoader);
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
-        imageLayerLoader.executeHeapScannerTasks();
-        ImageLayerWriter imageLayerWriter = new ImageLayerWriter();
-        imageLayerWriter.setImageHeap(heap);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
         /* Register already created types as assignable. */

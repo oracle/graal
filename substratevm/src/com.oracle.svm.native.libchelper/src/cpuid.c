@@ -438,12 +438,16 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   {
     features->fAVX = 1;
     features->fVZEROUPPER = 1;
+    if (_cpuid_info->sefsl1_cpuid7_eax.bits.sha512 != 0)
+      features->fSHA512 = 1;
     if (_cpuid_info->std_cpuid1_ecx.bits.f16c != 0)
       features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
       if (_cpuid_info->sefsl1_cpuid7_eax.bits.avx_ifma != 0)
         features->fAVX_IFMA = 1;
+    if (_cpuid_info->sef_cpuid7_ecx.bits.gfni != 0)
+      features->fGFNI = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.zmm512 != 0 &&
@@ -470,8 +474,6 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
         features->fAVX512_VPCLMULQDQ = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.vaes != 0)
         features->fAVX512_VAES = 1;
-      if (_cpuid_info->sef_cpuid7_ecx.bits.gfni != 0)
-        features->fGFNI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vnni != 0)
         features->fAVX512_VNNI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_bitalg != 0)
@@ -544,6 +546,9 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     }
     if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0) {
       features->fSERIALIZE = 1;
+    }
+    if (_cpuid_info->sef_cpuid7_edx.bits.avx512_fp16 != 0) {
+      features->fAVX512_FP16 = 1;
     }
   }
 

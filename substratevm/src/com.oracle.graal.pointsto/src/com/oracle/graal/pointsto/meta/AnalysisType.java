@@ -28,8 +28,10 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -60,6 +62,7 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -163,6 +166,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private final AnalysisType[] interfaces;
     private AnalysisMethod[] declaredMethods;
+    private Set<AnalysisMethod> dispatchTableMethods;
+
+    private AnalysisType[] allInterfaces;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -216,6 +222,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
+        super(universe.hostVM.enableTrackAcrossLayers());
         this.universe = universe;
         this.wrapped = javaType;
         qualifiedName = wrapped.toJavaName(true);
@@ -364,6 +371,36 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return dimension;
     }
 
+    /**
+     * @return All interfaces this type inherits (including itself if it is an interface).
+     */
+    public AnalysisType[] getAllInterfaces() {
+        if (allInterfaces != null) {
+            return allInterfaces;
+        }
+
+        Set<AnalysisType> allInterfaceSet = new HashSet<>();
+
+        if (isInterface()) {
+            allInterfaceSet.add(this);
+        }
+
+        if (this.superClass != null) {
+            allInterfaceSet.addAll(Arrays.asList(this.superClass.getAllInterfaces()));
+        }
+
+        for (AnalysisType i : interfaces) {
+            allInterfaceSet.addAll(Arrays.asList(i.getAllInterfaces()));
+        }
+
+        var result = allInterfaceSet.toArray(AnalysisType[]::new);
+
+        // ensure result is fully visible across threads
+        VarHandle.storeStoreFence();
+        allInterfaces = result;
+        return allInterfaces;
+    }
+
     public void cleanupAfterAnalysis() {
         instantiatedTypes = null;
         instantiatedTypesNonNull = null;
@@ -455,8 +492,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AllInstantiatedTypeFlow instantiatedTypesNonNull;
 
     /*
-     * Returns a type flow containing all types that are assignable from this type and are also
-     * instantiated.
+     * Returns a generic type flow containing a) all types that are assignable from this type and
+     * are also instantiated for objects or b) any primitive value for primitives.
      */
     public TypeFlow<?> getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
         if (isPrimitive() || isWordType()) {
@@ -526,6 +563,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     protected void onInstantiated() {
+        assert !isWordType() : Assertions.errorMessage("Word types cannot be instantiated", this);
         forAllSuperTypes(superType -> AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater));
 
         universe.onTypeInstantiated(this);
@@ -558,14 +596,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * that the onReachable hook for all supertypes is already finished, because they can
              * still be running in another thread.
              */
-            AtomicUtils.atomicSetAndRun(this, reason, isReachableUpdater, this::onReachable);
+            AtomicUtils.atomicSetAndRun(this, reason, isReachableUpdater, () -> onReachable(reason));
             return true;
         }
         return false;
     }
 
     @Override
-    protected void onReachable() {
+    protected void onReachable(Object reason) {
+        registerAsTrackedAcrossLayers(reason);
+
         List<AnalysisFuture<Void>> futures = new ArrayList<>();
         notifyReachabilityCallbacks(universe, futures);
         forAllSuperTypes(type -> ConcurrentLightHashSet.forEach(type, subtypeReachableNotificationsUpdater,
@@ -602,6 +642,28 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         ensureOnTypeReachableTaskDone();
     }
 
+    @Override
+    protected void onTrackedAcrossLayers(Object reason) {
+        AnalysisError.guarantee(!getUniverse().sealed(), "Type %s was marked as tracked after the universe was sealed", this);
+        if (superClass != null) {
+            superClass.registerAsTrackedAcrossLayers(reason);
+        }
+        for (AnalysisType inter : interfaces) {
+            inter.registerAsTrackedAcrossLayers(reason);
+        }
+        try {
+            AnalysisType enclosingType = getEnclosingType();
+            if (enclosingType != null) {
+                enclosingType.registerAsTrackedAcrossLayers(reason);
+            }
+        } catch (InternalError | TypeNotPresentException | LinkageError e) {
+            /*
+             * Ignore missing type errors. The build process should not fail if the incomplete type
+             * is not reached through other paths.
+             */
+        }
+    }
+
     /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
     private void prepareMethodImplementations(AnalysisType superType) {
         ConcurrentLightHashSet.forEach(superType, overrideableMethodsUpdater, (AnalysisMethod method) -> {
@@ -610,6 +672,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             AnalysisMethod override = resolveConcreteMethod(method, null);
             if (override != null && !override.equals(method)) {
                 ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                if (method.reachableInCurrentLayer()) {
+                    override.setReachableInCurrentLayer();
+                }
             }
         });
     }
@@ -754,10 +819,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * part of more than one partitions.
      */
     public void registerUnsafeAccessedField(AnalysisField field) {
+        AnalysisError.guarantee(!universe.analysisPolicy().useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         ConcurrentLightHashSet.addElement(this, UNSAFE_ACCESS_FIELDS_UPDATER, field);
     }
 
     public Collection<AnalysisField> unsafeAccessedFields() {
+        AnalysisError.guarantee(!universe.analysisPolicy().useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         /*
          * Walk up the type hierarchy and collect all the unsafe fields of the current type and all
          * its super types. We optimize for the most likely outcome: the returned list is empty.
@@ -841,7 +908,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean isWordType() {
         /* Word types are currently the only types where kind and storageKind differ. */
-        return getJavaKind() != getStorageKind();
+        boolean wordType = getJavaKind() != getStorageKind();
+        assert !wordType || getJavaKind().isObject() : Assertions.errorMessage("Only words are expected to have a discrepancy between java kind and storage kind", this);
+        return wordType;
     }
 
     @Override
@@ -1071,7 +1140,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
                 try {
-                    newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                    var concreteMethod = originalMethod instanceof BaseLayerMethod ? originalMethod : wrapped.resolveConcreteMethod(originalMethod, originalCallerType);
+                    newResolvedMethod = universe.lookup(concreteMethod);
                     if (newResolvedMethod == null) {
                         newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
                     }
@@ -1160,8 +1230,22 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
+    /**
+     * Sort fields by the field's name *and* type. Note that sorting by name is not enough as the
+     * class file format doesn't disallow duplicated names with differing types in the same class.
+     * Even though you cannot declare duplicated names in source code the class file can be
+     * manipulated such that two fields will have the same name.
+     */
+    static final Comparator<ResolvedJavaField> FIELD_COMPARATOR = Comparator.comparing(ResolvedJavaField::getName).thenComparing(f -> f.getType().toJavaName());
+
     private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
-        for (ResolvedJavaField original : originals) {
+        ResolvedJavaField[] localOriginals = originals;
+        if (universe.hostVM.sortFields()) {
+            /* Clone the originals; it is a reference to the wrapped type's instanceFields array. */
+            localOriginals = originals.clone();
+            Arrays.sort(localOriginals, FIELD_COMPARATOR);
+        }
+        for (ResolvedJavaField original : localOriginals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
                     AnalysisField aField = universe.lookup(original);
@@ -1267,6 +1351,63 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             }
         }
         return null;
+    }
+
+    public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
+        return dispatchTableMethods != null;
+    }
+
+    public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
+        Objects.requireNonNull(dispatchTableMethods);
+        return dispatchTableMethods;
+    }
+
+    /*
+     * Calculates all methods in this class which should be included in its dispatch table.
+     */
+    public Set<AnalysisMethod> getOrCalculateOpenTypeWorldDispatchTableMethods() {
+        if (dispatchTableMethods != null) {
+            return dispatchTableMethods;
+        }
+        if (isPrimitive()) {
+            dispatchTableMethods = Set.of();
+            return dispatchTableMethods;
+        }
+        if (getWrapped() instanceof BaseLayerType) {
+            // GR-58587 implement proper support.
+            dispatchTableMethods = Set.of();
+            return dispatchTableMethods;
+        }
+
+        var resultSet = new HashSet<AnalysisMethod>();
+        for (ResolvedJavaMethod m : getWrapped().getDeclaredMethods(false)) {
+            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
+            if (m.isStatic()) {
+                /* Only looking at member methods */
+                continue;
+            }
+            try {
+                AnalysisMethod aMethod = universe.lookup(m);
+                assert aMethod != null : m;
+                resultSet.add(aMethod);
+            } catch (UnsupportedFeatureException t) {
+                /*
+                 * Methods which are deleted or not available on this platform will throw an error
+                 * during lookup - ignore and continue execution
+                 *
+                 * Note it is not simple to create a check to determine whether calling
+                 * universe#lookup will trigger an error by creating an analysis object for a type
+                 * not supported on this platform, as creating a method requires, in addition to the
+                 * types of its return type and parameters, all of the super types of its return and
+                 * parameters to be created as well.
+                 */
+            }
+        }
+
+        // ensure result is fully visible across threads
+        VarHandle.storeStoreFence();
+        dispatchTableMethods = resultSet;
+        return dispatchTableMethods;
     }
 
     @Override

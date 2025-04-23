@@ -27,12 +27,13 @@ package com.oracle.svm.core.classinitialization;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
@@ -110,7 +111,7 @@ public final class ClassInitializationInfo {
         return slowPathRequired;
     }
 
-    enum InitState {
+    public enum InitState {
         /**
          * Successfully linked/verified (but not initialized yet). Linking happens during image
          * building, so we do not need to track states before linking.
@@ -206,7 +207,7 @@ public final class ClassInitializationInfo {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassInitializationInfo(InitState initState, boolean hasInitializer, boolean buildTimeInitialized, boolean typeReachedTracked) {
+    public ClassInitializationInfo(InitState initState, boolean hasInitializer, boolean buildTimeInitialized, boolean typeReachedTracked) {
         this(initState, typeReachedTracked);
         this.hasInitializer = hasInitializer;
         this.buildTimeInitialized = buildTimeInitialized;
@@ -232,6 +233,19 @@ public final class ClassInitializationInfo {
         this.hasInitializer = classInitializer != null;
     }
 
+    public ClassInitializationInfo(boolean typeReachedTracked) {
+        assert RuntimeClassLoading.isSupported();
+
+        this.classInitializer = null;
+        this.hasInitializer = true;
+
+        // GR-59739: Needs a new state "Loaded".
+        this.initState = InitState.Linked;
+        this.typeReached = typeReachedTracked ? TypeReached.NOT_REACHED : TypeReached.UNTRACKED;
+        this.slowPathRequired = true;
+        this.initLock = new ReentrantLock();
+    }
+
     public boolean hasInitializer() {
         return hasInitializer;
     }
@@ -254,6 +268,18 @@ public final class ClassInitializationInfo {
 
     public boolean isInErrorState() {
         return initState == InitState.InitializationError;
+    }
+
+    public boolean isLinked() {
+        return initState == InitState.Linked;
+    }
+
+    public boolean isTracked() {
+        return typeReached != TypeReached.UNTRACKED;
+    }
+
+    public FunctionPointerHolder getClassInitializer() {
+        return classInitializer;
     }
 
     private boolean isReentrantInitialization(IsolateThread thread) {
@@ -530,7 +556,7 @@ public final class ClassInitializationInfo {
             if (initState == InitState.FullyInitialized) {
                 this.slowPathRequired = false;
             }
-            this.initThread = WordFactory.nullPointer();
+            this.initThread = Word.nullPointer();
             /* Make sure previous stores are all done, notably the initState. */
             Unsafe.getUnsafe().storeFence();
 

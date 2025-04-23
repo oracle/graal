@@ -29,10 +29,11 @@ import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optional
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -95,9 +96,9 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
         LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
         assert unscheduled || strategy != null;
         boolean changed = false;
-        CompilationAlarm compilationAlarm = CompilationAlarm.current();
         DebugContext debug = graph.getDebug();
-        for (int iteration = 0; iteration < maxIterations && !compilationAlarm.hasExpired(); iteration++) {
+        for (int iteration = 0; iteration < maxIterations; iteration++) {
+            CompilationAlarm.checkProgress(graph);
             try (DebugContext.Scope s = debug.scope(debug.areScopesEnabled() ? "iteration " + iteration : null)) {
                 ScheduleResult schedule;
                 ControlFlowGraph cfg;

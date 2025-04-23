@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
@@ -39,6 +39,6 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_NativeString {
     @Substitute
     @TruffleBoundary
     static String toJavaString(long pointer) {
-        return TruffleNFISupport.utf8ToJavaString(WordFactory.pointer(pointer));
+        return TruffleNFISupport.utf8ToJavaString(Word.pointer(pointer));
     }
 }

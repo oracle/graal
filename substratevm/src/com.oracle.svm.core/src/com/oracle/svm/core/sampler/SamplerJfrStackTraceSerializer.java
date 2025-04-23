@@ -25,11 +25,11 @@
 
 package com.oracle.svm.core.sampler;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -63,7 +63,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
                     boolean isTruncated, long sampleTick, long threadId, long threadState) {
         Pointer current = rawStackTrace;
         CIntPointer statusPtr = StackValue.get(CIntPointer.class);
-        JfrStackTraceRepository.JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, WordFactory.unsigned(sampleSize), sampleHash, statusPtr);
+        JfrStackTraceRepository.JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, Word.unsigned(sampleSize), sampleHash, statusPtr);
         long stackTraceId = entry.isNull() ? 0 : entry.getId();
 
         int status = statusPtr.read();
@@ -113,7 +113,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
          * number of stack trace elements because the count can't be patched later on
          * (JfrNativeEventWriter.putInt() would not necessarily reserve enough bytes).
          */
-        int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, WordFactory.nullPointer());
+        int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, Word.nullPointer());
         if (numStackTraceElements == 0) {
             return false;
         }
@@ -146,7 +146,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
 
     @Uninterruptible(reason = "Prevent JFR recording, epoch change, and that the GC frees the CodeInfo.")
     private static int visitFrame(JfrNativeEventWriterData data, long address) {
-        CodePointer ip = WordFactory.pointer(address);
+        CodePointer ip = Word.pointer(address);
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
             /* Unknown frame. Must not happen for AOT-compiled code. */

@@ -9,8 +9,12 @@ redirect_from: /reference-manual/native-image/BuildOutput/
 # Native Image Build Output
 
 * [Build Stages](#build-stages)
+* [Security Report](#security-report)
+* [Recommendations](#recommendations)
 * [Resource Usage Statistics](#resource-usage-statistics)
+* [Build Artifacts](#build-artifacts)
 * [Machine-Readable Build Output](#machine-readable-build-output)
+* [PGO Profile Format](#pgo-profile-format)
 
 Here you will find information about the build output of GraalVM Native Image.
 Below is the example output when building a native executable of the `HelloWorld` class:
@@ -20,13 +24,13 @@ Below is the example output when building a native executable of the `HelloWorld
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
 [1/8] Initializing...                                            (2.8s @ 0.15GB)
- Java version: 20+34, vendor version: GraalVM CE 20-dev+34.1
+ Java version: 25+13, vendor version: GraalVM CE 25-dev+13.1
  Graal compiler: optimization level: 2, target machine: x86-64-v3
  C compiler: gcc (linux, x86_64, 12.2.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 --------------------------------------------------------------------------------
  Build resources:
- - 13.24GB of memory (42.7% of 31.00GB system memory, determined at start)
+ - 13.24GB of memory (42.7% of system memory, using available memory)
  - 16 thread(s) (100.0% of 16 available processor(s), determined at start)
 [2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
     3,163 reachable types   (72.5% of    4,364 total)
@@ -45,7 +49,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
    7.03MB (32.02%) for image heap:   93,301 objects and 5 resources
    8.96MB (40.83%) for debug info generated in 1.0s
  659.13kB ( 2.93%) for other data
-  21.96MB in total
+  21.96MB in total image size, 21.04MB in total file size
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
    4.03MB java.base                        1.14MB byte[] for code metadata
@@ -96,7 +100,7 @@ Use `-Os` to optimize for size.
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
 
-On Oracle GraalVM, the line also shows information about [Profile-Guided Optimizations (PGO)](#recommendation-pgo).
+On Oracle GraalVM, the line also shows information about [Profile-Guided Optimization (PGO)](#recommendation-pgo).
 - `off`: PGO is not used
 - `instrument`: The generated executable or shared library is instrumented to collect data for PGO (`--pgo-instrument`)
 - `user-provided`: PGO is enabled and uses a user-provided profile (for example `--pgo default.iprof`)
@@ -138,12 +142,13 @@ The `NATIVE_IMAGE_OPTIONS` environment variable is designed to be used by users,
 #### <a name="glossary-build-resources"></a>Build Resources
 The memory limit and number of threads used by the build process.
 
-More precisely, the memory limit of the Java heap, so actual memory consumption can be even higher.
+More precisely, the memory limit of the Java heap, so actual memory consumption can be higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
-By default, the build process tries to only use free memory (to avoid memory pressure on the build machine), and never more than 32GB of memory.
-If less than 8GB of memory are free, the build process falls back to use 85% of total memory.
+By default, the build process uses the dedicated mode (up to 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
+Otherwise, it tries to use available memory to avoid memory pressure on developer machines (shared mode).
+If less than 8GB of memory are available, the build process falls back to the dedicated mode.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
-It is possible to overwrite the default behavior, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
+It is possible to override the default behavior and set relative or absolute memory limits, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
 
 By default, the build process uses all available processors to maximize speed, but not more than 32 threads.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).
@@ -196,6 +201,10 @@ The progress indicator is printed periodically at an increasing interval.
 ### <a name="stage-creating"></a>Creating Image
 In this stage, the native binary is created and written to disk.
 Debug info is also generated as part of this stage (if requested).
+This section breaks down the total image size as well as [code area](#glossary-code-area) and [image heap](#glossary-image-heap) (see below for more details).
+The total image size is calculated before linking by summing the sizes of the code area, image heap, debug information (if requested and embedded in the binary), and other data.
+The total file size is the actual size of the image on disk after linking.
+Typically, the file size is slightly smaller than the image size due to additional link time optimizations.
 
 #### <a name="glossary-code-area"></a>Code Area
 The code area contains machine code produced by the Graal compiler for all reachable methods.
@@ -259,9 +268,14 @@ If not included, the attack surface of the executable is reduced as the executab
 #### <a name="glossary-sbom"></a><a name="glossary-embedded-sbom"></a>Software Bill of Material (SBOM)
 This section indicates whether a SBOM was assembled and in what ways it was stored. 
 The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact. 
-Use `--enable-sbom` to activate this feature which defaults to the `embed` option. 
+The SBOM feature is enabled by default and defaults to the `embed` option. 
 When embedded, the SBOM size is displayed. 
-The number of components is always displayed.
+The number of components is always displayed. 
+The SBOM feature can be disabled with `--enable-sbom=false`.
+
+Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
+If these types contain vulnerabilities, SBOM scanning will not detect them.
+To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
 
 For more information, see [Software Bill of Materials](../../security/native-image.md).
 
@@ -277,14 +291,11 @@ This feature is currently only available for code compiled by Graal for Linux AM
 
 The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
 
-#### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
+#### <a name="recommendation-futr"></a>`FUTR`: Use the Correct Semantics and Prepare for Future Releases
 
-Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
-This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
-This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
-When adopting the new mode it is best to start introducing build-time initialization from scratch.
-During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
-Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too. 
+Use `--future-defaults=all` to enable all features that are planned to be default in a future GraalVM release.
+This option is unlikely to affect your program's behavior but guarantees that it adheres to the correct execution semantics.
+Additionally, it safeguards against unexpected changes in future GraalVM updates.
 
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
@@ -292,6 +303,11 @@ The Native Image analysis has included classes from the [`java.awt` package](htt
 Use the [Tracing Agent](AutomaticMetadataCollection.md) to collect such metadata for your application.
 Otherwise, your application is unlikely to work properly.
 If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.
+
+#### <a name="recommendation-home"></a>`HOME`: Set `java.home` When Running the Binary
+
+The Native Image analysis has detected the usage of `System.getProperty("java.home")`.
+To ensure it returns a valid value, set `java.home` by passing the `-Djava.home=<path>` option to the binary. If not set, `System.getProperty("java.home")` will return `null`.
 
 #### <a name="recommendation-cpu"></a>`CPU`: Enable More CPU Features for Improved Performance
 
@@ -305,15 +321,15 @@ Use `-march=list` to list all available machine types that can be targeted expli
 The G1 garbage collector is available for your platform.
 Consider enabling it using `--gc=G1` at build time to improve the latency and throughput of your application.
 For more information see the [docs on Memory Management](MemoryManagement.md).
-For best peak performance, also consider using [Profile-Guided Optimizations](#recommendation-pgo).
+For best peak performance, also consider using [Profile-Guided Optimization](#recommendation-pgo).
 
 #### <a name="recommendation-heap"></a>`HEAP`: Specify a Maximum Heap Size
 
 Please refer to [Maximum Heap Size](#glossary-gc-max-heap-size).
 
-#### <a name="recommendation-pgo"></a>`PGO`: Use Profile-Guided Optimizations for Improved Throughput
+#### <a name="recommendation-pgo"></a>`PGO`: Use Profile-Guided Optimization for Improved Throughput
 
-Consider using Profile-Guided Optimizations to optimize your application for improved throughput.
+Consider using Profile-Guided Optimization (PGO) to optimize your application for improved throughput.
 These optimizations allow the Graal compiler to leverage profiling information, similar to when it is running as a JIT compiler, when AOT-compiling your application.
 For this, perform the following steps:
 
@@ -321,7 +337,7 @@ For this, perform the following steps:
 2. Run your instrumented application with a representative workload to generate profiling information in the form of an `.iprof` file.
 3. Re-build your application and pass in the profiling information with `--pgo=<your>.iprof` to generate an optimized version of your application.
 
-Relevant guide: [Optimize a Native Executable with Profile-Guided Optimizations](guides/optimize-native-executable-with-pgo.md).
+Relevant guide: [Optimize a Native Executable with Profile-Guided Optimization](guides/optimize-native-executable-with-pgo.md).
 
 For best peak performance, also consider using the [G1 garbage collector](#recommendation-g1gc).
 
@@ -332,9 +348,20 @@ More precisely, this mode reduces the number of optimizations performed by the G
 The quick build mode is not only useful for development, it can also cause the generated executable file to be smaller in size.
 Note, however, that the overall peak throughput of the executable may be lower due to the reduced number of optimizations.
 
+#### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
+
+Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
+This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
+This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
+When adopting the new mode it is best to start introducing build-time initialization from scratch.
+During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
+Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too.
+
+> Note that `--strict-image-heap` is enabled by default in Native Image starting from GraalVM for JDK 22.
+
 ## Resource Usage Statistics
 
-#### <a name="glossary-garbage-collection"></a>Garbage Collections
+#### <a name="glossary-garbage-collections"></a>Garbage Collections
 The total time spent in all garbage collectors, total GC time divided by the total process time as a percentage, and the total number of garbage collections.
 A large number of collections or time spent in collectors usually indicates that the system is under memory pressure.
 Increase the amount of available memory to reduce the time to build the native binary.
@@ -343,7 +370,7 @@ Increase the amount of available memory to reduce the time to build the native b
 Peak [resident set size](https://en.wikipedia.org/wiki/Resident_set_size) as reported by the operating system.
 This value indicates the maximum amount of memory consumed by the build process.
 You may want to compare this value to the memory limit reported in the [build resources section](#glossary-build-resources).
-If there is enough headroom and the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of total memory of the system can be reduced to a value closer to the peak RSS to lower operational costs.
+If there is enough headroom and the [GC statistics](#glossary-garbage-collections) do not show any problems, the amount of total memory of the system can be reduced to a value closer to the peak RSS to lower operational costs.
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.

@@ -446,7 +446,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         return invoke;
     }
 
-    private static class ExecutionContextParameters {
+    private static final class ExecutionContextParameters {
         int isolateCount = 0;
         int lastIsolateIndex = -1;
         int designatedIsolateIndex = -1;
@@ -621,5 +621,9 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         UserError.guarantee(Uninterruptible.Utils.isUninterruptible(epilogueMethods[0]),
                         "Epilogue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), epilogueMethods[0]);
         generatePrologueOrEpilogueInvoke(kit, epilogueMethods[0]);
+    }
+
+    public boolean isNotPublished() {
+        return entryPointData.getPublishAs().equals(CEntryPoint.Publish.NotPublished);
     }
 }

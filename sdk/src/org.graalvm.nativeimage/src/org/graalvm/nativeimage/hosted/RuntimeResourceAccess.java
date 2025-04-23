@@ -68,7 +68,7 @@ public final class RuntimeResourceAccess {
     public static void addResource(Module module, String resourcePath) {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath, "Manually added via RuntimeResourceAccess");
     }
 
     /**
@@ -83,7 +83,7 @@ public final class RuntimeResourceAccess {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(module, resourcePath, resourceContent);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(module, resourcePath, resourceContent, "Manually added via RuntimeResourceAccess");
         ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(ConfigurationCondition.alwaysTrue(), module, resourcePath);
     }
 

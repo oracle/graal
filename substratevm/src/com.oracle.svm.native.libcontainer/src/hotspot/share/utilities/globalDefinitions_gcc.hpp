@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,13 @@
 #if (defined(__VEC__) || defined(__AIXVEC)) && defined(AIX) \
     && defined(__open_xl_version__) && __open_xl_version__ >= 17
   #undef malloc
+
+namespace svm_container {
+
   extern void *malloc(size_t) asm("vec_malloc");
+
+} // namespace svm_container
+
 #endif
 #include <wchar.h>
 
@@ -72,53 +78,36 @@
 #include <sys/time.h>
 #endif // LINUX || _ALLBSD_SOURCE
 
-// NULL vs NULL_WORD:
-// On Linux NULL is defined as a special type '__null'. Assigning __null to
-// integer variable will cause gcc warning. Use NULL_WORD in places where a
-// pointer is stored as integer value.  On some platforms, sizeof(intptr_t) >
-// sizeof(void*), so here we want something which is integer type, but has the
-// same size as a pointer.
-#ifdef __GNUC__
-  #ifdef _LP64
-    #define NULL_WORD  0L
-  #else
-    // Cast 0 to intptr_t rather than int32_t since they are not the same type
-    // on platforms such as Mac OS X.
-    #define NULL_WORD  ((intptr_t)0)
-  #endif
-#else
-  #define NULL_WORD  NULL
-#endif
-
 // checking for nanness
 #if defined(__APPLE__)
+
+namespace svm_container {
+
 inline int g_isnan(double f) { return isnan(f); }
+
+} // namespace svm_container
+
 #elif defined(LINUX) || defined(_ALLBSD_SOURCE) || defined(_AIX)
+
+namespace svm_container {
+
 inline int g_isnan(float  f) { return isnan(f); }
 inline int g_isnan(double f) { return isnan(f); }
+
+} // namespace svm_container
+
 #else
 #error "missing platform-specific definition here"
 #endif
 
-#define CAN_USE_NAN_DEFINE 1
-
-
 // Checking for finiteness
+
+
+namespace svm_container {
 
 inline int g_isfinite(jfloat  f)                 { return isfinite(f); }
 inline int g_isfinite(jdouble f)                 { return isfinite(f); }
 
-
-// Formatting.
-#ifdef _LP64
-# ifdef __APPLE__
-# define FORMAT64_MODIFIER "ll"
-# else
-# define FORMAT64_MODIFIER "l"
-# endif
-#else // !_LP64
-#define FORMAT64_MODIFIER "ll"
-#endif // _LP64
 
 // gcc warns about applying offsetof() to non-POD object or calculating
 // offset directly when base address is null. The -Wno-invalid-offsetof
@@ -148,5 +137,8 @@ inline int g_isfinite(jdouble f)                 { return isfinite(f); }
 #define NOINLINE     __attribute__ ((noinline))
 #define ALWAYSINLINE inline __attribute__ ((always_inline))
 #define ATTRIBUTE_FLATTEN __attribute__ ((flatten))
+
+
+} // namespace svm_container
 
 #endif // SHARE_UTILITIES_GLOBALDEFINITIONS_GCC_HPP

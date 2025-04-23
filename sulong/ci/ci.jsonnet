@@ -27,7 +27,10 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     guard+: {
       includes+: [
         # sulong and its dependencies
-        "<graal>/.git/**",
+        "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
+        "<graal>/ci.jsonnet",
+        "<graal>/ci/**",
+        "<graal>/common.json",
         "<graal>/sdk/**",
         "<graal>/truffle/**",
         "<graal>/sulong/**",
@@ -35,7 +38,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/compiler/**",
         "<graal>/regex/**",
         "<graal>/java-benchmarks/**",
-        "<graal>/common.json",
       ] + (if standalone then [
         # substratevm and its dependencies
         "<graal>/substratevm/**",
@@ -44,6 +46,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       ] else []) + (if style then [
         "<graal>/.clang-format",
         "<graal>/pyproject.toml",
+        # `mx checkcopyrights` doesn't work if `.gitignore` doesn't exist
+        "<graal>/.gitignore",
       ] else []),
     },
   },
@@ -63,12 +67,10 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     $.sulong + $.gate(standalone=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64" },
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-linux-amd64", timelimit: "45:00" },
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-linux-amd64", timelimit: "45:00" },
-    $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,gcc_fortran") + { name: "gate-sulong-gcc_fortran-jdk-latest-linux-amd64" },
 
     $.sulong + $.gate() + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["ram16gb"] },
 
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-linux-amd64" },
-    $.sulong + $.gate() + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk21-linux-amd64" },
 
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk-latest-linux-aarch64", timelimit: "30:00" },
 
@@ -124,7 +126,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     [
       { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "2:00:00" },
       { name: "weekly-sulong-coverage-jdk21-darwin-amd64",   timelimit: "1:30:00" },
-      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "1:30:00" },
+      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "2:30:00" },
       { name: "weekly-sulong-coverage-jdk21-linux-aarch64",  timelimit: "1:30:00" },
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),

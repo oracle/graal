@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
@@ -100,14 +99,14 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean isBoolean(StaticObject receiver) {
+    public static boolean isBoolean(StaticObject receiver) {
         receiver.checkNotForeign();
         assert !isNull(receiver) : "Null espresso object should be dispatched to BaseInterop";
         return receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Boolean;
     }
 
     @ExportMessage
-    static boolean asBoolean(StaticObject receiver) throws UnsupportedMessageException {
+    public static boolean asBoolean(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!isBoolean(receiver)) {
             throw UnsupportedMessageException.create();
@@ -128,7 +127,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean fitsInByte(StaticObject receiver) {
+    public static boolean fitsInByte(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -163,7 +162,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean fitsInShort(StaticObject receiver) {
+    public static boolean fitsInShort(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -194,7 +193,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean fitsInInt(StaticObject receiver) {
+    public static boolean fitsInInt(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -221,7 +220,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean fitsInLong(StaticObject receiver) {
+    public static boolean fitsInLong(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -244,7 +243,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean fitsInFloat(StaticObject receiver) {
+    public static boolean fitsInFloat(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -278,7 +277,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static boolean fitsInDouble(StaticObject receiver) {
+    public static boolean fitsInDouble(StaticObject receiver) {
         receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
@@ -349,7 +348,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static byte asByte(StaticObject receiver) throws UnsupportedMessageException {
+    public static byte asByte(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInByte(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -359,7 +358,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static short asShort(StaticObject receiver) throws UnsupportedMessageException {
+    public static short asShort(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInShort(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -369,7 +368,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static int asInt(StaticObject receiver) throws UnsupportedMessageException {
+    public static int asInt(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInInt(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -379,7 +378,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static long asLong(StaticObject receiver) throws UnsupportedMessageException {
+    public static long asLong(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInLong(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -389,7 +388,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static float asFloat(StaticObject receiver) throws UnsupportedMessageException {
+    public static float asFloat(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInFloat(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -399,7 +398,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static double asDouble(StaticObject receiver) throws UnsupportedMessageException {
+    public static double asDouble(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInDouble(receiver)) {
             CompilerDirectives.transferToInterpreter();
@@ -429,7 +428,7 @@ public class EspressoInterop extends BaseInterop {
 
     @TruffleBoundary
     private static BigInteger toHostBigInteger(StaticObject receiver, Meta meta) {
-        StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirect(receiver);
+        StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirectVirtual(receiver);
         byte[] bytes = guestByteArray.unwrap(meta.getLanguage());
         return new BigInteger(bytes);
     }
@@ -566,7 +565,7 @@ public class EspressoInterop extends BaseInterop {
                         return EspressoFunction.createInstanceInvocable(candidates[0], receiver);
                     }
                 }
-            } catch (ArityException e) {
+            } catch (ArityException | UnknownIdentifierException e) {
                 /* Ignore */
             }
             // Class<T>.static == Klass<T>
@@ -757,26 +756,24 @@ public class EspressoInterop extends BaseInterop {
                 short day = (short) meta.java_time_LocalDate_day.get(receiver);
                 return LocalDate.of(year, month, day);
             } else if (instanceOf(receiver, meta.java_time_LocalDateTime)) {
-                StaticObject localDate = (StaticObject) meta.java_time_LocalDateTime_toLocalDate.invokeDirect(receiver);
+                StaticObject localDate = (StaticObject) meta.java_time_LocalDateTime_toLocalDate.invokeDirectSpecial(receiver);
                 assert instanceOf(localDate, meta.java_time_LocalDate);
                 return asDate(localDate, error);
             } else if (instanceOf(receiver, meta.java_time_Instant)) {
-                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString("UTC"));
+                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirectStatic(meta.toGuestString("UTC"));
                 assert instanceOf(zoneIdUTC, meta.java_time_ZoneId);
-                StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirect(receiver, zoneIdUTC);
+                StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirectSpecial(receiver, zoneIdUTC);
                 assert instanceOf(zonedDateTime, meta.java_time_ZonedDateTime);
-                StaticObject localDate = (StaticObject) meta.java_time_ZonedDateTime_toLocalDate.invokeDirect(zonedDateTime);
+                StaticObject localDate = (StaticObject) meta.java_time_ZonedDateTime_toLocalDate.invokeDirectSpecial(zonedDateTime);
                 assert instanceOf(localDate, meta.java_time_LocalDate);
                 return asDate(localDate, error);
             } else if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                StaticObject localDate = (StaticObject) meta.java_time_ZonedDateTime_toLocalDate.invokeDirect(receiver);
+                StaticObject localDate = (StaticObject) meta.java_time_ZonedDateTime_toLocalDate.invokeDirectSpecial(receiver);
                 assert instanceOf(localDate, meta.java_time_LocalDate);
                 return asDate(localDate, error);
             } else if (instanceOf(receiver, meta.java_util_Date)) {
                 // return ((Date) obj).toInstant().atZone(UTC).toLocalDate();
-                int index = meta.java_util_Date_toInstant.getVTableIndex();
-                Method virtualToInstant = receiver.getKlass().vtableLookup(index);
-                StaticObject instant = (StaticObject) virtualToInstant.invokeDirect(receiver);
+                StaticObject instant = (StaticObject) meta.java_util_Date_toInstant.invokeDirectVirtual(receiver);
                 return asDate(instant, error);
             }
         }
@@ -811,25 +808,23 @@ public class EspressoInterop extends BaseInterop {
                 int nano = (int) meta.java_time_LocalTime_nano.get(receiver);
                 return LocalTime.of(hour, minute, second, nano);
             } else if (instanceOf(receiver, meta.java_time_LocalDateTime)) {
-                StaticObject localTime = (StaticObject) meta.java_time_LocalDateTime_toLocalTime.invokeDirect(receiver);
+                StaticObject localTime = (StaticObject) meta.java_time_LocalDateTime_toLocalTime.invokeDirectSpecial(receiver);
                 return asTime(localTime, error);
             } else if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                StaticObject localTime = (StaticObject) meta.java_time_ZonedDateTime_toLocalTime.invokeDirect(receiver);
+                StaticObject localTime = (StaticObject) meta.java_time_ZonedDateTime_toLocalTime.invokeDirectSpecial(receiver);
                 return asTime(localTime, error);
             } else if (instanceOf(receiver, meta.java_time_Instant)) {
                 // return ((Instant) obj).atZone(UTC).toLocalTime();
-                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString("UTC"));
+                StaticObject zoneIdUTC = (StaticObject) meta.java_time_ZoneId_of.invokeDirectStatic(meta.toGuestString("UTC"));
                 assert instanceOf(zoneIdUTC, meta.java_time_ZoneId);
-                StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirect(receiver, zoneIdUTC);
+                StaticObject zonedDateTime = (StaticObject) meta.java_time_Instant_atZone.invokeDirectSpecial(receiver, zoneIdUTC);
                 assert instanceOf(zonedDateTime, meta.java_time_ZonedDateTime);
-                StaticObject localTime = (StaticObject) meta.java_time_ZonedDateTime_toLocalTime.invokeDirect(zonedDateTime);
+                StaticObject localTime = (StaticObject) meta.java_time_ZonedDateTime_toLocalTime.invokeDirectSpecial(zonedDateTime);
                 assert instanceOf(localTime, meta.java_time_LocalTime);
                 return asTime(localTime, error);
             } else if (instanceOf(receiver, meta.java_util_Date)) {
                 // return ((Date) obj).toInstant().atZone(UTC).toLocalTime();
-                int index = meta.java_util_Date_toInstant.getVTableIndex();
-                Method virtualToInstant = receiver.getKlass().vtableLookup(index);
-                StaticObject instant = (StaticObject) virtualToInstant.invokeDirect(receiver);
+                StaticObject instant = (StaticObject) meta.java_util_Date_toInstant.invokeDirectVirtual(receiver);
                 return asTime(instant, error);
             }
         }
@@ -858,12 +853,11 @@ public class EspressoInterop extends BaseInterop {
         if (isTimeZone(receiver)) {
             Meta meta = receiver.getKlass().getMeta();
             if (instanceOf(receiver, meta.java_time_ZoneId)) {
-                int index = meta.java_time_ZoneId_getId.getVTableIndex();
-                StaticObject zoneIdEspresso = (StaticObject) receiver.getKlass().vtableLookup(index).invokeDirect(receiver);
+                StaticObject zoneIdEspresso = (StaticObject) meta.java_time_ZoneId_getId.invokeDirectVirtual(receiver);
                 String zoneId = Meta.toHostStringStatic(zoneIdEspresso);
                 return ZoneId.of(zoneId, ZoneId.SHORT_IDS);
             } else if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                StaticObject zoneId = (StaticObject) meta.java_time_ZonedDateTime_getZone.invokeDirect(receiver);
+                StaticObject zoneId = (StaticObject) meta.java_time_ZonedDateTime_getZone.invokeDirectSpecial(receiver);
                 return asTimeZone(zoneId, error);
             } else if (instanceOf(receiver, meta.java_time_Instant) ||
                             instanceOf(receiver, meta.java_util_Date)) {
@@ -883,11 +877,11 @@ public class EspressoInterop extends BaseInterop {
             StaticObject instant;
             Meta meta = receiver.getKlass().getMeta();
             if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
+                // ZonedDateTime_toInstant is actually default method ChronoZonedDateTime.toInstant
+                // this is a "final miranda" but asserts in invokeDirectSpecial can't see that
                 instant = (StaticObject) meta.java_time_ZonedDateTime_toInstant.invokeDirect(receiver);
             } else if (instanceOf(receiver, meta.java_util_Date)) {
-                int index = meta.java_util_Date_toInstant.getVTableIndex();
-                Method virtualToInstant = receiver.getKlass().vtableLookup(index);
-                instant = (StaticObject) virtualToInstant.invokeDirect(receiver);
+                instant = (StaticObject) meta.java_util_Date_toInstant.invokeDirectVirtual(receiver);
             } else {
                 instant = receiver;
             }

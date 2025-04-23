@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeFlood;
+import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -46,9 +47,9 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
-import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.GuardPhiNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -108,59 +109,118 @@ public final class GraphOrder {
     private static List<Node> createOrder(StructuredGraph graph) {
         final ArrayList<Node> nodes = new ArrayList<>();
         final NodeBitMap visited = graph.createNodeBitMap();
+        final NodeStack stack = new NodeStack();
 
         new StatelessPostOrderNodeIterator(graph.start()) {
             @Override
             protected void node(FixedNode node) {
-                visitForward(nodes, visited, node, false);
+                orderNodeAndNeighbors(nodes, visited, stack, node);
             }
         }.apply();
         return nodes;
     }
 
-    private static void visitForward(ArrayList<Node> nodes, NodeBitMap visited, Node node, boolean floatingOnly) {
+    /**
+     * Visit the given fixed {@code node} and its inputs, state after (if any), and phis anchored at
+     * the node (if any). Add these nodes in order to the {@code nodes} list. The intended order is:
+     *
+     * <ol>
+     * <li>any floating non-stateAfter inputs, transitively</li>
+     * <li>for an EndNode, phi values for this end at the corresponding merge</li>
+     * <li>the fixed node itself</li>
+     * <li>for any kind of merge, its phis</li>
+     * <li>the stateAfter, if any</li>
+     * </ol>
+     *
+     * Any previously {@code visited} nodes are skipped. An unvisited fixed node found as part of
+     * the traversal indicates an illegal cycle in the graph.
+     */
+    private static void orderNodeAndNeighbors(ArrayList<Node> nodes, NodeBitMap visited, NodeStack stack, FixedNode fixedNode) {
         try {
-            assert node == null || node.isAlive() : node + " not alive";
-            if (node != null && !visited.isMarked(node)) {
-                if (floatingOnly && node instanceof FixedNode) {
-                    throw new GraalError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);
-                }
-                visited.mark(node);
-                FrameState stateAfter = null;
-                if (node instanceof StateSplit) {
-                    stateAfter = ((StateSplit) node).stateAfter();
-                }
-                for (Node input : node.inputs()) {
-                    if (input != stateAfter) {
-                        visitForward(nodes, visited, input, true);
+            GraalError.guarantee(fixedNode == null || fixedNode.isAlive(), "%s not alive", fixedNode);
+            if (fixedNode == null || visited.isMarked(fixedNode)) {
+                return;
+            }
+            visited.mark(fixedNode);
+            FrameState stateAfter = null;
+            if (fixedNode instanceof StateSplit) {
+                stateAfter = ((StateSplit) fixedNode).stateAfter();
+            }
+            /* 1. any floating non-stateAfter inputs. */
+            visitTransitiveInputs(nodes, visited, fixedNode, stateAfter, stack);
+            /* 2. for an EndNode, phi values for this end at the corresponding merge */
+            if (fixedNode instanceof EndNode end) {
+                for (PhiNode phi : end.merge().phis()) {
+                    ValueNode phiValue = phi.valueAt(end);
+                    if (phiValue == null) {
+                        GraalError.guarantee(phi instanceof GuardPhiNode, "only guard phis may have null values: %s", phi);
+                    } else if (!visited.isMarked(phiValue)) {
+                        visited.mark(phiValue);
+                        visitTransitiveInputs(nodes, visited, phiValue, stateAfter, stack);
+                        nodes.add(phiValue);
                     }
-                }
-                if (node instanceof EndNode) {
-                    EndNode end = (EndNode) node;
-                    for (PhiNode phi : end.merge().phis()) {
-                        visitForward(nodes, visited, phi.valueAt(end), true);
-                    }
-                }
-                nodes.add(node);
-                if (node instanceof AbstractMergeNode) {
-                    for (PhiNode phi : ((AbstractMergeNode) node).phis()) {
-                        visited.mark(phi);
-                        nodes.add(phi);
-                    }
-                }
-                if (stateAfter != null) {
-                    visitForward(nodes, visited, stateAfter, true);
                 }
             }
+            /* 3. the fixed node itself */
+            nodes.add(fixedNode);
+            /* 4. for any kind of merge, its phis */
+            if (fixedNode instanceof AbstractMergeNode merge) {
+                for (PhiNode phi : merge.phis()) {
+                    visited.mark(phi);
+                    nodes.add(phi);
+                }
+            }
+            /* 5. the stateAfter, if any */
+            if (stateAfter != null && !visited.isMarked(stateAfter)) {
+                visited.mark(stateAfter);
+                visitTransitiveInputs(nodes, visited, stateAfter, null, stack);
+                nodes.add(stateAfter);
+            }
         } catch (GraalError e) {
-            throw GraalGraphError.transformAndAddContext(e, node);
+            throw GraalGraphError.transformAndAddContext(e, fixedNode);
+        }
+    }
+
+    /**
+     * Add floating inputs of {@code visitRoot}, including transitive inputs, to the {@code nodes},
+     * such that inputs precede their usages in the list. Skip any nodes that are already
+     * {@code visited} or equal {@code excludeNode}. The {@code stack} is used as an intermediate
+     * data structure to keep track of transitive inputs. It must be empty when this method is
+     * called, and it will be empty when this method returns.
+     * <p/>
+     *
+     * This method does <em>not</em> add the {@code visitRoot} itself to the {@code nodes}.
+     */
+    private static void visitTransitiveInputs(ArrayList<Node> nodes, NodeBitMap visited, Node visitRoot, FrameState excludeNode, NodeStack stack) {
+        GraalError.guarantee(stack.isEmpty(), "stack must be empty, it's only shared to avoid allocations");
+        stack.push(visitRoot);
+        while (!stack.isEmpty()) {
+            Node top = stack.peek();
+            for (Node input : top.inputs()) {
+                if (input != excludeNode && !visited.isMarked(input)) {
+                    stack.push(input);
+                }
+            }
+            if (stack.peek() == top) {
+                if (top != visitRoot) {
+                    if (top instanceof FixedNode) {
+                        throw new GraalError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", top);
+                    }
+                    /* No new transitive inputs were pushed, this input is ready to be scheduled. */
+                    if (!visited.isMarked(top)) {
+                        nodes.add(top);
+                    }
+                    visited.mark(top);
+                }
+                stack.pop();
+            }
         }
     }
 
     public static boolean assertSchedulableGraph(StructuredGraph g) {
         assert GraphOrder.assertNonCyclicGraph(g);
-        assert g.getGuardsStage() == GuardsStage.AFTER_FSA || GraphOrder.assertScheduleableBeforeFSA(g);
-        if (g.getGuardsStage() == GuardsStage.AFTER_FSA && Assertions.detailedAssertionsEnabled(g.getOptions())) {
+        assert g.getGuardsStage().areFrameStatesAtDeopts() || GraphOrder.assertScheduleableBeforeFSA(g);
+        if (g.getGuardsStage().areFrameStatesAtDeopts() && Assertions.detailedAssertionsEnabled(g.getOptions())) {
             // we still want to do a memory verification of the schedule even if we can
             // no longer use assertSchedulableGraph after the floating reads phase
             SchedulePhase.runWithoutContextOptimizations(g, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
@@ -180,7 +240,7 @@ public final class GraphOrder {
      */
     @SuppressWarnings("try")
     private static boolean assertScheduleableBeforeFSA(final StructuredGraph graph) {
-        assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
+        assert !graph.getGuardsStage().areFrameStatesAtDeopts() : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
 
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
             SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);

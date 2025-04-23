@@ -27,12 +27,15 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A garbage collection policy that balances throughput and memory footprint.
@@ -42,6 +45,13 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * its base class {@code AdaptiveSizePolicy}. Method and variable names have been kept mostly the
  * same for comparability.
  */
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+12/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L963-L1180")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+6/src/hotspot/share/gc/parallel/psScavenge.cpp#L321-L637")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/shared/gc_globals.hpp#L308-L420")
 class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     /*
@@ -126,7 +136,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private long minorCount;
     private long latestMinorMutatorIntervalNanos;
     private boolean youngGenPolicyIsReady;
-    private UnsignedWord youngGenSizeIncrementSupplement = WordFactory.unsigned(YOUNG_GENERATION_SIZE_SUPPLEMENT);
+    private UnsignedWord youngGenSizeIncrementSupplement = Word.unsigned(YOUNG_GENERATION_SIZE_SUPPLEMENT);
     private long youngGenChangeForMinorThroughput;
     private int minorCountSinceMajorCollection;
 
@@ -137,7 +147,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptiveWeightedAverage avgOldLive = new AdaptiveWeightedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT);
     private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long majorCount;
-    private UnsignedWord oldGenSizeIncrementSupplement = WordFactory.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
+    private UnsignedWord oldGenSizeIncrementSupplement = Word.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
     private long latestMajorMutatorIntervalNanos;
     private boolean oldSizeExceededInPreviousCollection;
     private long oldGenChangeForMajorThroughput;
@@ -152,10 +162,11 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
+    public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_attempt_scavenge
         guaranteeSizeParametersInitialized();
 
-        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen())) {
+        boolean collectYoungSeparately = shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen());
+        if (!followingIncrementalCollection && collectYoungSeparately) {
             /*
              * With a copying collector, default to always doing an incremental collection first
              * because we expect most of the objects in the young generation to be garbage, and we
@@ -173,7 +184,14 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
              */
             return true;
         }
-        if (minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
+
+        if (!collectYoungSeparately && followingIncrementalCollection) {
+            // Don't override the earlier decision to not do a full GC below (and prolong the pause)
+            return false;
+        }
+
+        if (!SerialGCOptions.useCompactingOldGen() &&
+                        minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
             /*
              * When we do many incremental collections in a row because they reclaim sufficient
              * space, still trigger a complete collection when reaching a cumulative pause time
@@ -325,7 +343,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private static UnsignedWord edenDecrement(UnsignedWord curEden) {
-        return spaceIncrement(curEden, WordFactory.unsigned(YOUNG_GENERATION_SIZE_INCREMENT))
+        return spaceIncrement(curEden, Word.unsigned(YOUNG_GENERATION_SIZE_INCREMENT))
                         .unsignedDivide(ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR);
     }
 
@@ -377,21 +395,21 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private double secondsSinceMajorGc() { // time_since_major_gc
-        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.getOpenedTime());
+        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.startedNanos());
     }
 
     @Override
     public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) { // {major,minor}_collection_begin
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.closeAt(requestingNanoTime);
+        timer.stopAt(requestingNanoTime);
         if (completeCollection) {
-            latestMajorMutatorIntervalNanos = timer.getMeasuredNanos();
+            latestMajorMutatorIntervalNanos = timer.totalNanos();
         } else {
-            latestMinorMutatorIntervalNanos = timer.getMeasuredNanos();
+            latestMinorMutatorIntervalNanos = timer.totalNanos();
         }
 
         timer.reset();
-        timer.open(); // measure collection pause
+        timer.start(); // measure collection pause
 
         super.onCollectionBegin(completeCollection, requestingNanoTime);
     }
@@ -399,17 +417,17 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) { // {major,minor}_collection_end
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.close();
+        timer.stop();
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-                            cause, latestMajorMutatorIntervalNanos, timer.getMeasuredNanos(), promoSize);
+                            cause, latestMajorMutatorIntervalNanos, timer.totalNanos(), promoSize);
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-                            cause, latestMinorMutatorIntervalNanos, timer.getMeasuredNanos(), edenSize);
+                            cause, latestMinorMutatorIntervalNanos, timer.totalNanos(), edenSize);
             minorCount++;
             minorCountSinceMajorCollection++;
 
@@ -419,7 +437,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
 
         timer.reset();
-        timer.open();
+        timer.start();
 
         GCAccounting accounting = GCImpl.getAccounting();
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
@@ -514,7 +532,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private static UnsignedWord promoIncrement(UnsignedWord curPromo) {
-        return spaceIncrement(curPromo, WordFactory.unsigned(TENURED_GENERATION_SIZE_INCREMENT));
+        return spaceIncrement(curPromo, Word.unsigned(TENURED_GENERATION_SIZE_INCREMENT));
     }
 
     private UnsignedWord promoIncrementWithSupplementAlignedUp(UnsignedWord curPromo) {

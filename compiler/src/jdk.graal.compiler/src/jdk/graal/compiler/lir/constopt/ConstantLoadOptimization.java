@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.function.Consumer;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -52,6 +53,7 @@ import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.ValueConsumer;
 import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.constopt.ConstantTree.Flags;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase;
@@ -307,7 +309,27 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
 
             }
 
-            if (cost.getNumMaterializations() > 1 || cost.getBestCost() < tree.getBlock().getRelativeFrequency()) {
+            /**
+             * If compiler code explicitly requests to not spill into this block we should also not
+             * re-materialize constants here as that can break other live ranges due to register
+             * pressure and result in all sorts of strange spill decisions.
+             */
+            class BConsumer implements Consumer<BasicBlock<?>> {
+                boolean loadSplitDisabled = false;
+
+                @Override
+                public void accept(BasicBlock<?> block) {
+                    if (constTree.get(Flags.CANDIDATE, block)) {
+                        if (!block.canUseBlockAsSpillTarget()) {
+                            loadSplitDisabled = true;
+                        }
+                    }
+                }
+            }
+            BConsumer c = new BConsumer();
+            constTree.stream(Flags.SUBTREE).forEach(c);
+
+            if (!c.loadSplitDisabled && (cost.getNumMaterializations() > 1 || cost.getBestCost() < tree.getBlock().getRelativeFrequency())) {
                 try (DebugContext.Scope s = debug.scope("CLOmodify", constTree);
                                 Indent i = debug.isLogEnabled() ? debug.logAndIndent("Replacing %s = %s", tree.getVariable(), tree.getConstant().toValueString()) : null) {
                     // mark original load for removal

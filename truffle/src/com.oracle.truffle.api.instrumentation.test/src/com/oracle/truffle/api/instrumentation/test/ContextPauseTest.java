@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -50,14 +53,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.truffle.api.test.polyglot.AbstractThreadedPolyglotTest;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
@@ -65,10 +75,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import com.oracle.truffle.api.test.polyglot.AbstractThreadedPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings("hiding")
 @RunWith(Parameterized.class)
@@ -185,6 +196,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             if (stop.get()) {
                                 throw new RuntimeException(TEST_EXECUTION_STOPPED);
                             }
+                            Thread.yield();
                         },
                         (context, pauseLatch) -> {
                             try {
@@ -215,6 +227,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             if (stop.get()) {
                                 throw new RuntimeException(TEST_EXECUTION_STOPPED);
                             }
+                            Thread.yield();
                         },
                         (context, pauseLatch) -> {
                             context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(100,STATEMENT))");
@@ -269,6 +282,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             try {
                                 while (true) {
                                     context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(100,STATEMENT))");
+                                    Thread.yield();
                                 }
                             } catch (PolyglotException e) {
                                 if (!e.isCancelled()) {
@@ -309,6 +323,7 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                             try {
                                 while (true) {
                                     context.eval(InstrumentationTestLanguage.ID, "ROOT(LOOP(100,STATEMENT))");
+                                    Thread.yield();
                                 }
                             } catch (PolyglotException e) {
                                 if (!e.isCancelled()) {
@@ -319,5 +334,195 @@ public class ContextPauseTest extends AbstractThreadedPolyglotTest {
                         },
                         false,
                         (context, truffleContext, stop, pauseFutures, guestActionFutures) -> context.close(true));
+    }
+
+    public static class CountingBoolean {
+        boolean value;
+        long operationCount;
+
+        public CountingBoolean(boolean value) {
+            this.value = value;
+        }
+
+        public synchronized boolean get() {
+            operationCount++;
+            notifyAll();
+            return value;
+        }
+
+        public synchronized void set(boolean b) {
+            operationCount++;
+            notifyAll();
+            value = b;
+        }
+
+        public synchronized void waitUntilCount(long count) {
+            boolean interrupted = false;
+            while (operationCount < count) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    @Test
+    public void testPauseManyThreads() throws ExecutionException, InterruptedException, IOException {
+        int nThreads = Runtime.getRuntime().availableProcessors() + 1;
+        ExecutorService executorService = threadPool(nThreads, vthreads);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        Engine.Builder engineBuilder = Engine.newBuilder().allowExperimentalOptions(true).option("engine.SynchronousThreadLocalActionMaxWait", "1").out(outputStream).err(outputStream);
+        if (TruffleTestAssumptions.isOptimizingRuntime()) {
+            engineBuilder.option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false");
+        }
+        try (Engine engine = engineBuilder.build();
+                        Context context1 = Context.newBuilder().engine(engine).allowHostAccess(HostAccess.ALL).build();
+                        Context context2 = Context.newBuilder().engine(engine).allowHostAccess(HostAccess.ALL).build()) {
+            context1.initialize(InstrumentationTestLanguage.ID);
+            context2.initialize(InstrumentationTestLanguage.ID);
+            Source conditionLoopSource = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(ARGUMENT(a), COND_LOOP(INVOKE_MEMBER(get, READ_VAR(a)), STATEMENT))", "ConditionLoop").build();
+            Value context1Loop = context1.parse(conditionLoopSource);
+            Value context2Loop = context2.parse(conditionLoopSource);
+            CountingBoolean looping = new CountingBoolean(true);
+            TruffleInstrument.Env instrumentEnv = context1.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+            CountDownLatch pauseLatch = new CountDownLatch(nThreads + 1);
+            CountDownLatch pauseFirstLatch = new CountDownLatch(2);
+            instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+                @Override
+                public void onEnter(EventContext c, VirtualFrame frame) {
+                    onEnterSlowPath(c);
+                }
+
+                @TruffleBoundary
+                private void onEnterSlowPath(EventContext c) {
+                    if (c.hasTag(StandardTags.RootTag.class)) {
+                        pauseFirstLatch.countDown();
+                        pauseLatch.countDown();
+                    }
+                    Thread.yield();
+                }
+
+                @Override
+                public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+
+                }
+            });
+            TruffleContext truffleContext1;
+            context1.enter();
+            try {
+                truffleContext1 = instrumentEnv.getEnteredContext();
+            } finally {
+                context1.leave();
+            }
+            TruffleContext truffleContext2;
+            context2.enter();
+            try {
+                truffleContext2 = instrumentEnv.getEnteredContext();
+            } finally {
+                context2.leave();
+            }
+            CountDownLatch resumeLatch = new CountDownLatch(nThreads + 1);
+            CountDownLatch resumeLastLatch = new CountDownLatch(1);
+            Future<?> future = executorService.submit(() -> {
+                context1Loop.execute(looping);
+                resumeLatch.countDown();
+            });
+            // Let the loop do a few iterations
+            looping.waitUntilCount(10);
+            looping.set(false);
+            future.get();
+            /*
+             * First execution immediately deopts, so we need to repeat it. The code needs to be
+             * compiled in order to cause pinning due to the truffle thread local handshake stub
+             * calls in case virtual threads are used.
+             */
+            looping.set(true);
+            executorService.submit(() -> {
+                context1Loop.execute(looping);
+                resumeLatch.countDown();
+            });
+            pauseFirstLatch.await();
+            // One thread is executing a loop in context1 using the looping boolean condition
+            Future<Void> pauseFuture1 = truffleContext1.pause();
+            try {
+                pauseFuture1.get();
+            } catch (CancellationException e) {
+                //
+            }
+            Assert.assertFalse(pauseFuture1.isCancelled());
+            // The one thread executing context1 is now paused
+            /*
+             * Execute the same code in context2 in availableProcessors (nThreads - 1) threads.
+             */
+            for (int i = 1; i < nThreads; i++) {
+                executorService.submit(() -> {
+                    context2Loop.execute(looping);
+                    resumeLatch.countDown();
+                });
+            }
+            // Wait until the code is executing in all threads.
+            pauseLatch.await();
+            // Pause context2
+            Future<Void> pauseFuture2 = truffleContext2.pause();
+            try {
+                pauseFuture2.get();
+            } catch (CancellationException e) {
+                //
+            }
+            /*
+             * Since the total number of the threads that cause pinning is availableProcessors + 1,
+             * the synchronous pause thread local action may not reach the synchronization point in
+             * case virtual threads are used and is automatically cancelled. The reason for not
+             * reaching the synchronization point is that when availableProcessors of these threads
+             * are pinned and waiting for the start sync of the pause thread local action using
+             * LockSupport.parkNanos (or already paused in case of the already paused context1
+             * thread), the (availableProcessors + 1)-th thread cannot run because the parallelism
+             * of the default virtual thread scheduler is only availableProcessors and none of the
+             * "parked" threads, though waiting, can be compensated for due to the pinning. Also,
+             * the timeout for the pause thread local action sync is pretty small (one second) so
+             * the cancellation might occur even for platform threads in case some unusual slowdown.
+             */
+            boolean pause2Cancelled = pauseFuture2.isCancelled();
+            // If context2 pausing is cancelled, new thread in context2 should not be paused even
+            // though context2 was not explicitly resumed.
+            executorService.submit(() -> {
+                context2Loop.execute(looping);
+                resumeLastLatch.countDown();
+            });
+            // If the pause of context2 is cancelled, we just need to unpause context1.
+            truffleContext1.resume(pauseFuture1);
+            if (!pause2Cancelled) {
+                truffleContext2.resume(pauseFuture2);
+            }
+            // Finish the loop after unpausing
+            looping.set(false);
+            resumeLatch.await();
+            resumeLastLatch.await();
+            if (pause2Cancelled) {
+                MatcherAssert.assertThat(outputStream.toString(), CoreMatchers.containsString("did not reach the synchronous ThreadLocalAction com.oracle.truffle.polyglot.PauseThreadLocalAction"));
+            }
+            /*
+             * In case somebody turns on compilation tracing, they might notice an extra deopt
+             * before the test ends. It is caused by the fact that the last task does not get to
+             * execute the loop body because looping is already false at that point. That results in
+             * a different return value type which in turn causes transfer to interpreter. In any
+             * case, it does not affect the test.
+             */
+        } finally {
+            executorService.shutdownNow();
+            // shorter timeout to show errors more quickly
+            Assert.assertTrue(executorService.awaitTermination(10, TimeUnit.SECONDS));
+        }
+
     }
 }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,7 +29,7 @@
 #
 import sys
 import os
-import pipes
+import shlex
 import tempfile
 from os.path import join
 import shutil
@@ -94,6 +94,13 @@ def _lib_versioned(arg):
 
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
 
+def sulong_prefix_path(name):
+    # name is a CMakeNinjaProject with `symlinkSource: True`
+    # return the path to the build directory, that also includes the sources
+    p = mx.project(name)
+    return p.out_dir
+
+mx_subst.results_substitutions.register_with_arg('sulong_prefix', sulong_prefix_path)
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
     mx_sulong_gate.testLLVMImage(image, imageArgs, testFilter, libPath, test, unittestArgs)
@@ -166,18 +173,20 @@ mx_subst.path_substitutions.register_no_arg('jacoco', get_jacoco_setting)
 def _subst_get_jvm_args(dep):
     java = mx.get_jdk().java
     main_class = mx.distribution(dep).mainClass
-    jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
+    jvm_args = [shlex.quote(arg) for arg in mx.get_runtime_jvm_args([dep])]
     cmd = [java] + jvm_args + [main_class]
     return " ".join(cmd)
 
 
 mx_subst.path_substitutions.register_with_arg('get_jvm_cmd_line', _subst_get_jvm_args)
 
-mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo', default='jacoco.exec')
+mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo. Deprecated: use --jacoco-dest-file', default=None)
 
 
 def mx_post_parse_cmd_line(opts):
-    mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
+    if opts.jacoco_exec_file is not None:
+        mx.warn("--jacoco-exec-file is deprecated, please use --jacoco-dest-file instead")
+        mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
 
 
 @mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')

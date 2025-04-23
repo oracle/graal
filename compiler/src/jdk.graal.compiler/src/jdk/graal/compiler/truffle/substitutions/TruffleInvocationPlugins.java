@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,18 +35,23 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -62,8 +67,10 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are applied for host and
@@ -76,6 +83,44 @@ public class TruffleInvocationPlugins {
             registerTStringPlugins(plugins, replacements, architecture);
             registerArrayUtilsPlugins(plugins, replacements);
         }
+        registerBytecodePlugins(plugins, replacements);
+    }
+
+    private static void registerBytecodePlugins(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/bytecode/BytecodeDSLUncheckedAccess;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.bytecode.BytecodeDSLUncheckedAccess", replacements);
+
+        r.register(new InvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode object, ValueNode clazz) {
+                if (clazz.isConstant()) {
+                    ConstantReflectionProvider constantReflection = b.getConstantReflection();
+                    ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                    if (javaType == null) {
+                        b.push(JavaKind.Object, object);
+                    } else {
+                        TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
+                        Stamp piStamp = StampFactory.object(type, true);
+                        b.addPush(JavaKind.Object, PiNode.create(object, piStamp, null));
+                    }
+                    return true;
+                } else {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+            }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return true;
+            }
+        });
     }
 
     private static void registerArrayUtilsPlugins(InvocationPlugins plugins, Replacements replacements) {

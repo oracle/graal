@@ -29,13 +29,16 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -56,15 +59,35 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
-        return !SubstrateOptions.closedTypeWorld();
+        return !SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     @Override
     public void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            ImageSingletons.add(LayerTypeInfo.class, new LayerTypeInfo());
-        } else {
-            assert !(ImageLayerBuildingSupport.buildingImageLayer() && !ImageSingletons.contains(LayerTypeInfo.class)) : "Layered image is missing layer type info";
+            ImageSingletons.add(LayerTypeCheckInfo.class, new LayerTypeCheckInfo());
+        }
+    }
+
+    private final Set<AnalysisType> triggeredTypes = new HashSet<>();
+    private final Set<AnalysisMethod> triggeredMethods = new HashSet<>();
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        var config = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        for (AnalysisType aType : config.getUniverse().getTypes()) {
+            if (triggeredTypes.add(aType)) {
+                aType.getOrCalculateOpenTypeWorldDispatchTableMethods();
+                config.requireAnalysisIteration();
+            }
+        }
+        for (AnalysisMethod aMethod : config.getUniverse().getMethods()) {
+            if (triggeredMethods.add(aMethod)) {
+                if (!aMethod.isStatic()) {
+                    aMethod.getIndirectCallTarget();
+                    config.requireAnalysisIteration();
+                }
+            }
         }
     }
 
@@ -78,24 +101,24 @@ public class OpenTypeWorldFeature implements InternalFeature {
     }
 
     public static int loadTypeInfo(Collection<HostedType> types) {
-        if (ImageSingletons.contains(LayerTypeInfo.class) && ImageLayerBuildingSupport.buildingExtensionLayer()) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             /*
              * Load analysis must be enabled or otherwise the same Analysis Type id will not be
              * reassigned across layers.
              */
-            return ImageSingletons.lookup(LayerTypeInfo.class).loadTypeID(types);
+            return ImageSingletons.lookup(LayerTypeCheckInfo.class).loadTypeID(types);
+        } else {
+            return 0;
         }
-
-        return 0;
     }
 
     public static void persistTypeInfo(Collection<HostedType> types) {
-        if (ImageSingletons.contains(LayerTypeInfo.class)) {
-            ImageSingletons.lookup(LayerTypeInfo.class).persistTypeInfo(types);
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            ImageSingletons.lookup(LayerTypeCheckInfo.class).persistTypeInfo(types);
         }
     }
 
-    record TypeInfo(int typeID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
+    record TypeCheckInfo(int typeID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
         private List<Integer> toIntList() {
             ArrayList<Integer> list = new ArrayList<>();
             list.add(typeID);
@@ -106,12 +129,12 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return list;
         }
 
-        private static TypeInfo fromIntList(List<Integer> list) {
+        private static TypeCheckInfo fromIntList(List<Integer> list) {
             int typeID = list.get(0);
             int numClassTypes = list.get(1);
             int numInterfaceTypes = list.get(2);
             int[] typecheckSlots = list.subList(3, list.size()).stream().mapToInt(i -> i).toArray();
-            return new TypeInfo(typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
+            return new TypeCheckInfo(typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
         }
 
         @Override
@@ -122,8 +145,9 @@ public class OpenTypeWorldFeature implements InternalFeature {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            TypeInfo typeInfo = (TypeInfo) o;
-            return typeID == typeInfo.typeID && numClassTypes == typeInfo.numClassTypes && numInterfaceTypes == typeInfo.numInterfaceTypes && Arrays.equals(typecheckSlots, typeInfo.typecheckSlots);
+            TypeCheckInfo typeCheckInfo = (TypeCheckInfo) o;
+            return typeID == typeCheckInfo.typeID && numClassTypes == typeCheckInfo.numClassTypes && numInterfaceTypes == typeCheckInfo.numInterfaceTypes &&
+                            Arrays.equals(typecheckSlots, typeCheckInfo.typecheckSlots);
         }
 
         @Override
@@ -134,15 +158,15 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    private static class LayerTypeInfo implements LayeredImageSingleton {
-        Map<Integer, TypeInfo> identifierToTypeInfo = new HashMap<>();
+    private static final class LayerTypeCheckInfo implements LayeredImageSingleton {
+        Map<Integer, TypeCheckInfo> identifierToTypeInfo = new HashMap<>();
         int maxTypeID = 0;
 
         public int loadTypeID(Collection<HostedType> types) {
             ArrayList<Integer> usedIDs = new ArrayList<>();
             for (HostedType type : types) {
                 int identifierID = type.getWrapped().getId();
-                TypeInfo info = identifierToTypeInfo.get(identifierID);
+                TypeCheckInfo info = identifierToTypeInfo.get(identifierID);
                 if (info != null) {
                     usedIDs.add(info.typeID);
                     type.loadTypeID(info.typeID);
@@ -154,15 +178,20 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
         public void persistTypeInfo(Collection<HostedType> types) {
             for (HostedType type : types) {
-                AnalysisType analysisType = type.getWrapped();
-                if (type.getTypeID() != -1 && analysisType.isReachable()) {
+                /*
+                 * Currently we are calculating type id information for all types. However, for
+                 * types not tracked across layers, the type ID may not be the same in different
+                 * layers.
+                 */
+                assert type.getTypeID() != -1 : type;
+                if (type.getWrapped().isTrackedAcrossLayers()) {
                     int identifierID = type.getWrapped().getId();
                     int typeID = type.getTypeID();
                     int numClassTypes = type.getNumClassTypes();
                     int numInterfaceTypes = type.getNumInterfaceTypes();
                     int[] typecheckSlots = type.getOpenTypeWorldTypeCheckSlots();
                     var priorInfo = identifierToTypeInfo.get(identifierID);
-                    var newTypeInfo = new TypeInfo(typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
+                    var newTypeInfo = new TypeCheckInfo(typeID, numClassTypes, numInterfaceTypes, typecheckSlots);
                     if (priorInfo == null) {
                         identifierToTypeInfo.put(identifierID, newTypeInfo);
                     } else {
@@ -178,6 +207,10 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
         }
 
+        private static String getTypeInfoKey(int id) {
+            return String.format("TypeInfo-%s", id);
+        }
+
         @Override
         public PersistFlags preparePersist(ImageSingletonWriter writer) {
             /*
@@ -185,13 +218,14 @@ public class OpenTypeWorldFeature implements InternalFeature {
              * (identifierID -> typeID) mappings. In the future we can compact the amount of
              * information we store.
              */
-            var identifierIDs = identifierToTypeInfo.keySet().stream().sorted().toList();
-            writer.writeIntList("identifierIDs", identifierIDs);
-            writer.writeInt("maxTypeID", DynamicHubSupport.singleton().getMaxTypeId());
+            var typeIdentifierIds = identifierToTypeInfo.keySet().stream().sorted().toList();
+            writer.writeIntList("typeIdentifierIds", typeIdentifierIds);
+            writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
 
-            for (int identifierID : identifierIDs) {
+            for (int identifierID : typeIdentifierIds) {
                 var typeInfo = identifierToTypeInfo.get(identifierID);
-                writer.writeIntList(Integer.toString(identifierID), typeInfo.toIntList());
+                assert typeInfo != null;
+                writer.writeIntList(getTypeInfoKey(identifierID), typeInfo.toIntList());
             }
 
             return PersistFlags.CREATE;
@@ -199,13 +233,14 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
         @SuppressWarnings("unused")
         public static Object createFromLoader(ImageSingletonLoader loader) {
-            var info = new LayerTypeInfo();
+            var info = new LayerTypeCheckInfo();
             info.maxTypeID = loader.readInt("maxTypeID");
-            List<Integer> identifierIDs = loader.readIntList("identifierIDs");
-            for (var identifierID : identifierIDs) {
-                var previous = info.identifierToTypeInfo.put(identifierID, TypeInfo.fromIntList(loader.readIntList(Integer.toString(identifierID))));
+            List<Integer> typeIdentifierIds = loader.readIntList("typeIdentifierIds");
+            for (var identifierID : typeIdentifierIds) {
+                Object previous = info.identifierToTypeInfo.put(identifierID, TypeCheckInfo.fromIntList(loader.readIntList(getTypeInfoKey(identifierID))));
                 assert previous == null : previous;
             }
+
             return info;
         }
     }

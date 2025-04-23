@@ -63,8 +63,8 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
+import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
@@ -358,9 +358,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (condition instanceof SafepointCheckNode) {
             LLVMValueRef threadData = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
             threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
-            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Safepoint.getThreadLocalSafepointRequestedOffset()));
+            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(SafepointCheckCounter.getThreadLocalOffset()));
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
-            if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+            if (RecurringCallbackSupport.isEnabled()) {
                 safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));
                 builder.buildStore(safepointCount, builder.buildBitcast(safepointCounterAddr, builder.pointerType(builder.intType())));
             }

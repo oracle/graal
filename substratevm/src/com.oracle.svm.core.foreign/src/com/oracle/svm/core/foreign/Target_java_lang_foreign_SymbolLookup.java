@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ import jdk.internal.reflect.Reflection;
  * succeed. See
  * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
  */
-@TargetClass(className = "java.lang.foreign.SymbolLookup", onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(className = "java.lang.foreign.SymbolLookup", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_java_lang_foreign_SymbolLookup {
 
     @Substitute
@@ -142,7 +142,7 @@ final class Util_java_lang_foreign_SymbolLookup {
         if (JavaVersionUtil.JAVA_SPEC <= 21) {
             module.ensureNativeAccess(owner, methodName);
         } else {
-            module.ensureNativeAccess(owner, methodName, currentClass);
+            module.ensureNativeAccess(owner, methodName, currentClass, false);
         }
 
     }

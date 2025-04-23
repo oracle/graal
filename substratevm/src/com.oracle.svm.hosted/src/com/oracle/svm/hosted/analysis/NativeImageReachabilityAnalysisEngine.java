@@ -61,7 +61,7 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
         this.unknownFieldHandler = new CustomTypeFieldHandler(this, metaAccess) {
             @Override
             public void injectFieldTypes(AnalysisField aField, List<AnalysisType> declaredTypes, boolean canBeNull) {
-                assert aField.getJavaKind().isObject();
+                assert aField.getStorageKind().isObject();
                 aField.registerAsAccessed("@UnknownObjectField annotated field.");
                 for (AnalysisType declaredType : declaredTypes) {
                     declaredType.registerAsReachable("injected field types for unknown annotated field " + aField.format("%H.%n"));

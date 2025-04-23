@@ -67,6 +67,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotObjectProxyHandlerFactory.ObjectProxyNodeGen;
+import org.graalvm.polyglot.Context;
 
 final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWrapper {
 
@@ -75,11 +76,17 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
     final Object obj;
     final PolyglotLanguageContext languageContext;
     final CallTarget invoke;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this object is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotObjectProxyHandler(Object obj, PolyglotLanguageContext languageContext, Class<?> interfaceClass, Type genericType) {
         this.obj = obj;
         this.languageContext = languageContext;
         this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass, genericType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @Override
@@ -144,7 +151,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
 
         @Specialization
         final Object doDefault(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached ProxyInvokeNode proxyInvoke,
                         @Cached ToGuestValuesNode toGuests) {
             Method method = (Method) args[ARGUMENT_OFFSET];
@@ -204,7 +211,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
          */
         @SuppressWarnings({"unused", "truffle-static-method"})
         protected Object doCachedMethod(PolyglotLanguageContext languageContext, Object receiver, Method method, Type genericType, Object[] arguments,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("method") Method cachedMethod,
                         @Cached("method.getName()") String name,
                         @Cached("getMethodGenericReturnType(method, genericType)") Type returnType,

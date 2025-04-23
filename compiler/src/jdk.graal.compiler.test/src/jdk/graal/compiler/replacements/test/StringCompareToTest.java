@@ -28,16 +28,16 @@ import static jdk.graal.compiler.core.common.GraalOptions.RemoveNeverExecutedCod
 
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -84,7 +84,7 @@ public class StringCompareToTest extends StringSubstitutionTestBase {
         StructuredGraph graph = testGraph(testMethod.getName());
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
+        StructuredGraph replacement = getReplacements().getInlineSubstitution(realMethod, 0, false, Invoke.InlineControl.Normal, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null) {
             assertInGraph(graph, expectedNode);
         }

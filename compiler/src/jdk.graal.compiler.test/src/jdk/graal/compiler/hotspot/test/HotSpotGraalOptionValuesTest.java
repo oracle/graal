@@ -97,26 +97,4 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
                             expect, matches, proc.preserveArgfile()));
         }
     }
-
-    @Test
-    public void testRemoved() throws IOException, InterruptedException {
-        List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
-        vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
-        vmArgs.add("-XX:+UseJVMCICompiler");
-        vmArgs.add("-Djdk.libgraal.PrintGC=true");
-        vmArgs.add("-XX:+EagerJVMCI");
-        vmArgs.add("--version");
-        SubprocessUtil.Subprocess proc = SubprocessUtil.java(vmArgs);
-
-        if (proc.exitCode == 0) {
-            Assert.fail(String.format("Expected non-0 exit code%n%s", proc.preserveArgfile()));
-        }
-
-        String expect = "Error parsing Graal options: The 'jdk.libgraal.' property prefix is no longer supported. Use jdk.graal.internal.";
-        long matches = proc.output.stream().filter(line -> line.contains(expect)).count();
-        if (matches != 1) {
-            Assert.fail(String.format("Did not find exactly 1 match for '%s' in output of command [matches: %d]:%n%s",
-                            expect, matches, proc.preserveArgfile()));
-        }
-    }
 }

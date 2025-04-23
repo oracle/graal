@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.liveness;
 
 import java.util.Arrays;
@@ -56,7 +55,7 @@ public final class History implements Iterable<Record> {
         return new ReverseIterator();
     }
 
-    private class OrderedIterator implements Iterator<Record> {
+    private final class OrderedIterator implements Iterator<Record> {
         private int pos = 0;
 
         @Override
@@ -70,7 +69,7 @@ public final class History implements Iterable<Record> {
         }
     }
 
-    private class ReverseIterator implements Iterable<Record>, Iterator<Record> {
+    private final class ReverseIterator implements Iterable<Record>, Iterator<Record> {
         private int pos = size - 1;
 
         @Override

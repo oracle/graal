@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,13 +68,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 
-import org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
-import org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportFunctionSym;
@@ -97,9 +95,8 @@ import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -107,6 +104,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 public class Linker {
     public enum LinkState {
@@ -118,6 +116,11 @@ public class Linker {
 
     private ResolutionDag resolutionDag;
 
+    /**
+     * Tries to link a module instance and other module instances in the store.
+     *
+     * @param instance the module instance that triggered the linking
+     */
     public void tryLink(WasmInstance instance) {
         // The first execution of a WebAssembly call target will trigger the linking of the modules
         // that are inside the current context (which will happen behind the call boundary).
@@ -127,22 +130,20 @@ public class Linker {
         // compilation, and this check will fold away.
         // If the code is compiled synchronously, then this check will persist in the compiled code.
         // We nevertheless invalidate the compiled code that reaches this point.
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, instance.isNonLinked() || instance.isLinkFailed())) {
-            // TODO: Once we support multi-threading, add adequate synchronization here.
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, !instance.isLinkCompleted())) {
             tryLinkOutsidePartialEvaluation(instance);
-        } else {
-            assert instance.isLinkCompleted() || instance.isLinkInProgress();
         }
     }
 
     /**
-     * @see #tryLinkOutsidePartialEvaluation(WasmInstance, Function)
+     * Tries to link a module instantiated via the JS API, with imports supplied by an importObject.
+     *
+     * @see org.graalvm.wasm.api.WebAssembly#moduleInstantiate(WasmModule, Object)
+     * @see #tryLinkOutsidePartialEvaluation(WasmInstance, ImportValueSupplier)
      */
-    public void tryLink(WasmInstance instance, Function<ImportDescriptor, Object> imports) {
-        if (instance.isNonLinked() || instance.isLinkFailed()) {
+    public void tryLink(WasmInstance instance, ImportValueSupplier imports) {
+        if (!instance.isLinkCompleted()) {
             tryLinkOutsidePartialEvaluation(instance, imports);
-        } else {
-            assert instance.isLinkCompleted() || instance.isLinkInProgress();
         }
     }
 
@@ -153,7 +154,7 @@ public class Linker {
 
     @CompilerDirectives.TruffleBoundary
     private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance) {
-        tryLink(entryPointInstance, null);
+        tryLinkOutsidePartialEvaluation(entryPointInstance, null);
     }
 
     /**
@@ -167,30 +168,33 @@ public class Linker {
      *            the normal lookup from modules loaded in the context.
      */
     @CompilerDirectives.TruffleBoundary
-    private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, Function<ImportDescriptor, Object> imports) {
-        if (entryPointInstance.isLinkFailed()) {
-            // If the linking of this module failed already, then throw.
-            throw linkFailedError(entryPointInstance);
-        }
-        // Some Truffle configurations allow that the code gets compiled before executing the code.
-        // We therefore check the link state again.
-        if (entryPointInstance.isNonLinked()) {
-            if (resolutionDag == null) {
-                resolutionDag = new ResolutionDag();
+    private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, ImportValueSupplier imports) {
+        final WasmStore store = entryPointInstance.store();
+        synchronized (store) {
+            var linkState = entryPointInstance.linkState();
+            if (linkState == LinkState.failed) {
+                // If the linking of this module failed already, then throw.
+                throw linkFailedError(entryPointInstance);
             }
-            final WasmContext context = WasmContext.get(null);
-            Map<String, WasmInstance> instances = context.moduleInstances();
-            ArrayList<Throwable> failures = new ArrayList<>();
-            final int maxStartFunctionIndex = runLinkActions(context, instances, imports, failures);
-            linkTopologically(context, failures, maxStartFunctionIndex);
-            assignTypeEquivalenceClasses();
-            resolutionDag = null;
-            runStartFunctions(instances, failures);
-            checkFailures(failures);
+            // Some Truffle configurations allow the code to be compiled before executing the code.
+            // We therefore check the link state again.
+            if (linkState == LinkState.nonLinked) {
+                if (resolutionDag == null) {
+                    resolutionDag = new ResolutionDag();
+                }
+                Map<String, WasmInstance> instances = store.moduleInstances();
+                ArrayList<Throwable> failures = new ArrayList<>();
+                final int maxStartFunctionIndex = runLinkActions(store, instances, imports, failures);
+                linkTopologically(store, failures, maxStartFunctionIndex);
+                assignTypeEquivalenceClasses(store);
+                resolutionDag = null;
+                runStartFunctions(instances, failures);
+                checkFailures(failures);
+            }
         }
     }
 
-    private static int runLinkActions(WasmContext context, Map<String, WasmInstance> instances, Function<ImportDescriptor, Object> imports, ArrayList<Throwable> failures) {
+    private static int runLinkActions(WasmStore store, Map<String, WasmInstance> instances, ImportValueSupplier imports, ArrayList<Throwable> failures) {
         int maxStartFunctionIndex = 0;
         for (WasmInstance instance : instances.values()) {
             maxStartFunctionIndex = Math.max(maxStartFunctionIndex, instance.startFunctionIndex());
@@ -198,7 +202,7 @@ public class Linker {
                 instance.setLinkInProgress();
                 try {
                     for (LinkAction action : instance.linkActions()) {
-                        action.accept(context, instance, imports);
+                        action.accept(store.context(), store, instance, imports);
                     }
                 } catch (Throwable e) {
                     // If a link action fails in some instance,
@@ -213,35 +217,36 @@ public class Linker {
         return maxStartFunctionIndex;
     }
 
-    private void linkTopologically(WasmContext context, ArrayList<Throwable> failures, int maxStartFunctionIndex) {
+    private void linkTopologically(WasmStore store, ArrayList<Throwable> failures, int maxStartFunctionIndex) {
         final Resolver[] sortedResolutions = resolutionDag.toposort();
         Set<String> moduleOrdering = new LinkedHashSet<>();
         for (final Resolver resolver : sortedResolutions) {
-            resolver.runActionOnce(context, failures);
+            resolver.runActionOnce(store, failures);
             String moduleName = resolver.element.moduleName();
             moduleOrdering.remove(moduleName);
             moduleOrdering.add(moduleName);
         }
         int i = 0;
         for (String moduleName : moduleOrdering) {
-            context.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
+            store.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
             i++;
         }
     }
 
-    private static void assignTypeEquivalenceClasses() {
-        final WasmContext context = WasmContext.get(null);
-        final Map<String, WasmInstance> instances = context.moduleInstances();
+    private static void assignTypeEquivalenceClasses(WasmStore store) {
+        final Map<String, WasmInstance> instances = store.moduleInstances();
         for (WasmInstance instance : instances.values()) {
             WasmModule module = instance.module();
             if (instance.isLinkInProgress() && !module.isParsed()) {
-                assignTypeEquivalenceClasses(module, context.language());
+                assignTypeEquivalenceClasses(module, store.language());
             }
         }
     }
 
     private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
-        synchronized (module) {
+        var lock = module.getLock();
+        lock.lock();
+        try {
             if (module.isParsed()) {
                 return;
             }
@@ -256,6 +261,8 @@ public class Linker {
                 function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
             }
             module.setParsed();
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -303,22 +310,24 @@ public class Linker {
     private static void checkFailures(ArrayList<Throwable> failures) {
         if (!failures.isEmpty()) {
             final Throwable first = failures.get(0);
-            if (first instanceof WasmException) {
-                throw (WasmException) first;
-            } else if (first instanceof RuntimeException) {
-                throw (RuntimeException) first;
+            if (first instanceof AbstractTruffleException e) {
+                throw e;
+            } else if (first instanceof RuntimeException e) {
+                throw e;
+            } else if (first instanceof Error e) { // includes ThreadDeath
+                throw e;
             } else {
                 throw new RuntimeException(first);
             }
         }
     }
 
-    void resolveGlobalImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability,
-                    Function<ImportDescriptor, Object> imports) {
+    void resolveGlobalImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability,
+                    ImportValueSupplier imports) {
         final String importedGlobalName = importDescriptor.memberName();
         final String importedModuleName = importDescriptor.moduleName();
         final Runnable resolveAction = () -> {
-            final WasmGlobal externalGlobal = lookupImportObject(importDescriptor, imports, WasmGlobal.class);
+            final WasmGlobal externalGlobal = lookupImportObject(instance, importDescriptor, imports, WasmGlobal.class);
             final int globalAddress;
             final byte exportedValueType;
             final byte exportedMutability;
@@ -327,9 +336,9 @@ public class Linker {
                 exportedMutability = externalGlobal.getMutability();
 
                 assert globalIndex == importDescriptor.targetIndex();
-                globalAddress = context.globals().allocateExternalGlobal(externalGlobal);
+                globalAddress = store.globals().allocateExternalGlobal(externalGlobal);
             } else {
-                final WasmInstance importedInstance = context.lookupModuleInstance(importedModuleName);
+                final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
                 if (importedInstance == null) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT, "Module '" + importedModuleName + "', referenced in the import of global variable '" +
                                     importedGlobalName + "' into module '" + instance.name() + "', does not exist.");
@@ -376,20 +385,20 @@ public class Linker {
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, NO_RESOLVE_ACTION);
     }
 
-    public static void initializeGlobal(WasmContext context, WasmInstance instance, int globalIndex, byte[] initBytecode) {
-        Object initValue = evalConstantExpression(context, instance, initBytecode);
-        context.globals().store(instance.module().globalValueType(globalIndex), instance.globalAddress(globalIndex), initValue);
+    public static void initializeGlobal(WasmStore store, WasmInstance instance, int globalIndex, byte[] initBytecode) {
+        Object initValue = evalConstantExpression(store, instance, initBytecode);
+        store.globals().store(instance.module().globalValueType(globalIndex), instance.globalAddress(globalIndex), initValue);
     }
 
-    void resolveGlobalInitialization(WasmContext context, WasmInstance instance, int globalIndex, byte[] initBytecode) {
-        final Runnable resolveAction = () -> initializeGlobal(context, instance, globalIndex, initBytecode);
+    void resolveGlobalInitialization(WasmStore store, WasmInstance instance, int globalIndex, byte[] initBytecode) {
+        final Runnable resolveAction = () -> initializeGlobal(store, instance, globalIndex, initBytecode);
         final List<Sym> dependencies = dependenciesOfConstantExpression(instance, initBytecode);
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    private static <T> T lookupImportObject(ImportDescriptor importDescriptor, Function<ImportDescriptor, Object> resolvedImports, Class<T> expectedType) {
+    private static <T> T lookupImportObject(WasmInstance instance, ImportDescriptor importDescriptor, ImportValueSupplier resolvedImports, Class<T> expectedType) {
         if (resolvedImports != null) {
-            Object resolvedImport = resolvedImports.apply(importDescriptor);
+            Object resolvedImport = resolvedImports.get(importDescriptor, instance);
             if (resolvedImport != null) {
                 return expectedType.cast(resolvedImport);
             }
@@ -397,23 +406,12 @@ public class Linker {
         return null;
     }
 
-    private static WasmContext getParentContext(WasmContext context) {
-        assert WasmContext.get(null) == context;
-        TruffleContext parentContext = context.environment().getContext().getParent();
-        final Object prev = parentContext.enter(null);
-        try {
-            return WasmContext.get(null);
-        } finally {
-            parentContext.leave(null, prev);
-        }
-    }
-
-    void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function, Function<ImportDescriptor, Object> imports) {
+    void resolveFunctionImport(WasmStore store, WasmInstance instance, WasmFunction function, ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
             WasmModule module = instance.module();
             ImportDescriptor importDescriptor = function.importDescriptor();
             assert module.importedFunction(importDescriptor) == function;
-            Object externalFunctionInstance = lookupImportObject(importDescriptor, imports, Object.class);
+            Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
                     if (!function.type().equals(functionInstance.function().type())) {
@@ -423,22 +421,21 @@ public class Linker {
                     instance.setFunctionInstance(function.index(), functionInstance);
                 } else {
                     CallTarget callTarget = function.target();
-                    WasmContext parentContext = getParentContext(context);
                     if (callTarget == null) {
-                        var executableWrapper = new ExecuteHostFunctionNode(parentContext.language(), module, function);
+                        var executableWrapper = new ExecuteHostFunctionNode(store.language(), module, function);
                         callTarget = executableWrapper.getCallTarget();
                         function.setImportedFunctionCallTarget(callTarget);
                     }
 
-                    assert ((RootCallTarget) callTarget).getRootNode().getLanguage(WasmLanguage.class) == parentContext.language();
-                    WasmFunctionInstance functionInstance = new WasmFunctionInstance(parentContext, instance, function, callTarget);
+                    assert ((RootCallTarget) callTarget).getRootNode().getLanguage(WasmLanguage.class) == store.language();
+                    WasmFunctionInstance functionInstance = new WasmFunctionInstance(store.context(), instance, function, callTarget);
                     functionInstance.setImportedFunction(externalFunctionInstance);
                     instance.setTarget(function.index(), functionInstance.target());
                     instance.setFunctionInstance(function.index(), functionInstance);
                 }
                 return;
             }
-            final WasmInstance importedInstance = context.lookupModuleInstance(function.importedModuleName());
+            final WasmInstance importedInstance = store.lookupModuleInstance(function.importedModuleName());
             if (importedInstance == null) {
                 throw WasmException.create(
                                 Failure.UNKNOWN_IMPORT,
@@ -463,42 +460,27 @@ public class Linker {
     }
 
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
-        final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
+        final WasmFunction function = module.symbolTable().function(functionIndex);
+        final ImportDescriptor importDescriptor = function.importDescriptor();
         final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor, functionIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveCallsite(WasmInstance instance, WasmFunctionNode functionNode, int controlTableOffset, int bytecodeOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> functionNode.resolveCallNode(instance, controlTableOffset, bytecodeOffset);
-        final Sym[] dependencies = new Sym[]{
-                        function.isImported()
-                                        ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index())
-                                        : new CodeEntrySym(instance.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(instance.name(), functionNode.startOffset(), controlTableOffset), dependencies, resolveAction);
-    }
-
-    void resolveCodeEntry(WasmModule module, int functionIndex) {
-        if (resolutionDag == null) {
-            resolutionDag = new ResolutionDag();
-        }
-        resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
-    }
-
-    void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
-                    boolean shared, Function<ImportDescriptor, Object> imports) {
+    void resolveMemoryImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
+                    boolean shared, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
         // Special import of main module memory into WASI built-in module.
         final boolean importsMainMemory = instance.module().isBuiltin() && importedModuleName.equals("main") && importedMemoryName.equals("memory");
         final Runnable resolveAction = () -> {
             final WasmMemory importedMemory;
-            final WasmMemory externalMemory = lookupImportObject(importDescriptor, imports, WasmMemory.class);
+            final WasmMemory externalMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
             if (externalMemory != null) {
-                final int contextMemoryIndex = context.memories().registerExternal(externalMemory);
-                importedMemory = context.memories().memory(contextMemoryIndex);
+                final int contextMemoryIndex = store.memories().registerExternal(externalMemory);
+                importedMemory = store.memories().memory(contextMemoryIndex);
                 assert memoryIndex == importDescriptor.targetIndex();
             } else {
-                final WasmInstance importedInstance = importsMainMemory ? context.lookupMainModule() : context.lookupModuleInstance(importedModuleName);
+                final WasmInstance importedInstance = importsMainMemory ? store.lookupMainModule() : store.lookupModuleInstance(importedModuleName);
                 if (importedInstance == null) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                     importedModuleName, importedMemoryName, instance.name()));
@@ -541,7 +523,7 @@ public class Linker {
         });
     }
 
-    private static Object lookupGlobal(WasmContext context, WasmInstance instance, int index) {
+    private static Object lookupGlobal(WasmStore store, WasmInstance instance, int index) {
         final int globalAddress = instance.globalAddress(index);
         assertTrue(globalAddress != SymbolTable.UNINITIALIZED_ADDRESS,
                         "The global variable '" + index + " referenced in a constant expression in module '" + instance.name() + "' was not initialized.", Failure.UNSPECIFIED_MALFORMED);
@@ -549,24 +531,24 @@ public class Linker {
         CompilerAsserts.partialEvaluationConstant(type);
         switch (type) {
             case I32_TYPE:
-                return context.globals().loadAsInt(globalAddress);
+                return store.globals().loadAsInt(globalAddress);
             case F32_TYPE:
-                return Float.intBitsToFloat(context.globals().loadAsInt(globalAddress));
+                return Float.intBitsToFloat(store.globals().loadAsInt(globalAddress));
             case I64_TYPE:
-                return context.globals().loadAsLong(globalAddress);
+                return store.globals().loadAsLong(globalAddress);
             case F64_TYPE:
-                return Double.longBitsToDouble(context.globals().loadAsLong(globalAddress));
+                return Double.longBitsToDouble(store.globals().loadAsLong(globalAddress));
             case V128_TYPE:
-                return context.globals().loadAsVector128(globalAddress);
+                return store.globals().loadAsVector128(globalAddress);
             case FUNCREF_TYPE:
             case EXTERNREF_TYPE:
-                return context.globals().loadAsReference(globalAddress);
+                return store.globals().loadAsReference(globalAddress);
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, "Local variable cannot have the void type.");
         }
     }
 
-    public static Object evalConstantExpression(WasmContext context, WasmInstance instance, byte[] bytecode) {
+    public static Object evalConstantExpression(WasmStore store, WasmInstance instance, byte[] bytecode) {
         int offset = 0;
         List<Object> stack = new ArrayList<>();
         while (offset < bytecode.length) {
@@ -576,13 +558,13 @@ public class Linker {
                 case Bytecode.GLOBAL_GET_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
-                    stack.add(lookupGlobal(context, instance, index));
+                    stack.add(lookupGlobal(store, instance, index));
                     break;
                 }
                 case Bytecode.GLOBAL_GET_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    stack.add(lookupGlobal(context, instance, index));
+                    stack.add(lookupGlobal(store, instance, index));
                     break;
                 }
                 case Bytecode.I32_CONST_I8: {
@@ -666,7 +648,7 @@ public class Linker {
                     break;
                 }
                 default:
-                    fail(Failure.TYPE_MISMATCH, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
+                    fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
@@ -725,19 +707,19 @@ public class Linker {
                 case Bytecode.I64_MUL:
                     break;
                 default:
-                    fail(Failure.TYPE_MISMATCH, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
+                    fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
         return dependencies;
     }
 
-    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
+    void resolveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
                     int droppedDataInstanceOffset) {
         assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED,
-                        String.format("Specified memory was not declared or imported in the module '%s'", instance.name()));
+                        "Specified memory was not declared or imported in the module '%s'", instance.name());
         final Runnable resolveAction = () -> {
-            if (context.getContextOptions().memoryOverheadMode()) {
+            if (store.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
                 return;
             }
@@ -745,15 +727,14 @@ public class Linker {
 
             final long baseAddress;
             if (offsetBytecode != null) {
-                baseAddress = ((Number) evalConstantExpression(context, instance, offsetBytecode)).longValue();
+                baseAddress = ((Number) evalConstantExpression(store, instance, offsetBytecode)).longValue();
             } else {
                 baseAddress = offsetAddress;
             }
 
-            Assert.assertUnsignedLongLessOrEqual(baseAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-            Assert.assertUnsignedLongLessOrEqual(baseAddress + byteLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
             final byte[] bytecode = instance.module().bytecode();
-            memory.initialize(bytecode, bytecodeOffset, baseAddress, byteLength);
+            memoryLib.initialize(memory, null, bytecode, bytecodeOffset, baseAddress, byteLength);
             instance.setDataInstance(dataSegmentId, droppedDataInstanceOffset);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
@@ -769,24 +750,11 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolvePassiveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int bytecodeOffset, int bytecodeLength) {
+    void resolvePassiveDataSegment(WasmStore store, WasmInstance instance, int dataSegmentId, int bytecodeOffset) {
         final Runnable resolveAction = () -> {
-            if (context.getContextOptions().memoryOverheadMode()) {
+            if (store.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
                 return;
-            }
-            if (context.getContextOptions().useUnsafeMemory()) {
-                final byte[] bytecode = instance.module().bytecode();
-                final int length = switch (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
-                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
-                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
-                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
-                    default -> throw CompilerDirectives.shouldNotReachHere();
-                };
-                final long address = NativeDataInstanceUtil.allocateNativeInstance(instance.module().bytecode(),
-                                bytecodeOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length + BytecodeBitEncoding.DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH, bytecodeLength);
-                BinaryStreamParser.writeI64(bytecode, bytecodeOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length, address);
             }
             instance.setDataInstance(dataSegmentId, bytecodeOffset);
         };
@@ -797,16 +765,16 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType,
-                    Function<ImportDescriptor, Object> imports) {
+    void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType,
+                    ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
-            WasmTable externalTable = lookupImportObject(importDescriptor, imports, WasmTable.class);
+            WasmTable externalTable = lookupImportObject(instance, importDescriptor, imports, WasmTable.class);
             final int tableAddress;
             if (externalTable != null) {
                 assert tableIndex == importDescriptor.targetIndex();
-                tableAddress = context.tables().registerExternal(externalTable);
+                tableAddress = store.tables().registerExternal(externalTable);
             } else {
-                final WasmInstance importedInstance = context.lookupModuleInstance(importDescriptor.moduleName());
+                final WasmInstance importedInstance = store.lookupModuleInstance(importDescriptor.moduleName());
                 final String importedModuleName = importDescriptor.moduleName();
                 if (importedInstance == null) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("Imported module '%s', referenced in module '%s', does not exist.", importedModuleName, instance.name()));
@@ -826,7 +794,7 @@ public class Linker {
                     tableAddress = importedInstance.tableAddress(exportedTableIndex);
                 }
             }
-            final WasmTable importedTable = context.tables().table(tableAddress);
+            final WasmTable importedTable = store.tables().table(tableAddress);
             // Rules for limits matching:
             // https://webassembly.github.io/spec/core/exec/modules.html#limits
             // If no max size is declared, then declaredMaxSize value will be
@@ -891,7 +859,7 @@ public class Linker {
         }
     }
 
-    private static Object[] extractElemItems(WasmContext context, WasmInstance instance, int bytecodeOffset, int elementCount) {
+    private static Object[] extractElemItems(WasmStore store, WasmInstance instance, int bytecodeOffset, int elementCount) {
         int elementOffset = bytecodeOffset;
         final byte[] bytecode = instance.module().bytecode();
         final Object[] elemItems = new Object[elementCount];
@@ -931,14 +899,14 @@ public class Linker {
                 elemItems[elementIndex] = instance.functionInstance(function);
             } else {
                 final int globalAddress = instance.globalAddress(index);
-                elemItems[elementIndex] = context.globals().loadAsReference(globalAddress);
+                elemItems[elementIndex] = store.globals().loadAsReference(globalAddress);
             }
         }
         return elemItems;
     }
 
-    void resolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset, int elementCount) {
-        final Runnable resolveAction = () -> immediatelyResolveElemSegment(context, instance, tableIndex, offsetAddress, offsetBytecode, bytecodeOffset, elementCount);
+    void resolveElemSegment(WasmStore store, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset, int elementCount) {
+        final Runnable resolveAction = () -> immediatelyResolveElemSegment(store, instance, tableIndex, offsetAddress, offsetBytecode, bytecodeOffset, elementCount);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedTable(tableIndex) != null) {
             dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable(tableIndex)));
@@ -953,31 +921,31 @@ public class Linker {
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    public void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset,
+    public void immediatelyResolveElemSegment(WasmStore store, WasmInstance instance, int tableIndex, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset,
                     int elementCount) {
-        if (context.getContextOptions().memoryOverheadMode()) {
+        if (store.getContextOptions().memoryOverheadMode()) {
             // Do not initialize the element segment when in memory overhead mode.
             return;
         }
         assertTrue(instance.symbolTable().checkTableIndex(tableIndex), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final int tableAddress = instance.tableAddress(tableIndex);
-        final WasmTable table = context.tables().table(tableAddress);
+        final WasmTable table = store.tables().table(tableAddress);
         Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
         final int baseAddress;
         if (offsetBytecode != null) {
-            baseAddress = (int) evalConstantExpression(context, instance, offsetBytecode);
+            baseAddress = (int) evalConstantExpression(store, instance, offsetBytecode);
         } else {
             baseAddress = offsetAddress;
         }
 
         Assert.assertUnsignedIntLessOrEqual(baseAddress, table.size(), Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
         Assert.assertUnsignedIntLessOrEqual(baseAddress + elementCount, table.size(), Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
-        final Object[] elemSegment = extractElemItems(context, instance, bytecodeOffset, elementCount);
+        final Object[] elemSegment = extractElemItems(store, instance, bytecodeOffset, elementCount);
         table.initialize(elemSegment, 0, baseAddress, elementCount);
     }
 
-    void resolvePassiveElemSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int bytecodeOffset, int elementCount) {
-        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(context, instance, elemSegmentId, bytecodeOffset, elementCount);
+    void resolvePassiveElemSegment(WasmStore store, WasmInstance instance, int elemSegmentId, int bytecodeOffset, int elementCount) {
+        final Runnable resolveAction = () -> immediatelyResolvePassiveElementSegment(store, instance, elemSegmentId, bytecodeOffset, elementCount);
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (elemSegmentId > 0) {
             dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
@@ -987,12 +955,12 @@ public class Linker {
 
     }
 
-    public void immediatelyResolvePassiveElementSegment(WasmContext context, WasmInstance instance, int elemSegmentId, int bytecodeOffset, int elementCount) {
-        if (context.getContextOptions().memoryOverheadMode()) {
+    public void immediatelyResolvePassiveElementSegment(WasmStore store, WasmInstance instance, int elemSegmentId, int bytecodeOffset, int elementCount) {
+        if (store.getContextOptions().memoryOverheadMode()) {
             // Do not initialize the element segment when in memory overhead mode.
             return;
         }
-        final Object[] initialValues = extractElemItems(context, instance, bytecodeOffset, elementCount);
+        final Object[] initialValues = extractElemItems(store, instance, bytecodeOffset, elementCount);
         instance.setElemInstance(elemSegmentId, initialValues);
     }
 
@@ -1012,8 +980,8 @@ public class Linker {
                 return moduleName;
             }
 
-            public WasmInstance instance(WasmContext context) {
-                return context.lookupModuleInstance(moduleName);
+            public WasmInstance instance(WasmStore store) {
+                return store.lookupModuleInstance(moduleName);
             }
         }
 
@@ -1088,7 +1056,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(init global %d in %s)", globalIndex, moduleName);
+                return String.format(Locale.ROOT, "(init global %d in %s)", globalIndex, moduleName);
             }
 
             @Override
@@ -1119,7 +1087,8 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import func %s from %s into %s at %d)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, destinationIndex);
+                return String.format(Locale.ROOT, "(import func %s from %s into %s at %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, destinationIndex);
             }
 
             @Override
@@ -1168,64 +1137,6 @@ public class Linker {
             }
         }
 
-        static class CallsiteSym extends Sym {
-            final int instructionOffset;
-            final int controlTableOffset;
-
-            CallsiteSym(String moduleName, int instructionOffset, int controlTableOffset) {
-                super(moduleName);
-                this.instructionOffset = instructionOffset;
-                this.controlTableOffset = controlTableOffset;
-            }
-
-            @Override
-            public String toString() {
-                return String.format("(callsite at %d in %s)", instructionOffset, moduleName);
-            }
-
-            @Override
-            public int hashCode() {
-                return moduleName.hashCode() ^ instructionOffset ^ (controlTableOffset << 16);
-            }
-
-            @Override
-            public boolean equals(Object object) {
-                if (!(object instanceof CallsiteSym)) {
-                    return false;
-                }
-                final CallsiteSym that = (CallsiteSym) object;
-                return this.instructionOffset == that.instructionOffset && this.controlTableOffset == that.controlTableOffset && this.moduleName.equals(that.moduleName);
-            }
-        }
-
-        static class CodeEntrySym extends Sym {
-            final int functionIndex;
-
-            CodeEntrySym(String moduleName, int functionIndex) {
-                super(moduleName);
-                this.functionIndex = functionIndex;
-            }
-
-            @Override
-            public String toString() {
-                return String.format("(code entry at %d in %s)", functionIndex, moduleName);
-            }
-
-            @Override
-            public int hashCode() {
-                return moduleName.hashCode() ^ functionIndex;
-            }
-
-            @Override
-            public boolean equals(Object object) {
-                if (!(object instanceof CodeEntrySym)) {
-                    return false;
-                }
-                final CodeEntrySym that = (CodeEntrySym) object;
-                return this.functionIndex == that.functionIndex && this.moduleName.equals(that.moduleName);
-            }
-        }
-
         static class ImportMemorySym extends Sym {
             final ImportDescriptor importDescriptor;
             final int memoryIndex;
@@ -1238,7 +1149,8 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import memory %s from %s into %s with index %d)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, memoryIndex);
+                return String.format(Locale.ROOT, "(import memory %s from %s into %s with index %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, memoryIndex);
             }
 
             @Override
@@ -1294,7 +1206,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", dataSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(data %d in %s)", dataSegmentId, moduleName);
             }
 
             @Override
@@ -1378,7 +1290,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", elemSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(data %d in %s)", elemSegmentId, moduleName);
             }
 
             @Override
@@ -1412,16 +1324,16 @@ public class Linker {
                 return "Resolver(" + element + ")";
             }
 
-            public void runActionOnce(WasmContext context, ArrayList<Throwable> failures) {
+            public void runActionOnce(WasmStore store, ArrayList<Throwable> failures) {
                 if (this.action != null) {
-                    WasmInstance instance = element.instance(context);
+                    WasmInstance instance = element.instance(store);
                     try {
                         // If the instance exists and it is not failed, check the dependencies.
                         if (instance != null && !instance.isLinkFailed()) {
                             // Fail the linking of the current module if any of its dependencies are
                             // failed.
                             for (Sym dependency : dependencies) {
-                                WasmInstance dependencyInstance = dependency.instance(context);
+                                WasmInstance dependencyInstance = dependency.instance(store);
                                 if (dependencyInstance != null && dependencyInstance.isLinkFailed()) {
                                     instance.setLinkFailed();
                                     break;

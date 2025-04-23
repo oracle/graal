@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Filters">
+        <file name="Coloring.js" url="filters/color.filter">
+            <attr name="enabled" boolvalue="true"/>
+            <attr name="position" intvalue="1000"/>
+        </file>
+
+
+        <file name="Stamp Coloring.js" url="filters/stampColor.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="2000"/>
+        </file>
+
+        <file name="Probability Coloring.js" url="filters/probability.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="3000"/>
+        </file>
+
+        <file name="Call Graph Coloring.js" url="filters/callgraph.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="4000"/>
+        </file>
+
+        <file name="Reduce Edges.js" url="filters/reduceEdges.filter">
+            <attr name="enabled" boolvalue="true"/>
+            <attr name="position" intvalue="5000"/>
+        </file>
+
+        <file name="Remove State.js" url="filters/removeState.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="6000"/>
+        </file>
+
+        <file name="Remove Floating.js" url="filters/removeFloating.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="7000"/>
+        </file>
+
+        <file name="Truffle AST Cost Coloring.js" url="filters/truffleAstCost.js">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="8000"/>
+        </file>
+
+        <file name="Truffle Call Tree Coloring.js" url="filters/truffleCallTree.js">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="position" intvalue="9000"/>
+        </file>
+    </folder>
+
+    <folder name="IGV">
+        <folder name="FilterProfiles">
+            <folder name="Graal Graph">
+                <attr name="position" intvalue="1000"/>
+                <attr name="iconBase" stringvalue="org/graalvm/visualizer/graal/resources/graph.png"/>
+
+                <file name="graal.selector" url="filters/graal.selector">
+                    <attr name="position" intvalue="800"/>
+                </file>
+
+                <file name="Coloring.shadow">
+                    <attr name="enabled" boolvalue="true"/>
+                    <attr name="position" intvalue="1000"/>
+                    <attr name="originalFile" stringvalue="Filters/Coloring.js"/>
+                </file>
+
+                <file name="Reduce Edges.shadow">
+                    <attr name="enabled" boolvalue="true"/>
+                    <attr name="position" intvalue="5000"/>
+                    <attr name="originalFile" stringvalue="Filters/Reduce Edges.js"/>
+                </file>
+
+                <file name="Remove State.shadow">
+                    <attr name="enabled" boolvalue="false"/>
+                    <attr name="position" intvalue="6000"/>
+                    <attr name="originalFile" stringvalue="Filters/Remove State.js"/>
+                </file>
+
+                <file name="Remove Floating.shadow">
+                    <attr name="enabled" boolvalue="false"/>
+                    <attr name="position" intvalue="7000"/>
+                    <attr name="originalFile" stringvalue="Filters/Remove Floating.js"/>
+                </file>
+
+                <file name="Stamp Coloring.shadow">
+                    <attr name="enabled" boolvalue="false"/>
+                    <attr name="position" intvalue="2000"/>
+                    <attr name="originalFile" stringvalue="Filters/Stamp Coloring.js"/>
+                </file>
+
+                <file name="Probability Coloring.shadow">
+                    <attr name="enabled" boolvalue="false"/>
+                    <attr name="position" intvalue="3000"/>
+                    <attr name="originalFile" stringvalue="Filters/Probability Coloring.js"/>
+                </file>
+
+            </folder>
+
+            <folder name="Call Graph">
+                <attr name="position" intvalue="2000"/>
+                <attr name="iconBase" stringvalue="org/graalvm/visualizer/graal/resources/call_graph.png"/>
+
+                <file name="callgraph.selector" url="filters/callgraph.selector">
+                    <attr name="position" intvalue="800"/>
+                </file>
+
+                <file name="Call Graph Coloring.shadow">
+                    <attr name="enabled" boolvalue="false"/>
+                    <attr name="position" intvalue="1000"/>
+                    <attr name="originalFile" stringvalue="Filters/Call Graph Coloring.js"/>
+                </file>
+            </folder>
+
+            <folder name="AST">
+                <attr name="position" intvalue="3000"/>
+                <file name="truffleAst.selector" url="filters/truffleAst.selector">
+                    <attr name="position" intvalue="800"/>
+                </file>
+
+                <file name="Truffle AST Cost Coloring.shadow">
+                    <attr name="enabled" boolvalue="true"/>
+                    <attr name="position" intvalue="1000"/>
+                    <attr name="originalFile" stringvalue="Filters/Truffle AST Cost Coloring.js"/>
+                </file>
+
+            </folder>
+
+            <folder name="Truffle Call Tree">
+                <attr name="position" intvalue="4000"/>
+                <file name="truffleCallTree.selector" url="filters/truffleCallTree.selector">
+                    <attr name="position" intvalue="800"/>
+                </file>
+
+                <file name="Truffle Call Tree Coloring.shadow">
+                    <attr name="enabled" boolvalue="true"/>
+                    <attr name="position" intvalue="1000"/>
+                    <attr name="originalFile" stringvalue="Filters/Truffle Call Tree Coloring.js"/>
+                </file>
+            </folder>
+        </folder>
+    </folder>
+
+    <folder name="ScriptingEnvironment">
+        <folder name="text">
+            <folder name="javascript">
+                <file name="graalFilters.classes" url="filters/graalFilters.properties">
+                    <attr name="position" intvalue="12000"/>
+                </file>
+            </folder>
+        </folder>
+    </folder>
+
+</filesystem>

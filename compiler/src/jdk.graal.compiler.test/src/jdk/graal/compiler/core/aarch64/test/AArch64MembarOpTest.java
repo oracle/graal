@@ -32,6 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.BarrierKind;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -42,9 +45,6 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.runtime.JVMCI;
@@ -62,7 +62,7 @@ public class AArch64MembarOpTest extends BackendTest {
         final StructuredGraph graph = parseEager("stub", StructuredGraph.AllowAssumptions.YES);
         LIRGenerationResult lirGenRes = getLIRGenerationResult(graph);
         CompilationResult compResult = new CompilationResult(graph.compilationId());
-        this.crb = ((LIRGenerationProvider) getBackend()).newCompilationResultBuilder(lirGenRes, lirGenRes.getFrameMap(), compResult, CompilationResultBuilderFactory.Default);
+        this.crb = ((LIRGenerationProvider) getBackend()).newCompilationResultBuilder(lirGenRes, lirGenRes.getFrameMap(), compResult, CompilationResultBuilderFactory.Default, null);
     }
 
     public void stub() {
@@ -93,14 +93,14 @@ public class AArch64MembarOpTest extends BackendTest {
         cases.add(Pair.create(MemoryBarriers.STORE_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.LOAD_LOAD, BarrierKind.ANY_ANY));
 
         for (Pair<Integer, BarrierKind> c : cases) {
-            assertArrayEquals(new MembarOpActual(c.getLeft()).emit(new AArch64MacroAssembler(providers.getTarget())),
-                            new MembarOpExpected(c.getRight()).emit(new AArch64MacroAssembler(providers.getTarget())));
+            assertArrayEquals(new MembarOpActual(c.getLeft()).emit(new AArch64TestMacroAssembler(providers.getTarget())),
+                            new MembarOpExpected(c.getRight()).emit(new AArch64TestMacroAssembler(providers.getTarget())));
         }
     }
 
     @Test(expected = AssertionError.class)
     public void runExceptionalTests() {
-        new MembarOpActual(16).emit(new AArch64MacroAssembler(providers.getTarget()));
+        new MembarOpActual(16).emit(new AArch64TestMacroAssembler(providers.getTarget()));
     }
 
     private class MembarOpActual {

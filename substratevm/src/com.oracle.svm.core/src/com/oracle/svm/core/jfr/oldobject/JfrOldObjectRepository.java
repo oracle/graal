@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -198,7 +197,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
         void teardown() {
             unflushedEntries = 0;
             JfrBufferAccess.free(buffer);
-            buffer = WordFactory.nullPointer();
+            buffer = Word.nullPointer();
         }
     }
 }

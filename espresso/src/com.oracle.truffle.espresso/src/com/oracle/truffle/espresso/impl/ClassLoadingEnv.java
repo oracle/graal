@@ -23,13 +23,24 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.ParsingContext;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class ClassLoadingEnv implements LanguageAccess {
@@ -107,5 +118,67 @@ public class ClassLoadingEnv implements LanguageAccess {
             throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
         }
         return id;
+    }
+
+    public static ParsingContext createParsingContext(ClassLoadingEnv env, boolean ensureStrongReferences) {
+        return new ParsingContext() {
+
+            final Logger truffleEnvLogger = new Logger() {
+                @Override
+                public void log(String message) {
+                    env.getLogger().warning(message);
+                }
+
+                @Override
+                public void log(Supplier<String> messageSupplier) {
+                    env.getLogger().warning(messageSupplier);
+                }
+
+                @Override
+                public void log(String message, Throwable throwable) {
+                    env.getLogger().log(Level.SEVERE, message, throwable);
+                }
+            };
+
+            @Override
+            public JavaVersion getJavaVersion() {
+                return env.getJavaVersion();
+            }
+
+            @Override
+            public boolean isStrictJavaCompliance() {
+                return env.getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT;
+            }
+
+            @Override
+            public TimerCollection getTimers() {
+                return env.getTimers();
+            }
+
+            @Override
+            public boolean isPreviewEnabled() {
+                return env.isPreviewEnabled();
+            }
+
+            @Override
+            public Logger getLogger() {
+                return truffleEnvLogger;
+            }
+
+            @Override
+            public Symbol<Name> getOrCreateName(ByteSequence byteSequence) {
+                return env.getNames().getOrCreate(byteSequence, ensureStrongReferences);
+            }
+
+            @Override
+            public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
+                return env.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence), ensureStrongReferences);
+            }
+
+            @Override
+            public Utf8Constant getOrCreateUtf8Constant(ByteSequence byteSequence) {
+                return env.getLanguage().getUtf8ConstantTable().getOrCreate(byteSequence, ensureStrongReferences);
+            }
+        };
     }
 }

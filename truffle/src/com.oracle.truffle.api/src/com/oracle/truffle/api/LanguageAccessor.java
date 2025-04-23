@@ -71,7 +71,6 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 final class LanguageAccessor extends Accessor {
@@ -279,8 +278,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext createTruffleContext(Object impl, boolean creator) {
-            return new TruffleContext(impl, creator);
+        public TruffleContext createTruffleContext(Object impl, TruffleContext parentContext) {
+            return new TruffleContext(impl, parentContext);
         }
 
         @Override
@@ -295,13 +294,13 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         @SuppressWarnings("unused")
-        public CallTarget parse(TruffleLanguage.Env env, Source code, Node context, String... argumentNames) {
-            return env.getSpi().parse(code, argumentNames);
+        public CallTarget parse(TruffleLanguage.Env env, Source code, OptionValues optionValues, Node context, String... argumentNames) {
+            return env.getSpi().parse(code, optionValues, argumentNames);
         }
 
         @Override
-        public ExecutableNode parseInline(TruffleLanguage.Env env, Source code, Node context, MaterializedFrame frame) {
-            return env.getSpi().parseInline(code, context, frame);
+        public ExecutableNode parseInline(TruffleLanguage.Env env, Source code, OptionValues optionValues, Node context, MaterializedFrame frame) {
+            return env.getSpi().parseInline(code, optionValues, context, frame);
         }
 
         @Override
@@ -350,24 +349,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object evalInContext(Source source, Node node, final MaterializedFrame mFrame) {
-            CallTarget target = ACCESSOR.nodeSupport().getLanguage(node.getRootNode()).parse(source);
-            try {
-                if (target instanceof RootCallTarget) {
-                    RootNode exec = ((RootCallTarget) target).getRootNode();
-                    return exec.execute(mFrame);
-                } else {
-                    throw new IllegalStateException("" + target);
-                }
-            } catch (Exception ex) {
-                if (ex instanceof RuntimeException) {
-                    throw (RuntimeException) ex;
-                }
-                throw new RuntimeException(ex);
-            }
-        }
-
-        @Override
         public LanguageInfo getLanguageInfo(TruffleLanguage<?> language) {
             return language.languageInfo;
         }
@@ -393,6 +374,16 @@ final class LanguageAccessor extends Accessor {
         @Override
         public OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup) {
             OptionDescriptors descriptors = language.getOptionDescriptors();
+            if (descriptors == null) {
+                return OptionDescriptors.EMPTY;
+            }
+            assert verifyDescriptors(language, requiredGroup, descriptors);
+            return descriptors;
+        }
+
+        @Override
+        public OptionDescriptors describeSourceOptions(TruffleLanguage<?> language, String requiredGroup) {
+            OptionDescriptors descriptors = language.getSourceOptionDescriptors();
             if (descriptors == null) {
                 return OptionDescriptors.EMPTY;
             }
@@ -564,6 +555,15 @@ final class LanguageAccessor extends Accessor {
         @Override
         public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
             action.perform(access);
+        }
+
+        @Override
+        public void notifyTLActionBlocked(ThreadLocalAction action, ThreadLocalAction.Access access, boolean blocked) {
+            if (blocked) {
+                action.notifyBlocked(access);
+            } else {
+                action.notifyUnblocked(access);
+            }
         }
 
         @Override

@@ -36,15 +36,18 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
+import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
@@ -54,45 +57,46 @@ import com.oracle.truffle.espresso.vm.VM;
  */
 @ExportLibrary(NodeLibrary.class)
 final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
-
+    private final JniEnv env;
     private final TruffleObject boundNative;
     @Child InteropLibrary executeNative;
     @CompilationFinal boolean throwsException;
 
     private static final DebugCounter NATIVE_METHOD_CALLS = DebugCounter.create("Native method calls");
 
-    NativeMethodNode(TruffleObject boundNative, MethodVersion method) {
+    NativeMethodNode(JniEnv env, TruffleObject boundNative, MethodVersion method) {
         super(method);
+        this.env = env;
         this.boundNative = boundNative;
         this.executeNative = InteropLibrary.getFactory().create(boundNative);
     }
 
     @TruffleBoundary
-    private static Object toObjectHandle(JniEnv env, Object arg) {
+    private static Object toObjectHandle(JNIHandles handles, Object arg) {
         assert arg instanceof StaticObject;
-        return (long) env.getHandles().createLocal((StaticObject) arg);
+        return (long) handles.createLocal((StaticObject) arg);
     }
 
     @ExplodeLoop
-    private Object[] preprocessArgs(JniEnv env, Object[] args) {
+    private Object[] preprocessArgs(JNIHandles handles, Object[] args) {
         Symbol<Type>[] parsedSignature = getMethodVersion().getMethod().getParsedSignature();
-        int paramCount = Signatures.parameterCount(parsedSignature);
+        int paramCount = SignatureSymbols.parameterCount(parsedSignature);
         Object[] nativeArgs = new Object[2 /* JNIEnv* + class or receiver */ + paramCount];
 
         assert !InteropLibrary.getUncached().isNull(env.getNativePointer());
         nativeArgs[0] = env.getNativePointer(); // JNIEnv*
 
         if (getMethodVersion().isStatic()) {
-            nativeArgs[1] = toObjectHandle(env, getMethodVersion().getDeclaringKlass().mirror()); // class
+            nativeArgs[1] = toObjectHandle(handles, getMethodVersion().getDeclaringKlass().mirror()); // class
         } else {
-            nativeArgs[1] = toObjectHandle(env, args[0]); // receiver
+            nativeArgs[1] = toObjectHandle(handles, args[0]); // receiver
         }
 
         int skipReceiver = getMethodVersion().isStatic() ? 0 : 1;
         for (int i = 0; i < paramCount; ++i) {
-            Symbol<Type> paramType = Signatures.parameterType(parsedSignature, i);
-            if (Types.isReference(paramType)) {
-                nativeArgs[i + 2] = toObjectHandle(env, args[i + skipReceiver]);
+            Symbol<Type> paramType = SignatureSymbols.parameterType(parsedSignature, i);
+            if (TypeSymbols.isReference(paramType)) {
+                nativeArgs[i + 2] = toObjectHandle(handles, args[i + skipReceiver]);
             } else {
                 nativeArgs[i + 2] = args[i + skipReceiver];
             }
@@ -102,21 +106,21 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        final JniEnv env = getContext().getJNI();
-        int nativeFrame = env.getHandles().pushFrame();
+        JNIHandles handles = getContext().getHandles();
+        int nativeFrame = handles.pushFrame();
         NATIVE_METHOD_CALLS.inc();
-        var tls = getContext().getLanguage().getThreadLocalState();
+        var tls = getLanguage().getThreadLocalState();
         tls.blockContinuationSuspension();   // Can't unwind through native frames.
         try {
-            Object[] nativeArgs = preprocessArgs(env, frame.getArguments());
+            Object[] nativeArgs = preprocessArgs(handles, frame.getArguments());
             Object result = executeNative.execute(boundNative, nativeArgs);
-            return processResult(env, result);
+            return processResult(handles, result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
             tls.unblockContinuationSuspension();
-            env.getHandles().popFramesIncluding(nativeFrame);
+            handles.popFramesIncluding(nativeFrame);
         }
     }
 
@@ -127,20 +131,20 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
         }
     }
 
-    private void maybeThrowAndClearPendingException(JniEnv jniEnv) {
-        EspressoException ex = jniEnv.getPendingEspressoException();
+    private void maybeThrowAndClearPendingException(EspressoLanguage language) {
+        EspressoException ex = language.getPendingEspressoException();
         if (ex != null) {
             enterThrowsException();
-            jniEnv.clearPendingException();
+            language.clearPendingException();
             throw ex;
         }
     }
 
-    private Object processResult(JniEnv env, Object result) {
+    private Object processResult(JNIHandles handles, Object result) {
         // JNI exception handling.
-        maybeThrowAndClearPendingException(env);
-        Symbol<Type> returnType = Signatures.returnType(getMethodVersion().getMethod().getParsedSignature());
-        if (Types.isReference(returnType)) {
+        maybeThrowAndClearPendingException(EspressoLanguage.get(this));
+        Symbol<Type> returnType = SignatureSymbols.returnType(getMethodVersion().getMethod().getParsedSignature());
+        if (TypeSymbols.isReference(returnType)) {
             long addr;
             if (result instanceof Long) {
                 addr = (Long) result;
@@ -148,9 +152,9 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
                 assert result instanceof TruffleObject;
                 addr = NativeUtils.interopAsPointer((TruffleObject) result);
             }
-            return env.getHandles().get(Math.toIntExact(addr));
+            return handles.get(Math.toIntExact(addr));
         }
-        assert !(returnType == Type._void) || result == StaticObject.NULL;
+        assert !(returnType == Types._void) || result == StaticObject.NULL;
         return result;
     }
 
@@ -160,13 +164,12 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
+    @SuppressWarnings({"static-method", "MethodMayBeStatic"})
     public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
         return true;
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }

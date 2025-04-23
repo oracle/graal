@@ -49,34 +49,73 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SerializableConstant;
 
-public class FloatStamp extends PrimitiveStamp {
+/**
+ * A {@code FloatStamp} represents the value set of a {@code float} or {@code double} variable.
+ *
+ * <p>
+ * The representation of a {@code FloatStamp} consists of a pair of bounds and a boolean denoting
+ * whether NaN is a possible value of the variable:
+ * <ul>
+ * <li>When the intersection of the stamp and [-Inf, +Inf] is not empty, [lowerBound, upperBound] is
+ * the interval representing that intersection.
+ * <li>When the intersection of the stamp and [-Inf, +Inf] is empty, there is only 2 possible
+ * states, the empty stamp with {@code lowerBound = +Inf}, {@code upperBound = -Inf},
+ * {@code nonNaN = true}, and the NaN stamp with {@code lowerBound = upperBound = NaN},
+ * {@code nonNaN = false}.
+ * </ul>
+ *
+ * <p>
+ * The bound information of an empty stamp is purely marking values and must not be accessed, nonNaN
+ * still retains its meaning and can be queried as normal.
+ */
+public final class FloatStamp extends PrimitiveStamp {
 
     private final double lowerBound;
     private final double upperBound;
     private final boolean nonNaN;
 
-    protected FloatStamp(int bits) {
-        this(bits, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
-    }
-
-    public FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
+    private FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
         super(bits, OPS);
-        assert bits == 64 || (bits == 32 && (Double.isNaN(lowerBound) || (float) lowerBound == lowerBound) && (Double.isNaN(upperBound) || (float) upperBound == upperBound)) : Assertions.errorMessage(
-                        bits, lowerBound, upperBound, nonNaN);
-        assert Double.isNaN(lowerBound) == Double.isNaN(upperBound) : Assertions.errorMessage(lowerBound, upperBound);
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.nonNaN = nonNaN;
     }
 
-    @Override
-    public Stamp unrestricted() {
-        return new FloatStamp(getBits());
+    public static FloatStamp create(int bits, double lowerBound, double upperBound, boolean nonNaN) {
+        assert bits == Double.SIZE || bits == Float.SIZE : Assertions.errorMessage(bits);
+        if (bits == Float.SIZE) {
+            assert Double.compare((float) lowerBound, lowerBound) == 0 : Assertions.errorMessage(lowerBound);
+            assert Double.compare((float) upperBound, upperBound) == 0 : Assertions.errorMessage(upperBound);
+        }
+        assert Double.isNaN(lowerBound) == Double.isNaN(upperBound) : Assertions.errorMessage(lowerBound, upperBound);
+        assert !(Double.isNaN(lowerBound) && nonNaN) : Assertions.errorMessage(lowerBound, nonNaN);
+        assert !(lowerBound > upperBound) : Assertions.errorMessage(lowerBound, upperBound);
+        return new FloatStamp(bits, lowerBound, upperBound, nonNaN);
+    }
+
+    public static FloatStamp createUnrestricted(int bits) {
+        assert bits == Double.SIZE || bits == Float.SIZE : Assertions.errorMessage(bits);
+        return bits == Double.SIZE ? ConstantCache.DOUBLE_BOTTOM : ConstantCache.FLOAT_BOTTOM;
+    }
+
+    public static FloatStamp createEmpty(int bits) {
+        assert bits == Double.SIZE || bits == Float.SIZE : Assertions.errorMessage(bits);
+        return bits == Double.SIZE ? ConstantCache.DOUBLE_TOP : ConstantCache.FLOAT_TOP;
+    }
+
+    public static FloatStamp createNaN(int bits) {
+        assert bits == Double.SIZE || bits == Float.SIZE : Assertions.errorMessage(bits);
+        return bits == Double.SIZE ? ConstantCache.DOUBLE_NAN : ConstantCache.FLOAT_NAN;
     }
 
     @Override
-    public Stamp empty() {
-        return new FloatStamp(getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);
+    public FloatStamp unrestricted() {
+        return createUnrestricted(getBits());
+    }
+
+    @Override
+    public FloatStamp empty() {
+        return createEmpty(getBits());
     }
 
     @Override
@@ -100,7 +139,9 @@ public class FloatStamp extends PrimitiveStamp {
 
     @Override
     public boolean hasValues() {
-        return lowerBound <= upperBound || !nonNaN;
+        // The empty stamp is the only one with lowerBound > upperBound since for the NaN stamp, we
+        // have NaN > NaN = false
+        return !(lowerBound > upperBound);
     }
 
     @Override
@@ -133,6 +174,7 @@ public class FloatStamp extends PrimitiveStamp {
      * The (inclusive) lower bound on the value described by this stamp.
      */
     public double lowerBound() {
+        assert hasValues() : "Empty stamp";
         return lowerBound;
     }
 
@@ -140,11 +182,22 @@ public class FloatStamp extends PrimitiveStamp {
      * The (inclusive) upper bound on the value described by this stamp.
      */
     public double upperBound() {
+        assert hasValues() : "Empty stamp";
         return upperBound;
     }
 
+    private float lowerBound32() {
+        assert getBits() == Float.SIZE : "Must be float";
+        return (float) lowerBound();
+    }
+
+    private float upperBound32() {
+        assert getBits() == Float.SIZE : "Must be float";
+        return (float) upperBound();
+    }
+
     /**
-     * Returns true if NaN is non included in the value described by this stamp.
+     * Returns true if NaN is not included in the value described by this stamp.
      */
     public boolean isNonNaN() {
         return nonNaN;
@@ -167,6 +220,18 @@ public class FloatStamp extends PrimitiveStamp {
     @Override
     public boolean isUnrestricted() {
         return lowerBound == Double.NEGATIVE_INFINITY && upperBound == Double.POSITIVE_INFINITY && !nonNaN;
+    }
+
+    private boolean canBeNInf() {
+        return lowerBound == Double.NEGATIVE_INFINITY;
+    }
+
+    private boolean canBePInf() {
+        return upperBound == Double.POSITIVE_INFINITY;
+    }
+
+    private boolean canBeInf() {
+        return canBeNInf() || canBePInf();
     }
 
     public boolean contains(double value) {
@@ -213,11 +278,9 @@ public class FloatStamp extends PrimitiveStamp {
     public Stamp meet(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
-        }
-        if (isEmpty()) {
+        } else if (isEmpty()) {
             return otherStamp;
-        }
-        if (otherStamp.isEmpty()) {
+        } else if (otherStamp.isEmpty()) {
             return this;
         }
         FloatStamp other = (FloatStamp) otherStamp;
@@ -238,12 +301,28 @@ public class FloatStamp extends PrimitiveStamp {
     public Stamp join(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
+        } else if (isEmpty()) {
+            return this;
+        } else if (otherStamp.isEmpty()) {
+            return otherStamp;
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert getBits() == other.getBits() : "Bits must match " + Assertions.errorMessageContext("thisBits", getBits(), "otherBits", other.getBits(), "other", other);
         double joinUpperBound = Math.min(upperBound, other.upperBound);
         double joinLowerBound = Math.max(lowerBound, other.lowerBound);
         boolean joinNonNaN = nonNaN || other.nonNaN;
+        if (joinLowerBound > joinUpperBound) {
+            // joinLowerBound > joinUpperBound means an empty set in the non-NaN range, use NaN
+            // bounds to mark this as it is consistent with other cases that can result in this
+            // situation, e.g one of the stamp is NaN
+            joinLowerBound = Double.NaN;
+            joinUpperBound = Double.NaN;
+        }
+        if (Double.isNaN(joinLowerBound) && joinNonNaN) {
+            // an empty range in the non-NaN region and an empty range in the NaN region means that
+            // the resulting stamp is empty
+            return empty();
+        }
         if (Double.compare(joinLowerBound, lowerBound) == 0 && Double.compare(joinUpperBound, upperBound) == 0 && joinNonNaN == nonNaN) {
             return this;
         } else if (Double.compare(joinLowerBound, other.lowerBound) == 0 && Double.compare(joinUpperBound, other.upperBound) == 0 && joinNonNaN == other.nonNaN) {
@@ -330,7 +409,7 @@ public class FloatStamp extends PrimitiveStamp {
          *
          * We need to exclude 0 here since it can contain -0.0 && 0.0 .
          */
-        return (Double.compare(lowerBound, upperBound) == 0 && nonNaN) && lowerBound != 0;
+        return lowerBound == upperBound && nonNaN && lowerBound != 0;
     }
 
     private static FloatStamp stampForConstant(Constant constant) {
@@ -356,17 +435,6 @@ public class FloatStamp extends PrimitiveStamp {
         }
         if (result.isConstant()) {
             return result;
-        }
-        return null;
-    }
-
-    private static Stamp maybeFoldConstant(ArithmeticOpTable.UnaryOp<?> op, FloatStamp stamp) {
-        if (stamp.isConstant()) {
-            JavaConstant constant = stamp.asConstant();
-            Constant folded = op.foldConstant(constant);
-            if (folded != null) {
-                return FloatStamp.stampForConstant(folded);
-            }
         }
         return null;
     }
@@ -435,14 +503,11 @@ public class FloatStamp extends PrimitiveStamp {
                         @Override
                         public Constant foldConstant(Constant c) {
                             PrimitiveConstant value = (PrimitiveConstant) c;
-                            switch (value.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(-value.asFloat());
-                                case Double:
-                                    return JavaConstant.forDouble(-value.asDouble());
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (value.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(-value.asFloat());
+                                case Double -> JavaConstant.forDouble(-value.asDouble());
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
@@ -451,10 +516,6 @@ public class FloatStamp extends PrimitiveStamp {
                                 return s;
                             }
                             FloatStamp stamp = (FloatStamp) s;
-                            Stamp folded = maybeFoldConstant(this, stamp);
-                            if (folded != null) {
-                                return folded;
-                            }
                             return new FloatStamp(stamp.getBits(), -stamp.upperBound(), -stamp.lowerBound(), stamp.isNonNaN());
                         }
 
@@ -467,44 +528,89 @@ public class FloatStamp extends PrimitiveStamp {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
                             assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
-                            switch (a.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(a.asFloat() + b.asFloat());
-                                case Double:
-                                    return JavaConstant.forDouble(a.asDouble() + b.asDouble());
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (a.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(a.asFloat() + b.asFloat());
+                                case Double -> JavaConstant.forDouble(a.asDouble() + b.asDouble());
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
                         protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
-                            }
-                            if (s2.isEmpty()) {
+                            } else if (s2.isEmpty()) {
                                 return s2;
                             }
+
                             FloatStamp stamp1 = (FloatStamp) s1;
                             FloatStamp stamp2 = (FloatStamp) s2;
-                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
-                            if (folded != null) {
-                                return folded;
+
+                            boolean isNonNaN = true;
+                            if (stamp1.canBeNaN() || stamp2.canBeNaN()) {
+                                isNonNaN = false;
+                            } else if ((stamp1.canBeNInf() && stamp2.canBePInf()) || (stamp1.canBePInf() && stamp2.canBeNInf())) {
+                                isNonNaN = false;
                             }
-                            return stamp1.unrestricted();
+
+                            double lowerBound;
+                            double upperBound;
+                            /*
+                             * x + y is an increasing function with respect to both x and y by the
+                             * order imposed by Double.compare, which means that:
+                             *
+                             * Double.compare(x1, x2) <= 0 necessarily leads to:
+                             *
+                             * @formatter:off
+                             *
+                             * Double.compare(x1 + y, x2 + y) <= 0
+                             * Double.compare(y + x1, y + x2) <= 0
+                             *
+                             * @formatter:on
+                             *
+                             * As a result:
+                             *
+                             * @formatter:off
+                             *
+                             * res.lower = s1.lower + s2.lower
+                             * res.upper = s1.upper + s2.upper
+                             *
+                             * @formatter:on
+                             */
+                            if (stamp1.getBits() == Float.SIZE) {
+                                lowerBound = stamp1.lowerBound32() + stamp2.lowerBound32();
+                                upperBound = stamp1.upperBound32() + stamp2.upperBound32();
+                            } else {
+                                lowerBound = stamp1.lowerBound() + stamp2.lowerBound();
+                                upperBound = stamp1.upperBound() + stamp2.upperBound();
+                            }
+
+                            // If either stamp is a constant Inf, the bound calculations may result
+                            // in NaN, strip that value
+
+                            // Ignoring NaN, if s1 is a constant +Inf, s2 can have values > -Inf,
+                            // then the result can only be +Inf. Otherwise s2 is a constant -Inf,
+                            // then the result does not have any value in the non-NaN region
+                            if ((stamp1.lowerBound() == Double.POSITIVE_INFINITY && stamp2.upperBound() > Double.NEGATIVE_INFINITY) ||
+                                            (stamp1.upperBound() > Double.NEGATIVE_INFINITY && stamp2.lowerBound() == Double.POSITIVE_INFINITY)) {
+                                lowerBound = Double.POSITIVE_INFINITY;
+                            }
+                            // Similar to above, if s1 is a constant -Inf
+                            if ((stamp1.lowerBound() < Double.POSITIVE_INFINITY && stamp2.upperBound() == Double.NEGATIVE_INFINITY) ||
+                                            (stamp1.upperBound() == Double.NEGATIVE_INFINITY && stamp2.lowerBound() < Double.POSITIVE_INFINITY)) {
+                                upperBound = Double.NEGATIVE_INFINITY;
+                            }
+                            return new FloatStamp(stamp1.getBits(), lowerBound, upperBound, isNonNaN);
                         }
 
                         @Override
                         public boolean isNeutral(Constant value) {
                             PrimitiveConstant n = (PrimitiveConstant) value;
-                            switch (n.getJavaKind()) {
-                                case Float:
-                                    return Float.compare(n.asFloat(), -0.0f) == 0;
-                                case Double:
-                                    return Double.compare(n.asDouble(), -0.0) == 0;
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (n.getJavaKind()) {
+                                case Float -> Float.compare(n.asFloat(), -0.0f) == 0;
+                                case Double -> Double.compare(n.asDouble(), -0.0) == 0;
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
                     },
 
@@ -515,44 +621,61 @@ public class FloatStamp extends PrimitiveStamp {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
                             assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
-                            switch (a.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(a.asFloat() - b.asFloat());
-                                case Double:
-                                    return JavaConstant.forDouble(a.asDouble() - b.asDouble());
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (a.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(a.asFloat() - b.asFloat());
+                                case Double -> JavaConstant.forDouble(a.asDouble() - b.asDouble());
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
                         protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
-                            }
-                            if (s2.isEmpty()) {
+                            } else if (s2.isEmpty()) {
                                 return s2;
                             }
+
+                            // x - y is just x + -y so the calculations are similar
                             FloatStamp stamp1 = (FloatStamp) s1;
                             FloatStamp stamp2 = (FloatStamp) s2;
-                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
-                            if (folded != null) {
-                                return folded;
+
+                            boolean isNonNaN = true;
+                            if (stamp1.canBeNaN() || stamp2.canBeNaN()) {
+                                isNonNaN = false;
+                            } else if ((stamp1.canBeNInf() && stamp2.canBeNInf()) || (stamp1.canBePInf() && stamp2.canBePInf())) {
+                                isNonNaN = false;
                             }
-                            return stamp1.unrestricted();
+
+                            double lowerBound;
+                            double upperBound;
+                            if (stamp1.getBits() == Float.SIZE) {
+                                lowerBound = stamp1.lowerBound32() - stamp2.upperBound32();
+                                upperBound = stamp1.upperBound32() - stamp2.lowerBound32();
+                            } else {
+                                lowerBound = stamp1.lowerBound() - stamp2.upperBound();
+                                upperBound = stamp1.upperBound() - stamp2.lowerBound();
+                            }
+
+                            if ((stamp1.lowerBound() == Double.POSITIVE_INFINITY && stamp2.lowerBound() < Double.POSITIVE_INFINITY) ||
+                                            (stamp1.upperBound() > Double.NEGATIVE_INFINITY && stamp2.upperBound() == Double.NEGATIVE_INFINITY)) {
+                                lowerBound = Double.POSITIVE_INFINITY;
+                            }
+                            if ((stamp1.lowerBound() < Double.POSITIVE_INFINITY && stamp2.lowerBound() == Double.POSITIVE_INFINITY) ||
+                                            (stamp1.upperBound() == Double.NEGATIVE_INFINITY && stamp2.upperBound() > Double.NEGATIVE_INFINITY)) {
+                                upperBound = Double.NEGATIVE_INFINITY;
+                            }
+                            return new FloatStamp(stamp1.getBits(), lowerBound, upperBound, isNonNaN);
                         }
 
                         @Override
                         public boolean isNeutral(Constant value) {
                             PrimitiveConstant n = (PrimitiveConstant) value;
-                            switch (n.getJavaKind()) {
-                                case Float:
-                                    return Float.compare(n.asFloat(), 0.0f) == 0;
-                                case Double:
-                                    return Double.compare(n.asDouble(), 0.0) == 0;
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (n.getJavaKind()) {
+                                case Float -> Float.compare(n.asFloat(), 0.0f) == 0;
+                                case Double -> Double.compare(n.asDouble(), 0.0) == 0;
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
                     },
 
@@ -563,44 +686,214 @@ public class FloatStamp extends PrimitiveStamp {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
                             assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
-                            switch (a.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(a.asFloat() * b.asFloat());
-                                case Double:
-                                    return JavaConstant.forDouble(a.asDouble() * b.asDouble());
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (a.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(a.asFloat() * b.asFloat());
+                                case Double -> JavaConstant.forDouble(a.asDouble() * b.asDouble());
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
                         protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
-                            }
-                            if (s2.isEmpty()) {
+                            } else if (s2.isEmpty()) {
                                 return s2;
                             }
+
                             FloatStamp stamp1 = (FloatStamp) s1;
                             FloatStamp stamp2 = (FloatStamp) s2;
-                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
-                            if (folded != null) {
-                                return folded;
+                            if (stamp1.isNaN()) {
+                                return stamp1;
+                            } else if (stamp2.isNaN()) {
+                                return stamp2;
                             }
-                            return stamp1.unrestricted();
+
+                            boolean isNonNaN = true;
+                            if (stamp1.canBeNaN() || stamp2.canBeNaN()) {
+                                isNonNaN = false;
+                            } else if (stamp1.contains(0) && stamp2.canBeInf()) {
+                                isNonNaN = false;
+                            } else if (stamp2.contains(0) && stamp1.canBeInf()) {
+                                isNonNaN = false;
+                            }
+
+                            FloatStamp constant = null;
+                            FloatStamp other = null;
+                            // If one of the stamp is a constant (in the sense that lowerBound ==
+                            // upperBound)
+                            if (stamp1.lowerBound() == stamp1.upperBound()) {
+                                constant = stamp1;
+                                other = stamp2;
+                            }
+                            if (stamp2.lowerBound() == stamp2.upperBound()) {
+                                // if both are constants, push 0 to the right
+                                if (constant == null || constant.lowerBound() == 0) {
+                                    constant = stamp2;
+                                    other = stamp1;
+                                }
+                            }
+                            if (constant != null) {
+                                double constantVal = constant.lowerBound();
+                                if (Double.isInfinite(constantVal)) {
+                                    if (other.lowerBound() == 0 && other.upperBound() == 0) {
+                                        return createNaN(constant.getBits());
+                                    }
+
+                                    double lowerBound;
+                                    double upperBound;
+                                    if (other.lowerBound() >= 0) {
+                                        // A positive multiplying with an Inf results in the same
+                                        // Inf
+                                        lowerBound = constantVal;
+                                        upperBound = constantVal;
+                                    } else if (other.upperBound() <= 0) {
+                                        // A negative multiplying with an Inf results in an Inf of
+                                        // the opposite sign
+                                        lowerBound = -constantVal;
+                                        upperBound = -constantVal;
+                                    } else {
+                                        // The result can either be -Inf or +Inf but we cannot
+                                        // represent it
+                                        lowerBound = Double.NEGATIVE_INFINITY;
+                                        upperBound = Double.POSITIVE_INFINITY;
+                                    }
+                                    return new FloatStamp(stamp1.getBits(), lowerBound, upperBound, isNonNaN);
+                                } else if (constantVal == 0) {
+                                    // other cannot be a constant Inf here
+                                    return new FloatStamp(stamp1.getBits(), -0.0, 0, isNonNaN);
+                                }
+                            }
+
+                            /*
+                             * x * y is monotonic with respects to both x and y by the order
+                             * imposed by Double.compare, which means that:
+                             *
+                             * @formatter:off
+                             *
+                             * For x1, x2, x3 such that Double.compare(x1, x2) <= 0 and Double.compare(x2, x3) <= 0, either:
+                             *
+                             * Double.compare(x1 * y, x2 * y) <= 0 and Double.compare(x2 * y, x3 * y) <= 0
+                             * Double.compare(x1 * y, x2 * y) >= 0 and Double.compare(x2 * y, x3 * y) >= 0
+                             *
+                             * @formatter:on
+                             *
+                             * As a result, to find the bounds of the result, we only need to look
+                             * at the bounds of the 4 values:
+                             *
+                             * @formatter:off
+                             *
+                             * s1.lowerBound() * s2.lowerBound()
+                             * s1.lowerBound() * s2.upperBound()
+                             * s1.upperBound() * s2.lowerBound()
+                             * s1.upperBound() * s2.upperBound()
+                             *
+                             * @formatter:on
+                             *
+                             * Troubles may arise if one of those calculations results in NaN, in
+                             * those cases we need to strip the NaN value and look at its neighbors.
+                             * For example, if s1.lowerBound() * s2.upperBound() = NaN, we look at
+                             * Math.nextUp(s1.lowerBound()) * s2.upperBound() and s1.lowerBound() *
+                             * Math.nextDown(s2.upperBound()) instead.
+                             *
+                             * To do that, we need that Math.nextUp(s1.lowerBound()) and
+                             * Math.nextDown(s2.upperBound()) are actually contained in s1 and s2,
+                             * respectively. This means that s1 and s2 are both not constants (in
+                             * the sense that s1.lowerBound() < s2.upperBound()). This is why we
+                             * filter out the cases where s1 or s2 is a constant 0 or Inf
+                             * beforehand.
+                             */
+                            double lowerBound = Double.POSITIVE_INFINITY;
+                            double upperBound = Double.NEGATIVE_INFINITY;
+                            // Iteratively look at the 4 boundary values and broaden the bounds of
+                            // the resulting stamp
+                            if (stamp1.lowerBound() == Double.NEGATIVE_INFINITY && stamp2.lowerBound() == 0) {
+                                // nextUp(-Inf) * 0 = 0, -Inf * nextUp(0) = -Inf
+                                lowerBound = Double.NEGATIVE_INFINITY;
+                                upperBound = Math.max(upperBound, -stamp2.lowerBound());
+                            } else if (stamp1.lowerBound() == 0 && stamp2.lowerBound() == Double.NEGATIVE_INFINITY) {
+                                // nextUp(0) * -Inf = -Inf, 0 * nextUp(-Inf) = 0
+                                lowerBound = Double.NEGATIVE_INFINITY;
+                                upperBound = Math.max(upperBound, -stamp1.lowerBound());
+                            } else {
+                                double bound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    bound = stamp1.lowerBound32() * stamp2.lowerBound32();
+                                } else {
+                                    bound = stamp1.lowerBound() * stamp2.lowerBound();
+                                }
+                                lowerBound = Math.min(lowerBound, bound);
+                                upperBound = Math.max(upperBound, bound);
+                            }
+
+                            if (stamp1.upperBound() == Double.POSITIVE_INFINITY && stamp2.upperBound() == 0) {
+                                // nextDown(+Inf) * 0 = 0, +Inf * nextDown(0) = -Inf
+                                lowerBound = Double.NEGATIVE_INFINITY;
+                                upperBound = Math.max(upperBound, stamp2.upperBound());
+                            } else if (stamp1.upperBound() == 0 && stamp2.upperBound() == Double.POSITIVE_INFINITY) {
+                                // nextDown(0) * +Inf = -Inf, 0 * nextDown(+Inf) = 0
+                                lowerBound = Double.NEGATIVE_INFINITY;
+                                upperBound = Math.max(upperBound, stamp1.upperBound());
+                            } else {
+                                double bound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    bound = stamp1.upperBound32() * stamp2.upperBound32();
+                                } else {
+                                    bound = stamp1.upperBound() * stamp2.upperBound();
+                                }
+                                lowerBound = Math.min(lowerBound, bound);
+                                upperBound = Math.max(upperBound, bound);
+                            }
+
+                            if (stamp1.lowerBound() == Double.NEGATIVE_INFINITY && stamp2.upperBound() == 0) {
+                                // nextUp(-Inf) * 0 = 0, -Inf * nextDown(0) = +Inf
+                                lowerBound = Math.min(lowerBound, -stamp2.upperBound());
+                                upperBound = Double.POSITIVE_INFINITY;
+                            } else if (stamp1.lowerBound() == 0 && stamp2.upperBound() == Double.POSITIVE_INFINITY) {
+                                // nextUp(0) * +Inf = +Inf, 0 * nextDown(+Inf) = 0
+                                lowerBound = Math.min(lowerBound, stamp1.lowerBound());
+                                upperBound = Double.POSITIVE_INFINITY;
+                            } else {
+                                double bound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    bound = stamp1.lowerBound32() * stamp2.upperBound32();
+                                } else {
+                                    bound = stamp1.lowerBound() * stamp2.upperBound();
+                                }
+                                lowerBound = Math.min(lowerBound, bound);
+                                upperBound = Math.max(upperBound, bound);
+                            }
+
+                            if (stamp1.upperBound() == Double.POSITIVE_INFINITY && stamp2.lowerBound() == 0) {
+                                // nextDown(+Inf) * 0 = 0, +Inf * nextUp(0) = +Inf
+                                lowerBound = Math.min(lowerBound, stamp2.lowerBound());
+                                upperBound = Double.POSITIVE_INFINITY;
+                            } else if (stamp1.upperBound() == 0 && stamp2.lowerBound() == Double.NEGATIVE_INFINITY) {
+                                // nextDown(0) * -Inf = +Inf, 0 * nextUp(-Inf) = 0
+                                lowerBound = Math.min(lowerBound, -stamp1.upperBound());
+                                upperBound = Double.POSITIVE_INFINITY;
+                            } else {
+                                double bound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    bound = stamp1.upperBound32() * stamp2.lowerBound32();
+                                } else {
+                                    bound = stamp1.upperBound() * stamp2.lowerBound();
+                                }
+                                lowerBound = Math.min(lowerBound, bound);
+                                upperBound = Math.max(upperBound, bound);
+                            }
+
+                            return new FloatStamp(stamp1.getBits(), lowerBound, upperBound, isNonNaN);
                         }
 
                         @Override
                         public boolean isNeutral(Constant value) {
                             PrimitiveConstant n = (PrimitiveConstant) value;
-                            switch (n.getJavaKind()) {
-                                case Float:
-                                    return Float.compare(n.asFloat(), 1.0f) == 0;
-                                case Double:
-                                    return Double.compare(n.asDouble(), 1.0) == 0;
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (n.getJavaKind()) {
+                                case Float -> n.asFloat() == 1;
+                                case Double -> n.asDouble() == 1;
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
                     },
 
@@ -615,46 +908,159 @@ public class FloatStamp extends PrimitiveStamp {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
                             assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
-                            switch (a.getJavaKind()) {
-                                case Float:
-                                    float floatDivisor = b.asFloat();
-                                    return (floatDivisor == 0) ? null : JavaConstant.forFloat(a.asFloat() / floatDivisor);
-                                case Double:
-                                    double doubleDivisor = b.asDouble();
-                                    return (doubleDivisor == 0) ? null : JavaConstant.forDouble(a.asDouble() / doubleDivisor);
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (a.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(a.asFloat() / b.asFloat());
+                                case Double -> JavaConstant.forDouble(a.asDouble() / b.asDouble());
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
                         protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
-                            }
-                            if (s2.isEmpty()) {
+                            } else if (s2.isEmpty()) {
                                 return s2;
                             }
+
                             FloatStamp stamp1 = (FloatStamp) s1;
                             FloatStamp stamp2 = (FloatStamp) s2;
-                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
-                            if (folded != null) {
-                                return folded;
+                            if (stamp1.isNaN()) {
+                                return stamp1;
+                            } else if (stamp2.isNaN()) {
+                                return stamp2;
                             }
-                            return stamp1.unrestricted();
+
+                            boolean isNonNaN = true;
+                            if (stamp1.canBeNaN() || stamp2.canBeNaN()) {
+                                isNonNaN = false;
+                            } else if (stamp1.canBeInf() && stamp2.canBeInf()) {
+                                isNonNaN = false;
+                            } else if (stamp1.contains(0) && stamp2.contains(0)) {
+                                isNonNaN = false;
+                            }
+
+                            // Filter out the infinity constants simplifies the calculation below
+                            if (stamp2.lowerBound() == Double.POSITIVE_INFINITY || stamp2.upperBound() == Double.NEGATIVE_INFINITY) {
+                                // If s1 and s2 are both constant Inf, then the result can only be
+                                // NaN, else if s2 is a constant Inf then the result can only be 0
+                                // or NaN
+                                if (stamp1.lowerBound() == Double.POSITIVE_INFINITY || stamp1.upperBound() == Double.NEGATIVE_INFINITY) {
+                                    return createNaN(stamp1.getBits());
+                                } else {
+                                    return new FloatStamp(stamp1.getBits(), -0.0, 0.0, isNonNaN);
+                                }
+                            }
+                            if (stamp1.lowerBound() == Double.POSITIVE_INFINITY || stamp1.upperBound() == Double.NEGATIVE_INFINITY) {
+                                // If s1 is Inf and s2 is not a constant Inf, then the result can
+                                // only be Inf
+                                if (stamp2.lowerBound() > 0) {
+                                    // An Inf dividing by a positive number results in the same Inf
+                                    double bound = stamp1.lowerBound() / stamp2.lowerBound();
+                                    return new FloatStamp(stamp1.getBits(), bound, bound, isNonNaN);
+                                } else if (stamp2.upperBound() < 0) {
+                                    // An Inf dividing by a negative number results in an Inf of the
+                                    // opposite sign
+                                    double bound = stamp1.lowerBound() / stamp2.upperBound();
+                                    return new FloatStamp(stamp1.getBits(), bound, bound, isNonNaN);
+                                } else {
+                                    // The result can be either +Inf or -Inf but we cannot represent
+                                    // it
+                                    return new FloatStamp(stamp1.getBits(), Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, isNonNaN);
+                                }
+                            }
+
+                            if (stamp2.lowerBound() > 0) {
+                                // If the divisor is positive, the result is increasing with respect
+                                // to the dividend
+                                double boundDivisor;
+                                /*
+                                 * If the dividend is positive, the result is decreasing with
+                                 * respect to the divisor, else it is increasing. This means that:
+                                 *
+                                 * @formatter:off
+                                 *
+                                 * result.lowerBound = s1.lowerBound / s2.upperBound if s1.lowerBound >= 0
+                                 * result.lowerBound = s1.lowerBound / s2.lowerBound otherwise
+                                 *
+                                 * @formatter:on
+                                 */
+                                if (stamp1.lowerBound() < 0) {
+                                    boundDivisor = stamp2.lowerBound();
+                                } else {
+                                    boundDivisor = stamp2.upperBound();
+                                }
+                                double lowerBound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    lowerBound = stamp1.lowerBound32() / (float) boundDivisor;
+                                } else {
+                                    lowerBound = stamp1.lowerBound() / boundDivisor;
+                                }
+
+                                // Similar to above, the dividend of the result upperBound is
+                                // s1.upperBound here
+                                if (stamp1.upperBound() < 0) {
+                                    boundDivisor = stamp2.upperBound();
+                                } else {
+                                    boundDivisor = stamp2.lowerBound();
+                                }
+                                double upperBound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    upperBound = stamp1.upperBound32() / (float) boundDivisor;
+                                } else {
+                                    upperBound = stamp1.upperBound() / boundDivisor;
+                                }
+
+                                return new FloatStamp(stamp1.getBits(), lowerBound, upperBound, isNonNaN);
+                            }
+
+                            if (stamp2.upperBound() < 0) {
+                                // The divisor is negative, this case is similar to the case in
+                                // which it is positive
+                                double boundDivisor;
+                                if (stamp1.upperBound() < 0) {
+                                    boundDivisor = stamp2.lowerBound();
+                                } else {
+                                    boundDivisor = stamp2.upperBound();
+                                }
+                                double lowerBound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    lowerBound = stamp1.upperBound32() / (float) boundDivisor;
+                                } else {
+                                    lowerBound = stamp1.upperBound() / boundDivisor;
+                                }
+
+                                if (stamp1.lowerBound() < 0) {
+                                    boundDivisor = stamp2.upperBound();
+                                } else {
+                                    boundDivisor = stamp2.lowerBound();
+                                }
+                                double upperBound;
+                                if (stamp1.getBits() == Float.SIZE) {
+                                    upperBound = stamp1.lowerBound32() / (float) boundDivisor;
+                                } else {
+                                    upperBound = stamp1.lowerBound() / boundDivisor;
+                                }
+
+                                return new FloatStamp(stamp1.getBits(), lowerBound, upperBound, isNonNaN);
+                            }
+
+                            /*
+                             * If y approaches 0, the quotient approaches infinity. This, combined
+                             * with the fact that signed zero is not recorded strictly in
+                             * FloatStamp, results in we not able to restrict the result stamp
+                             */
+                            return new FloatStamp(stamp1.getBits(), Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, isNonNaN);
                         }
 
                         @Override
                         public boolean isNeutral(Constant value) {
                             PrimitiveConstant n = (PrimitiveConstant) value;
-                            switch (n.getJavaKind()) {
-                                case Float:
-                                    return Float.compare(n.asFloat(), 1.0f) == 0;
-                                case Double:
-                                    return Double.compare(n.asDouble(), 1.0) == 0;
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (n.getJavaKind()) {
+                                case Float -> n.asFloat() == 1;
+                                case Double -> n.asDouble() == 1;
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(n.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
                     },
 
@@ -895,14 +1301,11 @@ public class FloatStamp extends PrimitiveStamp {
                         @Override
                         public Constant foldConstant(Constant c) {
                             PrimitiveConstant value = (PrimitiveConstant) c;
-                            switch (value.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(Math.abs(value.asFloat()));
-                                case Double:
-                                    return JavaConstant.forDouble(Math.abs(value.asDouble()));
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (value.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(Math.abs(value.asFloat()));
+                                case Double -> JavaConstant.forDouble(Math.abs(value.asDouble()));
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
@@ -911,14 +1314,22 @@ public class FloatStamp extends PrimitiveStamp {
                                 return s;
                             }
                             FloatStamp stamp = (FloatStamp) s;
-                            Stamp folded = maybeFoldConstant(this, stamp);
-                            if (folded != null) {
-                                return folded;
-                            }
                             if (stamp.isNaN()) {
-                                return stamp;
+                                return s;
                             }
-                            return new FloatStamp(stamp.getBits(), 0, Math.max(-stamp.lowerBound(), stamp.upperBound()), stamp.isNonNaN());
+                            double lowerBound;
+                            double upperBound;
+                            if (stamp.lowerBound() > 0) {
+                                lowerBound = stamp.lowerBound();
+                                upperBound = stamp.upperBound();
+                            } else if (stamp.upperBound() < 0) {
+                                lowerBound = -stamp.upperBound();
+                                upperBound = -stamp.lowerBound();
+                            } else {
+                                lowerBound = 0;
+                                upperBound = Math.max(Math.abs(stamp.lowerBound()), Math.abs(stamp.upperBound()));
+                            }
+                            return new FloatStamp(stamp.getBits(), lowerBound, upperBound, stamp.isNonNaN());
                         }
                     },
 
@@ -927,14 +1338,11 @@ public class FloatStamp extends PrimitiveStamp {
                         @Override
                         public Constant foldConstant(Constant c) {
                             PrimitiveConstant value = (PrimitiveConstant) c;
-                            switch (value.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat((float) Math.sqrt(value.asFloat()));
-                                case Double:
-                                    return JavaConstant.forDouble(Math.sqrt(value.asDouble()));
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (value.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat((float) Math.sqrt(value.asFloat()));
+                                case Double -> JavaConstant.forDouble(Math.sqrt(value.asDouble()));
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
@@ -943,11 +1351,18 @@ public class FloatStamp extends PrimitiveStamp {
                                 return s;
                             }
                             FloatStamp stamp = (FloatStamp) s;
-                            Stamp folded = maybeFoldConstant(this, stamp);
-                            if (folded != null) {
-                                return folded;
+                            if (stamp.isNaN()) {
+                                return s;
+                            } else if (stamp.upperBound() < 0) {
+                                return createNaN(stamp.getBits());
                             }
-                            return s.unrestricted();
+                            double lowerBound = Math.sqrt(Math.max(-0.0, stamp.lowerBound()));
+                            double upperBound = Math.sqrt(stamp.upperBound());
+                            if (stamp.getBits() == Float.SIZE) {
+                                lowerBound = (float) lowerBound;
+                                upperBound = (float) upperBound;
+                            }
+                            return new FloatStamp(stamp.getBits(), lowerBound, upperBound, stamp.isNonNaN() && stamp.lowerBound() >= 0);
                         }
                     },
 
@@ -960,45 +1375,34 @@ public class FloatStamp extends PrimitiveStamp {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
                             assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
-                            switch (a.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(Math.max(a.asFloat(), b.asFloat()));
-                                case Double:
-                                    return JavaConstant.forDouble(Math.max(a.asDouble(), b.asDouble()));
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (a.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(Math.max(a.asFloat(), b.asFloat()));
+                                case Double -> JavaConstant.forDouble(Math.max(a.asDouble(), b.asDouble()));
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
                         protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
-                            }
-                            if (s2.isEmpty()) {
+                            } else if (s2.isEmpty()) {
                                 return s2;
                             }
                             FloatStamp stamp1 = (FloatStamp) s1;
                             FloatStamp stamp2 = (FloatStamp) s2;
-                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
-                            if (folded != null) {
-                                return folded;
-                            }
-
-                            return new FloatStamp(stamp1.getBits(), Math.max(stamp1.lowerBound, stamp2.lowerBound), Math.max(stamp1.upperBound, stamp2.upperBound), false);
+                            return new FloatStamp(stamp1.getBits(), Math.max(stamp1.lowerBound(), stamp2.lowerBound()), Math.max(stamp1.upperBound(), stamp2.upperBound()),
+                                            stamp1.isNonNaN() && stamp2.isNonNaN());
                         }
 
                         @Override
                         public boolean isNeutral(Constant n) {
                             PrimitiveConstant value = (PrimitiveConstant) n;
-                            switch (value.getJavaKind()) {
-                                case Float:
-                                    return Float.compare(value.asFloat(), Float.NEGATIVE_INFINITY) == 0;
-                                case Double:
-                                    return Double.compare(value.asDouble(), Double.NEGATIVE_INFINITY) == 0;
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (value.getJavaKind()) {
+                                case Float -> value.asFloat() == Float.NEGATIVE_INFINITY;
+                                case Double -> value.asDouble() == Double.NEGATIVE_INFINITY;
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
                     },
 
@@ -1009,44 +1413,34 @@ public class FloatStamp extends PrimitiveStamp {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
                             assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
-                            switch (a.getJavaKind()) {
-                                case Float:
-                                    return JavaConstant.forFloat(Math.min(a.asFloat(), b.asFloat()));
-                                case Double:
-                                    return JavaConstant.forDouble(Math.min(a.asDouble(), b.asDouble()));
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (a.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(Math.min(a.asFloat(), b.asFloat()));
+                                case Double -> JavaConstant.forDouble(Math.min(a.asDouble(), b.asDouble()));
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(a.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
                         protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
-                            }
-                            if (s2.isEmpty()) {
+                            } else if (s2.isEmpty()) {
                                 return s2;
                             }
                             FloatStamp stamp1 = (FloatStamp) s1;
                             FloatStamp stamp2 = (FloatStamp) s2;
-                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
-                            if (folded != null) {
-                                return folded;
-                            }
-                            return new FloatStamp(stamp1.getBits(), Math.min(stamp1.lowerBound, stamp2.lowerBound), Math.min(stamp1.upperBound, stamp2.upperBound), false);
+                            return new FloatStamp(stamp1.getBits(), Math.min(stamp1.lowerBound(), stamp2.lowerBound()), Math.min(stamp1.upperBound(), stamp2.upperBound()),
+                                            stamp1.isNonNaN() && stamp2.isNonNaN());
                         }
 
                         @Override
                         public boolean isNeutral(Constant n) {
                             PrimitiveConstant value = (PrimitiveConstant) n;
-                            switch (value.getJavaKind()) {
-                                case Float:
-                                    return Float.compare(value.asFloat(), Float.POSITIVE_INFINITY) == 0;
-                                case Double:
-                                    return Double.compare(value.asDouble(), Double.POSITIVE_INFINITY) == 0;
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            return switch (value.getJavaKind()) {
+                                case Float -> value.asFloat() == Float.POSITIVE_INFINITY;
+                                case Double -> value.asDouble() == Double.POSITIVE_INFINITY;
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(value.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
                     },
 
@@ -1284,4 +1678,14 @@ public class FloatStamp extends PrimitiveStamp {
                             return StampFactory.forFloat(JavaKind.Float, (float) floatStamp.lowerBound(), (float) floatStamp.upperBound(), floatStamp.isNonNaN());
                         }
                     });
+
+    // Use a separate class to avoid initialization cycles
+    private static final class ConstantCache {
+        private static final FloatStamp FLOAT_BOTTOM = new FloatStamp(Float.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
+        private static final FloatStamp DOUBLE_BOTTOM = new FloatStamp(Double.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
+        private static final FloatStamp FLOAT_TOP = new FloatStamp(Float.SIZE, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);
+        private static final FloatStamp DOUBLE_TOP = new FloatStamp(Double.SIZE, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);
+        private static final FloatStamp FLOAT_NAN = new FloatStamp(Float.SIZE, Double.NaN, Double.NaN, false);
+        private static final FloatStamp DOUBLE_NAN = new FloatStamp(Double.SIZE, Double.NaN, Double.NaN, false);
+    }
 }

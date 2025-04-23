@@ -42,6 +42,7 @@ intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
+meth protected final void reportReplace(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()
@@ -106,7 +107,7 @@ intf com.oracle.truffle.api.interop.TruffleObject
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth public final com.oracle.truffle.api.object.Shape getShape()
 supr java.lang.Object
-hfds SHAPE_OFFSET,UNSAFE,extRef,extVal,shape
+hfds LOOKUP,SHAPE_OFFSET,UNSAFE,extRef,extVal,shape
 
 CLSS protected abstract interface static !annotation com.oracle.truffle.api.object.DynamicObject$DynamicField
  outer com.oracle.truffle.api.object.DynamicObject
@@ -297,6 +298,7 @@ cons protected init()
 innr public final static Builder
 innr public final static DerivedBuilder
 meth protected abstract com.oracle.truffle.api.object.Layout getLayout()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 meth protected abstract com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)
 meth protected abstract com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int,int)
 meth protected abstract com.oracle.truffle.api.object.Shape removeProperty(com.oracle.truffle.api.object.Property)
@@ -345,13 +347,15 @@ meth public com.oracle.truffle.api.object.Shape$Builder allowImplicitCastIntToDo
 meth public com.oracle.truffle.api.object.Shape$Builder allowImplicitCastIntToLong(boolean)
 meth public com.oracle.truffle.api.object.Shape$Builder dynamicType(java.lang.Object)
 meth public com.oracle.truffle.api.object.Shape$Builder layout(java.lang.Class<? extends com.oracle.truffle.api.object.DynamicObject>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
+meth public com.oracle.truffle.api.object.Shape$Builder layout(java.lang.Class<? extends com.oracle.truffle.api.object.DynamicObject>,java.lang.invoke.MethodHandles$Lookup)
 meth public com.oracle.truffle.api.object.Shape$Builder propertyAssumptions(boolean)
 meth public com.oracle.truffle.api.object.Shape$Builder shapeFlags(int)
 meth public com.oracle.truffle.api.object.Shape$Builder shared(boolean)
 meth public com.oracle.truffle.api.object.Shape$Builder sharedData(java.lang.Object)
 meth public com.oracle.truffle.api.object.Shape$Builder singleContextAssumption(com.oracle.truffle.api.Assumption)
 supr java.lang.Object<com.oracle.truffle.api.object.Shape$Builder>
-hfds allowImplicitCastIntToDouble,allowImplicitCastIntToLong,dynamicType,layoutClass,properties,propertyAssumptions,shapeFlags,shared,sharedData,singleContextAssumption
+hfds allowImplicitCastIntToDouble,allowImplicitCastIntToLong,dynamicType,layoutClass,layoutLookup,properties,propertyAssumptions,shapeFlags,shared,sharedData,singleContextAssumption
 
 CLSS public final static com.oracle.truffle.api.object.Shape$DerivedBuilder
  outer com.oracle.truffle.api.object.Shape

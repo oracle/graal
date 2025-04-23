@@ -36,4 +36,6 @@ public interface SubstrateLIRGenerator {
     void emitVerificationMarker(Object marker);
 
     void emitInstructionSynchronizationBarrier();
+
+    void emitExitMethodAddressResolution(Value ip);
 }

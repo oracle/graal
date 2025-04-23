@@ -25,6 +25,14 @@ mostly unmodified except for sections guarded with `#ifdef NATIVE_IMAGE`. The Fi
 [`src/svm`](./src/svm) are replacements for files that exist in the OpenJDK, but are completely
 custom. They only provide the minimal required functionality and are specific to SVM.
 
+## Deviation from Hotspot behavior
+
+On Hotspot, some of the values are cached in native code. Since native caching is undesired
+on SVM, we disable it by always returning `true` in `CachedMetric::should_check_metric()`.
+To avoid performance penalties compared to Hotspot, SVM caches those values on the Java side.
+Currently, this only applies to `cpu_limit` and `memory_limit`. For every update of the
+`libsvm_container` code, we should review whether new usages of `CachedMetric` were added.
+
 ## Updating
 
 While the code in `libsvm_container` is completely independent and does not need to be in sync with
@@ -41,11 +49,22 @@ To help keeping the `@BasedOnJDKFile` annotations up to date, the
 `mx gate --tags check_libcontainer_annotations` command ensures that the actual files and
 annotations are in sync.
 
-To do a full reimport, replace the files in [`src/hotspot`](./src/hotspot) with those from the OpenJDK.
-The `mx reimport-libcontainer-files --jdk-repo path/to/jdk` can help with that. Then reapply all the
-changes (`#ifdef` guards) using the diff tool of your choice. Then, adopt the files in
-[`src/svm`](./src/svm) to provide new functionality, if needed. Finally, update the `@BasedOnJDKFile`
-annotations in `ContainerLibrary.java` to reflect the import revision.
+### Full Reimport
+
+* Remove the C++-namespace from the source code using the
+`mx svm_libcontainer_namespace remove` command, in order to minimize the diff to the files from the OpenJDK.
+It is recommended to commit the changes, otherwise the namespace will still show in the diff later.
+
+* Replace the files in [`src/hotspot`](./src/hotspot) with those from the OpenJDK.
+The `mx reimport-libcontainer-files --jdk-repo path/to/jdk` command can help with that
+and will also offer to run `mx svm_libcontainer_namespace remove`.
+
+* Reapply all the changes (`#ifdef` guards) using the diff tool of your choice.
+Also adopt the files in [`src/svm`](./src/svm) to provide new functionality, if needed.
+
+* Update the `@BasedOnJDKFile` annotations in `ContainerLibrary.java` to reflect the import revision.
+
+* Reapply the C++-namespaces using the `mx svm_libcontainer_namespace add` command.
 
 ## Local Testing
 

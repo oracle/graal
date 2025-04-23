@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -79,6 +80,10 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
     private boolean allowConstantFolding(ResolvedJavaField field, ConstantFieldTool<?> tool) {
         var aField = asAnalysisField(field);
 
+        if (aField.preventConstantFolding()) {
+            return false;
+        }
+
         /*
          * During compiler optimizations, it is possible to see field loads with a constant receiver
          * of a wrong type that might not even be an ImageHeapConstant. Also, we need to ensure that
@@ -117,10 +122,10 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     protected boolean isFinalFieldValueConstant(ResolvedJavaField field, JavaConstant value, ConstantFieldTool<?> tool) {
-        if (value.getJavaKind() == JavaKind.Object && metaAccess.isInstanceOf(value, MethodPointer.class)) {
+        if (value.getJavaKind() == JavaKind.Object && (metaAccess.isInstanceOf(value, MethodPointer.class) || metaAccess.isInstanceOf(value, CGlobalDataBasePointer.class))) {
             /*
-             * Prevent the constant folding of MethodPointer objects. MethodPointer is a "hosted"
-             * type, so it cannot be present in compiler graphs.
+             * Prevent the constant folding of RelocatablePointer placeholder objects. These are
+             * "hosted" types and so cannot be present in compiler graphs.
              */
             return false;
         }

@@ -246,7 +246,7 @@ public final class ArithmeticOpTable {
         }
 
         this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, fma, reinterpret, compress, expand,
-                        floatConvert);
+                        Arrays.hashCode(floatConvert));
     }
 
     @Override
@@ -884,7 +884,7 @@ public final class ArithmeticOpTable {
      * Describes a shift operation. The right argument of a shift operation always has kind
      * {@link JavaKind#Int}.
      */
-    public abstract static class ShiftOp<OP> extends Op {
+    public abstract static class ShiftOp<OP> extends BinaryOp<OP> {
 
         public abstract static class Shl extends ShiftOp<Shl> {
 
@@ -908,18 +908,8 @@ public final class ArithmeticOpTable {
         }
 
         protected ShiftOp(String operation) {
-            super(operation);
+            super(operation, false, false);
         }
-
-        /**
-         * Apply the shift to a constant.
-         */
-        public abstract Constant foldConstant(Constant c, int amount);
-
-        /**
-         * Apply the shift to a stamp.
-         */
-        public abstract Stamp foldStamp(Stamp s, IntegerStamp amount);
 
         /**
          * Get the shift amount mask for a given result stamp.

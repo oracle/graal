@@ -105,7 +105,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
         @Specialization(guards = "canCache(cachedLayer, receiver.receiverContext, receiver.delegateContext)", limit = "1")
         static Object doCached(OtherContextGuestObject receiver, Message message, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
                         @Cached(value = "getCachedLayer(receiverLibrary)") PolyglotSharingLayer cachedLayer,
                         @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
@@ -117,7 +117,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
         @TruffleBoundary
         @Specialization(replaces = "doCached")
-        static Object doSlowPath(OtherContextGuestObject receiver, Message message, Object[] args, @Bind("this") Node node) throws Exception {
+        static Object doSlowPath(OtherContextGuestObject receiver, Message message, Object[] args, @Bind Node node) throws Exception {
             return sendImpl(node, receiver.receiverContext.layer, receiver.delegate, message, args, receiver.receiverContext,
                             receiver.delegateContext,
                             ReflectionLibrary.getUncached(receiver.delegate),
@@ -155,6 +155,9 @@ final class OtherContextGuestObject implements TruffleObject {
                         returnValue = Boolean.FALSE;
                     } else {
                         returnValue = delegateLibrary.send(receiver, message, migratedArgs);
+                    }
+                    if (message.getReturnType() == void.class) {
+                        return null;
                     }
                     return migrateReturn(returnValue, receiverContext, delegateContext);
                 } catch (Throwable e) {
@@ -348,7 +351,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
             @Specialization(guards = "canCache(cachedLayer, receiver.receiverContext, receiver.delegateContext)", limit = "1")
             static Object doCached(OtherContextException receiver, Message message, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
                             @Cached(value = "getCachedLayer(receiverLibrary)") PolyglotSharingLayer cachedLayer,
                             @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
@@ -361,7 +364,7 @@ final class OtherContextGuestObject implements TruffleObject {
             @TruffleBoundary
             @Specialization(replaces = "doCached")
             static Object doSlowPath(OtherContextException receiver, Message message, Object[] args,
-                            @Bind("this") Node node) throws Exception {
+                            @Bind Node node) throws Exception {
                 return sendImpl(node, receiver.receiverContext.layer, receiver.delegate, message, args, receiver.receiverContext,
                                 receiver.delegateContext,
                                 ReflectionLibrary.getUncached(receiver.delegate),

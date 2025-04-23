@@ -1,6 +1,7 @@
 # This file is only shared between the graal and graal-enterprise repositories.
 
 local common = import "../common.jsonnet";
+local utils = import "common-utils.libsonnet";
 local repo_config = import '../repo-configuration.libsonnet';
 
 common + common.frequencies + {
@@ -55,6 +56,13 @@ common + common.frequencies + {
         build + { "components" : components }
       for build in builds
     ],
+  # Add the specified components to the field `components`.
+  with_style_component(build)::
+    if std.objectHas(build, "name") && utils.contains(build.name, "-style-") then
+      $.with_components([build], ["style"])[0]
+    else
+      build
+    ,
 
   // Heap settings
   // *************
@@ -103,6 +111,7 @@ common + common.frequencies + {
   labsjdk21::            self["labsjdk-" + repo_config.graalvm_edition + "-21"],
   labsjdk21Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-21Debug"],
   labsjdk21LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-21-llvm"],
+  graalvmee21::          self["graalvm-ee-21"],
 
   labsjdkLatest::            self["labsjdk-" + repo_config.graalvm_edition + "-latest"],
   labsjdkLatestDebug::       self["labsjdk-" + repo_config.graalvm_edition + "-latestDebug"],

@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.snippets;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
@@ -37,26 +38,28 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -64,7 +67,10 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
@@ -73,7 +79,10 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -86,9 +95,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.ThreadStatusTransition;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -103,6 +112,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -112,6 +122,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -196,16 +207,73 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters) {
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
         int result = runtimeCall(CREATE_ISOLATE, parameters);
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         return runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
     }
 
+    private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord();
+
+    private static final class ImageHeapPatchingState {
+        static final Word UNINITIALIZED = Word.zero();
+        static final Word IN_PROGRESS = Word.unsigned(1);
+        static final Word SUCCESSFUL = Word.unsigned(2);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static void layeredPatchHeapRelativeRelocations() {
+        Word heapPatchStateAddr = IMAGE_HEAP_PATCHING_STATE.get();
+        boolean firstIsolate = heapPatchStateAddr.logicCompareAndSwapWord(0, ImageHeapPatchingState.UNINITIALIZED, ImageHeapPatchingState.IN_PROGRESS, NamedLocationIdentity.OFF_HEAP_LOCATION);
+
+        if (!firstIsolate) {
+            // spin-wait for first isolate
+            Word state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            while (state.equal(ImageHeapPatchingState.IN_PROGRESS)) {
+                PauseNode.pause();
+                state = heapPatchStateAddr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
+            }
+
+            /*
+             * Patching has already been successfully completed, nothing needs to be done.
+             */
+            return;
+        }
+
+        Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
+        Word heapBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_BEGIN));
+
+        Word patches = ImageLayerSection.getHeapRelativeRelocationsStart().get();
+        int endOffset = Integer.BYTES + (patches.readInt(0) * Integer.BYTES);
+
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int offset = Integer.BYTES;
+        while (offset < endOffset) {
+            int heapOffset = patches.readInt(offset);
+            int referenceEncoding = patches.readInt(offset + Integer.BYTES);
+
+            if (referenceSize == 4) {
+                heapBegin.writeInt(heapOffset, referenceEncoding);
+            } else {
+                heapBegin.writeLong(heapOffset, referenceEncoding);
+            }
+
+            offset += 2 * Integer.BYTES;
+        }
+
+        heapPatchStateAddr.writeWordVolatile(0, ImageHeapPatchingState.SUCCESSFUL);
+    }
+
+    /**
+     * After parsing the isolate arguments in
+     * {@link IsolateArgumentParser#parse(CEntryPointCreateIsolateParameters, IsolateArguments)} the
+     * {@code providedParameters} should no longer be used. Instead {@link IsolateArguments}
+     * contains the correct values.
+     */
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int createIsolate(CEntryPointCreateIsolateParameters providedParameters) {
@@ -215,38 +283,51 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         UnsignedWord runtimePageSize = VirtualMemoryProvider.get().getGranularity();
-        UnsignedWord imagePageSize = WordFactory.unsigned(SubstrateOptions.getPageSize());
+        UnsignedWord imagePageSize = Word.unsigned(SubstrateOptions.getPageSize());
         boolean validPageSize = UnsignedUtils.isAMultiple(imagePageSize, runtimePageSize);
         if (!validPageSize) {
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            layeredPatchHeapRelativeRelocations();
+        }
+
+        LocaleSupport.initialize();
+
         CEntryPointCreateIsolateParameters parameters = providedParameters;
         if (parameters.isNull() || parameters.version() < 1) {
             parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);
-            parameters.setReservedSpaceSize(WordFactory.zero());
+            parameters.setReservedSpaceSize(Word.zero());
             parameters.setVersion(1);
         }
-        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
-        IsolateArgumentParser.parse(parameters, parsedArgs);
-        if (parameters.reservedSpaceSize().equal(0)) {
-            parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
-        }
+
+        IsolateArguments arguments = StackValue.get(IsolateArguments.class);
+        UnmanagedMemoryUtil.fill((Pointer) arguments, SizeOf.unsigned(IsolateArguments.class), (byte) 0);
+        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getParsedArgsSize());
+        arguments.setParsedArgs(parsedArgs);
+
+        IsolateArgumentParser.singleton().parse(parameters, arguments);
+
+        Container.initialize();
 
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolatePtr, parameters);
+        int error = Isolates.create(isolatePtr, arguments);
         if (error != CEntryPointErrors.NO_ERROR) {
+            IsolateArgumentParser.singleton().tearDown(arguments);
             return error;
         }
         Isolate isolate = isolatePtr.read();
         setHeapBase(Isolates.getHeapBase(isolate));
 
-        return createIsolate0(isolate, parameters, parsedArgs);
+        return createIsolate0(isolate, arguments);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
-    private static int createIsolate0(Isolate isolate, CEntryPointCreateIsolateParameters parameters, CLongPointer parsedArgs) {
-        IsolateArgumentParser.persistOptions(parameters, parsedArgs);
+    private static int createIsolate0(Isolate isolate, IsolateArguments arguments) {
+        assert Heap.getHeap().verifyImageHeapMapping();
+        IsolateArgumentParser.singleton().persistOptions(arguments);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();
@@ -309,6 +390,17 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NeverInline("GR-24649")
     private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
+        /* Initialize the isolate id (the id is needed for isolate teardown). */
+        long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
+        boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
+        Isolates.assignIsolateId(firstIsolate);
+
+        /*
+         * Initialize the physical memory size. This must be done as early as possible because we
+         * must not trigger GC before PhysicalMemory is initialized.
+         */
+        PhysicalMemory.initialize();
+
         /*
          * The VM operation thread must be started early as no VM operations can be scheduled before
          * this thread is fully started. The isolate teardown may also use VM operations.
@@ -317,11 +409,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             VMOperationControl.startVMOperationThread();
         }
 
-        long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
-        boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
-
-        Isolates.assignIsolateId(firstIsolate);
-        Isolates.assignCurrentStartTime();
+        /*
+         * Before this point, only limited error handling is possible because the isolate is not
+         * sufficiently initialized (i.e., we can't tear it down properly).
+         */
+        Isolates.assignStartTime();
+        LocaleSupport.checkForError();
 
         if (!firstIsolate) {
             int state = Unsafe.getUnsafe().getInt(initStateAddr);
@@ -342,6 +435,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * result in deadlocks if ReferenceInternals.waitForReferenceProcessing() is called.
          */
         if (ReferenceHandler.useDedicatedThread()) {
+            ReferenceInternals.initializeLocking();
             ReferenceHandlerThread.start();
         }
 
@@ -349,6 +443,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * After starting all the necessary threads, we can finally execute complex JDK code or code
          * that allocates a significant amount of memory.
          */
+
+        IsolateArgumentParser.singleton().copyToRuntimeOptions();
 
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
             boolean exitWhenArgumentParsingFails = true;
@@ -388,9 +484,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         /* Adjust stack overflow boundary of main thread. */
         StackOverflowCheck.singleton().updateStackOverflowBoundary();
 
-        /* Initialize the physical memory size. */
-        PhysicalMemory.size();
-
         assert !isolateInitialized;
         isolateInitialized = true;
 
@@ -417,13 +510,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int attachThreadSnippet(Isolate isolate, boolean startedByIsolate, boolean ensureJavaThread) {
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
         int error = runtimeCall(ATTACH_THREAD, isolate, startedByIsolate, ensureJavaThread);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
 
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         if (ensureJavaThread) {
             return runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
@@ -453,7 +546,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
 
-        IsolateThread thread = WordFactory.nullPointer();
+        IsolateThread thread = Word.nullPointer();
         if (startedByIsolate) {
             assert VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler).isNull();
         } else {
@@ -573,7 +666,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
 
             /* After threadExit(), only uninterruptible code may be executed. */
-            ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+            RecurringCallbackSupport.suspendCallbackTimer("Execution of arbitrary code is prohibited during the last teardown steps.");
 
             /* Shut down VM thread. */
             if (VMOperationControl.useDedicatedVMOperationThread()) {
@@ -598,6 +691,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             CodeInfoTable.tearDown();
             NonmovableArrays.tearDown();
             Heap.getHeap().tearDown();
+            IsolateArgumentParser.singleton().tearDown();
 
             /* Tear down the heap address space, including the image heap. */
             int code = CommittedMemoryProvider.get().tearDown();
@@ -627,11 +721,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Snippet(allowMissingProbabilities = true)
     public static int enterByIsolateSnippet(Isolate isolate) {
         int result;
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
         result = runtimeCall(ENTER_BY_ISOLATE, isolate);
         if (result == CEntryPointErrors.NO_ERROR) {
             if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
-                Safepoint.transitionNativeToJava(false);
+                ThreadStatusTransition.fromNativeToJava(false);
             }
         }
         return result;
@@ -671,7 +765,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
              */
             runtimeCall(VERIFY_ISOLATE_THREAD, thread);
         }
-        Safepoint.transitionNativeToJava(false);
+        ThreadStatusTransition.fromNativeToJava(false);
 
         return CEntryPointErrors.NO_ERROR;
 
@@ -732,7 +826,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int returnFromJavaToCSnippet() {
-        VMThreads.StatusSupport.setStatusNative();
+        ThreadStatusTransition.fromJavaToNative();
         return CEntryPointErrors.NO_ERROR;
     }
 

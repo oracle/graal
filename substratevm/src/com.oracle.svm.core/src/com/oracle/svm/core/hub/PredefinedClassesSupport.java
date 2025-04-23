@@ -31,6 +31,7 @@ import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -43,17 +44,17 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassReader;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassWriter;
+import com.oracle.svm.shaded.org.objectweb.asm.MethodVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.util.Digest;
-import jdk.internal.org.objectweb.asm.ClassReader;
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
 
 public final class PredefinedClassesSupport {
     public static final class Options {
@@ -66,6 +67,8 @@ public final class PredefinedClassesSupport {
     }
 
     public static final String ENABLE_BYTECODES_OPTION = SubstrateOptionsParser.commandArgument(Options.SupportPredefinedClasses, "+");
+
+    @Platforms(Platform.HOSTED_ONLY.class) private Consumer<Class<?>> validator = null;
 
     @Fold
     public static boolean supportsBytecodes() {
@@ -106,13 +109,21 @@ public final class PredefinedClassesSupport {
     private final ReentrantLock lock = new ReentrantLock();
 
     /** Predefined classes by hash. */
-    private final EconomicMap<String, Class<?>> predefinedClassesByHash = ImageHeapMap.create();
+    private final EconomicMap<String, Class<?>> predefinedClassesByHash = ImageHeapMap.create("predefinedClassesByHash");
 
     /** Predefined classes which have already been loaded, by name. */
     private final EconomicMap<String, Class<?>> loadedClassesByName = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public void setRegistrationValidator(Consumer<Class<?>> consumer) {
+        validator = consumer;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(String hash, Class<?> clazz) {
+        if (singleton().validator != null) {
+            singleton().validator.accept(clazz);
+        }
         Class<?> existing = singleton().predefinedClassesByHash.putIfAbsent(hash, clazz);
         if (existing != clazz) {
             VMError.guarantee(existing == null, "Can define only one class per hash");
@@ -167,6 +178,9 @@ public final class PredefinedClassesSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
+        if (singleton().validator != null) {
+            singleton().validator.accept(clazz);
+        }
         singleton().predefinedClasses.add(clazz);
     }
 

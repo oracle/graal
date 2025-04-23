@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -45,8 +44,11 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
+import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDKLatest;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -73,7 +75,7 @@ public final class JNIFunctionTables {
     private final CIsolateData<JNIJavaVM> jniJavaVM = CIsolateDataFactory.createStruct("jniJavaVM", JNIJavaVM.class);
 
     private static int getFunctionTableSize() {
-        return SizeOf.get(JNINativeInterface.class);
+        return JavaVersionUtil.JAVA_SPEC > 21 ? SizeOf.get(JNINativeInterfaceJDKLatest.class) : SizeOf.get(JNINativeInterface.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

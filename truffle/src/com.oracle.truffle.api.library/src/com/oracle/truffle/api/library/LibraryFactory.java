@@ -352,15 +352,20 @@ public abstract class LibraryFactory<T extends Library> {
     public final T getUncached() {
         T dispatch = this.uncachedDispatch;
         if (dispatch == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            ensureLibraryInitialized();
-            dispatch = createUncachedDispatch();
-            T otherDispatch = this.uncachedDispatch;
-            if (otherDispatch != null) {
-                dispatch = otherDispatch;
-            } else {
-                this.uncachedDispatch = dispatch;
-            }
+            dispatch = initializeUncached();
+        }
+        return dispatch;
+    }
+
+    @TruffleBoundary
+    private T initializeUncached() {
+        ensureLibraryInitialized();
+        T dispatch = createUncachedDispatch();
+        T otherDispatch = this.uncachedDispatch;
+        if (otherDispatch != null) {
+            dispatch = otherDispatch;
+        } else {
+            this.uncachedDispatch = dispatch;
         }
         return dispatch;
     }

@@ -40,21 +40,21 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import org.graalvm.polyglot.Engine;
+import java.lang.ref.Reference;
 
 public final class HostEngine {
 
     final long remoteEngine;
     Object localEngine;
-    Object api;
+    Reference<?> apiReference;
 
     HostEngine(long id, Object localEngine) {
         this.remoteEngine = id;
         this.localEngine = localEngine;
     }
 
-    void setApi(Engine api) {
-        this.api = api;
+    void setPolyglotAPIReference(Reference<?> apiReference) {
+        this.apiReference = apiReference;
     }
 
 }

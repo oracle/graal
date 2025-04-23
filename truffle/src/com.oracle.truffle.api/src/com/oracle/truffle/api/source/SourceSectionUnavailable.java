@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.util.Objects;
+
 /**
  * SourceSection with a loaded content. {@link Source#hasCharacters()} = true.
  */
@@ -116,12 +118,15 @@ final class SourceSectionUnavailable extends SourceSection {
 
     @Override
     public int hashCode() {
-        return System.identityHashCode(this);
+        return Objects.hash(this.source);
     }
 
     @Override
     public boolean equals(Object obj) {
-        return this == obj;
+        if (obj instanceof SourceSectionUnavailable e) {
+            return this.source.equals(e.source);
+        }
+        return false;
     }
 
 }

@@ -47,6 +47,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -85,8 +86,6 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.InternalResource;
-import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -117,6 +116,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
@@ -124,17 +124,22 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.TestAPIAccessor;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.api.test.polyglot.InternalResourceTest.TemporaryResourceCacheRoot;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPreInitializationTest {
 
@@ -1385,11 +1390,8 @@ public class ContextPreInitializationTest {
         assertEquals(0, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);    // initializeThread is called only
-                                                                // on TruffleLanguages with
-                                                                // initialized contexts
-        assertEquals(1, firstLangCtx.disposeThreadCount);       // disposeThread is called on all
-                                                                // TruffleLanguages
+        assertEquals(0, firstLangCtx.initializeThreadCount);
+        assertEquals(0, firstLangCtx.disposeThreadCount);
     }
 
     @Test
@@ -1439,7 +1441,7 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
         assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(0, firstLangCtx.disposeThreadCount);
 
         assertEquals(1, secondLangCtx2.createContextCount);
         assertEquals(1, secondLangCtx2.initializeContextCount);
@@ -1467,7 +1469,7 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
         assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(0, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx2.createContextCount);
         assertEquals(1, secondLangCtx2.initializeContextCount);
         assertEquals(0, secondLangCtx2.patchContextCount);
@@ -1479,7 +1481,7 @@ public class ContextPreInitializationTest {
         assertEquals(0, firstLangCtx2.patchContextCount);
         assertEquals(1, firstLangCtx2.disposeContextCount);
         assertEquals(0, firstLangCtx2.initializeThreadCount);
-        assertEquals(1, firstLangCtx2.disposeThreadCount);
+        assertEquals(0, firstLangCtx2.disposeThreadCount);
     }
 
     @Test
@@ -2904,6 +2906,44 @@ public class ContextPreInitializationTest {
             assertEquals(0, firstLangCtx2.disposeContextCount);
             assertEquals(1, firstLangCtx2.initializeThreadCount);
             assertEquals(0, firstLangCtx2.disposeThreadCount);
+        }
+    }
+
+    @Test
+    public void testGR57292() throws Exception {
+        String message = "Test exception";
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            if (env.getContext().getParent() == null) {
+                try (TruffleContext innerContext = env.newInnerContextBuilder(FIRST).build()) {
+                    try {
+                        innerContext.evalPublic(null, com.oracle.truffle.api.source.Source.newBuilder(FIRST, "", "test").build());
+                        fail("Should not reach here.");
+                    } catch (Exception e) {
+                        InteropLibrary exceptions = InteropLibrary.getUncached();
+                        assertTrue(exceptions.isException(e));
+                        try {
+                            assertEquals(message, exceptions.asString(exceptions.getExceptionMessage(e)));
+                        } catch (UnsupportedMessageException um) {
+                            throw CompilerDirectives.shouldNotReachHere(um);
+                        }
+                    }
+                }
+            } else {
+                TruffleExceptionImpl truffleException = new TruffleExceptionImpl(message);
+                TruffleStackTrace.fillIn(truffleException);
+                throw truffleException;
+            }
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        Context.create(FIRST).close();
+    }
+
+    @SuppressWarnings("serial")
+    private static final class TruffleExceptionImpl extends AbstractTruffleException {
+
+        TruffleExceptionImpl(String message) {
+            super(message);
         }
     }
 

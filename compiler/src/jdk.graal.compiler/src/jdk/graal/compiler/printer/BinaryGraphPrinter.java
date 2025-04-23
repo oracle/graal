@@ -30,6 +30,7 @@ import static jdk.graal.compiler.graph.Edges.Type.Successors;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -52,6 +53,12 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
+import jdk.graal.compiler.graphio.GraphBlocks;
+import jdk.graal.compiler.graphio.GraphElements;
+import jdk.graal.compiler.graphio.GraphLocations;
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
+import jdk.graal.compiler.graphio.GraphTypes;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
@@ -64,20 +71,13 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.VirtualState;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.util.JavaConstantFormattable;
-import jdk.graal.compiler.graphio.GraphBlocks;
-import jdk.graal.compiler.graphio.GraphElements;
-import jdk.graal.compiler.graphio.GraphLocations;
-import jdk.graal.compiler.graphio.GraphOutput;
-import jdk.graal.compiler.graphio.GraphStructure;
-import jdk.graal.compiler.graphio.GraphTypes;
-
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -101,6 +101,12 @@ public class BinaryGraphPrinter implements
                         types(this)
         );
         // @formatter:on
+        this.snippetReflection = snippetReflection;
+    }
+
+    @SuppressWarnings("this-escape")
+    public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
+        this.output = GraphOutput.newBuilder(this).blocks(this).elementsAndLocations(this, this).types(this).build(channel);
         this.snippetReflection = snippetReflection;
     }
 

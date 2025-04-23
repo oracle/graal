@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.object.basic.test;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.lang.invoke.MethodHandles;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -53,7 +55,7 @@ public class DynamicObjectConstructorTest extends AbstractLibraryTest {
 
     @Test
     public void testIncompatibleShape() {
-        Shape shape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+        Shape shape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
 
         assertFails(() -> new TestDynamicObjectMinimal(shape), IllegalArgumentException.class,
                         ex -> assertThat(ex.getMessage(), containsString("Incompatible shape")));
@@ -61,7 +63,7 @@ public class DynamicObjectConstructorTest extends AbstractLibraryTest {
 
     @Test
     public void testNonEmptyShape() {
-        Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+        Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
         TestDynamicObjectDefault obj = new TestDynamicObjectDefault(emptyShape);
         DynamicObjectLibrary.getUncached().put(obj, "key", "value");
         Shape nonEmptyShape = obj.getShape();

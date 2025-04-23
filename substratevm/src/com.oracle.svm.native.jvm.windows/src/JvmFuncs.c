@@ -344,3 +344,14 @@ JNIEXPORT void * JNICALL JVM_RegisterSignal(jint sig, void *handler) {
       return oldHandler;
   }
 }
+
+#ifdef JNI_VERSION_24
+
+JNIEXPORT jboolean JNICALL JVM_IsStaticallyLinked(void) {
+    // This is a workaround based on the fact that currently the only user of interest is libawt,
+    // which is always known to be dynamically linked. This assumption can break with every JDK update.
+    // A more thorough solution is to move this method into the libjvm shim library (GR-58067).
+    return JNI_FALSE;
+}
+
+#endif

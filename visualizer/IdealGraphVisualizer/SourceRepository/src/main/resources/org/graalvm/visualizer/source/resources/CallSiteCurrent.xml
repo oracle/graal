@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE type PUBLIC "-//NetBeans//DTD annotation type 1.0//EN" "http://www.netbeans.org/dtds/annotation-type-1_0.dtd">
+<type
+        name='CallSiteCurrent'
+        description_key='Hint_CallSiteCurrent'
+        localizing_bundle='org.graalvm.visualizer.source.resources.Bundle'
+        visible='true'
+        glyph='nbresloc:/org/graalvm/visualizer/source/resources/CallSite.png'
+        highlight='0xFFC800'
+        type='line'
+>
+    <combination order='600'>
+        <combine annotationtype='CallSite'/>
+    </combination>
+</type>

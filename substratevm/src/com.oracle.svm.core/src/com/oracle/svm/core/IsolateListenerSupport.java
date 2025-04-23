@@ -86,7 +86,8 @@ public class IsolateListenerSupport {
          * isolate is still unattached when this method is called.
          */
         @Uninterruptible(reason = "Thread state not yet set up.")
-        void afterCreateIsolate(Isolate isolate);
+        default void afterCreateIsolate(@SuppressWarnings("unused") Isolate isolate) {
+        }
 
         /**
          * Implementations must not throw any exceptions. Note that this method is called on

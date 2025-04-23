@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.jni;
 
 import java.nio.ByteBuffer;
@@ -30,7 +29,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 

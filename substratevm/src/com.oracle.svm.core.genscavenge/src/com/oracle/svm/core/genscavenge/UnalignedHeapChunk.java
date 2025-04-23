@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -90,6 +89,7 @@ public final class UnalignedHeapChunk {
     }
 
     public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize) {
+        assert chunk.isNonNull();
         HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk), chunkSize);
     }
 
@@ -104,7 +104,7 @@ public final class UnalignedHeapChunk {
 
     static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
         UnsignedWord objectStart = getObjectStartOffset();
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
     }
 
@@ -112,7 +112,7 @@ public final class UnalignedHeapChunk {
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public static Pointer allocateMemory(UnalignedHeader that, UnsignedWord size) {
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
-        Pointer result = WordFactory.nullPointer();
+        Pointer result = Word.nullPointer();
         if (size.belowOrEqual(available)) {
             result = HeapChunk.getTopPointer(that);
             Pointer newTop = result.add(size);

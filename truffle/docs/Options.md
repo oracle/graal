@@ -72,6 +72,7 @@ The accepted values are:
 - `--engine.FirstTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 400).
 - `--engine.FirstTierMinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled in the first tier (default: 1)
 - `--engine.LastTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 10000).
+- `--engine.MaximumCompilations=(-inf, inf)` : Maximum number of successful compilations for a single call target before a permanent bailout. Exceeding the limit will result in a compilation failure with the appropriate reason and there will be no further attempts to compile the call target. (negative integer means no limit, default: 100)
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).
 - `--engine.Mode=latency|throughput` : Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.
 - `--engine.MultiTier=true|false` : Whether to use multiple Truffle compilation tiers by default. (default: true)
@@ -81,6 +82,7 @@ The accepted values are:
 - `--engine.PartialBlockMaximumSize=[1, inf)` : Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes (default: 10000).
 - `--engine.SingleTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier (default: 1000).
 - `--engine.Splitting=true|false` : Enable automatic duplication of compilation profiles (splitting) (default: true).
+- `--engine.StoppedCompilationRetryDelay=<ms>` : Before the Truffle runtime submits an OptimizedCallTarget for compilation, it checks for the compilation activity mode in the host VM. If the activity mode indicates a full code cache, no new compilation requests are submitted and the compilation queue is flushed. After 'StoppedCompilationRetryDelay' milliseconds new compilations will be submitted again (which might trigger a sweep of the code cache and a reset of the compilation activity mode in the host JVM). The option is only supported on the HotSpot Truffle runtime. On runtimes which don't support it the option has no effect. default: 5000
 - `--engine.TraceCompilation` : Print information for compilation results.
 - `--compiler.EncodedGraphCache` : Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).
 - `--compiler.FirstTierUseEconomy` : Whether to use the economy configuration in the first-tier compilations. (default: true, syntax: true|false)
@@ -168,6 +170,8 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraversingCompilationQueue=true|false` : Use a traversing compilation queue. (default: true)
 - `--engine.TraversingQueueFirstTierBonus=[0.0, inf)` : Controls how much of a priority should be given to first tier compilations (default 15.0).
 - `--engine.TraversingQueueFirstTierPriority` : Traversing queue gives first tier compilations priority.
+- `--engine.TraversingQueueInvalidatedBonus=[0.0, inf)` : Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).
+- `--engine.TraversingQueueOSRBonus=[0.0, inf)` : Controls how much of a priority should be given to OSR compilations (default: 1.0, no bonus).
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
 - `--compiler.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
 - `--compiler.ExcludeAssertions` : Exclude assertion code from Truffle compilations (default: true)

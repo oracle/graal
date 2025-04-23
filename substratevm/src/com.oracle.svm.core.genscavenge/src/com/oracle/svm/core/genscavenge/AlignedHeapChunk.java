@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -86,6 +85,7 @@ public final class AlignedHeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(AlignedHeader chunk, UnsignedWord chunkSize) {
+        assert chunk.isNonNull();
         assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
         chunk.setShouldSweepInsteadOfCompact(false);
@@ -94,7 +94,7 @@ public final class AlignedHeapChunk {
     public static void reset(AlignedHeader chunk) {
         long alignedChunkSize = SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
         assert HeapChunk.getEndOffset(chunk).rawValue() == alignedChunkSize;
-        initialize(chunk, WordFactory.unsigned(alignedChunkSize));
+        initialize(chunk, Word.unsigned(alignedChunkSize));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -113,7 +113,7 @@ public final class AlignedHeapChunk {
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Pointer allocateMemory(AlignedHeader that, UnsignedWord size) {
-        Pointer result = WordFactory.nullPointer();
+        Pointer result = Word.nullPointer();
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
         if (size.belowOrEqual(available)) {
             result = HeapChunk.getTopPointer(that);

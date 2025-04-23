@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot.amd64.test;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -37,6 +38,7 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -72,19 +74,19 @@ public class ReadEliminateLowTierTest extends GraalCompilerTest {
          * not remove this read if its used as a null check even if it does not have any usages any
          * more.
          */
-        foldAfterTrappingNullChecks(t.x);
+        fixedUsageUntilFinalCanon(t.x);
         int result = t.y + t.z;
         return result;
     }
 
-    static void foldAfterTrappingNullChecks(@SuppressWarnings("unused") int i) {
+    static void fixedUsageUntilFinalCanon(@SuppressWarnings("unused") int i) {
     }
 
     @Override
     protected Plugins getDefaultGraphBuilderPlugins() {
         Plugins p = super.getDefaultGraphBuilderPlugins();
         Registration r = new Registration(p.getInvocationPlugins(), ReadEliminateLowTierTest.class);
-        r.register(new InvocationPlugin("foldAfterTrappingNullChecks", int.class) {
+        r.register(new InvocationPlugin("fixedUsageUntilFinalCanon", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.append(new FixedUsageUntilFinalCanon(arg));
@@ -121,6 +123,16 @@ public class ReadEliminateLowTierTest extends GraalCompilerTest {
             }
             return this;
         }
+    }
+
+    @Override
+    protected void checkLowTierGraph(StructuredGraph graph) {
+        super.checkLowTierGraph(graph);
+        boolean nullCheckFound = false;
+        for (ReadNode r : graph.getNodes().filter(ReadNode.class)) {
+            nullCheckFound |= r.canNullCheck();
+        }
+        Assert.assertTrue("At least one read in the graph must have an implicit null check", nullCheckFound);
     }
 
     @Test

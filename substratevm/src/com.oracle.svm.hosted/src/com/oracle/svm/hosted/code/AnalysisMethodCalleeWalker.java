@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -41,10 +40,10 @@ import jdk.vm.ci.code.BytecodePosition;
 public class AnalysisMethodCalleeWalker {
 
     /** A stack of methods that are currently being examined, to detect cycles in the call graph. */
-    private final List<AnalysisMethod> path;
+    private final EconomicSet<AnalysisMethod> path;
 
     public AnalysisMethodCalleeWalker() {
-        path = new ArrayList<>();
+        path = EconomicSet.create();
     }
 
     /**
@@ -65,14 +64,13 @@ public class AnalysisMethodCalleeWalker {
     }
 
     VisitResult walkMethodAndCallees(AnalysisMethod method, AnalysisMethod caller, BytecodePosition invokePosition, CallPathVisitor visitor) {
-        if (path.contains(method)) {
+        if (!path.add(method)) {
             /*
              * If the method is already on the path then I am in the middle of visiting it, so just
              * keep walking.
              */
             return VisitResult.CUT;
         }
-        path.add(method);
         try {
             VisitResult directResult = visitor.visitMethod(method, caller, invokePosition, path.size());
             if (directResult != VisitResult.CONTINUE) {

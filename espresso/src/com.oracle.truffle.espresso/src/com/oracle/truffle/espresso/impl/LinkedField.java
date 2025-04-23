@@ -26,16 +26,19 @@ import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.ParserField;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 final class LinkedField extends StaticProperty {
+
     enum IdMode {
         REGULAR,
         WITH_TYPE,
@@ -98,10 +101,10 @@ final class LinkedField extends StaticProperty {
 
     static String idFromNameAndType(Symbol<Name> name, ByteSequence t) {
         // Strip 'L' and ';' from the type symbol.
-        int arrayDims = Types.getArrayDimensions(t);
+        int arrayDims = TypeSymbols.getArrayDimensions(t);
         if (arrayDims > 0) {
             // Component string
-            StringBuilder typeString = new StringBuilder(idFromNameAndType(name, t.subSequence(arrayDims, t.length() - arrayDims)));
+            StringBuilder typeString = new StringBuilder(idFromNameAndType(name, t.subSequence(arrayDims)));
             typeString.append('_');
             // Append a number of ']'
             while (arrayDims > 0) {
@@ -111,7 +114,7 @@ final class LinkedField extends StaticProperty {
             return typeString.toString();
         }
         String typeString = t.toString();
-        if (Types.isReference(t)) {
+        if (TypeSymbols.isReference(t)) {
             typeString = typeString.substring(1, typeString.length() - 1);
             typeString = typeString.replace('/', '_');
         }
@@ -160,5 +163,24 @@ final class LinkedField extends StaticProperty {
 
     ParserField getParserField() {
         return parserField;
+    }
+
+    public static Class<?> getPropertyType(ParserField parserField) {
+        Symbol<Type> type = parserField.getType();
+        if (type.length() == 1) {
+            char ch = (char) type.byteAt(0);
+            return switch (ch) {
+                case 'Z' -> boolean.class;
+                case 'C' -> char.class;
+                case 'F' -> float.class;
+                case 'D' -> double.class;
+                case 'B' -> byte.class;
+                case 'S' -> short.class;
+                case 'I' -> int.class;
+                case 'J' -> long.class;
+                default -> throw EspressoError.shouldNotReachHere("unknown primitive or void type character: " + ch);
+            };
+        }
+        return parserField.isHidden() ? Object.class : StaticObject.class;
     }
 }

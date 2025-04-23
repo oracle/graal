@@ -24,18 +24,27 @@
  */
 package com.oracle.svm.hosted.c;
 
+import java.lang.annotation.Annotation;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 
+import com.oracle.svm.core.c.enums.CEnumRuntimeData;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
+import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class CConstantValueSupportImpl implements CConstantValueSupport {
@@ -50,7 +59,7 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getCConstantValue(Class<?> declaringClass, String methodName, Class<T> returnType) {
-        ResolvedJavaMethod method = getAnnotatedMethod(declaringClass, methodName);
+        ResolvedJavaMethod method = getAnnotatedMethod(declaringClass, methodName, CConstant.class);
         ConstantInfo constantInfo = (ConstantInfo) nativeLibraries.findElementInfo(method);
         Object value = constantInfo.getValue();
 
@@ -72,7 +81,47 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport {
         }
     }
 
-    private ResolvedJavaMethod getAnnotatedMethod(Class<?> declaringClass, String methodName) {
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T getCEnumValue(Enum<?> cEnum, String methodName) {
+        Class<?> declaringType = cEnum.getDeclaringClass();
+        if (declaringType.getAnnotation(CEnum.class) == null) {
+            throw VMError.shouldNotReachHere("Type " + declaringType + " is not annotated with @" + ClassUtil.getUnqualifiedName(CEnum.class));
+        }
+
+        ResolvedJavaMethod method = getAnnotatedMethod(declaringType, methodName, CEnumValue.class);
+        ResolvedJavaType enumType = metaAccess.lookupJavaType(declaringType);
+        EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(enumType);
+
+        ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
+        return (T) getCEnumValue(cEnum, returnType, enumInfo.getRuntimeData());
+    }
+
+    private Object getCEnumValue(Enum<?> cEnum, ResolvedJavaType returnType, CEnumRuntimeData data) {
+        if (!nativeLibraries.isIntegerType(returnType)) {
+            throw VMError.shouldNotReachHere("Unsupported return type: " + returnType);
+        }
+
+        if (nativeLibraries.isWordBase(returnType)) {
+            if (nativeLibraries.isSigned(returnType)) {
+                return data.enumToSignedWord(cEnum);
+            }
+            return data.enumToUnsignedWord(cEnum);
+        }
+
+        JavaKind returnKind = returnType.getJavaKind();
+        return switch (returnKind) {
+            case Boolean -> data.enumToBoolean(cEnum);
+            case Byte -> data.enumToByte(cEnum);
+            case Short -> data.enumToShort(cEnum);
+            case Char -> data.enumToChar(cEnum);
+            case Int -> data.enumToInt(cEnum);
+            case Long -> data.enumToLong(cEnum);
+            default -> throw VMError.shouldNotReachHere("Unsupported return type: " + returnType);
+        };
+    }
+
+    private ResolvedJavaMethod getAnnotatedMethod(Class<?> declaringClass, String methodName, Class<? extends Annotation> annotationClass) {
         ResolvedJavaMethod method;
         try {
             method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(declaringClass, methodName));
@@ -80,8 +129,8 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport {
             throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
         }
 
-        if (method.getAnnotation(CConstant.class) == null) {
-            throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + CConstant.class.getSimpleName());
+        if (method.getAnnotation(annotationClass) == null) {
+            throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + ClassUtil.getUnqualifiedName(annotationClass));
         }
         return method;
     }

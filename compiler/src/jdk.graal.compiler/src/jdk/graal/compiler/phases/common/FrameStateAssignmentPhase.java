@@ -27,9 +27,8 @@ package jdk.graal.compiler.phases.common;
 import java.util.List;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.Phase;
-import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -46,7 +45,8 @@ import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
+import jdk.graal.compiler.phases.Phase;
+import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 import jdk.vm.ci.code.BytecodeFrame;
 
 /**
@@ -61,7 +61,7 @@ import jdk.vm.ci.code.BytecodeFrame;
  */
 public class FrameStateAssignmentPhase extends Phase {
 
-    private static class FrameStateAssignmentClosure extends ReentrantNodeIterator.NodeIteratorClosure<FrameState> {
+    private static final class FrameStateAssignmentClosure extends ReentrantNodeIterator.NodeIteratorClosure<FrameState> {
 
         @Override
         protected FrameState processNode(FixedNode node, FrameState previousState) {

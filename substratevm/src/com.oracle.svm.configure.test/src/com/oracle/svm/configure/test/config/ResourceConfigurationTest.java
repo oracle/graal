@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -38,11 +39,11 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.configure.ConfigurationParserOption;
+import com.oracle.svm.configure.ResourceConfigurationParser;
+import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.core.configure.ConfigurationConditionResolver;
-import com.oracle.svm.core.configure.ResourceConfigurationParser;
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -93,22 +94,22 @@ public class ResourceConfigurationTest {
             ResourcesRegistry<UnresolvedConfigurationCondition> registry = new ResourcesRegistry<>() {
 
                 @Override
-                public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
+                public void addResources(UnresolvedConfigurationCondition condition, String pattern, Object origin) {
                     addedResources.add(pattern);
                 }
 
                 @Override
-                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
-                    throw VMError.shouldNotReachHere("Unused function.");
+                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, Object origin) {
+                    throw new AssertionError("Unused function.");
                 }
 
                 @Override
-                public void addResourceEntry(Module module, String resourcePath) {
-                    throw VMError.shouldNotReachHere("Unused function.");
+                public void addResourceEntry(Module module, String resourcePath, Object origin) {
+                    throw new AssertionError("Unused function.");
                 }
 
                 @Override
-                public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+                public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
                 }
 
                 @Override
@@ -136,7 +137,8 @@ public class ResourceConfigurationTest {
                 }
             };
 
-            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry, true);
+            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry,
+                            EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
             writerThread.start();
             rcp.parseAndRegister(pr);
 

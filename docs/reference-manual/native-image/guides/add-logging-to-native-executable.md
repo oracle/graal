@@ -12,81 +12,24 @@ By default, a native executable produced by Native Image supports logging via th
 
 ## Default Logging Configuration
 
-The default logging configuration in a native executable is based on the `logging.properties` file found in the JDK.
+The default logging configuration in a native executable is based on the _logging.properties_ file found in the JDK.
 This file configures a `java.util.logging.ConsoleHandler` which will only show messages at the `INFO` level and above.
-Custom logging configuration can be loaded either at build time or at runtime as described below.
+Custom logging configuration can be loaded either at build time or at run time as described below.
 
 If you require additional logging handlers, you must register the corresponding classes for reflection.
-For example, if you use `java.util.logging.FileHandler` then provide the following reflection configuration:
+For example, if you use `java.util.logging.FileHandler`, then provide the following reflection configuration in the _META-INF/native-image/reachability-metadata.json_ file:
 ```json
 {
     "name" : "java.util.logging.FileHandler",
     "methods" : [
-      { "name" : "<init>", "parameterTypes" : [] },
+      { "name" : "<init>", "parameterTypes" : [] }
     ]
   }
 ```
-For more details, see [Reflection Support](../Reflection.md).
 
-## Initialize a Logger at Build Time
+For more details, see [Reflection Support](../ReachabilityMetadata.md#reflection).
 
-The logger can be initialized at build time with a custom _logging.properties_ configuration file, as illustrated in following example.
-
-### Prerequisite 
-Make sure you have installed a GraalVM JDK.
-The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
-For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
-
-1. Save the following Java code into a file named _LoggerBuildTimeInit.java_, and compile it:
-    ```java
-    import java.io.IOException;
-    import java.util.logging.Level;
-    import java.util.logging.LogManager;
-    import java.util.logging.Logger;
-
-    public class LoggerBuildTimeInit {
-        private static final Logger LOGGER;
-        static {
-            try {
-                LogManager.getLogManager().readConfiguration(LoggerBuildTimeInit.class.getResourceAsStream("/logging.properties"));
-            } catch (IOException | SecurityException | ExceptionInInitializerError ex) {
-                Logger.getLogger(LoggerBuildTimeInit.class.getName()).log(Level.SEVERE, "Failed to read logging.properties file", ex);
-            }
-            LOGGER = Logger.getLogger(LoggerBuildTimeInit.class.getName());
-        }
-
-        public static void main(String[] args) throws IOException {
-            LOGGER.log(Level.WARNING, "Danger, Will Robinson!");
-        }
-    } 
-    ```
-    ```bash
-    javac LoggerBuildTimeInit.java
-    ```
-
-2. Download the [_logging.properties_](../assets/logging.properties) resource file and save it in the same directory as _LoggerBuildTimeInit.java_.
-
-3. Build and run a native executable:
-    ```shell
-    native-image LoggerBuildTimeInit --initialize-at-build-time=LoggerBuildTimeInit
-    ```
-    ```shell
-    ./loggerbuildtimeinit
-    ```
-    It should produce output that looks similar to:
-    ```shell
-    WARNING: Danger, Will Robinson! [Wed May 18 17:20:39 BST 2022]
-    ```
-
-    This demonstrates that the _logging.properties_ file is processed when the executable is built.
-    The file does not need to be included in the native executable and reduces the size of the resulting executable file.
-
-   `LoggerHolder.LOGGER` is also initialized at build time and is readily available at runtime, therefore improving the startup time. 
-   Unless your application needs to process a custom _logging.properties_ configuration file at runtime, this approach is recommended.
-
-## Initialize a Logger at Runtime
-
-The logger can also be initialized at run time, as shown in the following example.
+The usage of the logger is shown in the following example:
 
 1. Save the following Java code into a file named _LoggerRunTimeInit.java_, and compile it:
 
@@ -122,7 +65,8 @@ The logger can also be initialized at run time, as shown in the following exampl
     WARNING: Danger, Will Robinson! [Wed May 18 17:22:40 BST 2022]
     ```
 
-    In this case, the _logging.properties_ file needs to be available for runtime processing and it must be included in the executable via the `-H:IncludeResources=logging.properties` option. For more details on this option, see [Use of Resources in a Native Executable](../Resources.md).
+    In this case, the _logging.properties_ file must be available for runtime processing and therefore needs to be registered in the _META-INF/native-image/reachability-metadata.json_ file.
+    For more details on how to do this, see [Use of Resources in a Native Executable](../ReachabilityMetadata.md#resources).
 
 ### Related Documentation
 

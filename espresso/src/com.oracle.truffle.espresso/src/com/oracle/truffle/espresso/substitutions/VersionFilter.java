@@ -22,10 +22,15 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 @FunctionalInterface
-public interface VersionFilter {
+public interface VersionFilter extends LanguageFilter {
+
+    default boolean isValidFor(EspressoLanguage language) {
+        return isValidFor(language.getJavaVersion());
+    }
 
     boolean isValidFor(JavaVersion version);
 
@@ -77,6 +82,18 @@ public interface VersionFilter {
         }
     }
 
+    final class Java11OrLater implements VersionFilter {
+        public static final Java11OrLater INSTANCE = new Java11OrLater();
+
+        private Java11OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java11OrLater();
+        }
+    }
+
     final class Java13OrEarlier implements VersionFilter {
         public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
 
@@ -86,6 +103,18 @@ public interface VersionFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java13OrEarlier();
+        }
+    }
+
+    final class Java17OrEarlier implements VersionFilter {
+        public static final Java17OrEarlier INSTANCE = new Java17OrEarlier();
+
+        private Java17OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java17OrEarlier();
         }
     }
 
@@ -122,6 +151,18 @@ public interface VersionFilter {
         @Override
         public boolean isValidFor(JavaVersion version) {
             return version.java20OrLater();
+        }
+    }
+
+    final class Java21OrLater implements VersionFilter {
+        public static final Java21OrLater INSTANCE = new Java21OrLater();
+
+        private Java21OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java21OrLater();
         }
     }
 }

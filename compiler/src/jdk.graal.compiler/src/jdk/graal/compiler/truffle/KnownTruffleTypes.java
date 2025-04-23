@@ -39,6 +39,7 @@ import java.util.Set;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -103,7 +104,9 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameDescriptor_defaultValue = findField(FrameDescriptor, "defaultValue");
     public final ResolvedJavaField FrameDescriptor_materializeCalled = findField(FrameDescriptor, "materializeCalled");
     public final ResolvedJavaField FrameDescriptor_indexedSlotTags = findField(FrameDescriptor, "indexedSlotTags");
+    public final ResolvedJavaField FrameDescriptor_indexedSlotCount = findField(FrameDescriptor, "indexedSlotCount", false);
     public final ResolvedJavaField FrameDescriptor_auxiliarySlotCount = findField(FrameDescriptor, "auxiliarySlotCount");
+    public final ResolvedJavaField FrameDescriptor_illegalDefaultValue = findField(FrameDescriptor, "ILLEGAL_DEFAULT_VALUE", false);
 
     public final ResolvedJavaType FrameSlotKind = lookupTypeCached("com.oracle.truffle.api.frame.FrameSlotKind");
     public final ResolvedJavaField FrameSlotKind_Object = findField(FrameSlotKind, "Object");
@@ -215,10 +218,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         Throwable_jfrTracing = getThrowableJFRTracingField(metaAccess);
     }
 
-    public static final int JDK = Runtime.version().feature();
-
     private static boolean throwableUsesJFRTracing() {
-        return JDK >= 22;
+        return JavaVersionUtil.JAVA_SPEC >= 22;
     }
 
     private static ResolvedJavaField getThrowableJFRTracingField(MetaAccessProvider metaAccess) {

@@ -24,12 +24,14 @@
  */
 package jdk.graal.compiler.core.common;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A profiling service that consumes compilation related events. The Java Flight Recorder (JFR) is
  * an example of such a service that can be exposed via this interface.
  */
+@LibGraalService
 public interface CompilerProfiler {
 
     /**

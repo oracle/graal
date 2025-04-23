@@ -81,11 +81,6 @@ public final class ReplacementsUtil {
     }
 
     @Fold
-    public static int charArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccess) {
-        return metaAccess.getArrayBaseOffset(JavaKind.Char);
-    }
-
-    @Fold
     public static long charArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
         return metaAccess.getArrayIndexScale(JavaKind.Char);
     }

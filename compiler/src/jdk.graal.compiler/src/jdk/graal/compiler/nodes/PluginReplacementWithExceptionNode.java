@@ -35,7 +35,9 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.spi.Replacements;
 
+/** See Javadoc in {@link PluginReplacementNode}. */
 @NodeInfo(nameTemplate = "PluginReplacementWithException/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class PluginReplacementWithExceptionNode extends WithExceptionNode implements PluginReplacementInterface {
     public static final NodeClass<PluginReplacementWithExceptionNode> TYPE = NodeClass.create(PluginReplacementWithExceptionNode.class);
@@ -52,12 +54,12 @@ public final class PluginReplacementWithExceptionNode extends WithExceptionNode 
     }
 
     @Override
-    public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection) {
-        return function.replace(b, injection, stamp, args);
+    public boolean replace(GraphBuilderContext b, Replacements injection) {
+        return function.replace(b, injection, args.toArray(ValueNode.EMPTY_ARRAY));
     }
 
     public interface ReplacementWithExceptionFunction {
-        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, Stamp stamp, NodeInputList<ValueNode> args);
+        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, ValueNode[] args);
     }
 
     @Override

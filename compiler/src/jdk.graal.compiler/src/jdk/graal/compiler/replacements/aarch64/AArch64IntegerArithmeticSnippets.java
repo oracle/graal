@@ -117,7 +117,7 @@ public class AArch64IntegerArithmeticSnippets extends SnippetTemplate.AbstractTe
 
         IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
         boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
-        args.addConst("needsZeroCheck", needsZeroCheck);
+        args.add("needsZeroCheck", needsZeroCheck);
 
         template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }

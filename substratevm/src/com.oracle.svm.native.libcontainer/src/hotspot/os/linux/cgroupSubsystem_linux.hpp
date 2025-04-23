@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,10 +103,19 @@
   log_trace(os, container)(log_string " is: %s", retval);                                 \
 }
 
+
+namespace svm_container {
+
 class CgroupController: public CHeapObj<mtInternal> {
+  protected:
+    char* _cgroup_path;
+    char* _mount_point;
   public:
-    virtual char* subsystem_path() = 0;
+    virtual const char* subsystem_path() = 0;
     virtual bool is_read_only() = 0;
+    const char* cgroup_path() { return _cgroup_path; }
+    const char* mount_point() { return _mount_point; }
+    virtual bool needs_hierarchy_adjustment() { return false; }
 
     /* Read a numerical value as unsigned long
      *
@@ -210,7 +219,12 @@ class CgroupCpuController: public CHeapObj<mtInternal> {
     virtual int cpu_quota() = 0;
     virtual int cpu_period() = 0;
     virtual int cpu_shares() = 0;
+    virtual bool needs_hierarchy_adjustment() = 0;
     virtual bool is_read_only() = 0;
+    virtual const char* subsystem_path() = 0;
+    virtual void set_subsystem_path(const char* cgroup_path) = 0;
+    virtual const char* mount_point() = 0;
+    virtual const char* cgroup_path() = 0;
 };
 
 // Pure virtual class representing version agnostic memory controllers
@@ -227,7 +241,12 @@ class CgroupMemoryController: public CHeapObj<mtInternal> {
 #ifndef NATIVE_IMAGE
     virtual void print_version_specific_info(outputStream* st, julong host_mem) = 0;
 #endif // !NATIVE_IMAGE
+    virtual bool needs_hierarchy_adjustment() = 0;
     virtual bool is_read_only() = 0;
+    virtual const char* subsystem_path() = 0;
+    virtual void set_subsystem_path(const char* cgroup_path) = 0;
+    virtual const char* mount_point() = 0;
+    virtual const char* cgroup_path() = 0;
 };
 
 class CgroupSubsystem: public CHeapObj<mtInternal> {
@@ -320,11 +339,15 @@ class CgroupSubsystemFactory: AllStatic {
     // Determine the cgroup type (version 1 or version 2), given
     // relevant paths to files. Sets 'flags' accordingly.
     static bool determine_type(CgroupInfo* cg_infos,
-                               const char* proc_cgroups,
+                               bool cgroups_v2_enabled,
+                               const char* controllers_file,
                                const char* proc_self_cgroup,
                                const char* proc_self_mountinfo,
                                u1* flags);
     static void cleanup(CgroupInfo* cg_infos);
 };
+
+
+} // namespace svm_container
 
 #endif // CGROUP_SUBSYSTEM_LINUX_HPP

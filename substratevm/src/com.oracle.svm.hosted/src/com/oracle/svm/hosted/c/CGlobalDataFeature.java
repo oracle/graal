@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
@@ -57,6 +58,7 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -84,6 +86,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -93,25 +96,24 @@ public class CGlobalDataFeature implements InternalFeature {
     private final Method getCGlobalDataInfoMethod = ReflectionUtil.lookupMethod(CGlobalDataNonConstantRegistry.class, "getCGlobalDataInfo", CGlobalDataImpl.class);
     private final Field offsetField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "offset");
     private final Field isSymbolReferenceField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "isSymbolReference");
+    private final Field baseHolderPointerField = ReflectionUtil.lookupField(BoxedRelocatedPointer.class, "pointer");
 
     private final CGlobalDataNonConstantRegistry nonConstantRegistry = new CGlobalDataNonConstantRegistry();
 
     private final Map<CGlobalDataImpl<?>, CGlobalDataInfo> map = new ConcurrentHashMap<>();
-    private CGlobalDataInfo cGlobalDataBaseAddress;
     private int totalSize = -1;
 
     public static CGlobalDataFeature singleton() {
         return ImageSingletons.lookup(CGlobalDataFeature.class);
     }
 
-    private boolean isLayouted() {
+    private boolean isLaidOut() {
         return totalSize != -1;
     }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         a.registerObjectReplacer(this::replaceObject);
-        cGlobalDataBaseAddress = registerAsAccessedOrGet(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS);
     }
 
     @Override
@@ -126,33 +128,54 @@ public class CGlobalDataFeature implements InternalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 assert providers.getSnippetReflection() instanceof HostedSnippetReflectionProvider;
-                JavaConstant nonConstantRegistryJavaConstant = providers.getSnippetReflection().forObject(nonConstantRegistry);
                 ValueNode cGlobalDataNode = receiver.get(true);
+                CGlobalDataInfo constantInfo = null;
                 if (cGlobalDataNode.isConstant()) {
                     CGlobalDataImpl<?> data = providers.getSnippetReflection().asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());
-                    CGlobalDataInfo info = CGlobalDataFeature.this.map.get(data);
-                    b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(info));
+                    constantInfo = CGlobalDataFeature.this.map.get(data);
+                }
+
+                if (constantInfo != null && reason != ParsingReason.JITCompilation) {
+                    /* Use a relocation in code to load the location directly */
+                    b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(constantInfo));
                 } else {
-                    ConstantNode registry = ConstantNode.forConstant(nonConstantRegistryJavaConstant, b.getMetaAccess(), b.getGraph());
+                    ValueNode info;
+                    if (constantInfo != null) {
+                        /*
+                         * JIT-compiled code must get the CGlobalData base address from the holder
+                         * object on the image heap because the code can end up in an auxiliary
+                         * image which is loaded in another process with a different base address.
+                         */
+                        JavaConstant infoConstant = providers.getSnippetReflection().forObject(constantInfo);
+                        info = ConstantNode.forConstant(infoConstant, b.getMetaAccess(), b.getGraph());
+                    } else {
+                        // Non-constant CGlobalData must be resolved at runtime through a map.
+                        JavaConstant nonConstantRegistryJavaConstant = providers.getSnippetReflection().forObject(nonConstantRegistry);
+                        ConstantNode registry = ConstantNode.forConstant(nonConstantRegistryJavaConstant, b.getMetaAccess(), b.getGraph());
 
-                    ValueNode info = (ValueNode) b.handleReplacedInvoke(InvokeKind.Virtual, b.getMetaAccess().lookupJavaMethod(getCGlobalDataInfoMethod),
-                                    new ValueNode[]{registry, cGlobalDataNode}, false);
-                    b.pop(info.getStackKind());
-                    info = b.nullCheckedValue(info);
+                        info = (ValueNode) b.handleReplacedInvoke(InvokeKind.Virtual, b.getMetaAccess().lookupJavaMethod(getCGlobalDataInfoMethod),
+                                        new ValueNode[]{registry, cGlobalDataNode}, false);
+                        b.pop(info.getStackKind());
+                        info = b.nullCheckedValue(info);
 
-                    ResolvedJavaType infoType = b.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
-                    if (infoType instanceof AnalysisType) {
-                        ((AnalysisType) infoType).registerAsReachable("registered by " + CGlobalDataFeature.class.getName());
+                        ResolvedJavaType infoType = b.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
+                        if (infoType instanceof AnalysisType aInfoType) {
+                            aInfoType.registerAsReachable("registered by " + CGlobalDataFeature.class.getName());
+                        }
                     }
 
-                    ValueNode offset = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(offsetField)));
-                    CGlobalDataLoadAddressNode baseAddress = b.add(new CGlobalDataLoadAddressNode(cGlobalDataBaseAddress));
+                    JavaConstant baseHolderConstant = providers.getSnippetReflection().forObject(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS);
+                    ConstantNode baseHolder = ConstantNode.forConstant(baseHolderConstant, b.getMetaAccess(), b.getGraph());
+                    ResolvedJavaField holderPointerField = providers.getMetaAccess().lookupJavaField(baseHolderPointerField);
+                    StampPair pointerStamp = StampPair.createSingle(providers.getWordTypes().getWordStamp((ResolvedJavaType) holderPointerField.getType()));
+                    LoadFieldNode baseAddress = b.add(LoadFieldNode.createOverrideStamp(pointerStamp, baseHolder, holderPointerField));
 
-                    /* Both operands should have the same bits size */
+                    /* Both address and offset need to have the same bit width. */
+                    ValueNode offset = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(offsetField)));
                     ValueNode offsetWidened = b.getGraph().addOrUnique(SignExtendNode.create(offset, IntegerStamp.getBits(baseAddress.stamp(NodeView.DEFAULT)), NodeView.DEFAULT));
                     ValueNode address = b.add(new AddNode(baseAddress, offsetWidened));
 
-                    /* Do not dereference the address if CGlobalDataInfo is not a reference */
+                    /* Dereference the address if CGlobalDataInfo is a symbol reference. */
                     ValueNode isSymbolReference = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(isSymbolReferenceField)));
                     LogicNode condition = IntegerEqualsNode.create(isSymbolReference, ConstantNode.forBoolean(false, b.getGraph()), NodeView.DEFAULT);
                     ReadNode readValue = b.add(new ReadNode(b.add(OffsetAddressNode.create(address)), NamedLocationIdentity.ANY_LOCATION,
@@ -187,7 +210,7 @@ public class CGlobalDataFeature implements InternalFeature {
 
     public CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
-        VMError.guarantee(!isLayouted() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");
+        VMError.guarantee(!isLaidOut() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");
         return map.computeIfAbsent((CGlobalDataImpl<?>) obj,
                         o -> {
                             CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data);
@@ -260,7 +283,7 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     private void layout() {
-        assert !isLayouted() : "Already layouted";
+        assert !isLaidOut() : "Already laid out";
         final int wordSize = ConfigurationValues.getTarget().wordSize;
         /*
          * Put larger blobs at the end so that offsets are reasonable (<24bit imm) for smaller
@@ -275,11 +298,11 @@ public class CGlobalDataFeature implements InternalFeature {
                             int nextOffset = currentOffset + info.getSize();
                             return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
                         }, Integer::sum);
-        assert isLayouted();
+        assert isLaidOut();
     }
 
     public int getSize() {
-        assert isLayouted() : "Not layouted yet";
+        assert isLaidOut() : "Not laid out yet";
         return totalSize;
     }
 
@@ -288,7 +311,7 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     public void writeData(RelocatableBuffer buffer, SymbolConsumer createSymbol, SymbolConsumer createSymbolReference) {
-        assert isLayouted() : "Not layouted yet";
+        assert isLaidOut() : "Not laid out yet";
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int start = bufferBytes.position();
         assert IntStream.range(start, start + totalSize).allMatch(i -> bufferBytes.get(i) == 0) : "Buffer must be zero-initialized";

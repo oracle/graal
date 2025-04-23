@@ -269,7 +269,7 @@ public interface EspressoProperties {
 
         Path espressoLibs = context.getEspressoLibs();
 
-        for (ModuleExtension me : ModuleExtension.getAllExtensions(context)) {
+        for (ModuleExtension me : ModuleExtension.getBootExtensions(context)) {
             Path jarPath = espressoLibs.resolve(me.jarName());
             if (Files.isReadable(jarPath)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding " + me.jarName() + " to the boot classpath");

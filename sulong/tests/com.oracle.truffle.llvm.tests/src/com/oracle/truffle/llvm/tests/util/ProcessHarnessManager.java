@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -259,6 +259,20 @@ public class ProcessHarnessManager {
         }
         Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true",
                         "-cp", classpath, "-p", modulepath, "--add-modules", "org.graalvm.polyglot");
+
+        if (ModuleLayer.boot().findModule("org.graalvm.truffle").isPresent()) {
+            /*
+             * ALL-UNNAMED for native methods in
+             * com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput
+             */
+            commandArgs.add("--enable-native-access=org.graalvm.truffle,ALL-UNNAMED");
+        } else {
+            commandArgs.add("--enable-native-access=ALL-UNNAMED");
+        }
+        // GR-59703: Migrate sun.misc.* usages.
+        if (Runtime.version().feature() >= 23) {
+            commandArgs.add("--sun-misc-unsafe-memory-access=allow");
+        }
 
         copyProperty(commandArgs, "polyglot.engine.WarnInterpreterOnly");
         copyProperty(commandArgs, "truffle.nfi.library");

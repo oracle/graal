@@ -33,16 +33,17 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
 
 import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
@@ -61,7 +62,7 @@ class ReflectionProcessor extends AbstractProcessor {
 
     @Override
     @SuppressWarnings("fallthrough")
-    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
+    public void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         if (invalidResult) {
@@ -78,12 +79,16 @@ class ReflectionProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String module = (String) args.get(0);
                 String resource = (String) args.get(1);
-                resourceConfiguration.addGlobPattern(condition, resource, module);
+                if (!advisor.shouldIgnoreResourceLookup(lazyValue(resource), entry)) {
+                    resourceConfiguration.addGlobPattern(condition, resource, module);
+                }
                 return;
             }
-            case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources" -> {
+            case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources", "getEntry" -> {
                 String literal = singleElement(args);
-                resourceConfiguration.addGlobPattern(condition, literal, null);
+                if (!advisor.shouldIgnoreResourceLookup(lazyValue(literal), entry)) {
+                    resourceConfiguration.addGlobPattern(condition, literal, null);
+                }
                 return;
             }
         }
@@ -95,15 +100,15 @@ class ReflectionProcessor extends AbstractProcessor {
             if (isLoadClass) { // different array syntax
                 name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
             }
-            if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass)) &&
-                            !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass)))) {
+            if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass), entry) &&
+                            !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass), entry))) {
                 configuration.getOrCreateType(condition, name);
             }
             return;
         } else if (function.equals("methodTypeDescriptor")) {
             List<String> typeNames = singleElement(args);
             for (String type : typeNames) {
-                if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass))) {
+                if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass), copyWithUniqueEntry(entry, "ignoredDescriptorType", type))) {
                     configuration.getOrCreateType(condition, type);
                 }
             }
@@ -111,7 +116,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         ConfigurationTypeDescriptor clazz = descriptorForClass(entry.get("class"));
         for (String className : clazz.getAllQualifiedJavaNames()) {
-            if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass))) {
+            if (advisor.shouldIgnore(lazyValue(className), lazyValue(callerClass), copyWithUniqueEntry(entry, "ignoredClassName", className))) {
                 return;
             }
         }
@@ -203,8 +208,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
-                if (!clazzOrDeclaringClass.equals(clazz)) {
+                if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
+                    configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
+                }
+                if (accessibility == ConfigurationMemberAccessibility.QUERIED || (!trackReflectionMetadata && !clazzOrDeclaringClass.equals(clazz))) {
                     configuration.getOrCreateType(condition, clazz);
                 }
                 break;
@@ -225,23 +232,26 @@ class ReflectionProcessor extends AbstractProcessor {
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
                 assert clazz.equals(clazzOrDeclaringClass) : "Constructor can only be accessed via declaring class";
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
+                ConfigurationType configurationType = configuration.getOrCreateType(condition, clazzOrDeclaringClass);
+                if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
+                    configurationType.addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
+                }
                 break;
             }
 
             case "getProxyClass": {
                 expectSize(args, 2);
-                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configuration);
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configuration, entry);
                 break;
             }
             case "newProxyInstance": {
                 expectSize(args, 3);
-                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configuration);
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configuration, entry);
                 break;
             }
             case "newMethodHandleProxyInstance": {
                 expectSize(args, 1);
-                addDynamicProxyUnchecked((List<?>) args.get(0), Collections.singletonList("sun.invoke.WrapperInstance"), lazyValue(callerClass), configuration);
+                addDynamicProxyUnchecked((List<?>) args.get(0), Collections.singletonList("sun.invoke.WrapperInstance"), lazyValue(callerClass), configuration, entry);
                 break;
             }
 
@@ -284,7 +294,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("unchecked")
     private static ConfigurationTypeDescriptor descriptorForClass(Object clazz) {
         if (clazz instanceof List<?>) {
-            return new ProxyConfigurationTypeDescriptor(((List<String>) clazz).toArray(String[]::new));
+            return new ProxyConfigurationTypeDescriptor((List<String>) clazz);
         } else {
             return new NamedConfigurationTypeDescriptor((String) clazz);
         }
@@ -299,21 +309,22 @@ class ReflectionProcessor extends AbstractProcessor {
         configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
     }
 
-    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, TypeConfiguration configuration) {
+    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, TypeConfiguration configuration, EconomicMap<String, Object> entry) {
         ConfigurationTypeDescriptor typeDescriptor = descriptorForClass(interfaceList);
         for (String iface : typeDescriptor.getAllQualifiedJavaNames()) {
-            if (advisor.shouldIgnore(lazyValue(iface), callerClass)) {
+            if (advisor.shouldIgnore(lazyValue(iface), callerClass, copyWithUniqueEntry(entry, "ignoredInterface", iface))) {
                 return;
             }
         }
         configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), typeDescriptor);
     }
 
-    private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass, TypeConfiguration configuration) {
+    private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass, TypeConfiguration configuration,
+                    EconomicMap<String, Object> entry) {
         @SuppressWarnings("unchecked")
         List<String> checkedInterfaces = (List<String>) checkedInterfaceList;
         for (String iface : checkedInterfaces) {
-            if (advisor.shouldIgnore(lazyValue(iface), callerClass)) {
+            if (advisor.shouldIgnore(lazyValue(iface), callerClass, copyWithUniqueEntry(entry, "ignoredInterface", iface))) {
                 return;
             }
         }
@@ -325,4 +336,5 @@ class ReflectionProcessor extends AbstractProcessor {
         interfaces.addAll(uncheckedInterfaces);
         configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), descriptorForClass(interfaces));
     }
+
 }

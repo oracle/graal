@@ -30,12 +30,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ThreadFactory;
 
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -63,7 +65,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.serviceprovider.VMSupport;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -77,7 +78,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.vm.ci.services.Services;
 
 public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow, GraalCompiler.RequestedCrashHandler {
 
@@ -128,7 +128,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     @SuppressWarnings("try")
     @Override
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        try (AutoCloseable ignored = VMSupport.getCompilationRequestScope()) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
             return compileMethod(request, true, getGraalRuntime().getOptions());
         } catch (Exception e) {
             return HotSpotCompilationRequestResult.failure(e.toString(), false);
@@ -139,7 +140,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     public CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
         try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
             if (graalRuntime.isShutdown()) {
-                return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), true);
+                return HotSpotCompilationRequestResult.failure("Shutdown entered", true);
             }
 
             ResolvedJavaMethod method = request.getMethod();
@@ -160,10 +161,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             OptionValues options = task.filterOptions(initialOptions);
 
             HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(graalRuntime.getVMConfig().getStore());
-            boolean oneIsolatePerCompilation = Services.IS_IN_NATIVE_IMAGE &&
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            boolean oneIsolatePerCompilation = libgraal != null &&
                             config.getFlag("JVMCIThreadsPerNativeLibraryRuntime", Integer.class, 0) == 1 &&
                             config.getFlag("JVMCICompilerIdleDelay", Integer.class, 1000) == 0;
-            try (CompilationWatchDog w1 = CompilationWatchDog.watch(task.getCompilationIdentifier(), options, oneIsolatePerCompilation, task);
+            ThreadFactory factory = libgraal != null ? HotSpotGraalServiceThread::new : null;
+            try (CompilationWatchDog w1 = CompilationWatchDog.watch(task.getCompilationIdentifier(), options, oneIsolatePerCompilation, task, factory);
                             BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
                             CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(options);) {
                 if (compilationCounters != null) {
@@ -347,6 +350,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
             graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
         }
+        if (graalRuntime.getVMConfig().alwaysSafeConstructors) {
+            graphBuilderConfig = graphBuilderConfig.withAlwaysSafeConstructors();
+        }
         GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
         if (isOSR) {
@@ -365,11 +371,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     // Support for CrashAtThrowsOOME
-    private static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
+    private static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong("OOME_CRASH_DONE", 0);
 
     @Override
     public boolean notifyCrash(OptionValues options, String crashMessage) {
-        if (Services.IS_IN_NATIVE_IMAGE) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
             if (HotSpotGraalCompiler.Options.CrashAtThrowsOOME.getValue(options)) {
                 if (OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
                     // The -Djdk.libgraal.Xmx option should also be employed to make
@@ -383,7 +390,13 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             } else {
                 int crashAtIsFatal = HotSpotGraalCompiler.Options.CrashAtIsFatal.getValue(options);
                 if (crashAtIsFatal != 0) {
-                    VMSupport.fatalError(crashMessage, crashAtIsFatal);
+                    try {
+                        Thread.sleep(crashAtIsFatal);
+                    } catch (InterruptedException e) {
+                        // ignore
+                    }
+                    libgraal.fatalError(crashMessage);
+
                     // If changing this message, update the test for it in mx_vm_gate.py
                     System.out.println("CrashAtIsFatal: no fatalError function pointer installed");
                 }

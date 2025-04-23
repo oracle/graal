@@ -25,12 +25,12 @@
 package com.oracle.svm.core.jfr;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import jdk.graal.compiler.word.Word;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -321,10 +321,10 @@ public final class JfrThreadRepository implements JfrRepository {
             unflushedThreadGroupCount = 0;
 
             JfrBufferAccess.free(threadBuffer);
-            threadBuffer = WordFactory.nullPointer();
+            threadBuffer = Word.nullPointer();
 
             JfrBufferAccess.free(threadGroupBuffer);
-            threadGroupBuffer = WordFactory.nullPointer();
+            threadGroupBuffer = Word.nullPointer();
         }
     }
 }

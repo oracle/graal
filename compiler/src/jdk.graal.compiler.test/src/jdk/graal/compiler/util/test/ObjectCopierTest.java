@@ -25,6 +25,7 @@
 package jdk.graal.compiler.util.test;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,11 +36,11 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.test.SubprocessTest;
 import org.graalvm.collections.EconomicMap;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.util.ObjectCopier;
 
 /**
@@ -172,23 +173,17 @@ public class ObjectCopierTest extends SubprocessTest {
         root.put("singleton2", TestObject.TEST_OBJECT_SINGLETON);
         root.put("singleton2_2", TestObject.TEST_OBJECT_SINGLETON);
 
-        List<Field> externalValues = List.of(ObjectCopier.getField(BaseClass.class, "BASE_SINGLETON"),
+        List<Field> externalValueFields = List.of(ObjectCopier.getField(BaseClass.class, "BASE_SINGLETON"),
                         ObjectCopier.getField(TestObject.class, "TEST_OBJECT_SINGLETON"));
 
-        String encoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValues), root);
-        if (DEBUG) {
-            System.out.printf("encoded:%n%s%n", encoded);
-        }
+        byte[] encoded = encode(externalValueFields, root, "encoded");
         Object decoded = ObjectCopier.decode(encoded, loader);
         if (DEBUG) {
             System.out.printf("root:%n%s%n", root);
             System.out.printf("decoded:%n%s%n", decoded);
         }
-        String reencoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValues), decoded);
-        if (DEBUG) {
-            System.out.printf("reencoded:%n%s%n", reencoded);
-        }
-        Assert.assertEquals(encoded, reencoded);
+        byte[] reencoded = encode(externalValueFields, decoded, "reencoded");
+        Assert.assertArrayEquals(encoded, reencoded);
 
         Map<String, Object> root2 = (Map<String, Object>) ObjectCopier.decode(reencoded, loader);
 
@@ -199,6 +194,15 @@ public class ObjectCopierTest extends SubprocessTest {
         Assert.assertSame(root.get("singleton2"), root2.get("singleton2"));
         Assert.assertSame(root.get("singleton2_2"), root2.get("singleton2_2"));
         Assert.assertSame(root2.get("singleton2"), root2.get("singleton2_2"));
+    }
+
+    private static byte[] encode(List<Field> externalValueFields, Object root, String debugLabel) {
+        PrintStream debugStream = null;
+        if (DEBUG) {
+            debugStream = System.out;
+            debugStream.printf("%s:%n", debugLabel);
+        }
+        return ObjectCopier.encode(new ObjectCopier.Encoder(externalValueFields, debugStream), root);
     }
 
     @Test

@@ -108,13 +108,13 @@ public class LibGraalObject {
     }
 
     /**
-     * Releases {@code handle} in the isolate denoted by {@code isolateThreadId}.
+     * Releases {@code handle} in the isolate denoted by {@code isolateThreadAddress}.
      *
      * @return {@code false} if {@code} is not a valid handle in the isolate
      */
     // Implementation:
-    // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.releaseHandle
-    static native boolean releaseHandle(long isolateThreadId, long handle);
+    // com.oracle.svm.graal.hotspot.libgraal.LibGraalTruffleToLibGraalEntryPoints.releaseHandle
+    static native boolean releaseHandle(long isolateThreadAddress, long handle);
 
     @Override
     public String toString() {

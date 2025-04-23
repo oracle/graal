@@ -222,7 +222,7 @@ public class LIRCompilerBackend {
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
 
             FrameMap frameMap = lirGenRes.getFrameMap();
-            CompilationResultBuilder crb = lirBackend.newCompilationResultBuilder(lirGenRes, frameMap, compilationResult, factory);
+            CompilationResultBuilder crb = lirBackend.newCompilationResultBuilder(lirGenRes, frameMap, compilationResult, factory, entryPointDecorator);
             lirBackend.emitCode(crb, installedCodeOwner, entryPointDecorator);
             if (assumptions != null && !assumptions.isEmpty()) {
                 compilationResult.setAssumptions(assumptions.toArray());

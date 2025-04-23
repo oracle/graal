@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,9 +68,9 @@ public class MathSignumStampTest extends GraalCompilerTest {
     @Test
     public void testFloatSignum() throws InvalidInstalledCodeException {
         for (float f1 : floatValues) {
-            FloatStamp s1 = new FloatStamp(32, f1, f1, !Float.isNaN(f1));
+            FloatStamp s1 = FloatStamp.create(32, f1, f1, !Float.isNaN(f1));
             for (float f2 : floatValues) {
-                FloatStamp s2 = new FloatStamp(32, f2, f2, !Float.isNaN(f2));
+                FloatStamp s2 = FloatStamp.create(32, f2, f2, !Float.isNaN(f2));
                 stampsToBind = new Stamp[]{s1.meet(s2)};
                 InstalledCode code = getCode(getResolvedJavaMethod("floatSignum"), null, true);
                 Assert.assertEquals(floatSignum(f1), (float) code.executeVarargs(f1), 0);
@@ -97,9 +97,9 @@ public class MathSignumStampTest extends GraalCompilerTest {
     @Test
     public void testDoubleSignum() throws InvalidInstalledCodeException {
         for (double d1 : doubleValues) {
-            FloatStamp s1 = new FloatStamp(64, d1, d1, !Double.isNaN(d1));
+            FloatStamp s1 = FloatStamp.create(64, d1, d1, !Double.isNaN(d1));
             for (double d2 : doubleValues) {
-                FloatStamp s2 = new FloatStamp(64, d2, d2, !Double.isNaN(d2));
+                FloatStamp s2 = FloatStamp.create(64, d2, d2, !Double.isNaN(d2));
                 stampsToBind = new Stamp[]{s1.meet(s2)};
                 InstalledCode code = getCode(getResolvedJavaMethod("doubleSignum"), null, true);
                 Assert.assertEquals(doubleSignum(d1), (double) code.executeVarargs(d1), 0);

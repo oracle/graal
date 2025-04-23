@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -33,9 +33,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.security.Permission;
-import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,13 +41,14 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -79,7 +78,6 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOpera
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
-import jdk.internal.module.ServicesCatalog;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -172,7 +170,7 @@ final class Target_java_lang_String {
     @Substitute
     public String intern() {
         String thisStr = SubstrateUtil.cast(this, String.class);
-        return ImageSingletons.lookup(StringInternSupport.class).intern(thisStr);
+        return StringInternSupport.intern(thisStr);
     }
 
     @AnnotateOriginal
@@ -387,36 +385,38 @@ final class Target_java_lang_System {
 
     @Substitute
     private static Properties getProperties() {
-        return SystemPropertiesSupport.singleton().getProperties();
+        return SystemPropertiesSupport.singleton().getCurrentProperties();
     }
 
     @Substitute
     private static void setProperties(Properties props) {
-        SystemPropertiesSupport.singleton().setProperties(props);
+        SystemPropertiesSupport.singleton().setCurrentProperties(props);
     }
 
     @Substitute
     public static String setProperty(String key, String value) {
         checkKey(key);
-        return SystemPropertiesSupport.singleton().setProperty(key, value);
+        return SystemPropertiesSupport.singleton().setCurrentProperty(key, value);
     }
 
     @Substitute
+    @NeverInlineTrivial("Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase")
     private static String getProperty(String key) {
         checkKey(key);
-        return SystemPropertiesSupport.singleton().getProperty(key);
+        return SystemPropertiesSupport.singleton().getCurrentProperty(key);
     }
 
     @Substitute
     public static String clearProperty(String key) {
         checkKey(key);
-        return SystemPropertiesSupport.singleton().clearProperty(key);
+        return SystemPropertiesSupport.singleton().clearCurrentProperty(key);
     }
 
     @Substitute
+    @NeverInlineTrivial("Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase")
     private static String getProperty(String key, String def) {
-        String result = getProperty(key);
-        return result != null ? result : def;
+        checkKey(key);
+        return SystemPropertiesSupport.singleton().getCurrentProperty(key, def);
     }
 
     @Alias
@@ -427,7 +427,7 @@ final class Target_java_lang_System {
      * passed to the image builder.
      */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
-    private static int allowSecurityManager = 1;
+    @TargetElement(onlyWith = JDK21OrEarlier.class) private static int allowSecurityManager = 1;
 
     /**
      * We do not support the {@link SecurityManager} so this method must throw a
@@ -439,10 +439,11 @@ final class Target_java_lang_System {
      */
     @Substitute
     @SuppressWarnings({"removal", "javadoc"})
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static void setSecurityManager(SecurityManager sm) {
         if (sm != null) {
             /* Read the property collected at isolate creation as that is what happens on the JVM */
-            String smp = SystemPropertiesSupport.singleton().getSavedProperties().get("java.security.manager");
+            String smp = SystemPropertiesSupport.singleton().getInitialProperty("java.security.manager");
             if (smp != null && !smp.equals("disallow")) {
                 throw new SecurityException("Setting the SecurityManager is not supported by Native Image");
             } else {
@@ -457,6 +458,13 @@ final class NotAArch64 implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
         return !Platform.includedIn(Platform.AARCH64.class);
+    }
+}
+
+final class IsAMD64 implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return Platform.includedIn(Platform.AMD64.class);
     }
 }
 
@@ -486,6 +494,14 @@ final class Target_java_lang_Math {
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double tan(double a) {
         return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TAN);
+    }
+
+    @Substitute
+    @Uninterruptible(reason = "Must not contain a safepoint.")
+    @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
+    @TargetElement(onlyWith = IsAMD64.class)
+    public static double tanh(double a) {
+        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TANH);
     }
 
     @Substitute
@@ -579,13 +595,13 @@ class ClassValueInitializer implements FieldValueTransformerWithAvailability {
         return map;
     }
 
+    /*
+     * We want to wait to constant fold this value until all possible HotSpot initialization code
+     * has run.
+     */
     @Override
-    public ValueAvailability valueAvailability() {
-        /*
-         * We want to wait to constant fold this value until all possible HotSpot initialization
-         * code has run.
-         */
-        return ValueAvailability.AfterAnalysis;
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isHostedUniverseBuilt();
     }
 }
 
@@ -649,17 +665,17 @@ final class Target_jdk_internal_loader_BootLoader {
 
     @Substitute
     private static Class<?> loadClassOrNull(String name) {
-        return ClassForNameSupport.singleton().forNameOrNull(name, null);
+        return ClassForNameSupport.forNameOrNull(name, null);
     }
 
     @SuppressWarnings("unused")
     @Substitute
     private static Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
-        return ClassForNameSupport.singleton().forNameOrNull(name, null);
+        return ClassForNameSupport.forNameOrNull(name, null);
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "restricted"})
     @Substitute
     private static void loadLibrary(String name) {
         System.loadLibrary(name);
@@ -694,6 +710,7 @@ final class Target_jdk_internal_loader_BootLoader {
 final class Target_jdk_internal_logger_LoggerFinderLoader {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = true)//
+    @TargetElement(onlyWith = JDK21OrEarlier.class)//
     static Permission READ_PERMISSION;
     // Checkstyle: resume
 }
@@ -704,24 +721,7 @@ final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransf
         if (originalValue == null) {
             return null;
         }
-
-        ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
-        List<ClassLoaderValue<?>> clvs = Arrays.asList(
-                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
-                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
-
-        var res = new ConcurrentHashMap<>();
-        for (ClassLoaderValue<?> clv : clvs) {
-            if (clv == null) {
-                throw VMError.shouldNotReachHere("Field must not be null. Please check what changed in the JDK.");
-            }
-            var catalog = original.get(clv);
-            if (catalog != null) {
-                res.put(clv, catalog);
-            }
-        }
-
-        return res;
+        return RuntimeClassLoaderValueSupport.instance().getClassLoaderValueMapForLoader((ClassLoader) receiver);
     }
 }
 

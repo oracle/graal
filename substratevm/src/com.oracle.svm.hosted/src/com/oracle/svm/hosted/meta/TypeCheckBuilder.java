@@ -153,10 +153,11 @@ public final class TypeCheckBuilder {
         VMError.guarantee(result != 0, "Unexpected match of types %s %s", o1, o2);
         return result;
     };
+    private final boolean isClosedTypeWorld;
 
     public static int buildTypeMetadata(HostedUniverse hUniverse, Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
-        var builder = new TypeCheckBuilder(types, objectType, cloneableType, serializableType);
-        if (SubstrateOptions.closedTypeWorld()) {
+        var builder = new TypeCheckBuilder(types, objectType, cloneableType, serializableType, hUniverse.hostVM().isClosedTypeWorld());
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildTypeInformation(hUniverse, 0);
             builder.calculateClosedTypeWorldTypeMetadata();
             return builder.getNumTypeCheckSlots();
@@ -169,7 +170,7 @@ public final class TypeCheckBuilder {
         }
     }
 
-    private TypeCheckBuilder(Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
+    private TypeCheckBuilder(Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType, boolean isClosedTypeWorld) {
         this.allTypes = types;
         this.objectType = objectType;
         this.cloneableType = cloneableType;
@@ -187,6 +188,7 @@ public final class TypeCheckBuilder {
         allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).toList();
 
         heightOrderedTypes = generateHeightOrder(allIncludedRoots, subtypeMap);
+        this.isClosedTypeWorld = isClosedTypeWorld;
     }
 
     private int getNumTypeCheckSlots() {
@@ -463,7 +465,7 @@ public final class TypeCheckBuilder {
             type.subTypes = subtypeMap.get(type).toArray(HostedType.EMPTY_ARRAY);
         }
 
-        DynamicHubSupport.singleton().setMaxTypeId(nextTypeID);
+        DynamicHubSupport.currentLayer().setMaxTypeId(nextTypeID);
 
         /*
          * Search through list in reverse order so that all of a type's subtypes are traversed
@@ -471,6 +473,16 @@ public final class TypeCheckBuilder {
          */
         for (int i = heightOrderedTypes.size() - 1; i >= 0; i--) {
             HostedType type = heightOrderedTypes.get(i);
+
+            if (!type.isLeaf() && !isClosedTypeWorld) {
+                /*
+                 * With an open type world analysis we have to assume that a non-final type can have
+                 * multiple instantiated subtypes.
+                 */
+                type.strengthenStampType = type;
+                type.uniqueConcreteImplementation = null;
+                continue;
+            }
 
             HostedType subtypeStampType = null;
             for (HostedType child : subtypeMap.get(type)) {
@@ -1857,7 +1869,7 @@ public final class TypeCheckBuilder {
         }
     }
 
-    private static class OpenTypeWorldTypeInfo {
+    private static final class OpenTypeWorldTypeInfo {
 
         /**
          * Within {@link com.oracle.svm.core.hub.DynamicHub} typecheck metadata the ids of the

@@ -27,14 +27,14 @@ For the demo, run a "fortune teller" application that simulates the traditional 
     
 2. Change directory to _fortune-demo/fortune-maven_:
     ```bash
-    cd fortune-demo/fortune-maven
+    cd native-image/native-build-tools/maven-plugin
     ```
 
 ## Build a Native Executable with Default Configuration
 
-1. Create a native executable using the [Maven plugin for Native Image](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html){:target="_blank"}:
+1. Create a native executable using the [Maven plugin for Native Image building](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html){:target="_blank"}:
     ```bash
-    mvn -Pnative package
+    ./mvnw -Pnative package
     ```
     The command compiles the project, creates a JAR file with all dependencies, and then generates a native executable, `fortune`, in the _target_ directory.
 
@@ -53,7 +53,7 @@ For the demo, run a "fortune teller" application that simulates the traditional 
 
 Next create a native executable with the size optimization on, giving a different name for the output file to differentiate it from the previous build.
 
-1. Open the _pom.xml_ file. Find the `native-maven-plugin` declaration, and add the following build arguments within the `<configuration>` element. The configuration should look like this:
+1. Open the _pom.xml_ file. Find the `native-maven-plugin` declaration, and notice the following build arguments within the `<configuration>` element:
     ```xml
     <configuration>
         <imageName>fortune-optimized</imageName>
@@ -64,11 +64,11 @@ Next create a native executable with the size optimization on, giving a differen
     </configuration>
     ```
     The `-Os` option enables size optimization. 
-    The option `--emit build-report` generates a build report along with other artifacts in the _target_ directory. 
+    The option `--emit build-report` generates a [Build Report](../BuildReport.md) along with other artifacts in the _target_ directory.
 
 2. Create the second native executable:
     ```bash
-    mvn -Pnative package
+    ./mvnw -Pnative package
     ```
     The command generates an executable file, `fortune-optimized`, in the _target_ directory.
 
@@ -96,9 +96,9 @@ Registering wrong or too many Java types for reflection can also increase the si
 Moreover, build-time initialization, if not used towards a specific goal, can cause large Java objects such as empty caches to be accidentally included in the image heap and, thus, cause bloat in a native executable.
 
 Generally, it is a good idea to check file size, number of embedded resources, or other metrics from time to time, for example, when adding or updating dependencies, or even monitor build metrics frequently.
-For this, you can use the [machine-readable version of the build output](../overview/BuildOutput.md#machine-readable-build-output) or the [build reports for GitHub Actions](https://medium.com/graalvm/native-image-build-reports-and-update-notifications-351aca964a55){:target="_blank"}.
+For this, you can use the [machine-readable version of the build output](../BuildOutput.md#machine-readable-build-output) or the [build reports for GitHub Actions](https://medium.com/graalvm/native-image-build-reports-and-update-notifications-351aca964a55){:target="_blank"}.
 
-There are other Native Image techniques that can positively affect the executable size, besides improving other metrics, for example, [Profile-Guided Optimizations (PGO)](optimize-native-executable-with-pgo.md). 
+There are other Native Image techniques that can positively affect the executable size, besides improving other metrics, for example, [Profile-Guided Optimization (PGO)](optimize-native-executable-with-pgo.md).
 
 ### Related Documentation
 

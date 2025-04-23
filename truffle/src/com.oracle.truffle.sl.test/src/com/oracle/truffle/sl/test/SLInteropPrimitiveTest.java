@@ -50,12 +50,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLInteropPrimitiveTest {
+public class SLInteropPrimitiveTest extends AbstractSLTest {
     private Context context;
 
     @Before
     public void setUp() {
-        context = Context.create("sl");
+        context = newContextBuilder().build();
     }
 
     @After

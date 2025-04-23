@@ -262,7 +262,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      * "Control-flow exception" to indicate that a CPU feature is statically available and no
      * further dynamic feature checks are needed.
      */
-    private static class StaticFeatureException extends Exception {
+    private static final class StaticFeatureException extends Exception {
         static final long serialVersionUID = -1;
     }
 
@@ -490,7 +490,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             if (SubstrateUtil.HOSTED) {
                 /*
                  * AOT compilation during image generation happens before the image heap objects are
-                 * layouted. So the offset of the constant is not known yet during compilation time,
+                 * laid out. So the offset of the constant is not known yet during compilation time,
                  * and instead needs to be patched in later. We annotate the machine code with the
                  * constant that needs to be patched in.
                  */

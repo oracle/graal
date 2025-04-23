@@ -208,7 +208,7 @@ public class FrameInfoDecoder {
 
     static final HeapBasedValueInfoAllocator HeapBasedValueInfoAllocator = new HeapBasedValueInfoAllocator();
 
-    private static class CompressedFrameDecoderHelper {
+    private static final class CompressedFrameDecoderHelper {
         /**
          * Differentiates between compressed and uncompressed frame slices. Uncompressed frame
          * slices start with {@link #UNCOMPRESSED_FRAME_SLICE_MARKER}.
@@ -545,7 +545,7 @@ public class FrameInfoDecoder {
         return (encodedBci & ENCODED_BCI_DURING_CALL_MASK) != 0;
     }
 
-    protected static boolean decodeRethrowException(long encodedBci) {
+    public static boolean decodeRethrowException(long encodedBci) {
         assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER : encodedBci;
         return (encodedBci & ENCODED_BCI_RETHROW_EXCEPTION_MASK) != 0;
     }

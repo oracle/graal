@@ -9,7 +9,7 @@ redirect_from:
 
 # Security Guide
 
-This security guide provides developers and embedders with information on the security model and features of GraalVM for developers and embedders who seek to build a secure application on top of it.
+This security guide provides information on the security model and features of GraalVM for developers and embedders who seek to build a secure application on top of it.
 It assumes that readers are familiar with the GraalVM architecture.
 This guide does not replace but rather supplements the Java security documentation such as the [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) with aspects unique to GraalVM.
 
@@ -25,20 +25,20 @@ They may further open network sockets to allow debug clients to connect.
 
 Experimental features in GraalVM are not for production use and may have security limitations not covered in the Security Guide.
 
-GraalVM enables execution of untrusted code in an appropriately configured polyglot execution context (see [Polyglot Sandboxing](polyglot-sandbox.md)).
+GraalVM enables execution of untrusted code in an appropriately configured polyglot execution context (see [Sandboxing](polyglot-sandbox.md)).
 
 We appreciate reports of bugs that break the security model via the process
 outlined in the [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
 
-## Polyglot Languages
+## Graal Languages
 
-For every Polyglot language shipped with GraalVM, a launcher, for example, an interactive shell, is provided.
+Every language runtime, generally available with a GraalVM release, provides a launcher, for example, an interactive shell.
 These launchers behave in the same way and come with the same security guarantees as their "original" counterparts.
 
-### Polyglot Sandboxing
+### Sandboxing
 
-Polyglot sandboxing can establish a security boundary between privileged host code and unprivileged guest code.
-For further information please refer to the [Polyglot Sandboxing guide](polyglot-sandbox.md).
+Sandboxing can establish a security boundary between privileged host code and unprivileged guest code, facilitated through the [Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
+For further information please refer to the [Sandboxing documentation](polyglot-sandbox.md).
 
 ### ScriptEngine Compatibility
 
@@ -58,7 +58,7 @@ In managed mode, all access to unmanaged code including the operating system is 
 * Regarding type safety, it is not possible to reinterpret a data pointer into a function pointer and execute arbitrary instructions (since these are distinct pointer types for LLVM runtime).
 * System calls are intercepted and routed to the corresponding Truffle APIs. For example, file IO is mapped to the Truffle `FileSystem` API.
 The set of currently supported system calls is very limited&mdash;only syscalls that can safely be mapped to the Truffle API level are available. Since LLVM Runtime in managed mode always runs bitcode compiled for Linux/x86, it only needs to implement system calls for this platform.
-* All dependent libraries are executed in managed mode as well, removing all references to natively executed system libraries. This includes libraries that are provided by the LLVM Runtime, such as muslibc.
+* All dependent libraries are executed in managed mode as well, removing all references to natively executed system libraries. This includes libraries that are provided by the LLVM Runtime, such as `muslibc`.
 
 Managed mode can be selected when creating a context `(Context.create())` or when calling the `bin/lli` binary by specifying the `--llvm.managed` option. A "managed" context will adhere to any restrictions (for example, `allowIO`) passed during context creation and does not need the `allowNativeAccess` privilege.
 
@@ -74,7 +74,7 @@ GraalVM does not support untrusted code execution in Java.
 
 ## GraalVM Community Edition Downgrade
 
-Polyglot sandboxing is not available in GraalVM Community Edition.
+Sandboxing is not available in GraalVM Community Edition.
 Managed execution of native code is not available with GraalVM Community Edition.
 
 When downgrading to GraalVM Community Edition, native code execution is only possible with the `allowNativeAccess` privilege.
@@ -82,5 +82,5 @@ This also applies to languages implemented with Truffle that allow for native co
 
 ### Related Documentation
 
-- [Polyglot Sandboxing](polyglot-sandbox.md)
+- [Sandboxing](polyglot-sandbox.md)
 - [Security Considerations in Native Image](native-image.md)

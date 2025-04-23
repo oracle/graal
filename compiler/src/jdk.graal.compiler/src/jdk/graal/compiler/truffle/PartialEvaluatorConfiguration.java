@@ -24,12 +24,14 @@
  */
 package jdk.graal.compiler.truffle;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
 import jdk.vm.ci.code.Architecture;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 
+@LibGraalService
 public interface PartialEvaluatorConfiguration {
     /**
      * Name of this partial-evaluator configuration.

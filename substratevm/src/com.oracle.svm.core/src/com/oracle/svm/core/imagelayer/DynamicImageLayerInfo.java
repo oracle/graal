@@ -24,14 +24,19 @@
  */
 package com.oracle.svm.core.imagelayer;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.SharedMethod;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class DynamicImageLayerInfo {
-    public final int layerNumber;
+    public static final int CREMA_LAYER_ID = Byte.MAX_VALUE;
+
+    private final int layerNumber;
     public final int nextLayerNumber;
     public final int numLayers;
 
@@ -45,8 +50,19 @@ public abstract class DynamicImageLayerInfo {
         return ImageSingletons.lookup(DynamicImageLayerInfo.class);
     }
 
+    public record PriorLayerMethodLocation(CGlobalDataInfo base, int offset) {
+    }
+
     /**
      * Returns a (Base, Offset) pair which can be used to call a method defined in a prior layer.
      */
-    public abstract Pair<CGlobalDataInfo, Integer> getPriorLayerMethodLocation(SharedMethod method);
+    public abstract PriorLayerMethodLocation getPriorLayerMethodLocation(SharedMethod method);
+
+    public static int getCurrentLayerNumber() {
+        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
+            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        } else {
+            return singleton().layerNumber;
+        }
+    }
 }

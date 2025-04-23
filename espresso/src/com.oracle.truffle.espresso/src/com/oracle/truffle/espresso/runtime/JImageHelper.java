@@ -20,10 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 public interface JImageHelper {
     void close();

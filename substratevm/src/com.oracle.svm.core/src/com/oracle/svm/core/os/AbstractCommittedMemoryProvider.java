@@ -28,18 +28,23 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
-import static org.graalvm.word.WordFactory.nullPointer;
+import static jdk.graal.compiler.word.Word.nullPointer;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Uninterruptible(reason = "Still being initialized.")
@@ -71,12 +76,12 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
 
     @Override
     public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, true);
+        return allocate(nbytes, alignment, true, NmtCategory.Code);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        Pointer reserved = WordFactory.nullPointer();
+    protected Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable, NmtCategory nmtCategory) {
+        Pointer reserved = Word.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
             reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
             if (reserved.isNull()) {
@@ -95,41 +100,39 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             return nullPointer();
         }
         assert reserved.isNull() || reserved.equal(committed);
-        tracker.track(size);
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackReserve(size, nmtCategory);
+            NativeMemoryTracking.singleton().trackCommit(size, nmtCategory);
+        }
         return committed;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes);
+        free(start, nbytes, NmtCategory.Code);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void free(PointerBase start, UnsignedWord nbytes) {
-        if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
-            tracker.untrack(nbytes);
+    protected static void free(PointerBase start, UnsignedWord nbytes, NmtCategory nmtCategory) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackUncommit(nbytes, nmtCategory);
+            NativeMemoryTracking.singleton().trackFree(nbytes, nmtCategory);
         }
+
+        int result = VirtualMemoryProvider.get().free(start, nbytes);
+        VMError.guarantee(result == 0, "Error while freeing virtual memory.");
     }
 
-    private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
-
-    public static class VirtualMemoryTracker {
-
-        private UnsignedWord totalAllocated;
-
-        public VirtualMemoryTracker() {
-            this.totalAllocated = WordFactory.zero();
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void track(UnsignedWord size) {
-            totalAllocated = totalAllocated.add(size);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void untrack(UnsignedWord size) {
-            totalAllocated = totalAllocated.subtract(size);
-        }
+    @Override
+    public UnsignedWord getCollectedHeapAddressSpaceSize() {
+        /* Only a part of the address space is available for the collected Java heap. */
+        UnsignedWord reservedAddressSpace = getReservedAddressSpaceSize();
+        UnsignedWord imageHeapSize = Heap.getHeap().getImageHeapReservedBytes();
+        assert reservedAddressSpace.aboveThan(imageHeapSize);
+        return reservedAddressSpace.subtract(imageHeapSize);
     }
+
+    protected abstract UnsignedWord getReservedAddressSpaceSize();
 }

@@ -44,6 +44,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class UserError {
 
     /**
+     * Stop compilation immediately and report the message to the user.
+     *
+     * @param format format string (must not start with a lowercase letter)
+     * @param args arguments for the format string that are {@link #formatArguments(Object...)
+     *            preprocessed} before being sent to {@link String#format(String, Object...)}
+     */
+    public static UserException abort(String format, Object... args) {
+        throw new UserException(String.format(format, formatArguments(args)));
+    }
+
+    /**
      * UserException type for all errors that should be reported to the SVM users.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -72,17 +83,6 @@ public class UserError {
         public Iterable<String> getMessages() {
             return messages;
         }
-    }
-
-    /**
-     * Stop compilation immediately and report the message to the user.
-     *
-     * @param format format string (must not start with a lowercase letter)
-     * @param args arguments for the format string that are {@link #formatArguments(Object...)
-     *            preprocessed} before being sent to {@link String#format(String, Object...)}
-     */
-    public static UserException abort(String format, Object... args) {
-        throw new UserException(String.format(format, formatArguments(args)));
     }
 
     /**

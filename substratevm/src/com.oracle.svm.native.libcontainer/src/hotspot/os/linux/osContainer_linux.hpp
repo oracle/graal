@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,9 @@
 
 // 20ms timeout between re-reads of memory limit and _active_processor_count.
 #define OSCONTAINER_CACHE_TIMEOUT (NANOSECS_PER_SEC/50)
+
+
+namespace svm_container {
 
 class OSContainer: AllStatic {
 
@@ -79,5 +82,8 @@ class OSContainer: AllStatic {
 inline bool OSContainer::is_containerized() {
   return _is_containerized;
 }
+
+
+} // namespace svm_container
 
 #endif // OS_LINUX_OSCONTAINER_LINUX_HPP

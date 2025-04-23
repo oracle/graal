@@ -41,17 +41,17 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class EspressoScope {
 
-    public static Object createVariables(Local[] liveLocals, Frame frame, Symbol<Symbol.Name> scopeName) {
+    public static Object createVariables(Local[] liveLocals, Frame frame, Symbol<Name> scopeName) {
         int slotCount = liveLocals.length;
         Map<String, FrameSlotInfo> slotsMap;
         Map<String, FrameSlotInfo> identifiersMap;
@@ -62,7 +62,7 @@ public final class EspressoScope {
             int slot = 0;
             String identifier = "0";
             Local local = liveLocals[0];
-            FrameSlotInfo frameSlotInfo = new FrameSlotInfo(slot, Types.getJavaKind(local.getType().value()));
+            FrameSlotInfo frameSlotInfo = new FrameSlotInfo(slot, local.getJavaKind());
             slotsMap = Collections.singletonMap(identifier, frameSlotInfo);
             identifiersMap = Collections.singletonMap(local.getNameAsString(), frameSlotInfo);
         } else {
@@ -71,7 +71,7 @@ public final class EspressoScope {
             for (Local local : liveLocals) {
                 String slotNumber = String.valueOf(local.getSlot());
                 String localName = local.getNameAsString();
-                FrameSlotInfo frameSlotInfo = new FrameSlotInfo(local.getSlot(), Types.getJavaKind(local.getType().value()));
+                FrameSlotInfo frameSlotInfo = new FrameSlotInfo(local.getSlot(), local.getJavaKind());
                 slotsMap.put(slotNumber, frameSlotInfo);
                 identifiersMap.put(localName, frameSlotInfo);
             }
@@ -88,9 +88,9 @@ public final class EspressoScope {
         final Map<String, FrameSlotInfo> slots;
         final Map<String, FrameSlotInfo> identifiers;
         final Frame frame;
-        final Symbol<Symbol.Name> scopeName;
+        final Symbol<Name> scopeName;
 
-        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame, Symbol<Symbol.Name> scopeName) {
+        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame, Symbol<Name> scopeName) {
             this.slots = slots;
             this.identifiers = identifiers;
             this.frame = frame;

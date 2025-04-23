@@ -49,6 +49,16 @@
         "parameterTypes": [
           "int"
         ]
+      },
+      {
+        "name": "method2",
+        "parameterTypes": []
+      }
+    ],
+    "queriedMethods": [
+      {
+        "name": "method3",
+        "parameterTypes": []
       }
     ]
   }

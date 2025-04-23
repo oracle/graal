@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,8 @@
   #define JNIIMPORT
 #endif
 
-#define JNICALL
+
+namespace svm_container {
 
 typedef int jint;
 #ifdef _LP64
@@ -62,5 +63,8 @@ typedef long long jlong;
 #endif
 
 typedef signed char jbyte;
+
+
+} // namespace svm_container
 
 #endif /* !_JAVASOFT_JNI_MD_H_ */

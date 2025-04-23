@@ -24,11 +24,14 @@
  */
 package jdk.graal.compiler.debug;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
+
 import java.io.PrintStream;
 
 /**
  * Provides a {@link PrintStream} that writes to the underlying log stream of the VM.
  */
+@LibGraalService
 public interface TTYStreamProvider {
     PrintStream getStream();
 }

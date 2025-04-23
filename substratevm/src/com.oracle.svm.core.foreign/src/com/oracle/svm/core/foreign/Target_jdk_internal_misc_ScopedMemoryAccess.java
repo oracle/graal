@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,15 +31,16 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.foreign.MemorySessionImpl;
 
 /**
  * Gracefully handle unsupported features.
- * <p>
- * It seems like this could be easily supported once thread-local handshakes are supported.
  */
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignFunctionsEnabled.class)
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess-bin.java.template")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     static void registerNatives() {
@@ -80,6 +81,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = {JDKLatest.class, ForeignFunctionsEnabled.class})
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = {JDKLatest.class, ForeignAPIPredicates.Enabled.class})
 final class Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError {
 }

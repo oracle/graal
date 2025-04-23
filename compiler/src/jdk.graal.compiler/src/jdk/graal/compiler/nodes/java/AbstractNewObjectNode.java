@@ -80,4 +80,7 @@ public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNod
         this.emitMemoryBarrier = false;
     }
 
+    public void setEmitMemoryBarrier(boolean emitMemoryBarrier) {
+        this.emitMemoryBarrier = emitMemoryBarrier;
+    }
 }

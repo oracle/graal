@@ -33,7 +33,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDKLatest;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Substitution to initialize {@link #catalog} at build time.
@@ -75,16 +74,14 @@ final class Target_javax_xml_parsers_SAXParser {
 }
 
 final class JdkCatalogSupplier implements FieldValueTransformer {
+
+    /**
+     * Verifies that {@link Target_jdk_xml_internal_JdkCatalog#catalog} is non-null. The
+     * initialization is triggered in
+     * {@code com.oracle.svm.hosted.xml.JavaxXmlClassAndResourcesLoaderFeature#initializeJdkCatalog()}
+     */
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        // Ensure the field is initialized.
-        Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.XMLSecurityManager");
-        // The constructor call prepareCatalog which will call JdkCatalog#init.
-        ReflectionUtil.newInstance(xmlSecurityManager);
-
-        Class<?> jdkCatalogClass = ReflectionUtil.lookupClass(false, "jdk.xml.internal.JdkCatalog");
-        Object catalog = ReflectionUtil.readStaticField(jdkCatalogClass, "catalog");
-
-        return Objects.requireNonNull(catalog);
+        return Objects.requireNonNull(originalValue, "JdkCatalog initialization failed");
     }
 }

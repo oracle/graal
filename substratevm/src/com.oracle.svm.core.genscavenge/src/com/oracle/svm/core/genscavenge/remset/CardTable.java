@@ -28,7 +28,6 @@ import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -81,7 +80,7 @@ final class CardTable {
 
     static final byte DIRTY_ENTRY = 0;
     static final byte CLEAN_ENTRY = 1;
-    static final UnsignedWord CLEAN_WORD = WordFactory.unsigned(0x0101010101010101L);
+    static final UnsignedWord CLEAN_WORD = Word.unsigned(0x0101010101010101L);
 
     private static final CardTableVerificationVisitor CARD_TABLE_VERIFICATION_VISITOR = new CardTableVerificationVisitor();
 
@@ -148,7 +147,7 @@ final class CardTable {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord indexLimitForMemorySize(UnsignedWord memorySize) {
-        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
+        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, Word.unsigned(BYTES_COVERED_BY_ENTRY));
         return CardTable.memoryOffsetToIndex(roundedMemory);
     }
 
@@ -221,7 +220,7 @@ final class CardTable {
         return true;
     }
 
-    private static class CardTableVerificationVisitor implements ObjectReferenceVisitor {
+    private static final class CardTableVerificationVisitor implements ObjectReferenceVisitor {
         private Object parentObject;
         private Pointer cardTableStart;
         private Pointer objectsStart;
@@ -238,8 +237,8 @@ final class CardTable {
 
         public void reset() {
             this.parentObject = null;
-            this.cardTableStart = WordFactory.nullPointer();
-            this.objectsStart = WordFactory.nullPointer();
+            this.cardTableStart = Word.nullPointer();
+            this.objectsStart = Word.nullPointer();
             this.success = false;
         }
 

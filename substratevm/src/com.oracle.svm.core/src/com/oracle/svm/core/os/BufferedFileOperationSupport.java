@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -44,6 +43,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFileOperationSupportHolder;
@@ -103,18 +103,18 @@ public class BufferedFileOperationSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public BufferedFile allocate(RawFileDescriptor fd, NmtCategory nmtCategory) {
         if (!rawFiles().isValid(fd)) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         long filePosition = rawFiles().position(fd);
         if (filePosition < 0) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         /* Use a single allocation for the struct and the corresponding buffer. */
-        UnsignedWord totalSize = SizeOf.unsigned(BufferedFile.class).add(WordFactory.unsigned(BUFFER_SIZE));
+        UnsignedWord totalSize = SizeOf.unsigned(BufferedFile.class).add(Word.unsigned(BUFFER_SIZE));
         BufferedFile result = NullableNativeMemory.malloc(totalSize, nmtCategory);
         if (result.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         result.setFileDescriptor(fd);
@@ -145,7 +145,7 @@ public class BufferedFileOperationSupport {
             return true;
         }
 
-        boolean success = rawFiles().write(f.getFileDescriptor(), getBufferStart(f), WordFactory.unsigned(unflushed));
+        boolean success = rawFiles().write(f.getFileDescriptor(), getBufferStart(f), Word.unsigned(unflushed));
         if (success) {
             f.setBufferPos(getBufferStart(f));
             f.setFilePosition(f.getFilePosition() + unflushed);
@@ -220,7 +220,7 @@ public class BufferedFileOperationSupport {
         DynamicHub hub = KnownIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
         Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
-        return write(f, dataPtr, WordFactory.unsigned(data.length));
+        return write(f, dataPtr, Word.unsigned(data.length));
     }
 
     /**
@@ -344,6 +344,11 @@ public class BufferedFileOperationSupport {
         return writeLong(f, Double.doubleToLongBits(v));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean writeUTF8(BufferedFile f, String string) {
+        return writeUTF8(f, string, null);
+    }
+
     /**
      * Writes the String characters encoded as UTF8 to the current file position and advances the
      * file position.
@@ -351,10 +356,14 @@ public class BufferedFileOperationSupport {
      * @return true if the data was written, false otherwise.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean writeUTF8(BufferedFile f, String string) {
+    public boolean writeUTF8(BufferedFile f, String string, CharReplacer replacer) {
         boolean success = true;
         for (int index = 0; index < string.length() && success; index++) {
-            success &= writeUTF8(f, UninterruptibleUtils.String.charAt(string, index));
+            char ch = UninterruptibleUtils.String.charAt(string, index);
+            if (replacer != null) {
+                ch = replacer.replace(ch);
+            }
+            success &= writeUTF8(f, ch);
         }
         return success;
     }

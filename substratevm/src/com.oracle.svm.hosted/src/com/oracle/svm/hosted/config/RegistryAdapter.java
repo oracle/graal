@@ -30,32 +30,33 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
-import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
+import com.oracle.svm.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.TypeResult;
 
 public class RegistryAdapter implements ReflectionConfigurationParserDelegate<ConfigurationCondition, Class<?>> {
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
-    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
+    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
+                    ImageClassLoader classLoader) {
         if (registry instanceof RuntimeReflectionSupport) {
-            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, classLoader);
+            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, serializationSupport, classLoader);
         } else {
             return new RegistryAdapter(registry, classLoader);
         }
@@ -114,7 +115,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
         String typeName = typeDescriptor.toString();
-        List<TypeResult<Class<?>>> interfaceResults = Arrays.stream(typeDescriptor.interfaceNames()).map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
+        List<TypeResult<Class<?>>> interfaceResults = typeDescriptor.interfaceNames().stream().map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
         List<Class<?>> interfaces = new ArrayList<>();
         for (TypeResult<Class<?>> intf : interfaceResults) {
             if (!intf.isPresent()) {
@@ -288,6 +289,11 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     private void registerExecutable(ConfigurationCondition condition, boolean queriedOnly, Executable... executable) {
         registry.register(condition, queriedOnly, executable);
+    }
+
+    @Override
+    public void registerAsSerializable(ConfigurationCondition condition, Class<?> clazz) {
+        /* Serializable has no effect on JNI registrations */
     }
 
     @Override

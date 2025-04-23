@@ -25,7 +25,6 @@
 package com.oracle.svm.core.option;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -48,7 +47,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
 
 /**
  * Option parser to be used by an application that runs on Substrate VM. The list of options that
@@ -107,7 +105,7 @@ public final class RuntimeOptionParser {
     }
 
     /** All reachable options. */
-    public EconomicMap<String, OptionDescriptor> options = ImageHeapMap.create();
+    public EconomicMap<String, OptionDescriptor> options = ImageHeapMap.create("options");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addDescriptor(OptionDescriptor optionDescriptor) {
@@ -216,20 +214,6 @@ public final class RuntimeOptionParser {
             }
             log.newline();
         }
-    }
-
-    public OptionKey<?> lookupOption(String name, Collection<OptionDescriptor> fuzzyMatches) {
-        OptionDescriptor desc = options.get(name);
-        OptionKey<?> option;
-        if (desc == null) {
-            if (fuzzyMatches != null) {
-                OptionsParser.collectFuzzyMatches(options.getValues(), name, fuzzyMatches);
-            }
-            option = null;
-        } else {
-            option = desc.getOptionKey();
-        }
-        return option;
     }
 
     public Iterable<OptionDescriptor> getDescriptors() {

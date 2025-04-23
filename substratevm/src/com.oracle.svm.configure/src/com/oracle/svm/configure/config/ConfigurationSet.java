@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -36,10 +36,10 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -71,9 +71,10 @@ public class ConfigurationSet {
                         other.predefinedClassesConfiguration.copy());
     }
 
+    @SuppressWarnings("unchecked")
     public ConfigurationSet() {
         this(new TypeConfiguration(REFLECTION_KEY), new TypeConfiguration(JNI_KEY), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
-                        new PredefinedClassesConfiguration(new Path[0], hash -> false));
+                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false));
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
@@ -148,7 +149,7 @@ public class ConfigurationSet {
             case PREDEFINED_CLASSES_NAME:
                 return (T) predefinedClassesConfiguration;
             default:
-                throw VMError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
+                throw new IllegalArgumentException("Unsupported configuration in configuration container: " + configurationFile);
         }
     }
 
@@ -161,8 +162,8 @@ public class ConfigurationSet {
         ConfigurationFile reachabilityMetadataFile = ConfigurationFile.REACHABILITY_METADATA;
         for (Path path : configFilePathResolver.apply(reachabilityMetadataFile)) {
             writtenFiles.add(path);
-            JsonWriter writer = new JsonWriter(path);
-            writer.appendObjectStart().indent().newline();
+            JsonWriter writer = new JsonPrettyWriter(path);
+            writer.appendObjectStart();
             boolean first = true;
             for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
                 JsonPrintable configuration = configSupplier.apply(configFile);
@@ -178,25 +179,32 @@ public class ConfigurationSet {
                         }
                     }
                 } else {
+                    if (configuration instanceof ConfigurationBase<?, ?> configurationBase && configurationBase.isEmpty()) {
+                        /* Do not add an empty field when there are no entries */
+                        continue;
+                    }
                     if (first) {
                         first = false;
                     } else {
-                        writer.appendSeparator().newline();
+                        writer.appendSeparator();
                     }
-                    if (!configFile.equals(ConfigurationFile.RESOURCES)) {
-                        /*
-                         * Resources are printed at the top level of the object, not in a defined
-                         * field
-                         */
-                        writer.quote(configFile.getFieldName()).appendFieldSeparator();
-                    }
-                    configSupplier.apply(configFile).printJson(writer);
+                    printConfigurationToCombinedFile(configSupplier.apply(configFile), configFile, writer);
                 }
             }
-            writer.unindent().newline().appendObjectEnd();
+            writer.appendObjectEnd();
             writer.close();
         }
         return writtenFiles;
+    }
+
+    public static void printConfigurationToCombinedFile(JsonPrintable config, ConfigurationFile configFile, JsonWriter writer) throws IOException {
+        if (!configFile.equals(ConfigurationFile.RESOURCES)) {
+            /*
+             * Resources are printed at the top level of the object, not in a defined field
+             */
+            writer.quote(configFile.getFieldName()).appendFieldSeparator();
+        }
+        config.printJson(writer);
     }
 
     public List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver) throws IOException {

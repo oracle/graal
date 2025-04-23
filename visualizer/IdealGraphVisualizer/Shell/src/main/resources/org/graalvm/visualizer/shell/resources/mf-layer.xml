@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.2//EN" "http://www.netbeans.org/dtds/filesystem-1_2.dtd">
+<filesystem>
+    <folder name="scripts">
+    </folder>
+    <folder name="Templates">
+        <folder name="Scripts">
+            <attr name="displayName" bundlevalue="org.graalvm.visualizer.shell.resources.Bundle#Templates/Scripts"/>
+            <file name="JSFilter.js" url="jsShell.js">
+                <attr name="SystemFileSystem.localizingBundle"
+                      stringvalue="org.graalvm.visualizer.shell.resources.Bundle"/>
+                <attr name="template" boolvalue="true"/>
+                <attr name="igv.diagramScript" boolvalue="true"/>
+                <!-- Find the template with Execute shell -->
+                <attr name="scrapTemplate" boolvalue="true"/>
+            </file>
+        </folder>
+    </folder>
+    <folder name="Editors">
+        <folder name="Keybindings">
+            <folder name="NetBeans">
+                <folder name="Defaults">
+                    <file name="igvshell_keybindings.xml" url="igvshell_keybindings.xml"/>
+                </folder>
+            </folder>
+        </folder>
+        <folder name="text">
+            <folder name="plain">
+                <folder name="Actions">
+                    <file name="execute-script.instance">
+                        <attr name="Name" stringvalue="execute-script"/>
+                        <attr name="helpID" stringvalue="execute-script"/>
+                        <attr name="iconBase" stringvalue="org/graalvm/visualizer/shell/resources/execute.png"/>
+                        <attr name="instanceCreate"
+                              methodvalue="org.netbeans.modules.editor.lib2.actions.WrapperEditorAction.create"/>
+                    </file>
+                    <file name="reset-script-session.instance">
+                        <attr name="Name" stringvalue="reset-script-session"/>
+                        <attr name="WrapperActionKey" boolvalue="true"/>
+                        <attr name="helpID" stringvalue="reset-script-session"/>
+                        <attr name="iconBase" stringvalue="org/graalvm/visualizer/shell/resources/resetSession.png"/>
+                        <attr name="instanceCreate"
+                              methodvalue="org.netbeans.modules.editor.lib2.actions.WrapperEditorAction.create"/>
+                    </file>
+                </folder>
+                <folder name="Toolbars">
+                    <folder name="Default">
+                        <file name="execute-script.shadow">
+                            <attr name="originalFile" stringvalue="Editors/Actions/execute-script.instance"/>
+                            <attr name="position" intvalue="100"/>
+                        </file>
+                        <file name="reset-script-session.shadow">
+                            <attr name="originalFile" stringvalue="Editors/Actions/reset-script-session.instance"/>
+                            <attr name="position" intvalue="140"/>
+                        </file>
+                    </folder>
+                </folder>
+            </folder>
+            <folder name="x-dialog-binding">
+                <folder name="Toolbars">
+                    <folder name="Default"/>
+                </folder>
+            </folder>
+        </folder>
+    </folder>
+    <file name="igv-shell"/>
+    <folder name="Preferences">
+        <folder name="org">
+            <folder name="netbeans">
+                <folder name="modules">
+                    <folder name="javascript2">
+                        <folder name="editor">
+                            <file name="org.netbeans.modules.javascript2.editor.hints.ErrorCheckingSupport.properties"
+                                  url="errorChecking.properties"/>
+                        </folder>
+                    </folder>
+                </folder>
+            </folder>
+        </folder>
+    </folder>
+
+    <folder name="NodeGraphViewer">
+        <folder name="Actions">
+            <file name="org-graalvm-visualizer-shell-ResetDiagramToolbar-separatorBefore.instance">
+                <!--org.graalvm.visualizer.shell.actions.ResetDiagramToolbarAction-->
+                <attr name="instanceCreate" newvalue="javax.swing.JSeparator"/>
+                <attr intvalue="10099" name="position"/>
+            </file>
+            <file name="org-graalvm-visualizer-shell-actions-ResetDiagramToolbarAction.instance">
+                <attr name="position" intvalue="10100"/>
+            </file>
+        </folder>
+    </folder>
+</filesystem>

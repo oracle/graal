@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.Buffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -63,11 +64,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.source.Source;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.home.Version;
@@ -168,8 +171,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
     public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
     public static final int MIN_JDK_VERSION = 21;
-    public static final int MAX_JDK_VERSION = 25;
-    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 1);
+    public static final int MAX_JDK_VERSION = 29;
+    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
 
     /**
      * Used only to reset state for native image compilation.
@@ -405,6 +408,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         OptimizedAssumption.class,
                         HostCompilerDirectives.class,
                         CompilerDirectives.class,
+                        CompilerDirectives.TruffleBoundary.class,
+                        HostCompilerDirectives.BytecodeInterpreterSwitch.class,
+                        HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class,
+                        HostCompilerDirectives.InliningCutoff.class,
                         InlineDecision.class,
                         CompilerAsserts.class,
                         ExactMath.class,
@@ -804,7 +811,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             return capability.cast(tvmci);
         } else if (capability == com.oracle.truffle.api.object.LayoutFactory.class) {
             com.oracle.truffle.api.object.LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            ModuleUtil.exportTo(layoutFactory.getClass());
+            ModulesSupport.exportTruffleRuntimeTo(layoutFactory.getClass());
             return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
@@ -903,6 +910,16 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     public abstract BackgroundCompileQueue getCompileQueue();
+
+    @SuppressWarnings("unused")
+    protected void onEngineCreated(EngineData engine) {
+    }
+
+    private final AtomicLong stoppedCompilationTime = new AtomicLong(0);
+
+    public final AtomicLong stoppedCompilationTime() {
+        return stoppedCompilationTime;
+    }
 
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
@@ -1271,7 +1288,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 if (target instanceof OptimizedCallTarget) {
                     OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
                     if (callTarget.isSplit()) {
-                        builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
+                        builder.append(" <split-").append(callTarget.id).append(">");
                     }
                 }
 
@@ -1282,9 +1299,13 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
 
         private static String formatPath(SourceSection sourceSection) {
-            if (sourceSection.getSource().getPath() != null) {
+            Source source = sourceSection.getSource();
+            URL url = source.getURL();
+            if (url != null && !"file".equals(url.getProtocol())) {
+                return url.toExternalForm();
+            } else if (source.getPath() != null) {
                 Path path = FileSystems.getDefault().getPath(".").toAbsolutePath();
-                Path filePath = FileSystems.getDefault().getPath(sourceSection.getSource().getPath()).toAbsolutePath();
+                Path filePath = FileSystems.getDefault().getPath(source.getPath()).toAbsolutePath();
 
                 try {
                     return path.relativize(filePath).toString();
@@ -1475,4 +1496,25 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
     }
 
+    public enum CompilationActivityMode {
+        /**
+         * Process compilations regularly.
+         */
+        RUN_COMPILATION,
+        /**
+         * Stop compilations temporarily.
+         */
+        STOP_COMPILATION,
+        /**
+         * Shutdown compilations permanently.
+         */
+        SHUTDOWN_COMPILATION;
+    }
+
+    /**
+     * Returns the current host compilation activity mode. The default is to run compilations.
+     */
+    protected CompilationActivityMode getCompilationActivityMode() {
+        return CompilationActivityMode.RUN_COMPILATION;
+    }
 }

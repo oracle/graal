@@ -258,6 +258,30 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getShortUnalignedBigEndian() {
+        byte[] buffer = hexToBytes("004241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().getShortUnaligned(buffer, 1));
+    }
+
+    @Test
+    public void getShortUnalignedBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("004241");
+        Assert.assertEquals(0x4241, ByteArraySupport.bigEndian().getShortUnaligned(buffer, 1L));
+    }
+
+    @Test
+    public void getShortUnalignedLittleEndian() {
+        byte[] buffer = hexToBytes("004142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getShortUnaligned(buffer, 1));
+    }
+
+    @Test
+    public void getShortUnalignedLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("004142");
+        Assert.assertEquals(0x4241, ByteArraySupport.littleEndian().getShortUnaligned(buffer, 1L));
+    }
+
+    @Test
     public void intBigEndian() {
         byte[] buffer = new byte[4];
         ByteArraySupport.bigEndian().putInt(buffer, 0, 0x42414039);
@@ -334,6 +358,30 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getIntUnalignedBigEndian() {
+        byte[] buffer = hexToBytes("000042414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getIntUnaligned(buffer, 2));
+    }
+
+    @Test
+    public void getIntUnalignedBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("000042414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getIntUnaligned(buffer, 2L));
+    }
+
+    @Test
+    public void getIntUnalignedLittleEndian() {
+        byte[] buffer = hexToBytes("000039404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getIntUnaligned(buffer, 2));
+    }
+
+    @Test
+    public void getIntUnalignedLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("000039404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getIntUnaligned(buffer, 2L));
+    }
+
+    @Test
     public void putLongBigEndian() {
         byte[] buffer = new byte[10];
         ByteArraySupport.bigEndian().putLong(buffer, 1, 0x4241403938373635L);
@@ -407,6 +455,30 @@ public class ByteArraySupportTest {
     public void getLongLittleEndianWithLongAddress() {
         byte[] buffer = hexToBytes("00003536373839404142");
         Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getLong(buffer, 2L));
+    }
+
+    @Test
+    public void getLongUnalignedBigEndian() {
+        byte[] buffer = hexToBytes("00004241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().getLongUnaligned(buffer, 2));
+    }
+
+    @Test
+    public void getLongUnalignedBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("00004241403938373635");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.bigEndian().getLongUnaligned(buffer, 2L));
+    }
+
+    @Test
+    public void getLongUnalignedLittleEndian() {
+        byte[] buffer = hexToBytes("00003536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getLongUnaligned(buffer, 2));
+    }
+
+    @Test
+    public void getLongUnalignedLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("00003536373839404142");
+        Assert.assertEquals(0x4241403938373635L, ByteArraySupport.littleEndian().getLongUnaligned(buffer, 2L));
     }
 
     @Test

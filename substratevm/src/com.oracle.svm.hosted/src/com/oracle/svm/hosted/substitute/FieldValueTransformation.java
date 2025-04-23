@@ -27,15 +27,17 @@ package com.oracle.svm.hosted.substitute;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -56,7 +58,7 @@ public class FieldValueTransformation {
         return fieldValueTransformer;
     }
 
-    public JavaConstant readValue(ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
+    public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
         ReadLock readLock = valueCacheLock.readLock();
         try {
             readLock.lock();
@@ -83,7 +85,7 @@ public class FieldValueTransformation {
              * Note that the value computation must be inside the lock, because we want to guarantee
              * that field-value computers are only executed once per unique receiver.
              */
-            result = computeValue(classInitializationSupport, field, receiver);
+            result = computeValue(field, receiver);
             putCached(receiver, result);
             return result;
         } finally {
@@ -91,18 +93,28 @@ public class FieldValueTransformation {
         }
     }
 
-    protected JavaConstant computeValue(ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
+    private JavaConstant computeValue(AnalysisField field, JavaConstant receiver) {
         Object receiverValue = receiver == null ? null : GraalAccess.getOriginalSnippetReflection().asObject(Object.class, receiver);
-        Object originalValue = fetchOriginalValue(classInitializationSupport, field, receiver);
-        Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
-        checkValue(newValue, field);
-        JavaConstant result = GraalAccess.getOriginalSnippetReflection().forBoxed(field.getJavaKind(), newValue);
+        Object originalValue = fetchOriginalValue(field, receiver);
+
+        Function<Object, JavaConstant> constantConverter = (obj) -> {
+            checkValue(obj, field);
+            return GraalAccess.getOriginalSnippetReflection().forBoxed(field.getJavaKind(), obj);
+        };
+
+        JavaConstant result;
+        if (fieldValueTransformer instanceof ObjectToConstantFieldValueTransformer objectToConstantFieldValueTransformer) {
+            result = objectToConstantFieldValueTransformer.transformToConstant(field, receiverValue, originalValue, constantConverter);
+        } else {
+            Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
+            result = constantConverter.apply(newValue);
+        }
 
         assert result.getJavaKind() == field.getJavaKind();
         return result;
     }
 
-    private void checkValue(Object newValue, ResolvedJavaField field) {
+    private void checkValue(Object newValue, AnalysisField field) {
         boolean primitive = transformedValueAllowedType.isPrimitive();
         if (newValue == null) {
             if (primitive) {
@@ -123,8 +135,12 @@ public class FieldValueTransformation {
         }
     }
 
-    protected Object fetchOriginalValue(ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
-        JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(classInitializationSupport, field, receiver);
+    protected Object fetchOriginalValue(AnalysisField aField, JavaConstant receiver) {
+        ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(aField);
+        if (oField == null) {
+            return null;
+        }
+        JavaConstant originalValueConstant = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(oField, receiver);
         if (originalValueConstant == null) {
             /*
              * The class is still uninitialized, so static fields cannot be read. Or it is an

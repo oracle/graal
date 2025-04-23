@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime;
 
 import java.util.Iterator;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
-import com.oracle.truffle.espresso.perf.DebugCloseable;
-import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 
 final class EspressoShutdownHandler extends ContextAccessImpl {
 
@@ -142,7 +142,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
     void destroyVM() {
         waitForClose();
         try {
-            getMeta().java_lang_Shutdown_shutdown.invokeDirect(null);
+            getMeta().java_lang_Shutdown_shutdown.invokeDirectStatic();
         } catch (AbstractTruffleException e) {
             /* Suppress guest exception so as not to bypass teardown */
         }
@@ -209,10 +209,10 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
 
     public void ensureThreadsJoined() {
         // wait indefinitely
-        ensureThreadsJoined(Thread.currentThread(), 0L);
+        ensureThreadsJoined(Thread.currentThread(), 0L, Level.WARNING);
     }
 
-    private boolean ensureThreadsJoined(Thread initiatingThread, long maxWaitMillis) {
+    private boolean ensureThreadsJoined(Thread initiatingThread, long maxWaitMillis, Level failureLogLevel) {
         // Unconditionally kill
         getContext().getLogger().finer("Teardown: Phase 3: Force kill with host EspressoExitExceptions");
         teardownPhase3(initiatingThread);
@@ -222,8 +222,8 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
         referenceDrainer.shutdownAndWaitReferenceDrain();
 
         if (!success) {
-            getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
-            getContext().getLogger().severe(() -> {
+            getContext().getLogger().log(failureLogLevel, "Could not gracefully stop executing threads in context closing.");
+            getContext().getLogger().log(failureLogLevel, () -> {
                 StringBuilder str = new StringBuilder("Threads still alive: ");
                 for (StaticObject guest : getManagedThreads()) {
                     str.append(getThreadAccess().getHost(guest));
@@ -268,10 +268,10 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
 
             boolean allowHostExit = getContext().getEspressoEnv().AllowHostExit;
             // wait indefinitely if we can't kill the host
-            if (!ensureThreadsJoined(initiatingThread, allowHostExit ? MAX_KILL_PHASE_WAIT : 0L)) {
+            if (!ensureThreadsJoined(initiatingThread, allowHostExit ? MAX_KILL_PHASE_WAIT : 0L, allowHostExit ? Level.FINE : Level.WARNING)) {
                 if (allowHostExit) {
                     // Needed until we can release rogue threads from Truffle (GR-28701).
-                    getContext().getLogger().severe("Calling Host System.exit()...");
+                    getContext().getLogger().fine("Calling Host System.exit()...");
                     System.exit(getExitStatus());
                 }
             }
@@ -352,9 +352,9 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
 
     private static class ManagedThreadsIterable implements Iterable<StaticObject> {
         private final StaticObject[] thrds;
-        private final ThreadsAccess access;
+        private final ThreadAccess access;
 
-        ManagedThreadsIterable(StaticObject[] thrds, ThreadsAccess access) {
+        ManagedThreadsIterable(StaticObject[] thrds, ThreadAccess access) {
             this.thrds = thrds;
             this.access = access;
         }
@@ -366,11 +366,11 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
     }
 
     private static class ManagedThreadsIterator implements Iterator<StaticObject> {
-        private final ThreadsAccess access;
+        private final ThreadAccess access;
         private final StaticObject[] thrds;
         int pos;
 
-        ManagedThreadsIterator(StaticObject[] thrds, ThreadsAccess access) {
+        ManagedThreadsIterator(StaticObject[] thrds, ThreadAccess access) {
             this.thrds = thrds;
             this.access = access;
             this.pos = -1;

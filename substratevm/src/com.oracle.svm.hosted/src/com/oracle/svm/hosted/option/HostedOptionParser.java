@@ -31,9 +31,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 
+import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platforms;
@@ -59,10 +59,10 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
         this.arguments = Collections.unmodifiableList(arguments);
-        collectOptions(ServiceLoader.load(OptionDescriptors.class, imageClassLoader), allHostedOptions, allRuntimeOptions);
+        collectOptions(OptionsContainer.getDiscoverableOptions(imageClassLoader), allHostedOptions, allRuntimeOptions);
     }
 
-    public static void collectOptions(ServiceLoader<OptionDescriptors> optionDescriptors, EconomicMap<String, OptionDescriptor> allHostedOptions,
+    public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, EconomicMap<String, OptionDescriptor> allHostedOptions,
                     EconomicMap<String, OptionDescriptor> allRuntimeOptions) {
         SubstrateOptionsParser.collectOptions(optionDescriptors, descriptor -> {
             String name = descriptor.getName();
@@ -131,6 +131,14 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     public List<String> getArguments() {
         return arguments;
+    }
+
+    public EconomicMap<String, OptionDescriptor> getAllHostedOptions() {
+        return allHostedOptions;
+    }
+
+    public EconomicMap<String, OptionDescriptor> getAllRuntimeOptions() {
+        return allRuntimeOptions;
     }
 
     @Override

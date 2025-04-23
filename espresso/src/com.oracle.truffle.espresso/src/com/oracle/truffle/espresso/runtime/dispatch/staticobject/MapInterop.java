@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.EMPTY_ARRAY;
@@ -39,9 +38,10 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -109,9 +109,10 @@ public class MapInterop extends EspressoInterop {
     @ExportMessage
     public static Object readHashValue(StaticObject receiver, Object key,
                     @Cached.Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
-        if (!isHashEntryReadable(receiver, key, contains)) {
-            throw UnsupportedMessageException.create();
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnknownKeyException {
+        boolean isReadable = isHashEntryReadable(receiver, key, contains);
+        if (!isReadable) {
+            throw UnknownKeyException.create(key);
         }
         Meta meta = receiver.getKlass().getMeta();
         Method get = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_get.getITableIndex());
@@ -127,7 +128,7 @@ public class MapInterop extends EspressoInterop {
 
     @ExportMessage
     public static void writeHashEntry(StaticObject receiver, Object key, Object value,
-                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnknownKeyException {
+                    @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws UnknownKeyException, UnsupportedMessageException {
         Meta meta = receiver.getKlass().getMeta();
         Method put = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_put.getITableIndex());
         try {
@@ -137,15 +138,20 @@ public class MapInterop extends EspressoInterop {
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
+        } catch (EspressoException e) {
+            if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_UnsupportedOperationException)) {
+                throw UnsupportedMessageException.create(e);
+            }
+            throw e; // unexpected exception
         }
     }
 
     @ExportMessage
     public static void removeHashEntry(StaticObject receiver, Object key,
                     @Cached.Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnsupportedMessageException, UnknownKeyException {
+                    @Cached.Shared("contains") @Cached InvokeEspressoNode contains) throws UnknownKeyException, UnsupportedMessageException {
         if (!isHashEntryReadable(receiver, key, contains)) {
-            throw UnsupportedMessageException.create();
+            throw UnknownKeyException.create(key);
         }
         Meta meta = receiver.getKlass().getMeta();
         Method remove = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_remove.getITableIndex());
@@ -156,6 +162,11 @@ public class MapInterop extends EspressoInterop {
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
+        } catch (EspressoException e) {
+            if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_UnsupportedOperationException)) {
+                throw UnsupportedMessageException.create(e);
+            }
+            throw e; // unexpected exception
         }
     }
 

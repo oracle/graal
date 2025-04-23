@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,6 +38,8 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 public abstract class PlatformNativeLibrarySupport {
 
@@ -85,44 +88,56 @@ public abstract class PlatformNativeLibrarySupport {
                     "com_oracle_svm_core_jdk"
     };
 
-    private static final String[] defaultBuiltInPkgNativesBlocklist = {
-                    "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
-                    "sun_security_krb5_Config_getWindowsDirectory",
-                    "jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl",
-                    "jdk_internal_misc_ScopedMemoryAccess_closeScope0",
-                    "jdk_internal_misc_ScopedMemoryAccess_registerNatives",
-                    "java_lang_invoke_VarHandle_weakCompareAndSetPlain",
-                    "java_lang_invoke_VarHandle_weakCompareAndSetRelease",
-                    "java_lang_invoke_VarHandle_getAndBitwiseAndAcquire",
-                    "java_lang_invoke_VarHandle_getVolatile",
-                    "java_lang_invoke_VarHandle_compareAndSet",
-                    "java_lang_invoke_VarHandle_compareAndExchangeRelease",
-                    "java_lang_invoke_VarHandle_getAndAddRelease",
-                    "java_lang_invoke_VarHandle_getAndBitwiseOr",
-                    "java_lang_invoke_VarHandle_getOpaque",
-                    "java_lang_invoke_VarHandle_compareAndExchangeAcquire",
-                    "java_lang_invoke_VarHandle_getAndBitwiseXorAcquire",
-                    "java_lang_invoke_VarHandle_get",
-                    "java_lang_invoke_VarHandle_setRelease",
-                    "java_lang_invoke_VarHandle_setVolatile",
-                    "java_lang_invoke_VarHandle_getAndBitwiseOrRelease",
-                    "java_lang_invoke_VarHandle_getAndBitwiseAnd",
-                    "java_lang_invoke_VarHandle_getAndBitwiseXorRelease",
-                    "java_lang_invoke_VarHandle_weakCompareAndSet",
-                    "java_lang_invoke_VarHandle_getAndSetRelease",
-                    "java_lang_invoke_VarHandle_weakCompareAndSetAcquire",
-                    "java_lang_invoke_VarHandle_setOpaque",
-                    "java_lang_invoke_VarHandle_getAndBitwiseAndRelease",
-                    "java_lang_invoke_VarHandle_getAndAdd",
-                    "java_lang_invoke_VarHandle_getAndBitwiseXor",
-                    "java_lang_invoke_VarHandle_getAndAddAcquire",
-                    "java_lang_invoke_VarHandle_getAndSet",
-                    "java_lang_invoke_VarHandle_getAndBitwiseOrAcquire",
-                    "java_lang_invoke_VarHandle_set",
-                    "java_lang_invoke_VarHandle_compareAndExchange",
-                    "java_lang_invoke_VarHandle_getAcquire",
-                    "java_lang_invoke_VarHandle_getAndSetAcquire",
-    };
+    private static final String[] defaultBuiltInPkgNativesBlocklist;
+
+    static {
+        ArrayList<String> blocklist = new ArrayList<>();
+        Collections.addAll(blocklist,
+                        "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
+                        "sun_security_krb5_Config_getWindowsDirectory",
+                        "jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl",
+                        "jdk_internal_misc_ScopedMemoryAccess_closeScope0",
+                        "jdk_internal_misc_ScopedMemoryAccess_registerNatives",
+                        "java_lang_invoke_VarHandle_weakCompareAndSetPlain",
+                        "java_lang_invoke_VarHandle_weakCompareAndSetRelease",
+                        "java_lang_invoke_VarHandle_getAndBitwiseAndAcquire",
+                        "java_lang_invoke_VarHandle_getVolatile",
+                        "java_lang_invoke_VarHandle_compareAndSet",
+                        "java_lang_invoke_VarHandle_compareAndExchangeRelease",
+                        "java_lang_invoke_VarHandle_getAndAddRelease",
+                        "java_lang_invoke_VarHandle_getAndBitwiseOr",
+                        "java_lang_invoke_VarHandle_getOpaque",
+                        "java_lang_invoke_VarHandle_compareAndExchangeAcquire",
+                        "java_lang_invoke_VarHandle_getAndBitwiseXorAcquire",
+                        "java_lang_invoke_VarHandle_get",
+                        "java_lang_invoke_VarHandle_setRelease",
+                        "java_lang_invoke_VarHandle_setVolatile",
+                        "java_lang_invoke_VarHandle_getAndBitwiseOrRelease",
+                        "java_lang_invoke_VarHandle_getAndBitwiseAnd",
+                        "java_lang_invoke_VarHandle_getAndBitwiseXorRelease",
+                        "java_lang_invoke_VarHandle_weakCompareAndSet",
+                        "java_lang_invoke_VarHandle_getAndSetRelease",
+                        "java_lang_invoke_VarHandle_weakCompareAndSetAcquire",
+                        "java_lang_invoke_VarHandle_setOpaque",
+                        "java_lang_invoke_VarHandle_getAndBitwiseAndRelease",
+                        "java_lang_invoke_VarHandle_getAndAdd",
+                        "java_lang_invoke_VarHandle_getAndBitwiseXor",
+                        "java_lang_invoke_VarHandle_getAndAddAcquire",
+                        "java_lang_invoke_VarHandle_getAndSet",
+                        "java_lang_invoke_VarHandle_getAndBitwiseOrAcquire",
+                        "java_lang_invoke_VarHandle_set",
+                        "java_lang_invoke_VarHandle_compareAndExchange",
+                        "java_lang_invoke_VarHandle_getAcquire",
+                        "java_lang_invoke_VarHandle_getAndSetAcquire");
+        if (JavaVersionUtil.JAVA_SPEC > 21) {
+            Collections.addAll(blocklist,
+                            "java_nio_MappedMemoryUtils_load0",
+                            "java_nio_MappedMemoryUtils_unload0",
+                            "java_nio_MappedMemoryUtils_isLoaded0",
+                            "java_nio_MappedMemoryUtils_force0");
+        }
+        defaultBuiltInPkgNativesBlocklist = blocklist.toArray(new String[0]);
+    }
 
     public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);

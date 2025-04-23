@@ -47,6 +47,7 @@ import org.graalvm.options.OptionDescriptors;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -59,7 +60,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
  * Reusable language for testing which allows to wrap all methods.
  */
 @TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, characterMimeTypes = "application/x-proxy-language")
-@ProvidedTags({ExpressionTag.class, StatementTag.class, RootBodyTag.class, RootTag.class})
+@ProvidedTags({CallTag.class, ExpressionTag.class, StatementTag.class, RootBodyTag.class, RootTag.class})
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static final String ID = "proxyLanguage";

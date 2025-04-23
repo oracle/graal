@@ -37,8 +37,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
-import jdk.graal.compiler.phases.common.LoweringPhase;
-import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
@@ -51,9 +49,8 @@ public class StackValueFeature implements InternalFeature {
         midTierPos.previous();
         midTierPos.add(new StackValueRecursionDepthPhase());
 
-        ListIterator<BasePhase<? super LowTierContext>> lowTierPos = suites.getLowTier().findPhase(LoweringPhase.class);
-        lowTierPos.next();
-        lowTierPos.add(new StackValueSlotAssignmentPhase());
+        // run at the end, so low tier snippet inlining graphs are also processed
+        suites.getLowTier().appendPhase(new StackValueSlotAssignmentPhase());
     }
 
     @Override

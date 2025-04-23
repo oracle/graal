@@ -53,7 +53,7 @@ public final class OutputHandler {
         err.l = l;
     }
 
-    private static class ListeneableOutputStream extends OutputStream {
+    private static final class ListeneableOutputStream extends OutputStream {
 
         private final CharBuffer cb = CharBuffer.allocate(8192);
         private final RBCH rbch = new RBCH();
@@ -94,7 +94,7 @@ public final class OutputHandler {
             }
         }
 
-        private class RBCH implements ReadableByteChannel {
+        private final class RBCH implements ReadableByteChannel {
 
             private byte[] b;
             private int off;

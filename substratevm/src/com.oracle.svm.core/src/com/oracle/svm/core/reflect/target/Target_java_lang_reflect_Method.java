@@ -26,11 +26,14 @@ package com.oracle.svm.core.reflect.target;
 
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 
+import java.lang.annotation.AnnotationFormatError;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -41,8 +44,17 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.hub.ConstantPoolProvider;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
+import jdk.internal.reflect.ConstantPool;
+import sun.reflect.annotation.AnnotationParser;
+import sun.reflect.annotation.AnnotationType;
+import sun.reflect.annotation.ExceptionProxy;
+import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 import sun.reflect.generics.repository.MethodRepository;
 
 @TargetClass(value = Method.class)
@@ -64,6 +76,33 @@ public final class Target_java_lang_reflect_Method {
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
     public Target_jdk_internal_reflect_MethodAccessor methodAccessor;
 
+    @Alias //
+    private Class<?> clazz;
+
+    @Alias //
+    private int slot;
+
+    @Alias //
+    private String name;
+
+    @Alias //
+    private Class<?> returnType;
+
+    @Alias //
+    private Class<?>[] parameterTypes;
+
+    @Alias //
+    private Class<?>[] exceptionTypes;
+
+    @Alias //
+    private int modifiers;
+
+    @Alias //
+    private transient String signature;
+
+    @Alias //
+    private Method root;
+
     /**
      * We need this indirection to use {@link #acquireMethodAccessor()} for checking if run-time
      * conditions for this method are satisfied.
@@ -72,6 +111,10 @@ public final class Target_java_lang_reflect_Method {
     @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerIdComputer.class) //
+    public int layerId;
+
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
@@ -79,7 +122,10 @@ public final class Target_java_lang_reflect_Method {
                     byte[] annotations, byte[] parameterAnnotations, byte[] annotationDefault);
 
     @Alias
-    native Target_java_lang_reflect_Method copy();
+    public native Class<?> getReturnType();
+
+    @Alias
+    public native Class<?> getDeclaringClass();
 
     /**
      * Encoded field, will fetch the value from {@link #methodAccessorFromMetadata} and check the
@@ -92,6 +138,47 @@ public final class Target_java_lang_reflect_Method {
             throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessorFromMetadata;
+    }
+
+    @Substitute
+    public Object getDefaultValue() {
+        if (annotationDefault == null) {
+            return null;
+        }
+        Class<?> memberType = AnnotationType.invocationHandlerReturnType(getReturnType());
+        /*
+         * The layer id of the method is not necessarily the same as the declaring class, so the
+         * constant pool used need to be chosen using the layer id of the method.
+         */
+        Object result = AnnotationParser.parseMemberValue(memberType, ByteBuffer.wrap(annotationDefault),
+                        ImageLayerBuildingSupport.buildingImageLayer() ? SubstrateUtil.cast(ConstantPoolProvider.singletons()[layerId].getConstantPool(), ConstantPool.class) : null,
+                        getDeclaringClass());
+        if (result instanceof ExceptionProxy) {
+            if (result instanceof TypeNotPresentExceptionProxy proxy) {
+                throw new TypeNotPresentException(proxy.typeName(), proxy.getCause());
+            }
+            throw new AnnotationFormatError("Invalid default: " + this);
+        }
+        return result;
+    }
+
+    @Substitute
+    Target_java_lang_reflect_Method copy() {
+        if (this.root != null) {
+            throw new IllegalArgumentException("Can not copy a non-root Method");
+        }
+
+        Target_java_lang_reflect_Method res = new Target_java_lang_reflect_Method();
+        res.constructor(clazz, name, parameterTypes, returnType,
+                        exceptionTypes, modifiers, slot, signature,
+                        annotations, parameterAnnotations, annotationDefault);
+        res.root = SubstrateUtil.cast(this, Method.class);
+        // Propagate shared states
+        res.methodAccessor = methodAccessor;
+        res.genericInfo = genericInfo;
+        /* Copy the layer id too */
+        res.layerId = layerId;
+        return res;
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
@@ -112,6 +199,16 @@ public final class Target_java_lang_reflect_Method {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationDefaultEncoding((Method) receiver);
+        }
+    }
+
+    static class LayerIdComputer implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                return DynamicImageLayerInfo.getCurrentLayerNumber();
+            }
+            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
     }
 }

@@ -30,6 +30,7 @@ import static com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_alloc;
 
 import java.lang.ref.WeakReference;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -42,7 +43,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -144,7 +144,7 @@ final class NativeClosure {
         data.setEnvArgIdx(envArgIdx);
 
         PointerBase code = codePtr.read();
-        LibFFI.ffi_prep_closure_loc(data.ffiClosure(), WordFactory.pointer(signature.cif), callback, data, code);
+        LibFFI.ffi_prep_closure_loc(data.ffiClosure(), Word.pointer(signature.cif), callback, data, code);
 
         return ctx.createClosureNativePointer(data.rawValue(), code.rawValue(), callTarget, signature, receiver);
     }
@@ -204,10 +204,10 @@ final class NativeClosure {
 
     private static PointerBase serializeStringRet(Object retValue) {
         if (retValue == null) {
-            return WordFactory.zero();
+            return Word.zero();
         } else if (retValue instanceof Target_com_oracle_truffle_nfi_backend_libffi_NativeString) {
             Target_com_oracle_truffle_nfi_backend_libffi_NativeString nativeString = (Target_com_oracle_truffle_nfi_backend_libffi_NativeString) retValue;
-            return WordFactory.pointer(nativeString.nativePointer);
+            return Word.pointer(nativeString.nativePointer);
         } else if (retValue instanceof String) {
             byte[] utf8 = TruffleNFISupport.javaStringToUtf8((String) retValue);
             try (PrimitiveArrayView ref = PrimitiveArrayView.createForReading(utf8)) {
@@ -216,7 +216,7 @@ final class NativeClosure {
             }
         } else {
             // unsupported type
-            return WordFactory.zero();
+            return Word.zero();
         }
     }
 
@@ -469,7 +469,7 @@ final class NativeClosure {
         try {
             Object obj = closure.call(args, null);
             if (obj == null) {
-                ret.write(WordFactory.zero());
+                ret.write(Word.zero());
             } else {
                 TruffleObjectHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
                 ret.write(handle);

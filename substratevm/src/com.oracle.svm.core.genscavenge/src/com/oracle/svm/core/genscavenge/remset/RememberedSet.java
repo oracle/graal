@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,10 +36,9 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
-import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
-import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.BarrierSetProvider;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 
@@ -115,6 +116,7 @@ public interface RememberedSet extends BarrierSetProvider {
      * (from old generation to young generation, or from image heap to runtime heap).
      */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void dirtyCardForAlignedObject(Object object, boolean verifyOnly);
 
     /**
@@ -123,6 +125,7 @@ public interface RememberedSet extends BarrierSetProvider {
      * (from old generation to young generation, or from image heap to runtime heap).
      */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void dirtyCardForUnalignedObject(Object object, boolean verifyOnly);
 
     /**
@@ -135,22 +138,18 @@ public interface RememberedSet extends BarrierSetProvider {
     void dirtyCardIfNecessary(Object holderObject, Object object);
 
     /**
-     * Walks all dirty objects in an aligned chunk.
+     * If remembered set tracking is enabled for the given object, this method ensures that all
+     * references in that object have remembered set entries.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void dirtyAllReferencesIfNecessary(Object obj);
 
     /**
-     * Walks all dirty objects in an unaligned chunk.
+     * Walk all dirty objects in {@linkplain com.oracle.svm.core.genscavenge.HeapChunk#getNext
+     * linked lists} of aligned and unaligned chunks.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
-
-    /**
-     * Walks all dirty objects in a {@link Space}.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean);
+    void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor, boolean clean);
 
     /**
      * Verify the remembered set for an aligned chunk and all its linked-list successors.

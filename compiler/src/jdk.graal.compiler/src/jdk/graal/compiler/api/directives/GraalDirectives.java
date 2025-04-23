@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,9 @@
  */
 package jdk.graal.compiler.api.directives;
 
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
+import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
@@ -531,6 +533,123 @@ public final class GraalDirectives {
      * opaque(3) is a constant.
      */
     public static <T> T opaque(T value) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static boolean opaqueUntilAfter(boolean value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static byte opaqueUntilAfter(byte value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static short opaqueUntilAfter(short value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static char opaqueUntilAfter(char value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static int opaqueUntilAfter(int value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static long opaqueUntilAfter(long value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static float opaqueUntilAfter(float value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static double opaqueUntilAfter(double value, StageFlag stage) {
+        return value;
+    }
+
+    /**
+     * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
+     * until the specified {@link StageFlag} has been applied.
+     *
+     * For example, if {@code stage == StageFlag.FLOATING_READS}, the compiler will not constant
+     * fold the expression 5 * opaqueUntilAfter(3, stage) until {@link FloatingReadPhase} has been
+     * applied. After that, the optimization barrier will fall away.
+     */
+    @SuppressWarnings("unused")
+    public static <T> T opaqueUntilAfter(T value, StageFlag stage) {
         return value;
     }
 

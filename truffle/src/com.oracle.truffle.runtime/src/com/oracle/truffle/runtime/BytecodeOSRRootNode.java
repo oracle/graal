@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,15 +53,16 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.Node;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
-    private final int target;
+    private final long target;
     private final Object interpreterState;
     @CompilationFinal private boolean seenMaterializedFrame;
 
     private final Object entryTagsCache;
 
-    BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, int target, Object interpreterState, Object entryTagsCache) {
+    BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, long target, Object interpreterState, Object entryTagsCache) {
         super(language, frameDescriptor, bytecodeOSRNode);
         this.target = target;
         this.interpreterState = interpreterState;
@@ -101,7 +102,11 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
             if (usesDeprecatedFrameTransfer) { // Support for deprecated frame transfer: GR-38296
-                osrNode.copyIntoOSRFrame(frame, parentFrame, target);
+                int intTarget = (int) target;
+                if (intTarget != target) {
+                    throw CompilerDirectives.shouldNotReachHere("long target cannot be used with deprecated frame transfer");
+                }
+                osrNode.copyIntoOSRFrame(frame, parentFrame, intTarget);
             } else {
                 osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
             }
@@ -120,7 +125,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     @Override
     public String toString() {
-        return loopNode.toString() + "<OSR@" + target + ">";
+        return ((Node) loopNode).getRootNode().toString() + "<OSR@" + target + ">";
     }
 
     // GR-38296

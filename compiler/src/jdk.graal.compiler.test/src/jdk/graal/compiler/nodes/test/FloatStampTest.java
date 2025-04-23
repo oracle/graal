@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,17 +28,31 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.function.BiFunction;
+import java.util.function.DoubleBinaryOperator;
+import java.util.function.DoubleUnaryOperator;
+import java.util.function.Function;
+
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.test.GraphTest;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.calc.CopySignNode;
+import jdk.graal.compiler.nodes.calc.RoundNode;
+import jdk.graal.compiler.nodes.calc.SignumNode;
+import jdk.vm.ci.meta.JavaKind;
 import org.junit.Assert;
 import org.junit.Test;
-
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This class tests that float stamps are created correctly for constants.
@@ -53,9 +67,9 @@ public class FloatStampTest extends GraphTest {
 
     private static FloatStamp createFloatStamp(int bits, double value) {
         if (Double.isNaN(value)) {
-            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+            return FloatStamp.createNaN(bits);
         }
-        return new FloatStamp(bits, value, value, true);
+        return FloatStamp.create(bits, value, value, true);
     }
 
     @Test
@@ -152,8 +166,10 @@ public class FloatStampTest extends GraphTest {
 
     @Test
     public void testIllegalJoin() {
-        assertFalse(new FloatStamp(32, 0, Float.POSITIVE_INFINITY, true).join(new FloatStamp(32, Float.NEGATIVE_INFINITY, -Float.MIN_VALUE, true)).hasValues());
-        assertFalse(new FloatStamp(32, Float.NaN, Float.NaN, false).join(new FloatStamp(32, 0, 0, true)).hasValues());
+        assertFalse(FloatStamp.create(32, 0, Float.POSITIVE_INFINITY, true).join(FloatStamp.create(32, Float.NEGATIVE_INFINITY, -Float.MIN_VALUE, true)).hasValues());
+        assertFalse(FloatStamp.create(32, Float.NaN, Float.NaN, false).join(FloatStamp.create(32, 0, 0, true)).hasValues());
+        assertTrue(((FloatStamp) FloatStamp.create(32, 0, Float.POSITIVE_INFINITY, false).join(FloatStamp.create(32, Float.NEGATIVE_INFINITY, -Float.MIN_VALUE, false))).isNaN());
+        assertTrue(((FloatStamp) FloatStamp.create(32, Float.NaN, Float.NaN, false).join(FloatStamp.create(32, 0, 0, false))).isNaN());
     }
 
     @Test
@@ -192,6 +208,233 @@ public class FloatStampTest extends GraphTest {
             if (op != null) {
                 Assert.assertTrue(op.foldStamp(StampFactory.empty(JavaKind.Float)).isEmpty());
                 Assert.assertTrue(op.foldStamp(StampFactory.empty(JavaKind.Double)).isEmpty());
+            }
+        }
+    }
+
+    @Test
+    public void testFoldStamp() {
+        runFoldStamp(32);
+        runFoldStamp(64);
+    }
+
+    static void runFoldStamp(int bits) {
+        Random random = GraalCompilerTest.getRandomInstance();
+        ArrayList<FloatStamp> stamps = generateStamps(bits, random);
+        verify(bits, random, stamps);
+    }
+
+    private static ArrayList<FloatStamp> generateStamps(int bits, Random random) {
+        double[] specialValues;
+        if (bits == Float.SIZE) {
+            specialValues = new double[floatNonNaNs.length];
+            for (int i = 0; i < floatNonNaNs.length; i++) {
+                specialValues[i] = floatNonNaNs[i];
+            }
+        } else {
+            specialValues = doubleNonNaNs;
+        }
+        ArrayList<FloatStamp> stamps = new ArrayList<>();
+        FloatStamp nan = FloatStamp.createNaN(bits);
+        stamps.add(nan);
+        stamps.add(nan.empty());
+        for (int i = 0; i < specialValues.length; i++) {
+            double currentValue = specialValues[i];
+            for (int j = i; j < specialValues.length; j++) {
+                double otherValue = specialValues[i];
+                if (Double.compare(currentValue, otherValue) > 0) {
+                    stamps.add(FloatStamp.create(bits, otherValue, currentValue, true));
+                    stamps.add(FloatStamp.create(bits, otherValue, currentValue, false));
+                } else {
+                    stamps.add(FloatStamp.create(bits, currentValue, otherValue, true));
+                    stamps.add(FloatStamp.create(bits, currentValue, otherValue, false));
+                }
+            }
+
+            for (int j = 0; j < 10; j++) {
+                double otherBound;
+                if (bits == Float.SIZE) {
+                    otherBound = Float.intBitsToFloat(random.nextInt());
+                } else {
+                    otherBound = Double.longBitsToDouble(random.nextLong());
+                }
+                if (Double.isNaN(otherBound)) {
+                    continue;
+                }
+
+                if (Double.compare(currentValue, otherBound) < 0) {
+                    stamps.add(FloatStamp.create(bits, currentValue, otherBound, true));
+                    stamps.add(FloatStamp.create(bits, currentValue, otherBound, false));
+                } else {
+                    stamps.add(FloatStamp.create(bits, otherBound, currentValue, true));
+                    stamps.add(FloatStamp.create(bits, otherBound, currentValue, false));
+                }
+            }
+        }
+
+        for (int i = 0; i < 10; i++) {
+            double first;
+            double second;
+            if (bits == Float.SIZE) {
+                first = Float.intBitsToFloat(random.nextInt());
+                second = Float.intBitsToFloat(random.nextInt());
+            } else {
+                first = Double.longBitsToDouble(random.nextLong());
+                second = Double.longBitsToDouble(random.nextLong());
+            }
+            if (Double.isNaN(first) || Double.isNaN(second)) {
+                continue;
+            }
+
+            if (Double.compare(first, second) > 0) {
+                double temp = first;
+                first = second;
+                second = temp;
+            }
+
+            stamps.add(FloatStamp.create(bits, first, first, true));
+            stamps.add(FloatStamp.create(bits, first, first, false));
+            stamps.add(FloatStamp.create(bits, first, second, true));
+            stamps.add(FloatStamp.create(bits, first, second, false));
+        }
+
+        return stamps;
+    }
+
+    private static HashSet<Double> sample(Random random, FloatStamp stamp) {
+        HashSet<Double> samples = HashSet.newHashSet(20);
+        if (stamp.isEmpty()) {
+            return samples;
+        }
+
+        if (!stamp.isNonNaN()) {
+            samples.add(Double.NaN);
+            if (stamp.isNaN()) {
+                return samples;
+            }
+        }
+
+        samples.add(stamp.lowerBound());
+        samples.add(stamp.upperBound());
+        if (stamp.lowerBound() == stamp.upperBound()) {
+            return samples;
+        }
+
+        double neighbor = stamp.getBits() == Float.SIZE ? Math.nextUp((float) stamp.lowerBound()) : Math.nextUp(stamp.lowerBound());
+        samples.add(neighbor);
+        neighbor = stamp.getBits() == Float.SIZE ? Math.nextDown((float) stamp.upperBound()) : Math.nextDown(stamp.upperBound());
+        samples.add(neighbor);
+
+        if (stamp.getBits() == Float.SIZE) {
+            for (double d : floatNonNaNs) {
+                if (stamp.contains(d)) {
+                    samples.add(d);
+                }
+            }
+        } else {
+            for (double d : doubleNonNaNs) {
+                if (stamp.contains(d)) {
+                    samples.add(d);
+                }
+            }
+        }
+
+        double lowerBound = stamp.lowerBound();
+        double upperBound = stamp.upperBound();
+        if (lowerBound == Double.NEGATIVE_INFINITY) {
+            lowerBound = stamp.getBits() == Float.SIZE ? -Float.MAX_VALUE : -Double.MAX_VALUE;
+        }
+        if (upperBound == Double.POSITIVE_INFINITY) {
+            upperBound = stamp.getBits() == Float.SIZE ? Float.MAX_VALUE : Double.MAX_VALUE;
+        }
+        for (int i = 0; i < 10; i++) {
+            double current;
+            if (stamp.getBits() == Float.SIZE) {
+                current = random.nextFloat((float) lowerBound, (float) upperBound);
+            } else {
+                current = random.nextDouble(lowerBound, upperBound);
+            }
+            samples.add(current);
+        }
+        return samples;
+    }
+
+    private static void verify(int bits, Random random, ArrayList<FloatStamp> stamps) {
+        ArrayList<double[]> samples = new ArrayList<>(stamps.size());
+        for (FloatStamp stamp : stamps) {
+            HashSet<Double> sampleSet = sample(random, stamp);
+            double[] sampleArray = new double[sampleSet.size()];
+            int i = 0;
+            for (double d : sampleSet) {
+                sampleArray[i] = d;
+                i++;
+            }
+            samples.add(sampleArray);
+        }
+
+        ParameterNode param = new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(bits == Float.SIZE ? JavaKind.Float : JavaKind.Double)));
+        RoundNode rint = new RoundNode(param, ArithmeticLIRGeneratorTool.RoundingMode.NEAREST);
+        RoundNode ceil = new RoundNode(param, ArithmeticLIRGeneratorTool.RoundingMode.UP);
+        RoundNode floor = new RoundNode(param, ArithmeticLIRGeneratorTool.RoundingMode.DOWN);
+        SignumNode signum = new SignumNode(param);
+
+        for (int i = 0; i < stamps.size(); i++) {
+            FloatStamp stamp = stamps.get(i);
+            double[] sample = samples.get(i);
+            verifyUnary(stamp, sample, FloatStamp.OPS.getAbs()::foldStamp, Math::abs);
+            verifyUnary(stamp, sample, FloatStamp.OPS.getNeg()::foldStamp, x -> -x);
+            verifyUnary(stamp, sample, FloatStamp.OPS.getSqrt()::foldStamp, bits == Float.SIZE ? x -> (float) Math.sqrt(x) : Math::sqrt);
+            verifyUnary(stamp, sample, signum::foldStamp, Math::signum);
+            if (bits == Double.SIZE) {
+                verifyUnary(stamp, sample, rint::foldStamp, Math::rint);
+                verifyUnary(stamp, sample, ceil::foldStamp, Math::ceil);
+                verifyUnary(stamp, sample, floor::foldStamp, Math::floor);
+            }
+        }
+
+        for (int i = 0; i < stamps.size(); i++) {
+            FloatStamp stamp1 = stamps.get(i);
+            double[] sample1 = samples.get(i);
+            for (int j = i; j < stamps.size(); j++) {
+                FloatStamp stamp2 = stamps.get(j);
+                double[] sample2 = samples.get(j);
+                verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getAdd()::foldStamp, bits == Float.SIZE ? (x, y) -> (float) x + (float) y : Double::sum);
+                verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getDiv()::foldStamp, bits == Float.SIZE ? (x, y) -> (float) x / (float) y : (x, y) -> x / y);
+                verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getMax()::foldStamp, Math::max);
+                verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getMin()::foldStamp, Math::min);
+                verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getMul()::foldStamp, bits == Float.SIZE ? (x, y) -> (float) x * (float) y : (x, y) -> x * y);
+                verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getSub()::foldStamp, bits == Float.SIZE ? (x, y) -> (float) x - (float) y : (x, y) -> x - y);
+                verifyBinary(stamp1, stamp2, sample1, sample2, CopySignNode::computeStamp, Math::copySign);
+            }
+        }
+    }
+
+    private static void verifyUnary(FloatStamp stamp, double[] samples, Function<FloatStamp, Stamp> compute, DoubleUnaryOperator op) {
+        FloatStamp res = (FloatStamp) compute.apply(stamp);
+        if (stamp.isEmpty()) {
+            assertTrue(res.isEmpty());
+            return;
+        }
+
+        for (double x : samples) {
+            double y = op.applyAsDouble(x);
+            assertTrue(stamp.getBits() == Double.SIZE || (Double.compare((float) x, x) == 0 && Double.compare((float) y, y) == 0));
+            assertTrue(res.contains(y));
+        }
+    }
+
+    private static void verifyBinary(FloatStamp stamp1, FloatStamp stamp2, double[] sample1, double[] sample2, BiFunction<FloatStamp, FloatStamp, Stamp> compute, DoubleBinaryOperator op) {
+        FloatStamp res = (FloatStamp) compute.apply(stamp1, stamp2);
+        if (stamp1.isEmpty() || stamp2.isEmpty()) {
+            assertTrue(res.isEmpty());
+            return;
+        }
+
+        for (double x1 : sample1) {
+            for (double x2 : sample2) {
+                double y = op.applyAsDouble(x1, x2);
+                assertTrue(stamp1.getBits() == Double.SIZE || (Double.compare((float) x1, x1) == 0 && Double.compare((float) x2, x2) == 0 && Double.compare((float) y, y) == 0));
+                assertTrue(res.contains(y));
             }
         }
     }

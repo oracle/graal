@@ -44,12 +44,16 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.core.common.ContextClassLoaderScope;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -59,6 +63,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
@@ -164,6 +169,9 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * arbitrary user code.
      */
     public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
+        if (type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType baseLayerType) {
+            return baseLayerType.initializedAtBuildTime();
+        }
         return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 
@@ -182,8 +190,14 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * Ensure class is initialized. Report class initialization errors in a user-friendly way if
      * class initialization fails.
      */
+    @SuppressWarnings("try")
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
-        try {
+        LibGraalLoader libGraalLoader = loader.classLoaderSupport.getLibGraalLoader();
+        ClassLoader cl = clazz.getClassLoader();
+        // Graal and JVMCI make use of ServiceLoader which uses the
+        // context class loader so it needs to be the libgraal loader.
+        ClassLoader libGraalCCL = libGraalLoader == cl ? cl : null;
+        try (var ignore = new ContextClassLoaderScope(libGraalCCL)) {
             loader.watchdog.recordActivity();
             /*
              * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless
@@ -322,7 +336,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         StringBuilder b = new StringBuilder();
 
         for (StackTraceElement stackTraceElement : trace) {
-            b.append("\tat ").append(stackTraceElement.toString()).append("\n");
+            b.append("\tat ").append(stackTraceElement.toString()).append(System.lineSeparator());
         }
 
         return b.toString();
@@ -507,12 +521,10 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     public boolean isAlwaysReached(Class<?> jClass) {
-        Set<String> systemModules = Set.of("org.graalvm.nativeimage.builder", "org.graalvm.nativeimage", "org.graalvm.nativeimage.base", "com.oracle.svm.svm_enterprise",
-                        "org.graalvm.word", "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise");
         Set<String> jdkModules = Set.of("java.base", "jdk.management", "java.management", "org.graalvm.collections");
 
         String classModuleName = jClass.getModule().getName();
-        boolean alwaysReachedModule = classModuleName != null && (systemModules.contains(classModuleName) || jdkModules.contains(classModuleName));
+        boolean alwaysReachedModule = classModuleName != null && (ModuleSupport.SYSTEM_MODULES.contains(classModuleName) || jdkModules.contains(classModuleName));
         return jClass.isPrimitive() ||
                         jClass.isArray() ||
                         alwaysReachedModule ||

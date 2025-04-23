@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
@@ -80,9 +81,20 @@ public class HeapBreakdownProvider {
         return sortedBreakdownEntries;
     }
 
+    public void setBreakdownEntries(List<HeapBreakdownEntry> unsortedBreakdownEntries) {
+        assert this.sortedBreakdownEntries == null : "sortedBreakdownEntries were set before";
+        this.sortedBreakdownEntries = unsortedBreakdownEntries.stream().sorted(Comparator.comparingLong(HeapBreakdownEntry::getByteSize).reversed()).toList();
+    }
+
     public long getTotalHeapSize() {
         assert totalHeapSize >= 0;
         return totalHeapSize;
+    }
+
+    protected void setTotalHeapSize(long totalHeapSize) {
+        assert this.totalHeapSize == -1 : "Total heap size was set before";
+        assert totalHeapSize >= 0 : "Invalid total heap size: " + totalHeapSize;
+        this.totalHeapSize = totalHeapSize;
     }
 
     protected void calculate(BeforeImageWriteAccessImpl access) {
@@ -97,7 +109,7 @@ public class HeapBreakdownProvider {
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
         final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
-            if (o.getConstant().isInBaseLayer()) {
+            if (o.getConstant().isWrittenInPreviousLayer()) {
                 continue;
             }
             long objectSize = o.getSize();
@@ -124,8 +136,8 @@ public class HeapBreakdownProvider {
         classToDataMap.clear();
 
         /* Add heap alignment. */
-        totalHeapSize = access.getImage().getImageHeapSize();
-        long heapAlignmentSize = totalHeapSize - totalObjectSize;
+        setTotalHeapSize(access.getImage().getImageHeapSize());
+        long heapAlignmentSize = getTotalHeapSize() - totalObjectSize;
         assert heapAlignmentSize >= 0 : "Incorrect heap alignment detected: " + heapAlignmentSize;
         if (heapAlignmentSize > 0) {
             HeapBreakdownEntry heapAlignmentEntry = new HeapBreakdownEntry("", "heap alignment", "#glossary-heap-alignment");
@@ -138,7 +150,7 @@ public class HeapBreakdownProvider {
             addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayTotalSize, stringByteArrayTotalCount);
         }
         /* Extract byte[] for code info. */
-        List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getImageCodeCache().getTotalByteArrayLengths();
+        List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getCurrentLayerImageCodeCache().getTotalByteArrayLengths();
         long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
         addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
@@ -147,21 +159,24 @@ public class HeapBreakdownProvider {
             long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
             addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
         }
-        /* Extract byte[] for resources. */
-        long resourcesByteArraySize = 0;
-        int resourcesByteArrayCount = 0;
-        for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.singleton().resources()) {
-            if (resourceList.getValueUnconditionally().hasData()) {
-                for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
-                    resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
-                    resourcesByteArrayCount++;
+        ProgressReporter reporter = ProgressReporter.singleton();
+        /* GR-57350: This condition can be removed once resources are adapted for Layered Images */
+        if (!ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /* Extract byte[] for resources. */
+            long resourcesByteArraySize = 0;
+            int resourcesByteArrayCount = 0;
+            for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources()) {
+                if (resourceList.getValueUnconditionally().hasData()) {
+                    for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
+                        resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
+                        resourcesByteArrayCount++;
+                    }
                 }
             }
-        }
-        ProgressReporter reporter = ProgressReporter.singleton();
-        reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
-        if (resourcesByteArraySize > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
+            reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
+            if (resourcesByteArraySize > 0) {
+                addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
+            }
         }
         /* Extract byte[] for graph encodings. */
         if (graphEncodingByteLength >= 0) {
@@ -173,7 +188,7 @@ public class HeapBreakdownProvider {
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
         addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "general heap data", "#glossary-general-heap-data"), byteArrayEntry.byteSize, byteArrayEntry.count);
         assert byteArrayEntry.byteSize == 0 && byteArrayEntry.count == 0;
-        sortedBreakdownEntries = entries.stream().sorted(Comparator.comparingLong(HeapBreakdownEntry::getByteSize).reversed()).toList();
+        setBreakdownEntries(entries);
     }
 
     private static void addEntry(List<HeapBreakdownEntry> entries, HeapBreakdownEntry byteArrayEntry, HeapBreakdownEntry newData, long byteSize, int count) {
@@ -196,7 +211,7 @@ public class HeapBreakdownProvider {
         long byteSize;
         int count;
 
-        HeapBreakdownEntry(HostedClass hostedClass) {
+        public HeapBreakdownEntry(HostedClass hostedClass) {
             this(hostedClass.toJavaName(true));
         }
 

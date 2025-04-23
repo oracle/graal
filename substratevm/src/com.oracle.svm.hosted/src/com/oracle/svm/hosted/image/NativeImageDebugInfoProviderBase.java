@@ -81,13 +81,13 @@ public abstract class NativeImageDebugInfoProviderBase {
     protected final NativeLibraries nativeLibs;
     protected final RuntimeConfiguration runtimeConfiguration;
     protected final boolean useHeapBase;
-    protected final int compressShift;
+    protected final int compressionShift;
     protected final int referenceSize;
     protected final int pointerSize;
-    protected final int referenceAlignment;
+    protected final int objectAlignment;
     protected final int primitiveStartOffset;
     protected final int referenceStartOffset;
-    protected final int tagsMask;
+    protected final int reservedHubBitsMask;
 
     protected final HostedType hubType;
     protected final HostedType wordBaseType;
@@ -103,19 +103,19 @@ public abstract class NativeImageDebugInfoProviderBase {
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
-        this.tagsMask = objectHeader.getReservedBitsMask();
+        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
+        this.reservedHubBitsMask = objectHeader.getReservedHubBitsMask();
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
             this.useHeapBase = compressEncoding.hasBase();
-            this.compressShift = (compressEncoding.hasShift() ? compressEncoding.getShift() : 0);
+            this.compressionShift = (compressEncoding.hasShift() ? compressEncoding.getShift() : 0);
         } else {
             this.useHeapBase = false;
-            this.compressShift = 0;
+            this.compressionShift = 0;
         }
         this.referenceSize = getObjectLayout().getReferenceSize();
-        this.referenceAlignment = getObjectLayout().getAlignment();
+        this.objectAlignment = getObjectLayout().getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
         primitiveStartOffset = (int) primitiveFields.getOffset();
         referenceStartOffset = (int) objectFields.getOffset();
@@ -369,11 +369,11 @@ public abstract class NativeImageDebugInfoProviderBase {
         return useHeapBase;
     }
 
-    public int oopCompressShift() {
-        return compressShift;
+    public int compressionShift() {
+        return compressionShift;
     }
 
-    public int oopReferenceSize() {
+    public int referenceSize() {
         return referenceSize;
     }
 
@@ -381,12 +381,12 @@ public abstract class NativeImageDebugInfoProviderBase {
         return pointerSize;
     }
 
-    public int oopAlignment() {
-        return referenceAlignment;
+    public int objectAlignment() {
+        return objectAlignment;
     }
 
-    public int oopTagsMask() {
-        return tagsMask;
+    public int reservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
     public int compiledCodeMax() {

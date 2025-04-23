@@ -28,8 +28,10 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
@@ -72,19 +74,18 @@ import jdk.vm.ci.meta.JavaKind;
  * </pre>
  *
  * <p>
- * Like {@link Hybrid}, DynamicHub objects have an instance {@link HubType}, but a
- * {@link LayoutEncoding} like an array. See the javadoc for {@link Hybrid} more details its
- * implications.
+ * Like {@link Hybrid} objects, DynamicHubs have an instance {@link HubType}, but a
+ * {@link LayoutEncoding} like an array (see the javadoc for {@link Hybrid}).
  */
 public class DynamicHubLayout {
 
     private final ObjectLayout layout;
     private final HostedInstanceClass dynamicHubType;
     public final HostedField closedTypeWorldTypeCheckSlotsField;
-    private final int closedTypeWorldTypeCheckSlotsOffset;
-    private final int closedTypeWorldTypeCheckSlotSize;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private final int closedTypeWorldTypeCheckSlotsOffset;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private final int closedTypeWorldTypeCheckSlotSize;
     public final HostedField vTableField;
-    public final int vTableSlotSize;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) public final int vTableSlotSize;
     public final JavaKind vTableSlotStorageKind;
     private final Set<HostedField> ignoredFields;
 
@@ -142,12 +143,12 @@ public class DynamicHubLayout {
     }
 
     public int getClosedTypeWorldTypeCheckSlotsOffset() {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return closedTypeWorldTypeCheckSlotsOffset;
     }
 
     public int getClosedTypeWorldTypeCheckSlotsOffset(int index) {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return closedTypeWorldTypeCheckSlotsOffset + index * closedTypeWorldTypeCheckSlotSize;
     }
 

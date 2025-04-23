@@ -142,6 +142,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
          * considered when building the intervals if the interval is not live, colorLirOperand will
          * cause an assert on failure.
          */
+        assert LIRValueUtil.isVariable(operand) : operand.toString();
         Value result = colorLirOperand(op, LIRValueUtil.asVariable(operand), mode);
         assert !allocator.hasCall(tempOpId) || LIRValueUtil.isStackSlotValue(result) || LIRValueUtil.isJavaConstant(result) ||
                         !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
@@ -168,8 +169,8 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
                     if (newOp == null) {
                         hasDead = true;
                     }
-                } catch (GraalError e) {
-                    throw e.addContext("lir instruction", "@" + op.id() + " " + op.getClass().getName() + " " + op);
+                } catch (GraalError | AssertionError e) {
+                    throw GraalError.asGraalError(e).addContext("lir instruction", "@" + op.id() + " " + op.getClass().getName() + " " + op);
                 }
             }
         }

@@ -24,20 +24,17 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
-import com.oracle.svm.core.util.VMError;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class VerificationMarkerNode extends FixedWithNextNode implements LIRLowerable, ControlFlowAnchored {
@@ -48,18 +45,6 @@ public final class VerificationMarkerNode extends FixedWithNextNode implements L
     public VerificationMarkerNode(Object marker) {
         super(TYPE, StampFactory.forVoid());
         this.marker = marker;
-    }
-
-    @Override
-    protected void afterClone(Node other) {
-        if (((StructuredGraph) other.graph()).isSubstitution()) {
-            /*
-             * If this node is inlined into a graph as part of snippet lowering (through
-             * Graph.addDuplicates) its fine to clone the marker.
-             */
-            return;
-        }
-        throw VMError.shouldNotReachHere("Marker must be unique, therefore the node cannot be cloned");
     }
 
     @Override

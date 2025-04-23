@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1025-L1117",
-          sha1 = "beab5f4817b620d98201e17dc1e07f680177b147")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1061-L1154",
+          sha1 = "a241b9a68c849aef950d5082c3373ec5211ca43f")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
@@ -108,7 +108,7 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
     }
 
     static Register asXMMRegister(int index) {
-        return AMD64.xmmRegistersSSE[index];
+        return AMD64.xmmRegistersAVX512[index];
     }
 
     @Override

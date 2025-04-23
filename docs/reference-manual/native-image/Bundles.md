@@ -20,9 +20,9 @@ Using Native Image bundles is a safe solution to encapsulate all this input requ
 
 * [Creating Bundles](#creating-bundles)
 * [Building with Bundles](#building-with-bundles)
-* [Environment Variables](#capturing-environment-variables)
-* [Creating New Bundles from Existing Bundles](#combining---bundle-create-and---bundle-apply)
-* [Executing the bundled application](#executing-the-bundled-application)
+* [Capturing Environment Variables](#capturing-environment-variables)
+* [Creating New Bundles from Existing Bundles](#combining-bundle-create-and-bundle-apply)
+* [Executing a Bundled Application](#executing-a-bundled-application)
 * [Bundle File Format](#bundle-file-format)
 
 ## Creating Bundles

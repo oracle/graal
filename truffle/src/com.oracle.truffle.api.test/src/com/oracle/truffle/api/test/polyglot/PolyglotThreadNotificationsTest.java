@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -62,6 +63,8 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -78,8 +81,6 @@ import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.NullObject;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 @SuppressWarnings("hiding")
 @RunWith(Parameterized.class)
@@ -623,8 +624,7 @@ public class PolyglotThreadNotificationsTest extends AbstractThreadedPolyglotTes
 
         static class Context {
             private final Env env;
-            Map<Thread, Boolean> initializedThreads = new WeakHashMap<>();
-            Map<Thread, CallTarget> threadDisposeCallTargetMap = new WeakHashMap<>();
+            Map<Thread, CallTarget> threadDisposeCallTargetMap = Collections.synchronizedMap(new WeakHashMap<>());
             AtomicInteger finalizeThreadCount = new AtomicInteger();
             AtomicInteger disposeThreadCount = new AtomicInteger();
             List<Thread> polyglotThreads = new ArrayList<>();
@@ -665,11 +665,7 @@ public class PolyglotThreadNotificationsTest extends AbstractThreadedPolyglotTes
                             ctx.polyglotThreads.add(ctx.env.newTruffleThreadBuilder(() -> countDown(countDownLatch)).virtual(vthreads).build());
                             ctx.polyglotThreads.get(ctx.polyglotThreads.size() - 1).start();
                         }
-                        try {
-                            countDownLatch.await();
-                        } catch (InterruptedException ie) {
-                            throw new AssertionError(ie);
-                        }
+                        TruffleSafepoint.setBlockedThreadInterruptible(this, CountDownLatch::await, countDownLatch);
                     }
                     if (action == Action.FINALIZE_THREAD) {
                         ctx.finalizeThreadCount.incrementAndGet();
@@ -692,7 +688,6 @@ public class PolyglotThreadNotificationsTest extends AbstractThreadedPolyglotTes
 
         @Override
         protected void initializeThread(Context context, Thread thread) {
-            context.initializedThreads.put(thread, true);
             context.threadDisposeCallTargetMap.put(thread, new RootNode(this) {
 
                 @Override
@@ -734,11 +729,7 @@ public class PolyglotThreadNotificationsTest extends AbstractThreadedPolyglotTes
         @Override
         protected void finalizeContext(Context context) {
             for (Thread polyglotThread : context.polyglotThreads) {
-                try {
-                    polyglotThread.join();
-                } catch (InterruptedException ie) {
-                    throw new AssertionError(ie);
-                }
+                TruffleSafepoint.setBlockedThreadInterruptible(null, Thread::join, polyglotThread);
             }
         }
 
@@ -890,11 +881,7 @@ public class PolyglotThreadNotificationsTest extends AbstractThreadedPolyglotTes
                     }).virtual(vthreads).build();
                     t.start();
                     ctx.env.initializeLanguage(ctx.env.getInternalLanguages().get(DummyLanguage1.ID));
-                    try {
-                        t.join();
-                    } catch (InterruptedException ie) {
-                        throw new AssertionError(ie);
-                    }
+                    TruffleSafepoint.setBlockedThreadInterruptible(this, Thread::join, t);
                     return NullObject.SINGLETON;
                 }
 

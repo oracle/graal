@@ -32,7 +32,7 @@ import org.junit.Test;
  */
 public class VN_Cast02 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         int field = 9;
     }
 

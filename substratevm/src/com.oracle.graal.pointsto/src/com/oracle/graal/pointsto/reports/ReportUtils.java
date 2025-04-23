@@ -298,22 +298,22 @@ public class ReportUtils {
     public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent) {
         if (bb.trackTypeFlowInputs()) {
             StringBuilder msg = new StringBuilder(String.format("Propagation trace through type flows for type %s: %n", type.toJavaName()));
-            followInput(flow, type, indent, new HashSet<>(), msg);
+            followInput(bb, flow, type, indent, new HashSet<>(), msg);
             return msg.toString();
         } else {
             return String.format("To print the propagation trace through type flows for type %s set the -H:+TrackInputFlows option. %n", type.toJavaName());
         }
     }
 
-    private static void followInput(TypeFlow<?> flow, AnalysisType type, String indent, HashSet<TypeFlow<?>> seen, StringBuilder msg) {
+    private static void followInput(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent, HashSet<TypeFlow<?>> seen, StringBuilder msg) {
         seen.add(flow);
         if (flow instanceof AllInstantiatedTypeFlow) {
             msg.append(String.format("AllInstantiated(%s)%n", flow.getDeclaredType().toJavaName(true)));
         } else {
             msg.append(String.format("%sat %s: %s%n", indent, flow.formatSource(), flow.format(false, false)));
             for (TypeFlow<?> input : flow.getInputs()) {
-                if (!seen.contains(input) && input.getState().containsType(type)) {
-                    followInput(input, type, indent, seen, msg);
+                if (!seen.contains(input) && input.getOutputState(bb).containsType(type)) {
+                    followInput(bb, input, type, indent, seen, msg);
                     break;
                 }
             }

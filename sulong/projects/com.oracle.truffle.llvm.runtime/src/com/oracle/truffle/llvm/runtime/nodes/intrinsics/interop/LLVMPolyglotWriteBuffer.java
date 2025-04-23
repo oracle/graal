@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,7 +59,7 @@ public abstract class LLVMPolyglotWriteBuffer extends LLVMNode {
     }
 
     protected boolean inBounds(LLVMPointer receiver, long byteOffset, int length) {
-        return byteOffset >= 0 && byteOffset + length <= ((LLVMInteropType.Buffer) receiver.getExportType()).getSize();
+        return byteOffset >= 0 && byteOffset + length <= receiver.getExportType().getSize();
     }
 
     protected boolean isNativeOrder(ByteOrder order) {

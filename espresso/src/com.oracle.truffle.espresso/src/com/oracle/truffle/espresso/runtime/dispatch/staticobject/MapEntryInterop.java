@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.EMPTY_ARRAY;
@@ -38,9 +37,9 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)

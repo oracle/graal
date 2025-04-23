@@ -6,6 +6,7 @@ permalink: /reference-manual/native-image/overview/Options/
 redirect_from:
   - /reference-manual/native-image/overview/BuildOptions/
   - /reference-manual/native-image/Options/
+  - /reference-manual/native-image/guides/use-system-properties/
 ---
 
 # Command-line Options
@@ -32,7 +33,7 @@ Run `native-image --help` for help on build options.
 * `-cp, -classpath, --class-path <class search path of directories and ZIP/JAR files>`: a `:` (`;` on Windows) separated list of directories, JAR archives, and ZIP archives to search for class files
 * `-p <module path>, --module-path <module path>`: a `:` (`;` on Windows) separated list of directories. Each directory is a directory of modules.
 * `--add-modules <module name>[,<module name>...]`: add root modules to resolve in addition to the initial module. `<module name>` can also be `ALL-DEFAULT`, `ALL-SYSTEM`, `ALL-MODULE-PATH`.
-* `-D<name>=<value>`: set a system property 
+* `-D<name>=<value>`: set a system property for image build time only
 * `-J<flag>`: pass an option directly to the JVM running the `native-image` builder
 * `--diagnostics-mode`: enable diagnostics output: class initialization, substitutions, etc.
 * `--enable-preview`: allow classes to depend on preview features of this release
@@ -44,12 +45,15 @@ Run `native-image --help` for help on build options.
 * `--auto-fallback`: build a standalone executable if possible
 * `--color`: color build output (`always`, `never`, or `auto`)
 * `--configure-reflection-metadata`: enable runtime instantiation of reflection objects for non-invoked methods
+* `--emit`: emit additional data as a result of the build. Use `build-report` to emit a detailed Build Report, for example: `--emit build-report` or `--emit build-report=report.html`
 * `--enable-all-security-services`: add all security service classes to the generated native executable
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
 * `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. A comma-separated list can contain `heapdump`, `jfr`, `jvmstat`, `jmxserver` (experimental), `jmxclient` (experimental), `threaddump`, or `all` (deprecated behavior: defaults to `all` if no argument is provided). For example: `--enable-monitoring=heapdump,jfr`.
 * `--enable-sbom`: embed a Software Bill of Materials (SBOM) in the executable or shared library for passive inspection. A comma-separated list can contain `cyclonedx`, `strict` (defaults to `cyclonedx` if no argument is provided), or `export` to save the SBOM to the native executable's output directory. The optional `strict` flag aborts the build if any class cannot be matched to a library in the SBOM. For example: `--enable-sbom=cyclonedx,strict`. (Not available in GraalVM Community Edition.)
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
+* `--exact-reachability-metadata`: enables exact and user-friendly handling of reflection, resources, JNI, and serialization
+* `--exact-reachability-metadata-path`: trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
 * `--force-fallback`: force building of a fallback native executable
 * `--gc=<value>`: select a Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (not available in GraalVM Community Edition); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).
@@ -72,11 +76,10 @@ Run `native-image --help` for help on build options.
 * `--shared`: build a shared library
 * `--silent`: silence build output
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries)
-* `--static-nolibc`: build statically linked executable with libc dynamically linked
+* `--static-nolibc`: build statically linked executable with `libc` dynamically linked
 * `--target`: select the compilation target for `native-image` (in the `<OS>-<architecture>` format). It defaults to host's OS-architecture pair.
-* `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class initialization is traced for
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object instantiation is traced for
-* `-O<level>`: control code optimizations where available variants are: `b` - optimize for fastest build time, `s` - optimize for size, `0` - no optimizations, `1` - basic optimizations, `2` - aggressive optimizations, `3` - all optimizations for best performance (enabled automatically with Profile-Guided Optimizations)
+* `-O<level>`: control code optimizations where available variants are: `b` - optimize for fastest build time, `s` - optimize for size, `0` - no optimizations, `1` - basic optimizations, `2` - aggressive optimizations, `3` - all optimizations for best performance (enabled automatically with Profile-Guided Optimization (PGO))
 * `-da`, `-da[:[packagename]|:[classname]`, `disableassertions[:[packagename]|:[classname]`: disable assertions with specified granularity at run time
 * `-dsa`, `-disablesystemassertions`: disable assertions in all system classes at run time
 * `-ea`, `-ea[:[packagename]|:[classname]`, `enableassertions[:[packagename]|:[classname]`: enable assertions with specified granularity at run time
@@ -117,9 +120,9 @@ There are some expert level options that a user may find useful or needed. For e
 Native Image provides an informative [build output](BuildOutput.md) including various statistics during the build process.
 The build output in a JSON-based, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by a monitoring tool.
 The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.3.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
-A comprehensive report with additional information can be requested using the `-H:+BuildReport` option.
+A comprehensive report with additional information can be requested using the `--emit build-report` option.
 
-> Note: The `-H:+BuildReport` option is not available in GraalVM Community Edition.
+> Note: The `--emit build-report` option is not available in GraalVM Community Edition.
 
 ### Graph Dumping
 
@@ -130,6 +133,39 @@ The Graal compiler options that work as expected include `Dump`, `DumpOnError`, 
 For example:
 * `-H:Dump= -H:MethodFilter=ClassName.MethodName`: dump the compiler graphs of the `native-image` builder.
 * `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`: dump the compile graphs at runtime.
+
+## System Properties
+
+You can define system properties at image build time using the `-D<system.property>=<value>` option syntax.
+It sets a system property for the `native-image` tool, but the property will not be included in the generated executable.
+However, JDK system properties are included in generated executables and are visible at runtime.
+
+For example:
+* `-D<system.property>=<value>` will only be visible at build time. If this system property is accessed in the native executable, it will return `null`.
+* `-Djava.version=24` will be visible at both build time and in the native executable because the value is copied into the binary by default.
+
+The following system properties are automatically copied into the generated executable:
+
+| Name                          | Description                                                       |
+|-------------------------------|-------------------------------------------------------------------|
+| file.separator                | File separator                                                    |
+| file.encoding                 | Character encoding for the default locale                         |
+| java.version                  | Java Runtime Environment version                                  |
+| java.version.date             | General-availability (GA) date of the release                     |
+| java.class.version            | Java class format version number                                  |
+| java.runtime.version          | Java Runtime Environment version                                  |
+| java.specification.name       | Java Runtime Environment specification name                       |
+| java.specification.vendor     | Java Runtime Environment specification vendor                     |
+| java.specification.version    | Java Virtual Machine specification version                        |
+| java.vm.specification.name    | Java Virtual Machine specification name                           |
+| java.vm.specification.vendor  | Java Virtual Machine implementation vendor                        |
+| java.vm.specification.version | Java Virtual Machine specification version                        |
+| line.separator                | Line separator                                                    |
+| native.encoding               | Specifies the host environment's character encoding               |
+| org.graalvm.nativeimage.kind  | Specifies if the image is built as a shared library or executable |
+| path.separator                | Path separator                                                    |
+| stdout.encoding               | Specifies the encoding for `System.out` and `System.err`          |
+| sun.jnu.encoding              | Specifies encoding when parsing values passed via the commandline |
 
 ## Related Documentation
 

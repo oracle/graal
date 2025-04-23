@@ -20,58 +20,57 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.liveness;
 
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ASTORE_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DLOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.DSTORE_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FLOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.FSTORE_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.IINC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ILOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.ISTORE_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LLOAD_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_0;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_1;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_2;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.LSTORE_3;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.isLoad;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.isStore;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ASTORE_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ASTORE_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ASTORE_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ASTORE_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DLOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DLOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DLOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DLOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DSTORE_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DSTORE_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DSTORE_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.DSTORE_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FLOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FLOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FLOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FLOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FSTORE_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FSTORE_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FSTORE_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.FSTORE_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.IINC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ILOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ISTORE_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ISTORE_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ISTORE_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ISTORE_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LLOAD_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LLOAD_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LLOAD_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LLOAD_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LSTORE_0;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LSTORE_1;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LSTORE_2;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LSTORE_3;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RET;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.isLoad;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.isStore;
 
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 
 /**
@@ -83,11 +82,13 @@ public final class LoadStoreFinder {
     private final Graph<? extends LinkedBlock> graph;
     private final History[] blockHistory;
     private final BytecodeStream bs;
+    private final boolean doNotClearThis;
 
-    public LoadStoreFinder(Graph<? extends LinkedBlock> graph, Method method) {
+    public LoadStoreFinder(Graph<? extends LinkedBlock> graph, Method method, boolean doNotClearThis) {
         this.graph = graph;
         this.blockHistory = new History[graph.totalBlocks()];
         this.bs = new BytecodeStream(method.getOriginalCode());
+        this.doNotClearThis = doNotClearThis;
     }
 
     public void analyze() {
@@ -111,6 +112,9 @@ public final class LoadStoreFinder {
             } else if (isStore(opcode)) {
                 record = new Record(bci, findLocalIndex(bs, bci, opcode), TYPE.STORE);
                 needsTwoLocals = Bytecodes.stackEffectOf(opcode) == -2;
+            } else if (doNotClearThis && (Bytecodes.isControlSink(opcode))) {
+                // Ensures 'this' is alive across the entire method.
+                record = new Record(bci, 0, TYPE.LOAD);
             }
             if (record != null) {
                 history.add(record);

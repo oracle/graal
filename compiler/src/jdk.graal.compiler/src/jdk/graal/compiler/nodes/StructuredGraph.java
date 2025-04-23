@@ -129,12 +129,20 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public HIRBlock blockFor(Node n) {
+            return blockFor(n, false);
+        }
+
+        public HIRBlock blockFor(Node n, boolean allowNew) {
             if (n instanceof PhiNode) {
                 return blockFor(((PhiNode) n).merge());
             } else if (n instanceof ProxyNode) {
                 return blockFor(((ProxyNode) n).proxyPoint());
             } else {
-                return nodeToBlockMap.get(n);
+                if (allowNew) {
+                    return nodeToBlockMap.isNew(n) ? null : nodeToBlockMap.get(n);
+                } else {
+                    return nodeToBlockMap.get(n);
+                }
             }
         }
 
@@ -1011,6 +1019,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void reduceDegenerateLoopBegin(LoopBeginNode begin, boolean forKillCFG) {
         assert begin.loopEnds().isEmpty() : "Loop begin still has backedges";
+        begin.removeSafepoints();
         if (begin.forwardEndCount() == 1) { // bypass merge and remove
             reduceTrivialMerge(begin, forKillCFG);
         } else { // convert to merge

@@ -117,8 +117,8 @@ public class LibGraalCompilationDriver {
     private final boolean multiThreaded;
 
     /**
-     * Number of threads to use for multithreaded compilation. If 0, the value of
-     * {@code Runtime.getRuntime().availableProcessors()} is used instead.
+     * Number of threads to use for multithreaded compilation. If 0, a good default value is picked
+     * by {@link #getThreadCount()}.
      */
     private final int numThreads;
 
@@ -157,9 +157,9 @@ public class LibGraalCompilationDriver {
 
     /**
      * Implemented by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.compileMethod}.
+     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints#compileMethod}.
      */
-    public static native long compileMethodInLibgraal(long isolateThread,
+    public static native long compileMethodInLibgraal(long isolateThreadAddress,
                     long methodHandle,
                     boolean useProfilingInfo,
                     boolean installAsDefault,
@@ -326,14 +326,11 @@ public class LibGraalCompilationDriver {
                 return UNSAFE.getLong(getAddress());
             }
 
-            static final long NANOS_IN_MILLI = 1_000_000;
-
             /**
              * @return compilation time as output by libgraal, in nanoseconds.
              */
             public long readTimeElapsed() {
-                // Libgraal uses milliseconds, convert to nano for consistency.
-                return UNSAFE.getLong(getAddress() + Long.BYTES) * NANOS_IN_MILLI;
+                return UNSAFE.getLong(getAddress() + Long.BYTES);
             }
         }
 
@@ -574,9 +571,14 @@ public class LibGraalCompilationDriver {
                     TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
                     TTY.println(stackTrace);
                 }
+                failedCompilations.getAndAdd(1);
                 return null;
             }
-            return new CompilationResult(installedCode, memTimeBuffer.readTimeElapsed(), memTimeBuffer.readBytesAllocated());
+            long memoryUsed = memTimeBuffer.readBytesAllocated();
+            long compileTime = memTimeBuffer.readTimeElapsed();
+            GraalError.guarantee(compileTime != 0L, "Compilation time cannot be 0");
+            GraalError.guarantee(memoryUsed != 0L, "Compilation memory used cannot be 0");
+            return new CompilationResult(installedCode, compileTime, memoryUsed);
         }
     }
 
@@ -599,6 +601,11 @@ public class LibGraalCompilationDriver {
         int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
         return createCompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+    }
+
+    protected void handleFailure(HotSpotCompilationRequestResult result) {
+        failedCompilations.getAndAdd(1);
+        throw new GraalError("Compilation request failed: %s", result.getFailureMessage());
     }
 
     /**
@@ -627,14 +634,13 @@ public class LibGraalCompilationDriver {
             CompilationTask task = createCompilationTask(method, useProfilingInfo, installAsDefault);
             HotSpotCompilationRequestResult result = task.runCompilation(compileOptions);
             if (result.getFailure() != null) {
-                var error = new GraalError("Compilation request failed: %s", result.getFailureMessage());
                 if (result.getRetry() && !retried) {
-                    error.printStackTrace(TTY.out);
-                    TTY.println("Retrying...");
+                    TTY.println("Retrying %s after transient failure...", task);
                     retried = true;
                     continue;
                 }
-                throw error;
+                handleFailure(result);
+                return null;
             }
             HotSpotInstalledCode installedCode = task.getInstalledCode();
             assert installedCode != null : "installed code is null yet no failure detected";
@@ -694,7 +700,12 @@ public class LibGraalCompilationDriver {
         if (multiThreaded) {
             threadCount = numThreads;
             if (threadCount == 0) {
-                threadCount = Runtime.getRuntime().availableProcessors();
+                /*
+                 * On very large machine there might be hundreds of processors and the compiler
+                 * doesn't really scale well enough for that so limit the max number of threads. 32
+                 * was picked as that seemed to scale well enough in testing.
+                 */
+                threadCount = Math.min(32, Runtime.getRuntime().availableProcessors());
             }
         }
         return threadCount;
@@ -713,7 +724,6 @@ public class LibGraalCompilationDriver {
                     Map<ResolvedJavaMethod, CompilationResult> results) {
         CompilationResult result = compile(task, libgraal, options);
         if (result == null) {
-            failedCompilations.getAndAdd(1);
             return;
         }
         compileTime.getAndAdd(result.compileTime());

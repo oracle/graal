@@ -43,6 +43,10 @@ public class EspressoThreadLocalState {
 
     private int singleSteppingDisabledCounter;
 
+    private boolean stepInProgress;
+
+    private boolean inTransformer;
+
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context) {
         typeStack = new ClassRegistry.TypeStack();
@@ -124,8 +128,16 @@ public class EspressoThreadLocalState {
         return privilegedStack;
     }
 
-    public void disableSingleStepping() {
-        singleSteppingDisabledCounter++;
+    public void setSteppingInProgress(boolean value) {
+        stepInProgress = value;
+    }
+
+    public boolean disableSingleStepping(boolean forceDisable) {
+        if (forceDisable || stepInProgress) {
+            singleSteppingDisabledCounter++;
+            return true;
+        }
+        return false;
     }
 
     public void enableSingleStepping() {
@@ -180,5 +192,25 @@ public class EspressoThreadLocalState {
         // Why one and not zero here? Because the fact we reached here means we're inside the
         // suspend intrinsic, and we don't want to consider that as blocking the suspend.
         return suspensionBlocks > 1;
+    }
+
+    public TransformerScope transformerScope() {
+        return new TransformerScope();
+    }
+
+    public boolean isInTransformer() {
+        return inTransformer;
+    }
+
+    public final class TransformerScope implements AutoCloseable {
+
+        private TransformerScope() {
+            inTransformer = true;
+        }
+
+        @Override
+        public void close() {
+            inTransformer = false;
+        }
     }
 }

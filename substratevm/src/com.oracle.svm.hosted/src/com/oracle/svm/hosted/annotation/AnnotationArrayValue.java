@@ -51,10 +51,11 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
         return skip ? null : new AnnotationArrayValue(elements);
     }
 
-    AnnotationArrayValue(Class<?> elementType, Object[] values) {
-        this.elements = new AnnotationMemberValue[values.length];
-        for (int i = 0; i < values.length; ++i) {
-            this.elements[i] = AnnotationMemberValue.from(elementType, values[i]);
+    AnnotationArrayValue(Class<?> elementType, Object values) {
+        int length = Array.getLength(values);
+        this.elements = new AnnotationMemberValue[length];
+        for (int i = 0; i < length; ++i) {
+            this.elements[i] = AnnotationMemberValue.from(elementType, Array.get(values, i));
         }
     }
 

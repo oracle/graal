@@ -26,23 +26,28 @@ import os
 import shutil
 import signal
 import subprocess
+import argparse
+import sys
 
 import mx
 import mx_jardistribution
 import mx_pomdistribution
 import mx_subst
 import mx_util
+import mx_gate
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 import mx_sdk_vm_impl
+from mx_sdk_vm_ng import JavaHomeDependency
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-from os.path import join, isabs, exists, dirname, relpath, basename
+from os.path import join, exists, dirname, relpath
+from import_order import verify_order, validate_format
 
 _suite = mx.suite('espresso')
 
 # re-export custom mx project classes, so they can be used from suite.py
-from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
+from mx_sdk_shaded import ShadedLibraryProject
 
 # JDK compiled with the Sulong toolchain.
 espresso_llvm_java_home = mx.get_env('ESPRESSO_LLVM_JAVA_HOME') or mx.get_env('LLVM_JAVA_HOME')
@@ -57,7 +62,8 @@ def _espresso_command(launcher, args):
 
 def _espresso_launcher_command(args):
     """Espresso launcher embedded in GraalVM + arguments"""
-    return _espresso_command('espresso', args)
+    jacoco_args = ['--vm.' + arg for arg in mx_gate.get_jacoco_agent_args() or []]
+    return _espresso_command('espresso', jacoco_args + args)
 
 
 def _java_truffle_command(args):
@@ -65,15 +71,20 @@ def _java_truffle_command(args):
     return _espresso_command('java', ['-truffle'] + args)
 
 
-def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=False):
+def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=False, allow_jacoco=True):
     """Espresso standalone command from distribution jars + arguments"""
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     distributions = ['ESPRESSO', 'ESPRESSO_LAUNCHER', 'ESPRESSO_LIBS_RESOURCES', 'ESPRESSO_RUNTIME_RESOURCES', 'TRUFFLE_NFI_LIBFFI']
     if with_sulong:
         distributions += ['SULONG_NFI', 'SULONG_NATIVE']
+    if allow_jacoco:
+        jacoco_args = ['--vm.' + arg for arg in mx_gate.get_jacoco_agent_args() or []]
+    else:
+        jacoco_args = []
     return (
         vm_args
         + mx.get_runtime_jvm_args(distributions, jdk=mx.get_jdk())
+        + jacoco_args
         # We are not adding the truffle runtime
         + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
@@ -120,14 +131,53 @@ def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    return _run_espresso_launcher([
+    return _run_espresso([
         '--vm.Xss4m',
-    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
+    ] + _espresso_standalone_command(args, allow_jacoco=False), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
 
+
+def _run_verify_imports(s):
+    # Look for the format specification in the suite
+    prefs = s.eclipse_settings_sources().get('org.eclipse.jdt.ui.prefs')
+    prefix_order = []
+    if prefs:
+        for pref in prefs:
+            with open(pref) as f:
+                for line in f.readlines():
+                    if line.startswith('org.eclipse.jdt.ui.importorder'):
+                        key_value_sep_index = line.find('=')
+                        if key_value_sep_index != -1:
+                            value = line.strip()[key_value_sep_index + 1:]
+                            prefix_order = value.split(';')
+
+    # Validate import order format
+    err = validate_format(prefix_order)
+    if err:
+        mx.abort(err)
+
+    # Find invalid files
+    invalid_files = []
+    for project in s.projects:
+        if isinstance(project, ShadedLibraryProject):
+            # Ignore shaded libraries
+            continue
+        for src_dir in project.source_dirs():
+            invalid_files += verify_order(src_dir, prefix_order)
+
+    if invalid_files:
+        mx.abort("The following files have wrong imports order:\n" + '\n'.join(invalid_files))
+
+    print("All imports correctly ordered!")
+
+def _run_verify_imports_espresso(args):
+    if args:
+        mx.abort("No arguments expected for verify-imports")
+    _run_verify_imports(_suite)
 
 class EspressoTags:
     jackpot = 'jackpot'
     verify = 'verify'
+    imports = 'imports'
 
 
 def _espresso_gate_runner(args, tasks):
@@ -139,6 +189,10 @@ def _espresso_gate_runner(args, tasks):
     with Task('Espresso: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
             mx_sdk_vm.verify_graalvm_configs(suites=['espresso'])
+
+    with Task('Espresso: verify import order', tasks, tags=[EspressoTags.imports]) as t:
+        if t:
+            _run_verify_imports(_suite)
 
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
@@ -221,7 +275,7 @@ class EspressoLegacyNativeImagePropertiesBuildTask(mx.BuildTask):
         return f'Create {self.subject}'
 
     def newestOutput(self):
-        return mx.TimeStampFile.newest(self.subject.output_file())
+        return mx.TimeStampFile(self.subject.output_file())
 
     def needsBuild(self, newestInput):
         r = super().needsBuild(newestInput)
@@ -534,49 +588,6 @@ def register_espresso_runtime_resources(register_project, register_distribution,
         }))
 
 
-class JavaHomeDependency(mx.BaseLibrary):
-    def __init__(self, suite, name, java_home):
-        assert isabs(java_home)
-        self.java_home = java_home
-        release_dict = mx_sdk_vm.parse_release_file(join(java_home, 'release'))
-        self.is_ee_implementor = release_dict.get('IMPLEMENTOR') == 'Oracle Corporation'
-        self.version = mx.VersionSpec(release_dict.get('JAVA_VERSION'))
-        self.major_version = self.version.parts[1] if self.version.parts[0] == 1 else self.version.parts[0]
-        if self.is_ee_implementor:
-            the_license = "Oracle Proprietary"
-        else:
-            the_license = "GPLv2-CPE"
-        super().__init__(suite, name, optional=False, theLicense=the_license)
-        self.deps = []
-
-    def is_available(self):
-        return True
-
-    def getBuildTask(self, args):
-        return mx.ArchivableBuildTask(self, args, 1)
-
-    def getResults(self):
-        for root, _, files in os.walk(self.java_home):
-            for name in files:
-                yield join(root, name)
-
-    def getArchivableResults(self, use_relpath=True, single=False):
-        if single:
-            raise ValueError("single not supported")
-        for path in self.getResults():
-            if use_relpath:
-                arcname = relpath(path, self.java_home)
-            else:
-                arcname = basename(path)
-            yield path, arcname
-
-    def post_init(self):
-        pass  # help act like a distribution since this is registered as a distribution
-
-    def archived_deps(self):
-        return []  # help act like a distribution since this is registered as a distribution
-
-
 class EspressoRuntimeResourceProject(mx.JavaProject):
     def __init__(self, suite, subDir, runtime_name, theLicense):
         name = f'com.oracle.truffle.espresso.resources.runtime'
@@ -726,22 +737,114 @@ jvm_cfg_component = mx_sdk_vm.GraalVmJreComponent(
 mx_sdk_vm.register_graalvm_component(jvm_cfg_component)
 
 
+def _gen_option_probe_switch(options, out, ident):
+    assert options
+    next_checks_map = {}
+    common_prefix = ""
+    while True:
+        for suffix, is_boolean in options:
+            if len(suffix) == 0:
+                next_checks_map['\0'] = is_boolean
+            else:
+                next_checks_map.setdefault(suffix[0], []).append((suffix[1:], is_boolean))
+        if len(next_checks_map) > 1:
+            break
+        common_first_char = next(iter(next_checks_map.keys()))
+        if common_first_char == '\0':
+            break
+        next_checks_map = {}
+        common_prefix = common_prefix + common_first_char
+        options = [(suffix[1:], is_boolean) for suffix, is_boolean in options]
+
+    def write_line(line):
+        out.write("    " * ident)
+        out.write(line)
+        out.write("\n")
+
+    if common_prefix:
+        write_line(f"if (strncmp(option, \"{common_prefix}\", strlen(\"{common_prefix}\")) != 0) {{")
+        write_line("    return OPTION_UNKNOWN;")
+        write_line("}")
+        write_line(f"option += strlen(\"{common_prefix}\");")
+    write_line("switch(*option) {")
+    for first_char in sorted(next_checks_map.keys()):
+        assert len(first_char) > 0
+        next_checks = next_checks_map[first_char]
+        if first_char == '\0':
+            assert isinstance(next_checks, bool)
+            if next_checks:
+                write_line("    case '\\0':")
+                write_line(f"        return OPTION_BOOLEAN;")
+            else:
+                write_line("    case '=':")
+                write_line("        return OPTION_STRING;")
+        else:
+            write_line(f"    case '{first_char}':")
+            assert isinstance(next_checks, list)
+            if len(next_checks) > 1:
+                write_line("        option++;")
+                _gen_option_probe_switch(next_checks, out, ident + 2)
+            else:
+                rest_str = next_checks[0][0]
+                if next_checks[0][1]:
+                    write_line(
+                        f"        return strncmp(option + 1, \"{rest_str}\", sizeof(\"{rest_str}\")) == 0 ? OPTION_BOOLEAN : OPTION_UNKNOWN;")
+                else:
+                    write_line(
+                        f"        return strncmp(option + 1, \"{rest_str}=\", strlen(\"{rest_str}=\")) == 0 ? OPTION_STRING : OPTION_UNKNOWN;")
+    write_line("    default:")
+    write_line("        return OPTION_UNKNOWN;")
+    write_line("}")
+
+def gen_gc_option_check(args):
+    parser = argparse.ArgumentParser(prog='mx gen-gc-option-check')
+    parser.add_argument('input', type=argparse.FileType('r'), help='Input G1 options dump file (From -H:+DumpIsolateCreationOnlyOptions)')
+    args = parser.parse_args(args)
+    options = []
+    for line in args.input.readlines():
+        java_type, name = line.rstrip('\n').split(' ', 1)
+        options.append((name, java_type == 'java.lang.Boolean'))
+    if not options:
+        raise mx.abort("No option found in input file")
+    options.sort(key=lambda x: x[0])
+
+    sys.stdout.write("// Probing for the following options:\n")
+    for suffix, is_boolean in options:
+        if is_boolean:
+            sys.stdout.write(f"// * ±{suffix}\n")
+        else:
+            sys.stdout.write(f"// * {suffix}=\n")
+
+    sys.stdout.write("""
+#define OPTION_UNKNOWN 0
+#define OPTION_BOOLEAN 1
+#define OPTION_STRING 2
+
+static int probe_option_type(const char* option) {
+""")
+    _gen_option_probe_switch(options, sys.stdout, 1)
+    sys.stdout.write("}")
+
+
 # Register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
     'espresso': [_run_espresso_launcher, '[args]'],
     'espresso-standalone': [_run_espresso_standalone, '[args]'],
     'java-truffle': [_run_java_truffle, '[args]'],
     'espresso-meta': [_run_espresso_meta, '[args]'],
+    'gen-gc-option-check': [gen_gc_option_check, '[path to isolate-creation-only-options.txt]'],
+    'verify-imports': [_run_verify_imports_espresso, ''],
 })
 
 
 # Build configs
+_llvm_toolchain_wrappers = ['bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil']
+
 def register_espresso_envs(suite):
     # pylint: disable=bad-whitespace
     # pylint: disable=line-too-long
     tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'truffle-json']
     tregex = ['icu4j', 'rgx', 'xz']
-    _llvm_toolchain_wrappers = ['bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil']
     if espresso_llvm_java_home:
         mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'                                                    , 'elau'                                                                                                                                                ] + tools + tregex, suite, env_file='jvm-llvm')
         mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'         , 'svm', 'svmt'         , 'svmsl'          , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools + tregex, suite, env_file='jvm-ce-llvm')

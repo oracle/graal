@@ -116,7 +116,7 @@ final class UnorderedTrieMap<K, V> implements ImmutableMap<K, V> {
 
     Map.Entry<K, V> getEntry(K key) {
         var entry = root.find(key, hash(key));
-        assert entry == null || entry.getKey().equals(key) : Arrays.asList(entry, key);
+        assert entry == null || entry.getKey().equals(key) || (entry.getKey() instanceof WeakKey<?> wk && wk.refersTo(null)) : Arrays.asList(entry, key);
         return entry;
     }
 

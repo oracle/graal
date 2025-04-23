@@ -113,7 +113,7 @@ class LibFFIContext {
         }
     }
 
-    private class NativeEnvSupplier implements Supplier<NativeEnv> {
+    private final class NativeEnvSupplier implements Supplier<NativeEnv> {
 
         @Override
         public NativeEnv get() {
@@ -311,6 +311,7 @@ class LibFFIContext {
      */
     private static native long initializeNativeEnv(long context);
 
+    @SuppressWarnings("restricted")
     private void loadNFILib() {
         String nfiLib = System.getProperty("truffle.nfi.library");
         if (nfiLib == null) {

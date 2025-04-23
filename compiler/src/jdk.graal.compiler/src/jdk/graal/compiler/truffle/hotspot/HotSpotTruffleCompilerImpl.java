@@ -33,8 +33,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
+import java.util.function.Supplier;
 
 import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalServiceThread;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -139,7 +143,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         OptionsParser.parseOptions(options, values, OptionsParser.getOptionsLoader());
     }
 
-    public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime) {
+    @Override
+    protected ThreadFactory getWatchDogThreadFactory() {
+        return HotSpotGraalServiceThread::new;
+    }
+
+    public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime, Supplier<TruffleRuntimeScope> openCanCallTruffleRuntimeScope) {
         OptionValues options = HotSpotGraalOptionValues.defaultOptions();
         /*
          * Host inlining is not necessary for Truffle guest compilation so disable it.
@@ -163,7 +172,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
 
         final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection,
-                        firstTier, lastTier, knownTruffleTypes, hostSuites);
+                        firstTier, lastTier, knownTruffleTypes, hostSuites, openCanCallTruffleRuntimeScope);
 
         HotSpotTruffleCompilerImpl compiler = new HotSpotTruffleCompilerImpl(graalRuntime, compilerConfig);
 

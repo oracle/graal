@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,7 @@ import jdk.graal.compiler.nodes.GraphState.MandatoryStages;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
-
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -40,6 +40,9 @@ import jdk.vm.ci.code.Architecture;
  * {@link SuitesProvider#getDefaultSuites}.
  */
 public class HotSpotFuzzedSuitesProvider extends HotSpotSuitesProvider {
+
+    public static final String SEED_SYSTEM_PROPERTY = "test.graal.compilationplan.fuzzing.seed";
+
     private static ThreadLocal<Long> lastSeed = new ThreadLocal<>();
 
     private final HotSpotSuitesProvider provider;
@@ -53,7 +56,13 @@ public class HotSpotFuzzedSuitesProvider extends HotSpotSuitesProvider {
 
     @Override
     public Suites getDefaultSuites(OptionValues options, Architecture arch) {
-        long seed = random.nextLong();
+        long seed;
+        String seedString = GraalServices.getSavedProperty(SEED_SYSTEM_PROPERTY);
+        if (seedString != null) {
+            seed = Long.parseLong(seedString);
+        } else {
+            seed = random.nextLong();
+        }
         lastSeed.set(seed);
         return createSuites(options, seed);
     }
@@ -68,5 +77,9 @@ public class HotSpotFuzzedSuitesProvider extends HotSpotSuitesProvider {
 
     private Suites getOriginalSuites(OptionValues options) {
         return provider.getDefaultSuites(options, provider.runtime.getTarget().arch);
+    }
+
+    public ThreadLocal<Long> getLastSeed() {
+        return lastSeed;
     }
 }

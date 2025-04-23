@@ -71,6 +71,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -364,16 +365,24 @@ public final class NativeLibraries {
                             !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue() && !NativeImageOptions.ReturnAfterAnalysis.getValue()) {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
+                boolean isMusl = false;
                 if (Platform.includedIn(Platform.LINUX.class)) {
                     libCMessage = " (target libc: " + HostedLibCBase.singleton().getName() + ")";
+                    isMusl = MuslLibC.NAME.equals(HostedLibCBase.singleton().getName());
                 }
                 String jdkDownloadURL = JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
-                UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
-                                ImageSingletons.lookup(Platform.class).getClass().getName(),
-                                libCMessage,
-                                jdkDownloadURL,
-                                hint);
+                // Checkstyle: allow Class.getSimpleName
+                String className = ImageSingletons.lookup(Platform.class).getClass().getSimpleName();
+                // Checkstyle: disallow Class.getSimpleName
+                if (isMusl) {
+                    UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
+                                    "Building images on %s%s is not supported on your platform.%nBuild on a different platform or try upgrading to a newer GraalVM release%n%s",
+                                    className, libCMessage, hint);
+                } else {
+                    UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
+                                    "Building images on %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
+                                    className, libCMessage, jdkDownloadURL, hint);
+                }
             }
         }
         return libraryPaths;
@@ -446,6 +455,10 @@ public final class NativeLibraries {
         List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
         /* "jvm" is a basic dependence for static JNI libs */
         allDeps.add("jvm");
+        if (library.equals("nio")) {
+            /* "nio" implicitly depends on "net" */
+            allDeps.add("net");
+        }
         dependencyGraph.add(library, allDeps);
     }
 

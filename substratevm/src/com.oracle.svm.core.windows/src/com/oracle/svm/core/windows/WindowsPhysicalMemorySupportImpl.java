@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
@@ -37,10 +40,11 @@ import com.oracle.svm.core.windows.headers.SysinfoAPI;
 class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord size() {
         SysinfoAPI.MEMORYSTATUSEX memStatusEx = UnsafeStackValue.get(SysinfoAPI.MEMORYSTATUSEX.class);
         memStatusEx.set_dwLength(SizeOf.get(SysinfoAPI.MEMORYSTATUSEX.class));
         SysinfoAPI.GlobalMemoryStatusEx(memStatusEx);
-        return WordFactory.unsigned(memStatusEx.ullTotalPhys());
+        return Word.unsigned(memStatusEx.ullTotalPhys());
     }
 }

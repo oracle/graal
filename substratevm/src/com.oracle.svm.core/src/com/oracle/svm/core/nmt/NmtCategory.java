@@ -37,16 +37,24 @@ public enum NmtCategory {
     GC("GC"),
     /** Heap dumping infrastructure. */
     HeapDump("Heap Dump"),
+    /** Image heap (may include GC-specific data). */
+    ImageHeap("Image Heap"),
+    /** Collected Java heap (may include GC-specific data). */
+    JavaHeap("Java Heap"),
     /** Java Flight Recorder. */
     JFR("JFR"),
     /** Java Native Interface. */
     JNI("JNI"),
     /** JVM stat / perf data. */
     JvmStat("jvmstat"),
+    /** Java Virtual Machine Tool Interface. */
+    JVMTI("JVMTI"),
     /** NMT itself. */
     NMT("Native Memory Tracking"),
     /** Profile-guided optimizations. */
     PGO("PGO"),
+    /* Serviceability, e.g., attach API. */
+    Serviceability("Serviceability)"),
     /** Threading. */
     Threading("Threading"),
     /** Memory allocated via Unsafe. */

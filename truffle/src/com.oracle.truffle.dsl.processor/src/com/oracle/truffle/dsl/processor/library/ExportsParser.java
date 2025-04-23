@@ -545,12 +545,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        if (isGenerateSlowPathOnly(type)) {
-            for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
-                for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-                    if (export.isClass() && export.getSpecializedNode() != null) {
-                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions());
-                    }
+        for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
+            for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+                if (export.isClass() && export.getSpecializedNode() != null) {
+                    NodeParser.removeSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions(), isGenerateSlowPathOnly(type));
                 }
             }
         }
@@ -649,14 +647,19 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         Iterator<? extends Element> elementIterator = elements.iterator();
         while (elementIterator.hasNext()) {
             Element element = elementIterator.next();
-            TypeMirror enclosingType = element.getEnclosingElement().asType();
-            if (relevantTypeIds != null && !relevantTypeIds.contains(ElementUtils.getTypeSimpleId(enclosingType))) {
+            Modifier visibility = ElementUtils.getVisibility(element.getModifiers());
+            if (visibility == Modifier.PRIVATE && getRepeatedAnnotation(element.getAnnotationMirrors(), types.ExportMessage).isEmpty()) {
                 elementIterator.remove();
-            } else if (!ElementUtils.typeEquals(templateType.asType(), enclosingType) && !ElementUtils.isVisible(templateType, element)) {
-                elementIterator.remove();
-            } else if (ElementUtils.isObject(enclosingType)) {
-                // not interested in object methods
-                elementIterator.remove();
+            } else {
+                TypeMirror enclosingType = element.getEnclosingElement().asType();
+                if (relevantTypeIds != null && !relevantTypeIds.contains(ElementUtils.getTypeSimpleId(enclosingType))) {
+                    elementIterator.remove();
+                } else if (!ElementUtils.typeEquals(templateType.asType(), enclosingType) && !ElementUtils.isVisible(templateType, element)) {
+                    elementIterator.remove();
+                } else if (ElementUtils.isObject(enclosingType)) {
+                    // not interested in object methods
+                    elementIterator.remove();
+                }
             }
         }
 

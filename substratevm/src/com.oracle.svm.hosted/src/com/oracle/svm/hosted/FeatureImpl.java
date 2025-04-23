@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.meta.SharedField;
@@ -308,12 +310,21 @@ public class FeatureImpl {
 
         /**
          * Register a callback that is executed when an object of the specified type or any of its
-         * subtypes is marked as reachable.
+         * subtypes is marked as reachable. The callback is executed before the object is added to
+         * the shadow heap. A callback may throw an {@link UnsupportedFeatureException} to reject an
+         * object based on specific validation rules. This will stop the image build and report how
+         * the object was reached.
          *
          * @since 24.0
          */
         public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
+        }
+
+        @Override
+        public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
+            ObjectReachableCallback<T> wrapper = (access, obj, reason) -> callback.accept(obj);
+            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(wrapper);
         }
 
         public void registerSubstitutionProcessor(SubstitutionProcessor substitution) {
@@ -359,7 +370,7 @@ public class FeatureImpl {
             this.nativeLibraries = nativeLibraries;
             this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
             this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
-            this.classForNameSupport = ClassForNameSupport.singleton();
+            this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -492,16 +503,11 @@ public class FeatureImpl {
         /**
          * Registers a method as having an analysis-opaque return value. This designation limits the
          * type-flow analysis performed on the method's return value.
-         *
-         * Currently we expect only methods with the Object return type to be registered via this
-         * method; however, the underlying analysis support can handle other object types (including
-         * untrusted interfaces).
          */
         public void registerOpaqueMethodReturn(Method method) {
             AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
             VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
-            VMError.guarantee(method.getReturnType().equals(Object.class), "Called registerOpaqueMethodReturn for a method with a non-Object return type: %s", method);
-            aMethod.setReturnsAllInstantiatedTypes();
+            aMethod.setOpaqueReturn();
         }
     }
 
@@ -742,6 +748,10 @@ public class FeatureImpl {
             return image;
         }
 
+        public String getOutputFilename() {
+            return image.getImageKind().getOutputFilename(imageName);
+        }
+
         public RuntimeConfiguration getRuntimeConfiguration() {
             return runtimeConfig;
         }
@@ -771,14 +781,21 @@ public class FeatureImpl {
 
     public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
         protected final AbstractImage abstractImage;
+        protected final SubstrateBackend substrateBackend;
 
-        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage) {
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage,
+                        SubstrateBackend substrateBackend) {
             super(featureHandler, imageClassLoader, debugContext);
             this.abstractImage = abstractImage;
+            this.substrateBackend = substrateBackend;
         }
 
         public AbstractImage getImage() {
             return abstractImage;
+        }
+
+        public SubstrateBackend getSubstrateBackend() {
+            return substrateBackend;
         }
     }
 

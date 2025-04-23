@@ -34,8 +34,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   linux_amd64: self.common + self.linux + graal_common.linux_amd64,
   linux_aarch64: self.common + self.linux + graal_common.linux_aarch64,
 
-  e3: {
-    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'e3'],
+  x52: {
+    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
@@ -59,7 +59,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     assert !with_native_image || with_compiler,
     guard+: {
       includes: [
-        "<graal>/.git/**",
+        "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
         "<graal>/sdk/**",
         "<graal>/truffle/**",
         "<graal>/espresso/**",
@@ -67,8 +67,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
         "<graal>/regex/**",
         "<graal>/sulong/**",
         "<graal>/pyproject.toml",
-      ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/common.json",
+        "<graal>/ci.jsonnet",
+        "<graal>/ci/**",
+      ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/compiler/**",
       ] + base.compiler_guard_includes else []) + (if with_native_image then [
         "<graal>/substratevm/**",
@@ -92,6 +94,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
   monthly:         {targets+: ['monthly'],             notify_groups:: ['espresso']},
   weeklyBench:     {targets+: ['bench', 'weekly'],     notify_groups:: ['espresso']},
+  monthlyBench:    {targets+: ['bench', 'monthly'],    notify_groups:: ['espresso']},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
@@ -107,7 +110,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
   jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
   jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
-  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.e3,
+  jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
   jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
   jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
@@ -115,7 +118,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
   jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
   jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
-  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.e3,
+  jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.x52,
   jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
   jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
   jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
@@ -123,18 +126,19 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_weekly_darwin_amd64     : self.weekly        + self.darwin_amd64_21,
   jdk21_weekly_darwin_aarch64   : self.weekly        + self.darwin_aarch64_21,
   jdk21_weekly_windows_amd64    : self.weekly        + self.windows_21,
-  jdk21_monthly_linux_amd64     : self.monthly        + self.linux_amd64_21,
-  jdk21_monthly_linux_aarch64   : self.monthly        + self.linux_aarch64_21,
-  jdk21_monthly_darwin_amd64    : self.monthly        + self.darwin_amd64_21,
-  jdk21_monthly_darwin_aarch64  : self.monthly        + self.darwin_aarch64_21,
-  jdk21_monthly_windows_amd64   : self.monthly        + self.windows_21,
-  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.e3,
+  jdk21_monthly_linux_amd64     : self.monthly       + self.linux_amd64_21,
+  jdk21_monthly_linux_aarch64   : self.monthly       + self.linux_aarch64_21,
+  jdk21_monthly_darwin_amd64    : self.monthly       + self.darwin_amd64_21,
+  jdk21_monthly_darwin_aarch64  : self.monthly       + self.darwin_aarch64_21,
+  jdk21_monthly_windows_amd64   : self.monthly       + self.windows_21,
+  jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.x52,
   jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
   jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
+  jdk21_monthly_bench_linux     : self.monthlyBench  + self.linux_amd64_21 + self.x52,
   jdk21_on_demand_linux         : self.onDemand      + self.linux_amd64_21,
   jdk21_on_demand_darwin        : self.onDemand      + self.darwin_amd64_21,
   jdk21_on_demand_windows       : self.onDemand      + self.windows_21,
-  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.e3,
+  jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
@@ -166,18 +170,26 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
   maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
 
-  espresso_gate(allow_warnings, tags, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00', name=null): {
+  espresso_gate(allow_warnings, tags, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00', name=null, coverage=false): {
     local mx_cmd =
       ['mx']
       + mx_args
       + (if imports != null then ['--dynamicimports=' + imports] else []),
     run+: [
       if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
-      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []) + gate_args,
+      mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags]
+             + (if allow_warnings then ['--no-warning-as-error'] else [])
+             + (if coverage then ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacocout=coverage', '--jacoco-format=lcov'] else [])
+             + gate_args,
     ],
   }
   + (if timelimit != null then {timelimit: timelimit} else {})
-  + (if name != null then {name: name} else {}),
+  + (if name != null then {name: name} else {})
+  + (if coverage then {
+    teardown+: [
+      ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
+    ],
+  } else {}),
 
   host_jvm(env, java_version): 'graalvm-espresso-' + _base_env(env),
   host_jvm_config(env): if std.startsWith(env, 'jvm') then 'jvm' else 'native',
@@ -209,15 +221,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   espresso_interpreter_benchmark(env, suite, host_jvm=null):
     self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '10']),
 
-  scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=[]):
-    self.espresso_benchmark(
-      env,
-      self.scala_dacapo_jvm_warmup,
-      guest_jvm_config=guest_jvm_config,
-      extra_args=extra_args,
-      timelimit='5:00:00'
-    ),
-
   scala_dacapo_benchmark(env, guest_jvm_config, extra_args=[]):
     self.espresso_benchmark(
       env,
@@ -233,7 +236,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.dacapo_stable(env),
       guest_jvm_config=guest_jvm_config,
       extra_args=extra_args,
-      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:30:00' else '3:00:00'
+      timelimit=if std.endsWith(_base_env(env), 'ce') then '1:10:00' else '1:00:00'
     ),
 
 
@@ -254,25 +257,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     }
     + self.bench_upload,
 
-  # Scala DaCapo benchmarks that run in both JVM and native modes,
-  # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
-  scala_dacapo_jvm_warmup: 'scala-dacapo-warmup:*[scalap,scalac,scaladoc,scalaxb]',
-
-  dacapo_stable(env): if std.startsWith(env, 'jvm')
-    # exclude pmd and lusearch
-    then 'dacapo:*[h2,fop,jython,luindex,sunflow,xalan]'
-    # exclude fop on native
-    else if env == 'native-ce'
-      # additionally exclude luindex on native-ce: it gets stuck on the first interation
-      then 'dacapo:*[h2,jython,lusearch,pmd,sunflow,xalan]'
-      else 'dacapo:*[h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
+  dacapo_stable(env): 'dacapo:*[fop,lusearch,luindex,sunflow,xalan]',
 
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
   scala_dacapo_fast: 'scala-dacapo:*[apparat,factorie,kiama,scalac,scaladoc,scalap,scalariform,scalaxb,tmt]',
 
   local _builds = [
     // Gates
-    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
+    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,imports', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),

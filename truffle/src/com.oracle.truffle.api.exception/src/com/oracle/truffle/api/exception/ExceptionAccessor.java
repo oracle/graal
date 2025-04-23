@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -259,14 +259,12 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         public boolean hasSourceLocation(Object receiver) {
-            Node location = ((AbstractTruffleException) receiver).getLocation();
-            return location != null && location.getEncapsulatingSourceSection() != null;
+            return ((AbstractTruffleException) receiver).getEncapsulatingSourceSection() != null;
         }
 
         @Override
         public SourceSection getSourceLocation(Object receiver) {
-            Node location = ((AbstractTruffleException) receiver).getLocation();
-            SourceSection sourceSection = location != null ? location.getEncapsulatingSourceSection() : null;
+            SourceSection sourceSection = ((AbstractTruffleException) receiver).getEncapsulatingSourceSection();
             if (sourceSection == null) {
                 throw throwUnsupportedMessageException();
             }
@@ -286,7 +284,7 @@ final class ExceptionAccessor extends Accessor {
         @Override
         public boolean assertGuestObject(Object guestObject) {
             if (guestObject == null) {
-                throw new AssertionError("Guest object must be null.");
+                throw new AssertionError("Guest object must not be null.");
             }
             InteropLibrary interop = InteropLibrary.getUncached();
             if (interop.hasExecutableName(guestObject)) {

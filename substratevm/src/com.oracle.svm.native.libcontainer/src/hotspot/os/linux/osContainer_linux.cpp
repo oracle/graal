@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,9 @@
 #include "osContainer_linux.hpp"
 #include "cgroupSubsystem_linux.hpp"
 
+
+
+namespace svm_container {
 
 bool  OSContainer::_is_initialized   = false;
 bool  OSContainer::_is_containerized = false;
@@ -204,3 +207,6 @@ void OSContainer::print_container_helper(outputStream* st, jlong j, const char* 
   }
 }
 #endif // !NATIVE_IMAGE
+
+} // namespace svm_container
+

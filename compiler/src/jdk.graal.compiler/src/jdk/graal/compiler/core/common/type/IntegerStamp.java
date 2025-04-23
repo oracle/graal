@@ -1604,7 +1604,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 // Math.abs(...) - 1 does not work in a case
                                 magnitude = CodeUtil.maxValue(b.getBits());
                             } else {
-                                magnitude = Math.max(Math.abs(b.lowerBound()), Math.abs(b.upperBound())) - 1;
+                                try {
+                                    magnitude = Math.max(NumUtil.safeAbs(b.lowerBound()), NumUtil.safeAbs(b.upperBound())) - 1;
+                                } catch (ArithmeticException e) {
+                                    return stamp1.unrestricted();
+                                }
                             }
                             newLowerBound = Math.max(newLowerBound, -magnitude);
                             newUpperBound = Math.min(newUpperBound, magnitude);
@@ -1789,22 +1793,18 @@ public final class IntegerStamp extends PrimitiveStamp {
                     new ArithmeticOpTable.ShiftOp.Shl() {
 
                         @Override
-                        public Constant foldConstant(Constant value, int amount) {
+                        public Constant foldConstant(Constant value, Constant amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
-                            switch (c.getJavaKind()) {
-                                case Byte:
-                                    return JavaConstant.forByte((byte) (c.asInt() << amount));
-                                case Char:
-                                    return JavaConstant.forChar((char) (c.asInt() << amount));
-                                case Short:
-                                    return JavaConstant.forShort((short) (c.asInt() << amount));
-                                case Int:
-                                    return JavaConstant.forInt(c.asInt() << amount);
-                                case Long:
-                                    return JavaConstant.forLong(c.asLong() << amount);
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            PrimitiveConstant s = (PrimitiveConstant) amount;
+                            long shift = s.getJavaKind() == JavaKind.Long ? s.asLong() : s.asInt();
+                            return switch (c.getJavaKind()) {
+                                case Byte -> JavaConstant.forByte((byte) (c.asInt() << shift));
+                                case Char -> JavaConstant.forChar((char) (c.asInt() << shift));
+                                case Short -> JavaConstant.forShort((short) (c.asInt() << shift));
+                                case Int -> JavaConstant.forInt(c.asInt() << shift);
+                                case Long -> JavaConstant.forLong(c.asLong() << shift);
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         private boolean testNoSignChangeAfterShifting(int bits, long value, int shiftAmount) {
@@ -1817,8 +1817,9 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp, IntegerStamp shift) {
+                        public Stamp foldStampImpl(Stamp stamp, Stamp amount) {
                             IntegerStamp value = (IntegerStamp) stamp;
+                            IntegerStamp shift = (IntegerStamp) amount;
                             int bits = value.getBits();
                             if (value.isEmpty()) {
                                 return value;
@@ -1866,6 +1867,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
+                        public boolean isNeutral(Constant c) {
+                            return c instanceof PrimitiveConstant pc && pc.asLong() == 0;
+                        }
+
+                        @Override
                         public int getShiftAmountMask(Stamp s) {
                             return s.getStackKind().getBitCount() - 1;
                         }
@@ -1874,27 +1880,24 @@ public final class IntegerStamp extends PrimitiveStamp {
                     new ArithmeticOpTable.ShiftOp.Shr() {
 
                         @Override
-                        public Constant foldConstant(Constant value, int amount) {
+                        public Constant foldConstant(Constant value, Constant amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
-                            switch (c.getJavaKind()) {
-                                case Byte:
-                                    return JavaConstant.forByte((byte) (c.asInt() >> amount));
-                                case Char:
-                                    return JavaConstant.forChar((char) (c.asInt() >> amount));
-                                case Short:
-                                    return JavaConstant.forShort((short) (c.asInt() >> amount));
-                                case Int:
-                                    return JavaConstant.forInt(c.asInt() >> amount);
-                                case Long:
-                                    return JavaConstant.forLong(c.asLong() >> amount);
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            PrimitiveConstant s = (PrimitiveConstant) amount;
+                            long shift = s.getJavaKind() == JavaKind.Long ? s.asLong() : s.asInt();
+                            return switch (c.getJavaKind()) {
+                                case Byte -> JavaConstant.forByte((byte) (c.asInt() >> shift));
+                                case Char -> JavaConstant.forChar((char) (c.asInt() >> shift));
+                                case Short -> JavaConstant.forShort((short) (c.asInt() >> shift));
+                                case Int -> JavaConstant.forInt(c.asInt() >> shift);
+                                case Long -> JavaConstant.forLong(c.asLong() >> shift);
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp, IntegerStamp shift) {
+                        public Stamp foldStampImpl(Stamp stamp, Stamp amount) {
                             IntegerStamp value = (IntegerStamp) stamp;
+                            IntegerStamp shift = (IntegerStamp) amount;
                             int bits = value.getBits();
                             if (value.isEmpty()) {
                                 return value;
@@ -1918,6 +1921,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
+                        public boolean isNeutral(Constant c) {
+                            return c instanceof PrimitiveConstant pc && pc.asLong() == 0;
+                        }
+
+                        @Override
                         public int getShiftAmountMask(Stamp s) {
                             return s.getStackKind().getBitCount() - 1;
                         }
@@ -1926,27 +1934,24 @@ public final class IntegerStamp extends PrimitiveStamp {
                     new ArithmeticOpTable.ShiftOp.UShr() {
 
                         @Override
-                        public Constant foldConstant(Constant value, int amount) {
+                        public Constant foldConstant(Constant value, Constant amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
-                            switch (c.getJavaKind()) {
-                                case Byte:
-                                    return JavaConstant.forByte((byte) (c.asInt() >>> amount));
-                                case Char:
-                                    return JavaConstant.forChar((char) (c.asInt() >>> amount));
-                                case Short:
-                                    return JavaConstant.forShort((short) (c.asInt() >>> amount));
-                                case Int:
-                                    return JavaConstant.forInt(c.asInt() >>> amount);
-                                case Long:
-                                    return JavaConstant.forLong(c.asLong() >>> amount);
-                                default:
-                                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-                            }
+                            PrimitiveConstant s = (PrimitiveConstant) amount;
+                            long shift = s.getJavaKind() == JavaKind.Long ? s.asLong() : s.asInt();
+                            return switch (c.getJavaKind()) {
+                                case Byte -> JavaConstant.forByte((byte) (c.asInt() >>> shift));
+                                case Char -> JavaConstant.forChar((char) (c.asInt() >>> shift));
+                                case Short -> JavaConstant.forShort((short) (c.asInt() >>> shift));
+                                case Int -> JavaConstant.forInt(c.asInt() >>> shift);
+                                case Long -> JavaConstant.forLong(c.asLong() >>> shift);
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
+                            };
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp, IntegerStamp shift) {
+                        public Stamp foldStampImpl(Stamp stamp, Stamp amount) {
                             IntegerStamp value = (IntegerStamp) stamp;
+                            IntegerStamp shift = (IntegerStamp) amount;
                             int bits = value.getBits();
                             if (value.isEmpty()) {
                                 return value;
@@ -1973,6 +1978,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
+                        public boolean isNeutral(Constant c) {
+                            return c instanceof PrimitiveConstant pc && pc.asLong() == 0;
+                        }
+
+                        @Override
                         public int getShiftAmountMask(Stamp s) {
                             return s.getStackKind().getBitCount() - 1;
                         }
@@ -1983,7 +1993,9 @@ public final class IntegerStamp extends PrimitiveStamp {
                         @Override
                         public Constant foldConstant(Constant value) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
-                            return JavaConstant.forIntegerKind(c.getJavaKind(), Math.abs(c.asLong()));
+                            // if an overflow happens in taking abs for the constant that is what
+                            // the code would do so we want that
+                            return JavaConstant.forIntegerKind(c.getJavaKind(), NumUtil.unsafeAbs(c.asLong()));
                         }
 
                         @Override
@@ -1994,7 +2006,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp stamp = (IntegerStamp) input;
                             int bits = stamp.getBits();
                             if (stamp.lowerBound == stamp.upperBound) {
-                                long value = CodeUtil.convert(Math.abs(stamp.lowerBound()), stamp.getBits(), false);
+                                long value = CodeUtil.convert(NumUtil.unsafeAbs(stamp.lowerBound()), stamp.getBits(), false);
                                 return createConstant(stamp.getBits(), value);
                             }
                             if (stamp.lowerBound() == CodeUtil.minValue(bits)) {

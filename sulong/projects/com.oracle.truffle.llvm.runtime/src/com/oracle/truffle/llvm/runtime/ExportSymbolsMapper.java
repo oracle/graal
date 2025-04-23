@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ public abstract class ExportSymbolsMapper {
      */
     public abstract void registerExports(LLVMScope fileScope, LLVMScope publicFileScope);
 
-    private static class Default extends ExportSymbolsMapper {
+    private static final class Default extends ExportSymbolsMapper {
         @Override
         public void registerExports(LLVMScope fileScope, LLVMScope publicFileScope) {
         }

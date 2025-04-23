@@ -27,10 +27,9 @@ package jdk.graal.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.PrintStream;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
@@ -41,7 +40,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 
 import jdk.vm.ci.common.InitTimer;
-import jdk.vm.ci.common.NativeImageReinitialize;
 
 /**
  * The {@link #defaultOptions()} method returns the options values initialized in a HotSpot VM. The
@@ -68,12 +66,10 @@ public class HotSpotGraalOptionValues {
      */
     public static final String LIBGRAAL_VM_OPTION_PROPERTY_PREFIX = "jdk.graal.internal.";
 
-    private static final Set<String> UNSUPPORTED_LIBGRAAL_PREFIXES = Set.of("jdk.libgraal.", "libgraal.");
-
     /**
      * Guard for issuing warning about deprecated Graal option prefix at most once.
      */
-    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong LEGACY_OPTION_DEPRECATION_WARNED = new GlobalAtomicLong("LEGACY_OPTION_DEPRECATION_WARNED", 0L);
 
     /**
      * Gets the system property assignment that would set the current value for a given option.
@@ -82,7 +78,7 @@ public class HotSpotGraalOptionValues {
         return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue(options);
     }
 
-    @NativeImageReinitialize private static volatile OptionValues hotspotOptions;
+    private static volatile OptionValues hotspotOptions;
 
     public static OptionValues defaultOptions() {
         OptionValues res = hotspotOptions;
@@ -112,8 +108,7 @@ public class HotSpotGraalOptionValues {
             Map<String, String> savedProps = GraalServices.getSavedProperties();
 
             EconomicMap<String, String> compilerOptionSettings = EconomicMap.create();
-            // Need to use Map as it's a shared type between guest and host in GuestGraal.
-            Map<String, String> vmOptionSettings = new HashMap<>();
+            EconomicMap<String, String> vmOptionSettings = EconomicMap.create();
 
             for (Map.Entry<String, String> e : savedProps.entrySet()) {
                 String name = e.getKey();
@@ -139,20 +134,16 @@ public class HotSpotGraalOptionValues {
                         String value = e.getValue();
                         compilerOptionSettings.put(stripPrefix(name, GRAAL_OPTION_PROPERTY_PREFIX), value);
                     }
-                } else {
-                    for (var prefix : UNSUPPORTED_LIBGRAAL_PREFIXES) {
-                        if (name.startsWith(prefix)) {
-                            String baseName = name.substring(prefix.length());
-                            String msg = String.format("The '%s' property prefix is no longer supported. Use %s%s instead of %s%s.",
-                                            prefix, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX, baseName, prefix, baseName);
-                            throw new IllegalArgumentException(msg);
-                        }
-                    }
                 }
             }
 
             if (!vmOptionSettings.isEmpty()) {
-                notifyLibgraalOptions(vmOptionSettings);
+                LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+                if (libgraal != null) {
+                    libgraal.notifyOptions(vmOptionSettings);
+                } else {
+                    System.err.printf("WARNING: Ignoring the following libgraal VM option(s) while executing jargraal: %s%n", vmOptionSettings);
+                }
             }
             OptionsParser.parseOptions(compilerOptionSettings, compilerOptionValues, descriptors);
             return compilerOptionValues;
@@ -167,16 +158,6 @@ public class HotSpotGraalOptionValues {
         return baseName;
     }
 
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
-     *
-     * @param settings unparsed libgraal option values
-     */
-    private static void notifyLibgraalOptions(Map<String, String> settings) {
-        System.err.printf("WARNING: Ignoring the following libgraal VM option(s) while executing jargraal: %s%n", String.join(", ", settings.keySet()));
-    }
-
     private static OptionValues initializeOptions() {
         EconomicMap<OptionKey<?>, Object> values = parseOptions();
         OptionValues options = new OptionValues(values);
@@ -189,18 +170,9 @@ public class HotSpotGraalOptionValues {
     static void printProperties(OptionValues compilerOptions, PrintStream out) {
         boolean all = HotSpotGraalCompilerFactory.Options.PrintPropertiesAll.getValue(compilerOptions);
         compilerOptions.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX, all);
-        if (all) {
-            printLibgraalProperties(out, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX);
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (all && libgraal != null) {
+            libgraal.printOptions(out, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX);
         }
-    }
-
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
-     *
-     * @param out where help is to be printed
-     * @param prefix system property prefix for libgraal VM options
-     */
-    private static void printLibgraalProperties(PrintStream out, String prefix) {
     }
 }

@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.nodes.quick;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;

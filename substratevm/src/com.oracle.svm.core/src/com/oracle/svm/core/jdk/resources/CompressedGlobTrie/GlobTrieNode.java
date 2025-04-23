@@ -31,28 +31,41 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.heap.UnknownObjectField;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-public class GlobTrieNode {
-    protected static final String STAR = "*";
-    protected static final String STAR_STAR = "**";
-    protected static final String LEVEL_IDENTIFIER = "/";
-    public static final String SAME_LEVEL_IDENTIFIER = "#";
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.util.GlobUtils;
+
+public class GlobTrieNode<C> {
 
     private String content;
     @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
-    private Map<String, GlobTrieNode> children;
+    private Map<String, GlobTrieNode<C>> children;
+    @UnknownPrimitiveField //
     private boolean isLeaf;
+    @UnknownPrimitiveField //
     private boolean isNewLevel;
-    @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashSet", "java.util.ImmutableCollections$SetN", "java.util.ImmutableCollections$Set12"}) //
-    private Set<String> additionalContent;
+
+    /*
+     * While the Trie data structure is general-purpose, this field is used to store information
+     * that we know must not leak into an image for the only current use case of the Trie: this
+     * field stores the source and origin of resources, which are often absolute paths of the image
+     * build machine.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private Set<C> hostedOnlyContent;
 
     protected GlobTrieNode() {
         content = "";
         children = new HashMap<>();
         isLeaf = false;
         isNewLevel = false;
-        additionalContent = new HashSet<>();
+        if (SubstrateUtil.HOSTED) {
+            hostedOnlyContent = new HashSet<>();
+        }
     }
 
     protected GlobTrieNode(String content) {
@@ -84,50 +97,53 @@ public class GlobTrieNode {
         return content;
     }
 
-    protected Set<String> getAdditionalContent() {
-        return additionalContent;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    protected Set<C> getHostedOnlyContent() {
+        return hostedOnlyContent;
     }
 
-    protected void removeAdditionalContent(List<String> ac) {
-        additionalContent.removeAll(ac);
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    protected void removeHostedOnlyContent(List<C> ac) {
+        hostedOnlyContent.removeAll(ac);
     }
 
-    protected void addAdditionalContent(String ac) {
-        this.additionalContent.add(ac);
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    protected void addHostedOnlyContent(C ac) {
+        this.hostedOnlyContent.add(ac);
     }
 
-    public List<GlobTrieNode> getChildren() {
+    public List<GlobTrieNode<C>> getChildren() {
         return children.values().stream().toList();
     }
 
-    protected GlobTrieNode getChild(String child) {
+    protected GlobTrieNode<C> getChild(String child) {
         return children.get(child);
     }
 
-    protected void removeChildren(List<GlobTrieNode> childKeys) {
+    protected void removeChildren(List<GlobTrieNode<C>> childKeys) {
         for (var child : childKeys) {
             /*
              * we need exact name of the child key in order to delete it. In case when we have a
              * complex level (with stars), all children from the same level will have
              * SAME_LEVEL_IDENTIFIER, so we must append it here
              */
-            String sameLevel = !child.isNewLevel() ? SAME_LEVEL_IDENTIFIER : "";
+            String sameLevel = !child.isNewLevel() ? GlobUtils.SAME_LEVEL_IDENTIFIER : "";
             String childKey = child.getContent() + sameLevel;
             children.remove(childKey);
         }
     }
 
-    protected GlobTrieNode getChildFromSameLevel(String child) {
-        return children.get(child + SAME_LEVEL_IDENTIFIER);
+    protected GlobTrieNode<C> getChildFromSameLevel(String child) {
+        return children.get(child + GlobUtils.SAME_LEVEL_IDENTIFIER);
     }
 
-    protected GlobTrieNode addChild(String child, GlobTrieNode childValue) {
+    protected GlobTrieNode<C> addChild(String child, GlobTrieNode<C> childValue) {
         StringBuilder sb = new StringBuilder(child);
 
         // to make difference between a*b* (represented as: a* -> b*#)
         // and a*/b* (represented as: a* -> b*) append # when current node is a part of previous one
         if (!childValue.isNewLevel()) {
-            sb.append(SAME_LEVEL_IDENTIFIER);
+            sb.append(GlobUtils.SAME_LEVEL_IDENTIFIER);
         }
 
         /* only add if we don't have same child to avoid duplicates */
@@ -135,23 +151,23 @@ public class GlobTrieNode {
         return children.get(sb.toString());
     }
 
-    protected List<StarTrieNode> getChildrenWithStar() {
+    protected List<StarTrieNode<C>> getChildrenWithStar() {
         return this.getChildren().stream()
                         .filter(node -> node instanceof StarTrieNode)
-                        .map(node -> (StarTrieNode) node)
+                        .map(node -> (StarTrieNode<C>) node)
                         .toList();
     }
 
-    protected List<LiteralNode> getChildrenWithLiteral() {
+    protected List<LiteralNode<C>> getChildrenWithLiteral() {
         return this.getChildren()
                         .stream()
                         .filter(node -> node instanceof LiteralNode)
-                        .map(node -> (LiteralNode) node)
+                        .map(node -> (LiteralNode<C>) node)
                         .toList();
     }
 
-    protected DoubleStarNode getDoubleStarNode() {
-        return (DoubleStarNode) getChild(STAR_STAR);
+    protected DoubleStarNode<C> getDoubleStarNode() {
+        return (DoubleStarNode<C>) getChild(GlobUtils.STAR_STAR);
     }
 
     /**
@@ -160,11 +176,11 @@ public class GlobTrieNode {
      * the structure.
      */
     protected void trim() {
-        for (GlobTrieNode child : children.values()) {
+        for (GlobTrieNode<C> child : children.values()) {
             child.trim();
         }
 
-        additionalContent = Set.copyOf(additionalContent);
+        hostedOnlyContent = Set.copyOf(hostedOnlyContent);
         children = Map.copyOf(children);
     }
 }

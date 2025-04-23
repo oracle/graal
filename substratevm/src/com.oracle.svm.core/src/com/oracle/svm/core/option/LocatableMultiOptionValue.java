@@ -32,24 +32,25 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.collections.Pair;
-
 import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.util.ClassUtil;
 
 public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T> {
 
+    public record ValueWithOrigin<T>(T value, OptionOrigin origin) {
+    }
+
     protected static final String NO_DELIMITER = "";
 
     private final String delimiter;
     protected final Class<T> valueType;
-    protected final List<Pair<T, String>> values;
+    protected final List<ValueWithOrigin<T>> values;
 
     protected LocatableMultiOptionValue(Class<T> valueType, String delimiter, List<T> defaults) {
         this.valueType = valueType;
         this.delimiter = delimiter;
         values = new ArrayList<>();
-        values.addAll(defaults.stream().map(val -> Pair.<T, String> createLeft(val)).collect(Collectors.toList()));
+        values.addAll(defaults.stream().map(val -> new ValueWithOrigin<>(val, OptionOrigin.from(null))).collect(Collectors.toList()));
     }
 
     protected LocatableMultiOptionValue(LocatableMultiOptionValue<T> other) {
@@ -70,31 +71,24 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     @Override
     public List<T> values() {
-        return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toList());
+        return getValuesWithOrigins().map(ValueWithOrigin::value).collect(Collectors.toList());
     }
 
     public Set<T> valuesAsSet() {
-        return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toSet());
+        return getValuesWithOrigins().map(ValueWithOrigin::value).collect(Collectors.toSet());
     }
 
     @Override
     public Optional<T> lastValue() {
-        return lastValueWithOrigin().map(Pair::getLeft);
+        return lastValueWithOrigin().map(ValueWithOrigin::value);
     }
 
-    public Optional<Pair<T, OptionOrigin>> lastValueWithOrigin() {
-        if (values.isEmpty()) {
-            return Optional.empty();
-        }
-        Pair<T, String> pair = values.get(values.size() - 1);
-        return Optional.of(Pair.create(pair.getLeft(), OptionOrigin.from(pair.getRight())));
+    public Optional<ValueWithOrigin<T>> lastValueWithOrigin() {
+        return values.isEmpty() ? Optional.empty() : Optional.of(values.getLast());
     }
 
-    public Stream<Pair<T, OptionOrigin>> getValuesWithOrigins() {
-        if (values.isEmpty()) {
-            return Stream.empty();
-        }
-        return values.stream().map(pair -> Pair.create(pair.getLeft(), OptionOrigin.from(pair.getRight())));
+    public Stream<ValueWithOrigin<T>> getValuesWithOrigins() {
+        return values.stream();
     }
 
     @Override

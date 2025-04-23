@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
@@ -33,8 +36,8 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.CompilerPhaseScope;
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.GraphFilter;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
-import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -51,6 +54,7 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.TargetProvider;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -155,7 +159,25 @@ public class GraalCompiler {
                 throw debug.handle(e);
             }
             checkForRequestedDelay(r.graph);
+
+            checkForHeapDump(r, debug);
+
             return r.compilationResult;
+        }
+    }
+
+    /**
+     * Checks if {@link GraalCompilerOptions#DumpHeapAfter} is enabled for the compilation in
+     * {@code request} and if so, dumps the heap to a file specified by the debug context.
+     */
+    private static <T extends CompilationResult> void checkForHeapDump(Request<T> request, DebugContext debug) {
+        if (GraalCompilerOptions.DumpHeapAfter.matches(debug.getOptions(), null, request.graph)) {
+            try {
+                final String path = debug.getDumpPath(".compilation.hprof", false);
+                GraalServices.dumpHeap(path, false);
+            } catch (IOException | UnsupportedOperationException e) {
+                e.printStackTrace(System.out);
+            }
         }
     }
 
@@ -215,14 +237,14 @@ public class GraalCompiler {
      * @param graph a graph currently being compiled
      */
     private static void checkForRequestedDelay(StructuredGraph graph) {
-        long delay = Math.max(0, GraalCompilerOptions.InjectedCompilationDelay.getValue(graph.getOptions())) * 1000;
-        if (delay != 0) {
+        long delayNS = Math.max(0, TimeUnit.SECONDS.toNanos(GraalCompilerOptions.InjectedCompilationDelay.getValue(graph.getOptions())));
+        if (delayNS != 0) {
             String methodPattern = DebugOptions.MethodFilter.getValue(graph.getOptions());
             String matchedLabel = match(graph, methodPattern);
             if (matchedLabel != null) {
-                long start = System.currentTimeMillis();
-                TTY.printf("[%s] delaying compilation of %s for %d ms%n", Thread.currentThread().getName(), matchedLabel, delay);
-                while (System.currentTimeMillis() - start < delay) {
+                long startNS = System.nanoTime();
+                TTY.printf("[%s] delaying compilation of %s for %d ms%n", Thread.currentThread().getName(), matchedLabel, TimeUnit.NANOSECONDS.toMillis(delayNS));
+                while (System.nanoTime() - startNS < delayNS) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
@@ -237,30 +259,7 @@ public class GraalCompiler {
             // Absence of methodPattern means match everything
             return graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
         }
-        String label = null;
-        if (graph.name != null && graph.name.contains(methodPattern)) {
-            label = graph.name;
-        }
-        if (label == null) {
-            ResolvedJavaMethod method = graph.method();
-            MethodFilter filter = MethodFilter.parse(methodPattern);
-            if (filter.matches(method)) {
-                label = method.format("%H.%n(%p)");
-            }
-        }
-        return label;
-    }
-
-    /**
-     * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
-     * Target_jdk_graal_compiler_core_GraalCompiler} to optionally test routing fatal error handling
-     * from libgraal to HotSpot.
-     *
-     * @return true if the caller should proceed to throw an exception
-     */
-    @SuppressWarnings("unused")
-    private static boolean notifyCrash(String crashMessage) {
-        return true;
+        return new GraphFilter(methodPattern).matchedLabel(graph);
     }
 
     /**

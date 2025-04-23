@@ -26,12 +26,10 @@ package com.oracle.svm.hosted;
 
 import java.util.function.Supplier;
 
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
@@ -44,6 +42,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -61,25 +60,25 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
 
+    private final Boolean trackJavaHomeAccess;
+    private final Boolean trackJavaHomeAccessDetailed;
+
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
+        trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue(bb.getOptions());
+        trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue(bb.getOptions());
     }
 
     @Override
-    protected void useSharedLayerGraph(AnalysisMethod method) {
-        ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        /*
-         * GR-55294: When the analysis elements from the base layer will be able to be materialized
-         * after the analysis, fewer graphs will have to be loaded here as well.
-         */
-        if (imageLayerLoader.hasStrengthenedGraph(method)) {
-            imageLayerLoader.setStrengthenedGraph(method);
+    protected void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
+        if (trackJavaHomeAccess) {
+            new AnalyzeJavaHomeAccessPhase(trackJavaHomeAccessDetailed, bb.getMetaAccess()).apply(graph, bb.getProviders(method));
         }
     }
 
     @Override
     protected void persistStrengthenGraph(AnalysisMethod method) {
-        if (HostedImageLayerBuildingSupport.buildingSharedLayer() && method.isReachable()) {
+        if (HostedImageLayerBuildingSupport.buildingSharedLayer() && method.isTrackedAcrossLayers()) {
             HostedImageLayerBuildingSupport.singleton().getWriter().persistMethodStrengthenedGraph(method);
         }
     }
@@ -137,20 +136,20 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
 
     @Override
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
-        if (needsProfiles(invoke)) {
+        if (needsProfiles(invoke.asNode().graph())) {
             ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile);
         }
     }
 
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
-        if (needsProfiles(invoke)) {
+        if (needsProfiles(invoke.asNode().graph())) {
             ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile, staticTypeProfile);
         }
     }
 
-    private static boolean needsProfiles(Invoke invoke) {
+    protected static boolean needsProfiles(StructuredGraph graph) {
         /* We do not need any profiles in methods for JIT compilation at image run time. */
-        return ((MultiMethod) invoke.asNode().graph().method()).getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+        return !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method());
     }
 
     @Override

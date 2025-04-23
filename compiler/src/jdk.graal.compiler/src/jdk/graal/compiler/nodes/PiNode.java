@@ -164,12 +164,12 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 break;
             case FLOAT_NON_NAN:
                 // non NAN float stamp
-                piStamp = new FloatStamp(32, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
+                piStamp = FloatStamp.create(Float.SIZE, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
                 pushKind = JavaKind.Float;
                 break;
             case DOUBLE_NON_NAN:
                 // non NAN double stamp
-                piStamp = new FloatStamp(64, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
+                piStamp = FloatStamp.create(Double.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
                 pushKind = JavaKind.Double;
                 break;
             default:
@@ -188,7 +188,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                         nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
         ValueNode value = canonical(object, stamp, (GuardingNode) guard, null);
         if (value == null) {
-            value = new PiNode(object, stamp);
+            value = new PiNode(object, stamp, guard);
         }
         b.push(JavaKind.Object, b.append(value));
         return true;

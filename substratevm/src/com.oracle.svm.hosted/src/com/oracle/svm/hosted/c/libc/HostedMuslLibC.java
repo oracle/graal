@@ -27,10 +27,8 @@ package com.oracle.svm.hosted.c.libc;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.hosted.image.AbstractImage;
-import com.oracle.svm.util.LogUtils;
 
 public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
     @Override
@@ -49,16 +47,6 @@ public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
     @Override
     public boolean requiresLibCSpecificStaticJDKLibraries() {
         return isCrossCompiling();
-    }
-
-    @Override
-    public void checkIfLibCSupported() {
-        if (isCrossCompiling()) {
-            if (!SubstrateOptions.StaticExecutable.getValue()) {
-                LogUtils.warning("Cross-compiling a musl-based native-image that is not an executable is an experimental feature!" +
-                                "If omitting --static wasn't the intention, then --static should be used when compiling with --libc=musl");
-            }
-        }
     }
 
     @Override

@@ -22,7 +22,7 @@
 # questions.
 #
 >[0] javac EmbeddingSymlinks*.java -d ${TMP_DIR}
->[0] java -ea -cp ${TMP_DIR} EmbeddingSymlinks ${TMP_DIR}
+>[0] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -ea -cp ${TMP_DIR} EmbeddingSymlinks ${TMP_DIR}
 loaded source named (?:fooMain\.js from truffle:[0-9a-f]+/fooMain\.js|foo from file:.*/baz\.mjs)
 loaded source named (?:fooMain\.js from truffle:[0-9a-f]+/fooMain\.js|foo from file:.*/baz\.mjs)
 computed add at foo from file:.*/baz\.mjs with value 42

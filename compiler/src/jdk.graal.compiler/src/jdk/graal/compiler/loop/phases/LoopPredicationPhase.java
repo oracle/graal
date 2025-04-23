@@ -98,7 +98,7 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
             try (DebugContext.Scope s = debug.scope("predication", cfg)) {
                 for (Loop loop : data.loops()) {
                     // Only inner most loops.
-                    if (!loop.loop().getChildren().isEmpty()) {
+                    if (!loop.getCFGLoop().getChildren().isEmpty()) {
                         continue;
                     }
                     if (!loop.detectCounted()) {

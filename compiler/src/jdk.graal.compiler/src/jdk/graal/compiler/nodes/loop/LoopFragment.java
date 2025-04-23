@@ -202,7 +202,7 @@ public abstract class LoopFragment {
         Loop originalLoopEx = original().loop();
         ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
         for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
-            if (!originalLoopEx.loop().isLoopExit(cfg.blockFor(exit))) {
+            if (!originalLoopEx.getCFGLoop().isLoopExit(cfg.blockFor(exit))) {
                 // this LoopExitNode is too low, we need to remove it otherwise it will be below
                 // merged exits
                 exit.removeExit();
@@ -449,23 +449,44 @@ public abstract class LoopFragment {
                 workList.pop();
                 boolean isLoopNode = currentEntry.isLoopNode;
                 Node current = currentEntry.n;
-                if (!isLoopNode && current instanceof GuardNode && !current.hasUsages()) {
-                    GuardNode guard = (GuardNode) current;
+                // NOTE: Guard Handling: Referenced by loop phases.
+                if (!isLoopNode && current instanceof GuardNode guard && !current.hasUsages()) {
                     if (isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) != TriState.FALSE) {
                         ValueNode anchor = guard.getAnchor().asNode();
                         TriState isAnchorInLoop = isLoopNode(anchor, loopNodes, nonLoopNodes);
                         if (isAnchorInLoop != TriState.FALSE) {
                             if (!(anchor instanceof LoopExitNode && ((LoopExitNode) anchor).loopBegin() == loopBeginNode)) {
-                                // It is undecidable whether the node is in the loop or not. This is
-                                // not an issue for getting counted loop information,
-                                // but causes issues when using the information for actual loop
-                                // transformations. This is why a loop transformation must
-                                // not happen while guards are floating.
+                                /*
+                                 * Floating guards are treated specially in Graal. They are the only
+                                 * floating nodes that survive compilation without usages. If we
+                                 * have such floating guards they are normally not considered to be
+                                 * part of a loop if they have no usages. If they have usages inside
+                                 * the loop they will be naturally pulled inside the loop. If
+                                 * however only the condition of the guard is inside the loop we
+                                 * could schedule it outside the loop. It is necessary to schedule
+                                 * floating guards early however for correctness. Thus, we include
+                                 * guards as aggressively inside loops as possible since we "assume"
+                                 * they are scheduled later inside a loop because that would
+                                 * resemble their EARLY location.
+                                 */
                                 isLoopNode = true;
                             }
                         } else if (cfg.blockFor(anchor).strictlyDominates(cfg.blockFor(loopBeginNode))) {
-                            // The anchor is above the loop. The no-usage guard can potentially be
-                            // scheduled inside the loop.
+                            /*
+                             * The anchor dominates the loop, it could be the guard would be
+                             * scheduled inside the loop. Be pessimistic an also always include it
+                             * in the loop.
+                             */
+                            isLoopNode = true;
+                        }
+                    }
+                    if (!isLoopNode) {
+                        /*
+                         * If anchor or condition are inside a loop the guard should be in. We
+                         * schedule guards as early as possible for correctness.
+                         */
+                        if (isLoopNode(guard.getAnchor().asNode(), loopNodes, nonLoopNodes) == TriState.TRUE ||
+                                        isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) == TriState.TRUE) {
                             isLoopNode = true;
                         }
                     }
@@ -520,7 +541,7 @@ public abstract class LoopFragment {
         StructuredGraph graph = graph();
         this.introducedPhis = new ArrayList<>();
         this.introducedMerges = new ArrayList<>();
-        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
+        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().getCFGLoop().getLoopExits())) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
                 continue;

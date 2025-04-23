@@ -26,14 +26,6 @@ package com.oracle.svm.hosted.code.aarch64;
 
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -44,14 +36,22 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Reference;
+import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.AARCH64.class})
@@ -178,6 +178,7 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             if (constant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
                 MethodPointer pointer = methodPointerConstant.pointer();
                 HostedMethod hMethod = (HostedMethod) pointer.getMethod();
+                VMError.guarantee(!hMethod.isCompiledInPriorLayer(), "Method %s was compiled in a prior layer", hMethod);
                 VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
                 relocVal = pointer;
             }

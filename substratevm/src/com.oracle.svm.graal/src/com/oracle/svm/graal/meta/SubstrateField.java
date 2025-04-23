@@ -32,19 +32,21 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class SubstrateField implements SharedField {
 
@@ -67,8 +69,16 @@ public class SubstrateField implements SharedField {
     public SubstrateField(AnalysisField aField, HostedStringDeduplication stringTable) {
         VMError.guarantee(!aField.isInternal(), "Internal fields are not supported for JIT compilation");
 
+        /*
+         * AliasField removes the "final" modifier for AOT compilation because the recomputed value
+         * is not guaranteed to be known yet. But for runtime compilation, we know that we can treat
+         * the field as "final".
+         */
+        ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(aField);
+        boolean injectFinalForRuntimeCompilation = oField != null && oField.isFinal();
+
         this.modifiers = aField.getModifiers() |
-                        (ReadableJavaField.injectFinalForRuntimeCompilation(aField.wrapped) ? Modifier.FINAL : 0);
+                        (injectFinalForRuntimeCompilation ? Modifier.FINAL : 0);
 
         this.name = stringTable.deduplicate(aField.getName(), true);
         this.hashCode = aField.hashCode();
@@ -172,13 +182,11 @@ public class SubstrateField implements SharedField {
     }
 
     @Override
-    public boolean isInBaseLayer() {
-        return false;
-    }
-
-    @Override
-    public JavaConstant getStaticFieldBase() {
-        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    public int getInstalledLayerNum() {
+        /*
+         * GR-62500: Layered images are not yet supported for runtime compilation.
+         */
+        return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
     }
 
     @Override

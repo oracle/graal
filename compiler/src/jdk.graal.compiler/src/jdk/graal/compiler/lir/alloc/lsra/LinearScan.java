@@ -420,7 +420,7 @@ public class LinearScan {
     }
 
     int numLoops() {
-        return ir.getControlFlowGraph().getLoops().size();
+        return ir.getControlFlowGraph().getNumberOfLoops();
     }
 
     Interval intervalFor(int operandNumber) {

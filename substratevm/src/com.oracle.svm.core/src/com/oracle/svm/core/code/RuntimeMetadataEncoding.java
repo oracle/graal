@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -31,6 +33,10 @@ import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.MetadataAccessorImpl;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 
 /**
  * Stores the encoding of all runtime metadata.
@@ -43,8 +49,13 @@ import com.oracle.svm.core.heap.UnknownObjectField;
  * we would need an index to locate all relevant runtime metadata of an entity from all layers.
  */
 @AutomaticallyRegisteredImageSingleton
-public class RuntimeMetadataEncoding {
+public class RuntimeMetadataEncoding implements MultiLayeredImageSingleton, UnsavedSingleton {
     @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static RuntimeMetadataEncoding currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(RuntimeMetadataEncoding.class, false, true);
+    }
 
     public byte[] getEncoding() {
         return encoding;
@@ -53,5 +64,10 @@ public class RuntimeMetadataEncoding {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setEncoding(byte[] encoding) {
         this.encoding = encoding;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

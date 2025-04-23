@@ -58,6 +58,10 @@ public abstract class Heap {
     protected Heap() {
     }
 
+    /** Verifies that the image heap was mapped correctly. */
+    @Uninterruptible(reason = "Called during startup.")
+    public abstract boolean verifyImageHeapMapping();
+
     /**
      * Notifies the heap that a new thread was attached to the VM. This allows to initialize
      * heap-specific datastructures, e.g., the TLAB.
@@ -230,6 +234,10 @@ public abstract class Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract UnsignedWord getUsedMemoryAfterLastGC();
+
+    public abstract UnsignedWord getImageHeapReservedBytes();
+
+    public abstract UnsignedWord getImageHeapCommittedBytes();
 
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)

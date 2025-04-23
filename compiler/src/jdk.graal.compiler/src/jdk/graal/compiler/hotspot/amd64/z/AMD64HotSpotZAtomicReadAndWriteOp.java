@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.amd64.z;
 
+import static jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator.zColor;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -53,8 +54,9 @@ public class AMD64HotSpotZAtomicReadAndWriteOp extends AMD64HotSpotZStoreBarrier
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        emitStoreBarrier(crb, masm, asRegister(result), asRegister(newValue), false, null);
-        masm.xchgq(asRegister(result), storeAddress.toAddress());
+        emitPreWriteBarrier(crb, masm, asRegister(result), null);
+        zColor(crb, masm, asRegister(result), asRegister(newValue));
+        masm.xchgq(asRegister(result), storeAddress.toAddress(masm));
         Register ref = asRegister(result);
         AMD64HotSpotZBarrierSetLIRGenerator.zUncolor(crb, masm, ref);
     }

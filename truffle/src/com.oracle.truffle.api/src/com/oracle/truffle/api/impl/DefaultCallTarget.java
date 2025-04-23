@@ -86,11 +86,25 @@ public final class DefaultCallTarget implements RootCallTarget {
     public Object call(Object... args) {
         // Use the encapsulating node as call site and clear it inside as we cross the call boundary
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-        Node parent = encapsulating.set(null);
+        Node location = encapsulating.set(null);
         try {
-            return call(parent, args);
+            if (!this.initialized) {
+                initialize();
+            }
+            final VirtualFrame frame = new FrameWithoutBoxing(rootNode.getFrameDescriptor(), args);
+            DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, location);
+            try {
+                Object toRet = rootNode.execute(frame);
+                TruffleSafepoint.poll(rootNode);
+                return toRet;
+            } catch (Throwable t) {
+                DefaultRuntimeAccessor.LANGUAGE.addStackFrameInfo(location, this, t, frame);
+                throw t;
+            } finally {
+                getRuntime().popFrame(callerFrame);
+            }
         } finally {
-            encapsulating.set(parent);
+            encapsulating.set(location);
         }
     }
 

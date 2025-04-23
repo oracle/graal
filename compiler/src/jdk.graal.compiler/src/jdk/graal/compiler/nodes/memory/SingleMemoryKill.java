@@ -40,4 +40,8 @@ public interface SingleMemoryKill extends MemoryKill {
      */
     LocationIdentity getKilledLocationIdentity();
 
+    @Override
+    default boolean killsInit() {
+        return getKilledLocationIdentity().isInit();
+    }
 }

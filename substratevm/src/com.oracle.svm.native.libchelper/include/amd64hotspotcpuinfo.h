@@ -267,14 +267,17 @@ typedef union {
                serialize : 1,
                          : 5,
                  cet_ibt : 1,
-                         : 11;
+                         : 2,
+            avx512_fp16  : 1,
+                         : 8;
   } bits;
 } SefCpuid7Edx;
 
 typedef union {
   uint32_t value;
   struct {
-    uint32_t             : 23,
+    uint32_t    sha512   : 1,
+                         : 22,
                 avx_ifma : 1,
                          : 8;
   } bits;

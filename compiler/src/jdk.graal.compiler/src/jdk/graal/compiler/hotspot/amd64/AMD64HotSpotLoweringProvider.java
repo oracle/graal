@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,15 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
+import static jdk.graal.compiler.core.common.GraalOptions.InlineGraalStubs;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
+
 import jdk.graal.compiler.core.amd64.AMD64LoweringProviderMixin;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -69,9 +71,6 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (lowerAMD64(n)) {
-            return;
-        }
         if (n instanceof UnaryMathIntrinsicNode) {
             lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
         } else {
@@ -85,12 +84,12 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         }
         StructuredGraph graph = math.graph();
         ResolvedJavaMethod method = graph.method();
-        if (method != null && getReplacements().isSnippet(method)) {
+        if ((method != null && getReplacements().isSnippet(method)) || InlineGraalStubs.getValue(graph.getOptions())) {
             // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
             // lowering to emit the stub assembly code instead of the Node lowering.
             return;
         }
-        if (!HotSpotBackend.Options.GraalArithmeticStubs.getValue(graph.getOptions())) {
+        if (!GraalArithmeticStubs.getValue(graph.getOptions())) {
             switch (math.getOperation()) {
                 case SIN:
                 case COS:

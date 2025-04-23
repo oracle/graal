@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.calc;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -34,8 +35,6 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-
 import jdk.vm.ci.code.CodeUtil;
 
 @NodeInfo(shortName = "|/|")
@@ -64,6 +63,9 @@ public class UnsignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
     @SuppressWarnings("unused")
     private static ValueNode canonical(UnsignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view) {
+        if (!(stamp instanceof IntegerStamp)) {
+            return self != null ? self : new UnsignedDivNode(forX, forY, zeroCheck);
+        }
         int bits = ((IntegerStamp) stamp).getBits();
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);

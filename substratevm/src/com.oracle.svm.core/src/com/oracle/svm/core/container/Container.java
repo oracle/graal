@@ -26,19 +26,20 @@ package com.oracle.svm.core.container;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -73,15 +74,8 @@ public class Container {
         return ImageSingletons.lookup(Container.class);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isInitialized() {
-        return STATE.get().readWord(0) != State.UNINITIALIZED;
-    }
-
     /**
-     * Determines whether the image runs containerized, potentially initializing container support
-     * if not yet initialized. If initialization is not desired, calls to this method must be
-     * guarded by {@link #isInitialized()}.
+     * Determines whether the image runs containerized.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isContainerized() {
@@ -90,16 +84,15 @@ public class Container {
         }
 
         UnsignedWord value = STATE.get().readWord(0);
-        if (value == State.UNINITIALIZED) {
-            value = initialize();
-        }
-
         assert value == State.CONTAINERIZED || value == State.NOT_CONTAINERIZED;
         return value == State.CONTAINERIZED;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord initialize() {
+    public static void initialize() {
+        if (!isSupported()) {
+            return;
+        }
         Pointer statePtr = STATE.get();
         UnsignedWord value = statePtr.compareAndSwapWord(0, State.UNINITIALIZED, State.INITIALIZING, LocationIdentity.ANY_LOCATION);
         if (value == State.UNINITIALIZED) {
@@ -126,14 +119,13 @@ public class Container {
         VMError.guarantee(value != State.ERROR_LIBCONTAINER_TOO_OLD, "native-image tries to use a libsvm_container version that is too old");
         VMError.guarantee(value != State.ERROR_LIBCONTAINER_TOO_NEW, "native-image tries to use a libsvm_container version that is too new");
         VMError.guarantee(value == State.CONTAINERIZED || value == State.NOT_CONTAINERIZED, "unexpected libsvm_container initialize result");
-        return value;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getActiveProcessorCount() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
 
-        long currentMs = System.currentTimeMillis();
+        long currentMs = TimeUtils.currentTimeMillis();
         if (currentMs > activeProcessorCountTimeoutMs) {
             cachedActiveProcessorCount = ContainerLibrary.getActiveProcessorCount();
             activeProcessorCountTimeoutMs = currentMs + CACHE_MS;
@@ -143,15 +135,15 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getCachedActiveProcessorCount() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
         return cachedActiveProcessorCount;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getPhysicalMemory() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
 
-        long currentMs = System.currentTimeMillis();
+        long currentMs = TimeUtils.currentTimeMillis();
         if (currentMs > physicalMemoryTimeoutMs) {
             cachedPhysicalMemorySize = ContainerLibrary.physicalMemory();
             physicalMemoryTimeoutMs = currentMs + CACHE_MS;
@@ -161,15 +153,15 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getCachedPhysicalMemory() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
         return cachedPhysicalMemorySize;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getMemoryLimitInBytes() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
 
-        long currentMs = System.currentTimeMillis();
+        long currentMs = TimeUtils.currentTimeMillis();
         if (currentMs > memoryLimitInBytesTimeoutMs) {
             cachedMemoryLimitInBytes = ContainerLibrary.getMemoryLimitInBytes();
             memoryLimitInBytesTimeoutMs = currentMs + CACHE_MS;
@@ -179,17 +171,17 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getCachedMemoryLimitInBytes() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
         return cachedMemoryLimitInBytes;
     }
 
-    private static class State {
-        static final UnsignedWord UNINITIALIZED = WordFactory.unsigned(0);
-        static final UnsignedWord INITIALIZING = WordFactory.unsigned(1);
-        static final UnsignedWord NOT_CONTAINERIZED = WordFactory.unsigned(2);
-        static final UnsignedWord CONTAINERIZED = WordFactory.unsigned(3);
-        static final UnsignedWord ERROR_LIBCONTAINER_TOO_OLD = WordFactory.unsigned(4);
-        static final UnsignedWord ERROR_LIBCONTAINER_TOO_NEW = WordFactory.unsigned(5);
-        static final UnsignedWord ERROR_UNKNOWN = WordFactory.unsigned(6);
+    private static final class State {
+        static final UnsignedWord UNINITIALIZED = Word.unsigned(0);
+        static final UnsignedWord INITIALIZING = Word.unsigned(1);
+        static final UnsignedWord NOT_CONTAINERIZED = Word.unsigned(2);
+        static final UnsignedWord CONTAINERIZED = Word.unsigned(3);
+        static final UnsignedWord ERROR_LIBCONTAINER_TOO_OLD = Word.unsigned(4);
+        static final UnsignedWord ERROR_LIBCONTAINER_TOO_NEW = Word.unsigned(5);
+        static final UnsignedWord ERROR_UNKNOWN = Word.unsigned(6);
     }
 }

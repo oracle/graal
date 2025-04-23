@@ -72,8 +72,11 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
         return new FilterTypeFlow(methodFlows, this);
     }
 
+    /**
+     * Filter the incoming type state using the checked type.
+     */
     @Override
-    public TypeState filter(PointsToAnalysis bb, TypeState update) {
+    protected TypeState processInputState(PointsToAnalysis bb, TypeState update) {
         TypeState result;
         if (isExact) {
             /*
@@ -101,20 +104,52 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
+        if (isAssignable && isSaturated()) {
+            filterType.getTypeFlow(bb, includeNull).addPredicated(bb, predicatedFlow);
+            return;
+        }
+        super.addPredicated(bb, predicatedFlow);
+    }
+
+    @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        if (isAssignable) {
-            /* Swap this flow out at its uses/observers with its filter type flow. */
-            setSaturated();
-            swapOut(bb, filterType.getTypeFlow(bb, includeNull));
+        if (bb.isClosed(filterType)) {
+            if (isAssignable) {
+                /*
+                 * If the filter type is closed stop saturation propagation to dependent flows and
+                 * instead use the upper limit type, i.e., the filter type, as a safe approximation.
+                 */
+                if (!setSaturated()) {
+                    return;
+                }
+                /* Swap this flow out at uses/observers/predicated flows with its filter type. */
+                swapOut(bb, filterType.getTypeFlow(bb, includeNull));
+            } else {
+                /*
+                 * For the non-assignable branch simply propagate the saturation stamp through the
+                 * filter flow.
+                 */
+                super.onInputSaturated(bb, input);
+            }
         } else {
+            /*
+             * /* For open types simply propagate the saturation stamp through the filter flow, just
+             * like for the non-assignable branch. GR-59312 will preserve and propagate the upper
+             * limit type also for open types.
+             */
             super.onInputSaturated(bb, input);
         }
     }
 
     @Override
     protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
-        if (isAssignable) {
-            swapAtUse(bb, filterType.getTypeFlow(bb, includeNull), use);
+        if (bb.isClosed(filterType)) {
+            if (isAssignable) {
+                swapAtUse(bb, filterType.getTypeFlow(bb, includeNull), use);
+            } else {
+                super.notifyUseOfSaturation(bb, use);
+            }
         } else {
             super.notifyUseOfSaturation(bb, use);
         }
@@ -122,8 +157,12 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
-        if (isAssignable) {
-            swapAtObserver(bb, filterType.getTypeFlow(bb, includeNull), observer);
+        if (bb.isClosed(filterType)) {
+            if (isAssignable) {
+                swapAtObserver(bb, filterType.getTypeFlow(bb, includeNull), observer);
+            } else {
+                super.notifyObserverOfSaturation(bb, observer);
+            }
         } else {
             super.notifyObserverOfSaturation(bb, observer);
         }

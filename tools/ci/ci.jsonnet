@@ -43,7 +43,7 @@
   },
 
   local tools_javadoc = tools_common + common_guard + {
-    name: "gate-tools-javadoc",
+    name: "gate-tools-javadoc-" + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "javadoc"],
@@ -85,7 +85,7 @@
     common.linux_amd64   + common.oraclejdkLatest + tools_gate,
     common.linux_amd64   + common.oraclejdk21 + tools_gate,
 
-    common.linux_amd64   + common.oraclejdk21 + tools_javadoc,
+    common.linux_amd64   + common.oraclejdkLatest + tools_javadoc,
     common.linux_amd64   + common.oraclejdk21 + tools_coverage_weekly,
     common.linux_aarch64 + common.labsjdkLatest   + tools_weekly,
     common.linux_aarch64 + common.labsjdk21   + tools_weekly,

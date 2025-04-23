@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,12 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MISC_FLAGS_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccHasFinalizer;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.shouldUseKlassMiscFlags;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -54,8 +60,10 @@ public class RegisterFinalizerSnippets implements Snippets {
     @Snippet
     public static void registerFinalizerSnippet(final Object thisObj) {
         KlassPointer klass = HotSpotReplacementsUtil.loadHub(thisObj);
-        if (probability(SLOW_PATH_PROBABILITY, (klass.readInt(HotSpotReplacementsUtil.klassAccessFlagsOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION) &
-                        HotSpotReplacementsUtil.jvmAccHasFinalizer(INJECTED_VMCONFIG)) != 0)) {
+
+        int flags = shouldUseKlassMiscFlags() ? klass.readByte(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
+                        : klass.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
+        if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccHasFinalizer(INJECTED_VMCONFIG)) != 0)) {
             LoweredRegisterFinalizerNode.registerFinalizer(thisObj);
         }
     }
@@ -68,7 +76,8 @@ public class RegisterFinalizerSnippets implements Snippets {
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 
-            this.registerFinalizerSnippet = snippet(providers, RegisterFinalizerSnippets.class, "registerFinalizerSnippet", HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION);
+            this.registerFinalizerSnippet = snippet(providers, RegisterFinalizerSnippets.class, "registerFinalizerSnippet",
+                            shouldUseKlassMiscFlags() ? KLASS_MISC_FLAGS_LOCATION : KLASS_ACCESS_FLAGS_LOCATION);
         }
 
         public void lower(RegisterFinalizerNode node, LoweringTool tool) {

@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -60,9 +60,9 @@ public class LibGraalCompilerTest extends HotSpotGraalCompilerTest {
      * Computes a hash based on the static final Object fields in {@code typeHandle}.
      *
      * Implemented by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.hashConstantOopFields}.
+     * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints#hashConstantOopFields}.
      *
-     * @param isolateThread
+     * @param isolateThreadAddress
      * @param typeHandle the type whose constant object fields are to be hashed
      * @param useScope should a {@linkplain HotSpotGraalServices#openLocalCompilationContext(Object)
      *            scope} be used for each iteration. If true, then
@@ -71,7 +71,7 @@ public class LibGraalCompilerTest extends HotSpotGraalCompilerTest {
      * @param iterations number of times to run the hashing loop
      * @param oopsPerIteration number of oops to process per hashing loop
      */
-    public static native long hashConstantOopFields(long isolateThread,
+    public static native long hashConstantOopFields(long isolateThreadAddress,
                     long typeHandle,
                     boolean useScope,
                     int iterations,

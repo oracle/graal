@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.api.test;
 
-import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.execute;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.function.Consumer;
 
@@ -67,9 +65,15 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import com.oracle.truffle.api.test.common.NullObject;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
+import org.hamcrest.core.AllOf;
+import static org.junit.Assert.fail;
 
 /*
  * There is other TruffleContextTest in com.oracle.truffle.api.instrumentation.test package.
@@ -236,6 +240,49 @@ public class TruffleContextTest {
     public void testCancelledInnerContext() {
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             evalTestLanguage(context, InnerContextTestLanguage4.class, "");
+        }
+    }
+
+    @Registration
+    static class InnerContextTestLanguage5 extends AbstractExecutableTestLanguage {
+        @TruffleBoundary
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TruffleContext context = env.newInnerContextBuilder(MultiThreadedLanguage.ID).inheritAllAccess(true).threadAccessDeniedHandler((msg) -> {
+                assertThat(msg, AllOf.allOf(
+                                containsString("Single threaded access requested"),
+                                containsString("but is not allowed for language(s) MultiThreadedLanguage")));
+                throw new SecurityException("Threads are not secure!");
+            }).build()) {
+                MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+                    return false;
+                };
+                try {
+                    context.initializePublic(node, MultiThreadedLanguage.ID);
+                    fail();
+                } catch (SecurityException e) {
+                    assertEquals("Threads are not secure!", e.getMessage());
+                }
+                try {
+                    context.evalPublic(node, Source.newBuilder(MultiThreadedLanguage.ID, "", "cannot.eval.src").build());
+                    fail();
+                } catch (SecurityException e) {
+                    assertEquals("Threads are not secure!", e.getMessage());
+                }
+                // allow again so we can close
+                MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+                    return true;
+                };
+            }
+            return NullObject.SINGLETON;
+        }
+    }
+
+    /** Verifies {@code threadAccessDeniedHandler}. */
+    @Test
+    public void testNoThreadAllowedWithSecurityException() {
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            evalTestLanguage(context, InnerContextTestLanguage5.class, "");
         }
     }
 

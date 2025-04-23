@@ -20,13 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.runtime.jimage;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 public class ImageLocation {
     private static final int ATTRIBUTE_END = 0;

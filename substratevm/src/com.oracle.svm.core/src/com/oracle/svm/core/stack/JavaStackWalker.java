@@ -27,6 +27,7 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -37,7 +38,6 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
@@ -145,17 +145,17 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initialize(JavaStackWalk walk, IsolateThread thread) {
-        initializeFromFrameAnchor(walk, thread, WordFactory.nullPointer());
+        initializeFromFrameAnchor(walk, thread, Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP) {
-        initWalk(walk, thread, startSP, WordFactory.nullPointer(), WordFactory.nullPointer(), JavaFrameAnchors.getFrameAnchor(thread));
+        initWalk(walk, thread, startSP, Word.nullPointer(), Word.nullPointer(), JavaFrameAnchors.getFrameAnchor(thread));
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP) {
-        initWalk(walk, thread, startSP, endSP, WordFactory.nullPointer(), JavaFrameAnchors.getFrameAnchor(thread));
+        initWalk(walk, thread, startSP, endSP, Word.nullPointer(), JavaFrameAnchors.getFrameAnchor(thread));
     }
 
     /**
@@ -164,7 +164,7 @@ public final class JavaStackWalker {
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, CodePointer startIP) {
-        initWalk(walk, thread, startSP, WordFactory.nullPointer(), startIP, JavaFrameAnchors.getFrameAnchor(thread));
+        initWalk(walk, thread, startSP, Word.nullPointer(), startIP, JavaFrameAnchors.getFrameAnchor(thread));
     }
 
     /**
@@ -173,7 +173,7 @@ public final class JavaStackWalker {
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, CodePointer startIP, JavaFrameAnchor anchor) {
-        initWalk(walk, thread, startSP, WordFactory.nullPointer(), startIP, anchor);
+        initWalk(walk, thread, startSP, Word.nullPointer(), startIP, anchor);
     }
 
     @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
@@ -187,7 +187,7 @@ public final class JavaStackWalker {
         } else {
             Pointer startSP = StoredContinuationAccess.getFramesStart(continuation);
             Pointer endSP = StoredContinuationAccess.getFramesEnd(continuation);
-            initWalk0(walk, startSP, endSP, startIP, WordFactory.nullPointer());
+            initWalk0(walk, startSP, endSP, startIP, Word.nullPointer());
         }
     }
 
@@ -198,7 +198,7 @@ public final class JavaStackWalker {
 
         Pointer startSP = StoredContinuationAccess.getFramesStart(continuation);
         Pointer endSP = StoredContinuationAccess.getFramesEnd(continuation);
-        initWalk0(walk, startSP, endSP, startIP, WordFactory.nullPointer());
+        initWalk0(walk, startSP, endSP, startIP, Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
@@ -230,7 +230,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void markAsNotWalkable(JavaStackWalk walk) {
-        initWalk0(walk, WordFactory.nullPointer(), WordFactory.nullPointer(), WordFactory.nullPointer(), WordFactory.nullPointer());
+        initWalk0(walk, Word.nullPointer(), Word.nullPointer(), Word.nullPointer(), Word.nullPointer());
     }
 
     @Uninterruptible(reason = "JavaStackWalk must not contain stale values when this method returns.", callerMustBe = true)
@@ -254,12 +254,12 @@ public final class JavaStackWalker {
         long newEndSP = w.getEndSP().rawValue() + delta;
 
         w.setStartSP(newStartSP);
-        w.setEndSP(WordFactory.pointer(newEndSP));
+        w.setEndSP(Word.pointer(newEndSP));
 
         JavaFrame frame = getCurrentFrame(walk);
         if (frame.getSP().isNonNull()) {
             long newSP = frame.getSP().rawValue() + delta;
-            frame.setSP(WordFactory.pointer(newSP));
+            frame.setSP(Word.pointer(newSP));
         }
     }
 
@@ -270,7 +270,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
     public static boolean advanceForContinuation(JavaStackWalk walk, StoredContinuation continuation) {
-        return advance0(walk, WordFactory.nullPointer(), continuation);
+        return advance0(walk, Word.nullPointer(), continuation);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
@@ -347,7 +347,7 @@ public final class JavaStackWalker {
              */
             long deoptSlot = sp.readLong((int) -totalFrameSize);
             long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(deoptSlot);
-            Pointer actualSp = sp.add(WordFactory.unsigned(varStackSize));
+            Pointer actualSp = sp.add(Word.unsigned(varStackSize));
 
             CodePointer ip = readReturnAddress(thread, continuation, actualSp);
             JavaFrames.setData(frame, actualSp, ip);
@@ -416,17 +416,17 @@ public final class JavaStackWalker {
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkCurrentThread(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
         assert startSP.isNonNull();
-        return walkCurrentThread(startSP, endSP, WordFactory.nullPointer(), visitor, null);
+        return walkCurrentThread(startSP, endSP, Word.nullPointer(), visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkCurrentThread(Pointer startSP, ParameterizedStackFrameVisitor visitor, Object data) {
-        return walkCurrentThread(startSP, WordFactory.nullPointer(), WordFactory.nullPointer(), visitor, data);
+        return walkCurrentThread(startSP, Word.nullPointer(), Word.nullPointer(), visitor, data);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor visitor) {
-        return walkCurrentThread(startSP, WordFactory.nullPointer(), startIP, visitor, null);
+        return walkCurrentThread(startSP, Word.nullPointer(), startIP, visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -444,7 +444,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, ParameterizedStackFrameVisitor visitor, Object data) {
-        return walkThread(thread, WordFactory.nullPointer(), visitor, data);
+        return walkThread(thread, Word.nullPointer(), visitor, data);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -472,12 +472,13 @@ public final class JavaStackWalker {
                 return visitUnknownFrame(sp, ip, visitor, data);
             }
 
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);
             if (deoptimizedFrame != null) {
                 if (!vistDeoptimizedFrame(sp, ip, deoptimizedFrame, visitor, data)) {
                     return false;
                 }
             } else {
+                // Note that this code also visits frames pending lazy deoptimization.
                 UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
                 Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
                 try {

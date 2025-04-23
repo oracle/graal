@@ -231,10 +231,11 @@ final class TestUtil {
         message.append("Result: ").append(resultValue).append('\n');
         message.append("Exception: ").append(exception).append('\n');
         message.append("Snippet: ").append(getSource(snippet.getExecutableValue())).append('\n');
-        int i = 0;
-        for (Map.Entry<String, ? extends Snippet> langAndparamSnippet : testRun.getActualParameterSnippets()) {
-            final Snippet paramSnippet = langAndparamSnippet.getValue();
-            message.append(String.format("Parameter %d Snippet: ", i++)).append(getSource(paramSnippet.getExecutableValue())).append('\n');
+        for (int i = 0; i < actualParameterSnippets.size(); i++) {
+            final Snippet paramSnippet = actualParameterSnippets.get(i).getValue();
+            message.append(String.format("Parameter %d Snippet: ", i)).append(getSource(paramSnippet.getExecutableValue())).append('\n');
+            message.append(String.format("Parameter %d Declared Return Type: %s%n", i, paramSnippet.getReturnType()));
+            message.append(String.format("Parameter %d Returned Value Type: %s%n", i, TypeDescriptor.forValue(actualParameters.get(i))));
         }
 
         return message.toString();

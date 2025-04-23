@@ -34,7 +34,7 @@ public final class SteppingInfo {
     private final DebuggerCommand.Kind stepKind;
     private boolean submitted;
 
-    public SteppingInfo(int requestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn, DebuggerCommand.Kind stepKind) {
+    SteppingInfo(int requestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn, DebuggerCommand.Kind stepKind) {
         this.requestId = requestId;
         this.suspendPolicy = suspendPolicy;
         this.isPopFrames = isPopFrames;

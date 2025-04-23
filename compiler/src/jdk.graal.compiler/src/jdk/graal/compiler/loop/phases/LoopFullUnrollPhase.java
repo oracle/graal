@@ -113,8 +113,8 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
 
     public static final Comparator<Loop> LOOP_COMPARATOR;
     static {
-        ToDoubleFunction<Loop> loopFreq = e -> e.loop().getHeader().getFirstPredecessor().getRelativeFrequency();
-        ToIntFunction<Loop> loopDepth = e -> e.loop().getDepth();
+        ToDoubleFunction<Loop> loopFreq = e -> e.getCFGLoop().getHeader().getFirstPredecessor().getRelativeFrequency();
+        ToIntFunction<Loop> loopDepth = e -> e.getCFGLoop().getDepth();
         LOOP_COMPARATOR = Comparator.comparingDouble(loopFreq).thenComparingInt(loopDepth).reversed();
     }
 

@@ -14,23 +14,41 @@ Oracle GraalVM for JDK 23 is available for Linux, macOS, and Windows on the x64 
 
 ## Certified Platforms
 
-Oracle GraalVM for JDK 23 is certified on the following platforms:
+Oracle GraalVM for JDK 24 is certified on the following platforms.
 
-| Operating System 	| Version 	| Architecture 	| Installation Guide 	|
-|------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8, 9 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
-| Red Hat Enterprise Linux (RHEL) 	| 7, 8, 9 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
-| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura), 14.3 (Sonoma)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
-| Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
+**Linux**
 
-## Experimental Components
+| Platform                        | CPU Architecture(s) |
+|---------------------------------|---------------------|
+| Oracle Linux 9                  | AArch64, x64        |
+| Oracle Linux 8                  | AArch64, x64        |
+| Oracle Linux 7                  | x64                 |
+| Red Hat Enterprise Linux 9      | AArch64, x64        |
+| Red Hat Enterprise Linux 8      | AArch64, x64        |
+| Red Hat Enterprise Linux 7      | x64                 |
+| Ubuntu Linux 24.10              | x64                 |
+| Ubuntu Linux 24.04 LTS          | x64                 |
 
-Oracle GraalVM for JDK 23 includes some components that are considered experimental. 
-These components are not meant for use in production and are not supported by Oracle. 
-Some components are considered experimental on specific platforms. 
-The GraalVM team welcomes feedback on these components, but users should be aware that the components may not be included in a future release or may change significantly before being considered production-ready:
-* Java on Truffle (Espresso) is _supported_ on Linux x64 only and is experimental on other certified platforms. 
-* The GraalVM Python runtime (GraalPy) is _experimental_ on all certified platforms.
+**macOS**
+
+| Platform | CPU Architecture(s) |
+|----------|---------------------|
+| macOS 15 | AArch64, x64        |
+| macOS 14 | AArch64, x64        |
+| macOS 13 | AArch64, x64        |
+
+**Windows**
+
+| Platform            | CPU Architecture(s) |
+|---------------------|---------------------|
+| Windows Server 2025 | x64                 |
+| Windows Server 2022 | x64                 |
+| Windows Server 2019 | x64                 |
+| Windows Server 2016 | x64                 |
+| Windows 11          | x64                 |
+| Windows 10          | x64                 |
+
+See [Oracle GraalVM Support Roadmap](https://docs.oracle.com/en/graalvm/support-roadmap.html) to understand maintenance, support options, and related timelines.
 
 ## Related Technologies
 

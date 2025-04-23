@@ -38,6 +38,29 @@ import java.lang.annotation.Target;
 public @interface Snippet {
 
     /**
+     * Determines when this snippet is lowered. This has influence on how a snippet graph is
+     * prepared.
+     */
+    enum SnippetType {
+        /**
+         * A snippet lowered during the application of a lowering phase in the Graal compiler.
+         */
+        INLINED_SNIPPET,
+        /**
+         * A snippet that is inlined very late in the compilation pipeline. Typically reserved for
+         * operations that exhibit zero optimization capabilities in the frontend, or operations
+         * that must not be optimized in the scope of the caller. That is code that should not
+         * participate in the optimizer. Normally such semantics could be expressed in LIR but
+         * snippets are easier to write and maintain representation. Use with caution - no
+         * optimizations will be performed on the inlinee in the caller graph, not even global value
+         * numbering. Yet, all orderings of the inlinee are preserved, its guaranteed no other code
+         * from the caller is scheduled interleaved with the callee code. This allows to express
+         * semantics that must be "hidden" from the memory graph optimizations of the caller.
+         */
+        TRANSPLANTED_SNIPPET
+    }
+
+    /**
      * A partial intrinsic exits by (effectively) calling the intrinsified method. Normally, this
      * call must use exactly the same arguments as the call that is being intrinsified. For well
      * known snippets that are used after frame state assignment, we want to relax this restriction.

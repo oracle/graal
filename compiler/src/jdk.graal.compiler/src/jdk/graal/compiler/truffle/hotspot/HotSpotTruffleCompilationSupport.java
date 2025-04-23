@@ -68,7 +68,7 @@ public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompi
 
     @Override
     public TruffleCompiler createCompiler(TruffleCompilerRuntime runtime) {
-        HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime);
+        HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime, null);
         compilerConfigurationName = compiler.getHotspotGraalRuntime().getCompilerConfigurationName();
         return compiler;
 

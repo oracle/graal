@@ -48,7 +48,6 @@ public class HostedLibCFeature implements InternalFeature {
         ServiceLoader<HostedLibCBase> loader = ServiceLoader.load(HostedLibCBase.class);
         for (HostedLibCBase libc : loader) {
             if (libc.getName().equals(targetLibC)) {
-                libc.checkIfLibCSupported();
                 ImageSingletons.add(LibCBase.class, libc);
                 return;
             }

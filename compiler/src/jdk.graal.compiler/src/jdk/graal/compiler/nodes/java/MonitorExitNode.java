@@ -77,10 +77,6 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (!tool.getPlatformConfigurationProvider().areLocksSideEffectFree()) {
-            return;
-        }
-
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;

@@ -35,8 +35,10 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup")
 final class Target_java_lang_invoke_MethodHandles_Lookup {
@@ -92,6 +94,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     /** This call is a noop without the security manager. */
     @SuppressWarnings("unused")
     @Substitute
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     void checkSecurityManager(Class<?> refc) {
     }
 }

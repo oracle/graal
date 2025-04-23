@@ -43,11 +43,11 @@ import java.util.ResourceBundle;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
+import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils.SerializedContent;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -83,10 +83,10 @@ public class GzipBundleCompression {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static CompressedBundle compress(ResourceBundle bundle) {
         final Map<String, Object> content = extractContent(bundle);
-        Pair<String, int[]> input = serializeContent(content);
+        SerializedContent input = serializeContent(content);
         try (ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); GZIPOutputStream out = new GZIPOutputStream(byteStream)) {
-            writeIndices(input.getRight(), out);
-            writeText(input.getLeft(), out);
+            writeIndices(input.indices(), out);
+            writeText(input.text(), out);
             out.finish();
             return new CompressedBundle(byteStream.toByteArray(), GzipBundleCompression::decompressBundle);
         } catch (IOException ex) {

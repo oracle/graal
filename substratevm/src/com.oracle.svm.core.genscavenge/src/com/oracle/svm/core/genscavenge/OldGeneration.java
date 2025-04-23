@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -62,6 +63,12 @@ public abstract class OldGeneration extends Generation {
     abstract UnsignedWord computeObjectBytes();
 
     abstract boolean isInSpace(Pointer ptr);
+
+    abstract boolean printLocationInfo(Log log, Pointer ptr);
+
+    abstract void logChunks(Log log);
+
+    abstract void appendChunk(AlignedHeapChunk.AlignedHeader hdr);
 
     abstract boolean verifyRememberedSets();
 

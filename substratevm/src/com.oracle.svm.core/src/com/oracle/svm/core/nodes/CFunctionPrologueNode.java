@@ -25,23 +25,27 @@
 package com.oracle.svm.core.nodes;
 
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
+import static jdk.graal.compiler.nodeinfo.InputType.State;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
+
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.stack.JavaFrameAnchor;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.stack.JavaFrameAnchor;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 
 /**
  * Represents the prologue that must be executed before a call to a C function, i.e., a function
@@ -57,7 +61,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
  * emitted.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
-public final class CFunctionPrologueNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill, ControlFlowAnchored {
+public final class CFunctionPrologueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter {
     public static final NodeClass<CFunctionPrologueNode> TYPE = NodeClass.create(CFunctionPrologueNode.class);
 
     private final int newThreadStatus;
@@ -98,6 +102,24 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
 
     public int getNewThreadStatus() {
         return newThreadStatus;
+    }
+
+    @OptionalInput(State) FrameState stateBefore;
+
+    @Override
+    public FrameState stateBefore() {
+        return stateBefore;
+    }
+
+    @Override
+    public void setStateBefore(FrameState x) {
+        updateUsages(this.stateBefore, x);
+        this.stateBefore = x;
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 
     @NodeIntrinsic

@@ -31,11 +31,11 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.TimeUtils;
@@ -73,7 +73,7 @@ public final class ReferenceInternals {
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as a pointer. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getReferentPointer(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
     }
 
     @SuppressWarnings("unchecked")
@@ -85,7 +85,7 @@ public final class ReferenceInternals {
     /** Write {@link Target_java_lang_ref_Reference#referent}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setReferent(Reference<?> instance, Object value) {
-        BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value);
+        BarrieredAccess.writeObject(instance, Word.signed(Target_java_lang_ref_Reference.referentFieldOffset), value);
     }
 
     @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
@@ -94,7 +94,7 @@ public final class ReferenceInternals {
          * Use a read without a barrier to avoid that this code keeps the object alive, see
          * JDK-8188055.
          */
-        return value == ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset));
+        return value == ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
     @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
@@ -114,12 +114,12 @@ public final class ReferenceInternals {
          *
          * This barrier-less write is to resolve JDK-8240696.
          */
-        ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), null);
+        ObjectAccess.writeObject(instance, Word.signed(Target_java_lang_ref_Reference.referentFieldOffset), null);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getReferentFieldAddress(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
+        return Word.objectToUntrackedPointer(instance).add(Word.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
 
     public static long getReferentFieldOffset() {
@@ -134,7 +134,7 @@ public final class ReferenceInternals {
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered} as a pointer. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getDiscoveredPointer(Reference<T> instance) {
-        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, Word.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
     }
 
     public static long getQueueFieldOffset() {
@@ -157,7 +157,7 @@ public final class ReferenceInternals {
     /** Write {@link Target_java_lang_ref_Reference#discovered}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
-        BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
+        BarrieredAccess.writeObject(instance, Word.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
     }
 
     public static boolean hasQueue(Reference<?> instance) {
@@ -170,6 +170,14 @@ public final class ReferenceInternals {
 
     private static final Object processPendingLock = new Object();
     private static boolean processPendingActive = false;
+
+    public static void initializeLocking() {
+        /*
+         * Initialize the locking datastructures as early as possible. This makes it less likely
+         * that the reference handler thread fails with an OutOfMemoryError because of locking.
+         */
+        MonitorSupport.singleton().ensureInitialized(processPendingLock);
+    }
 
     @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
     public static void waitForPendingReferences() throws InterruptedException {

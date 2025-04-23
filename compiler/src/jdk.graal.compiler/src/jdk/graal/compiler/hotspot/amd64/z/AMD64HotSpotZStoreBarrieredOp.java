@@ -74,8 +74,8 @@ public abstract class AMD64HotSpotZStoreBarrieredOp extends AMD64LIRInstruction 
         this.storeKind = storeKind;
     }
 
-    protected void emitStoreBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultValue, Register writeValue, boolean isInitMemory, LIRFrameState state) {
-        AMD64HotSpotZBarrierSetLIRGenerator.emitStoreBarrier(crb, masm, this, config, storeAddress.toAddress(), resultValue, writeValue, storeKind, asRegister(tmp), asRegister(tmp2), callTarget,
-                        state, isInitMemory);
+    protected void emitPreWriteBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultReg, LIRFrameState state) {
+        AMD64HotSpotZBarrierSetLIRGenerator.emitPreWriteBarrier(crb, masm, this, config, storeAddress.toAddress(masm), resultReg, storeKind, asRegister(tmp), asRegister(tmp2), callTarget,
+                        state);
     }
 }

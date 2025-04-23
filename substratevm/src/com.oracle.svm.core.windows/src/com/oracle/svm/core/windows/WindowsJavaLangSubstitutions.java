@@ -27,9 +27,9 @@ package com.oracle.svm.core.windows;
 import java.io.Console;
 import java.util.Objects;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -59,7 +59,7 @@ final class Target_java_lang_System {
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long currentTimeMillis() {
-        return Jvm.JVM_CurrentTimeMillis(WordFactory.nullPointer(), WordFactory.nullPointer());
+        return Jvm.JVM_CurrentTimeMillis(Word.nullPointer(), Word.nullPointer());
     }
 }
 

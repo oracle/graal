@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2025, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -32,7 +32,7 @@ from __future__ import print_function
 
 import abc
 import fnmatch
-import pipes
+import shlex
 
 import mx
 import mx_cmake
@@ -75,60 +75,12 @@ def compileTestSuite(testsuiteproject, extra_build_args):
     mx.command_function('build')(defaultBuildArgs + extra_build_args)
 
 
-class DragonEggSupport:
-    """Helpers for DragonEgg
-
-    DragonEgg support is controlled by two environment variables:
-      * `DRAGONEGG_GCC`: path to a GCC installation with dragonegg support
-      * `DRAGONEGG_LLVM`: path to an LLVM installation that can deal with bitcode produced by DragonEgg
-      * `DRAGONEGG`: (optional) path to folder that contains the `libdragonegg.so`
-    """
-
-    @staticmethod
-    def haveDragonegg():
-        if not hasattr(DragonEggSupport, '_haveDragonegg'):
-            DragonEggSupport._haveDragonegg = DragonEggSupport.pluginPath() is not None and os.path.exists(
-                DragonEggSupport.pluginPath()) and DragonEggSupport.findGCCProgram('gcc', optional=True) is not None
-        return DragonEggSupport._haveDragonegg
-
-    @staticmethod
-    def pluginPath():
-        if 'DRAGONEGG' in os.environ:
-            return os.path.join(os.environ['DRAGONEGG'], mx.add_lib_suffix('dragonegg'))
-        if 'DRAGONEGG_GCC' in os.environ:
-            path = os.path.join(os.environ['DRAGONEGG_GCC'], 'lib', mx.add_lib_suffix('dragonegg'))
-            if os.path.exists(path):
-                return path
-        return None
-
-    @staticmethod
-    def findLLVMProgram(program, optional=False):
-        if 'DRAGONEGG_LLVM' in os.environ:
-            path = os.environ['DRAGONEGG_LLVM']
-            return os.path.join(path, 'bin', program)
-        if optional:
-            return None
-        mx.abort("Cannot find LLVM program for dragonegg: {}\nDRAGONEGG_LLVM environment variable not set".format(program))
-
-    @staticmethod
-    def findGCCProgram(gccProgram, optional=False):
-        if 'DRAGONEGG_GCC' in os.environ:
-            path = os.environ['DRAGONEGG_GCC']
-            return os.path.join(path, 'bin', gccProgram)
-        if optional:
-            return None
-        mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
-
-
 class SulongTestSuiteMixin(object, metaclass=abc.ABCMeta):
 
     def getVariants(self):
         if not hasattr(self, '_variants'):
             self._variants = []
             for v in self.variants:
-                if 'gcc' in v and not DragonEggSupport.haveDragonegg():
-                    mx.warn('Could not find dragonegg, not building test variant "%s"' % v)
-                    continue
                 self._variants.append(v)
         return self._variants
 
@@ -311,14 +263,6 @@ class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuiteMixin, mx.NativeP
         env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
         if 'OS' not in env:
             env['OS'] = mx_subst.path_substitutions.substitute("<os>")
-        if DragonEggSupport.haveDragonegg():
-            env['DRAGONEGG'] = DragonEggSupport.pluginPath()
-            env['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
-            env['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
-            env['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-            env['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-        elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
-            mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return env
 
     def getTestFile(self):
@@ -419,7 +363,7 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
     def contents(self, tool, exe):
         # platform support
         all_params = '%*' if mx.is_windows() else '"$@"'
-        _quote = _quote_windows if mx.is_windows() else pipes.quote
+        _quote = _quote_windows if mx.is_windows() else shlex.quote
         # build command line
         java = mx.get_jdk().java
         classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
@@ -525,8 +469,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
                 The source file is compiled to an executable with an embedded bitcode section.
             - "toolchain"
                 The toolchain wrappers are used to compile the test source into an executable with embedded bitcode.
-            - "gcc"
-                The source is compiled to bitcode using gcc and the DRAGONEGG plugin.
         buildRef:
             If True (the default), build a reference executable. Setting this to False is useful for embedded tests with
             dedicated JUnit test classes.
@@ -597,13 +539,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         _config['LLVM_CONFIG'] = mx_sulong.findBundledLLVMProgram('llvm-config')
         _config['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
         _config['CMAKE_NM'] = mx_sulong.findBundledLLVMProgram('llvm-nm')
-        if DragonEggSupport.haveDragonegg():
-            _config['DRAGONEGG'] = DragonEggSupport.pluginPath()
-            _config['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
-            _config['DRAGONEGG_LLVM_LINK'] = DragonEggSupport.findLLVMProgram("llvm-link")
-            _config['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
-            _config['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-            _config['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
         return _config
 
     def cmake_config(self):

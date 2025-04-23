@@ -37,9 +37,12 @@ import com.oracle.svm.core.jdk.Resources;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class EmbeddedResourcesInfo {
 
-    private final ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> registeredResources = new ConcurrentHashMap<>();
+    record SourceAndOrigin(String source, Object origin) {
+    }
 
-    public ConcurrentHashMap<Resources.ModuleResourceKey, List<String>> getRegisteredResources() {
+    private final ConcurrentHashMap<Resources.ModuleResourceKey, List<SourceAndOrigin>> registeredResources = new ConcurrentHashMap<>();
+
+    public ConcurrentHashMap<Resources.ModuleResourceKey, List<SourceAndOrigin>> getRegisteredResources() {
         return registeredResources;
     }
 
@@ -47,7 +50,7 @@ public class EmbeddedResourcesInfo {
         return ImageSingletons.lookup(EmbeddedResourcesInfo.class);
     }
 
-    public void declareResourceAsRegistered(Module module, String resource, String source) {
+    public void declareResourceAsRegistered(Module module, String resource, String source, Object origin) {
         if (!ImageSingletons.lookup(ResourcesFeature.class).collectEmbeddedResourcesInfo()) {
             return;
         }
@@ -55,8 +58,8 @@ public class EmbeddedResourcesInfo {
         Resources.ModuleResourceKey key = Resources.createStorageKey(module, resource);
         registeredResources.compute(key, (k, v) -> {
             if (v == null) {
-                ArrayList<String> newValue = new ArrayList<>();
-                newValue.add(source);
+                ArrayList<SourceAndOrigin> newValue = new ArrayList<>();
+                newValue.add(new SourceAndOrigin(source, origin));
                 return newValue;
             }
 
@@ -67,8 +70,15 @@ public class EmbeddedResourcesInfo {
              * so we have to perform same check here, to avoid duplicates when collecting
              * information about resource.
              */
-            if (!v.contains(source)) {
-                v.add(source);
+            boolean found = false;
+            for (var existing : v) {
+                if (existing.source.equals(source)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                v.add(new SourceAndOrigin(source, origin));
             }
             return v;
         });

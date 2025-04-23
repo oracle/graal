@@ -62,7 +62,6 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
     static final String STRUCTURAL_INPUT_CLASS_NAME = "jdk.graal.compiler.nodeinfo.StructuralInput";
     static final String RESOLVED_JAVA_TYPE_CLASS_NAME = "jdk.vm.ci.meta.ResolvedJavaType";
     static final String VALUE_NODE_CLASS_NAME = "jdk.graal.compiler.nodes.ValueNode";
-    static final String STAMP_CLASS_NAME = "jdk.graal.compiler.core.common.type.Stamp";
     static final String NODE_CLASS_NAME = "jdk.graal.compiler.graph.Node";
     static final String NODE_INFO_CLASS_NAME = "jdk.graal.compiler.nodeinfo.NodeInfo";
     static final String NODE_INTRINSIC_CLASS_NAME = "jdk.graal.compiler.graph.Node.NodeIntrinsic";
@@ -110,7 +109,6 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             messager.printMessage(Kind.ERROR, "@NodeIntrinsic cannot have a generic return type.", element, annotation);
         }
 
-        boolean injectedStampIsNonNull = getAnnotationValue(annotation, "injectedStampIsNonNull", Boolean.class);
         boolean isFactory = processor.getAnnotation(nodeClass, processor.getType(NODE_INTRINSIC_FACTORY_CLASS_NAME)) != null;
 
         if (returnType.getKind() == TypeKind.VOID) {
@@ -147,7 +145,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
         TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
         Map<ExecutableElement, String> nonMatches = new HashMap<>();
         if (isFactory) {
-            List<ExecutableElement> candidates = findIntrinsifyFactoryMethods(factories, constructorSignature, nonMatches, injectedStampIsNonNull);
+            List<ExecutableElement> candidates = findIntrinsifyFactoryMethods(factories, constructorSignature, nonMatches);
             if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "factories", candidates, msg)) {
                 return;
             }
@@ -167,7 +165,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
                 checkInputType(nodeClass, returnType, element, annotation);
             }
 
-            List<ExecutableElement> constructors = findConstructors(nodeClass, constructorSignature, nonMatches, injectedStampIsNonNull);
+            List<ExecutableElement> constructors = findConstructors(nodeClass, constructorSignature, nonMatches);
             if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "constructors", constructors, msg)) {
                 return;
             }
@@ -255,11 +253,11 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
         return parameters;
     }
 
-    private List<ExecutableElement> findConstructors(TypeElement nodeClass, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches, boolean requiresInjectedStamp) {
+    private List<ExecutableElement> findConstructors(TypeElement nodeClass, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches) {
         List<ExecutableElement> constructors = ElementFilter.constructorsIn(nodeClass.getEnclosedElements());
         List<ExecutableElement> found = new ArrayList<>(constructors.size());
         for (ExecutableElement constructor : constructors) {
-            if (matchSignature(0, constructor, signature, nonMatches, requiresInjectedStamp)) {
+            if (matchSignature(0, constructor, signature, nonMatches)) {
                 found.add(constructor);
             }
         }
@@ -301,34 +299,25 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
         return found;
     }
 
-    private List<ExecutableElement> findIntrinsifyFactoryMethods(List<ExecutableElement> intrinsifyFactoryMethods, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches,
-                    boolean requiresInjectedStamp) {
+    private List<ExecutableElement> findIntrinsifyFactoryMethods(List<ExecutableElement> intrinsifyFactoryMethods, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches) {
         List<ExecutableElement> found = new ArrayList<>(1);
         for (ExecutableElement method : intrinsifyFactoryMethods) {
-            if (matchSignature(1, method, signature, nonMatches, requiresInjectedStamp)) {
+            if (matchSignature(1, method, signature, nonMatches)) {
                 found.add(method);
             }
         }
         return found;
     }
 
-    private boolean matchSignature(int numSkippedParameters, ExecutableElement method, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches, boolean requiresInjectedStamp) {
+    private boolean matchSignature(int numSkippedParameters, ExecutableElement method, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches) {
         int sIdx = 0;
         int cIdx = numSkippedParameters;
-        boolean missingStampArgument = requiresInjectedStamp;
         while (cIdx < method.getParameters().size()) {
             VariableElement parameter = method.getParameters().get(cIdx++);
             TypeMirror paramType = parameter.asType();
             if (processor.getAnnotation(parameter, processor.getType(INJECTED_NODE_PARAMETER_CLASS_NAME)) != null) {
-                if (missingStampArgument && processor.env().getTypeUtils().isSameType(paramType, processor.getType(STAMP_CLASS_NAME))) {
-                    missingStampArgument = false;
-                }
                 // skip injected parameters
                 continue;
-            }
-            if (missingStampArgument) {
-                nonMatches.put(method, String.format("missing injected %s argument", processor.getType(STAMP_CLASS_NAME)));
-                return false;
             }
 
             if (cIdx == method.getParameters().size() && paramType.getKind() == TypeKind.ARRAY) {
@@ -353,10 +342,6 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
                 nonMatches.put(method, String.format("the type of argument %d is incompatible: %s != %s", sIdx, paramType, signature[sIdx - 1]));
                 return false;
             }
-        }
-        if (missingStampArgument) {
-            nonMatches.put(method, String.format("missing injected %s argument", processor.getType(STAMP_CLASS_NAME)));
-            return false;
         }
 
         if (sIdx != signature.length) {

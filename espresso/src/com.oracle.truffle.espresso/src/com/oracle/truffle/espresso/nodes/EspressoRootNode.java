@@ -41,6 +41,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.ForeignStackTraceElementObject;
@@ -153,8 +154,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
-        Node location = element.getLocation();
-        return new ForeignStackTraceElementObject(getMethod(), location != null ? location.getEncapsulatingSourceSection() : getEncapsulatingSourceSection());
+        SourceSection sourceSection;
+        if (element.hasBytecodeIndex()) {
+            sourceSection = getMethodVersion().getSourceSectionAtBCI(element.getBytecodeIndex());
+        } else if (element.getLocation() != null) {
+            sourceSection = element.getLocation().getEncapsulatingSourceSection();
+        } else {
+            sourceSection = getEncapsulatingSourceSection();
+        }
+        return new ForeignStackTraceElementObject(getMethod(), sourceSection);
     }
 
     @Override
@@ -205,8 +213,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     /**
      * Creates a root node that can execute a native Java method.
      */
-    public static EspressoRootNode createNative(Method.MethodVersion methodVersion, TruffleObject nativeMethod) {
-        return create(null, new NativeMethodNode(nativeMethod, methodVersion));
+    public static EspressoRootNode createNative(JniEnv env, Method.MethodVersion methodVersion, TruffleObject nativeMethod) {
+        return create(null, new NativeMethodNode(env, nativeMethod, methodVersion));
     }
 
     /**
@@ -475,5 +483,13 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Override
     protected final boolean isTrivial() {
         return !methodNode.getMethodVersion().isSynchronized() && methodNode.isTrivial();
+    }
+
+    @Override
+    public boolean isInternal() {
+        if (getMethod().isHidden()) {
+            return true;
+        }
+        return super.isInternal();
     }
 }

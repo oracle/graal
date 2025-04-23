@@ -129,7 +129,7 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
                 Label isNotNaN = new Label();
                 UCOMIS.emit(masm, floatSize, src, src);
                 masm.jcc(AMD64Assembler.ConditionFlag.NoParity, isNotNaN, true);
-                masm.movl(dst, 0);
+                masm.moveInt(dst, 0);
                 masm.jmp(done);
                 masm.bind(isNotNaN);
             }

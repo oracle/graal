@@ -24,11 +24,16 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
+import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -36,9 +41,12 @@ import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Metadata required for processing of snippets.
+ * Encodes info about a snippet's parameters derived from annotations such as
+ * {@link ConstantParameter}, {@link VarargsParameter} and {@link NonNullParameter} as well as class
+ * file attributes such as {@link LocalVariableTable}. This supports libgraal where annotations and
+ * class file attributes are not available.
  */
-public class SnippetParameterInfo {
+public final class SnippetParameterInfo {
 
     public SnippetParameterInfo(ResolvedJavaMethod method) {
         assert method.getAnnotation(Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
@@ -53,18 +61,18 @@ public class SnippetParameterInfo {
         int offset = method.hasReceiver() ? 1 : 0;
         for (int i = offset; i < count; i++) {
             int bit = 1 << i;
-            if (method.getParameterAnnotation(Snippet.ConstantParameter.class, i - offset) != null) {
+            if (method.getParameterAnnotation(ConstantParameter.class, i - offset) != null) {
                 constant |= bit;
             }
-            if (method.getParameterAnnotation(Snippet.VarargsParameter.class, i - offset) != null) {
+            if (method.getParameterAnnotation(VarargsParameter.class, i - offset) != null) {
                 varargs |= bit;
             }
-            if (method.getParameterAnnotation(Snippet.NonNullParameter.class, i - offset) != null) {
+            if (method.getParameterAnnotation(NonNullParameter.class, i - offset) != null) {
                 nonNull |= bit;
             }
 
-            assert ((constant & bit) == 0) || ((varargs & bit) == 0) : "Parameter cannot be annotated with both @" + Snippet.ConstantParameter.class.getSimpleName() + " and @" +
-                            Snippet.VarargsParameter.class.getSimpleName();
+            assert ((constant & bit) == 0) || ((varargs & bit) == 0) : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
+                            VarargsParameter.class.getSimpleName();
         }
         if (method.hasReceiver()) {
             // Receiver must be constant.
@@ -75,7 +83,7 @@ public class SnippetParameterInfo {
         this.varargsParametersBits = varargs;
         this.nonNullParametersBits = nonNull;
 
-        if (IS_BUILDING_NATIVE_IMAGE) {
+        if (inBuildtimeCode()) {
             // Capture the names during image building in case the image wants them.
             initNames(method, count);
         } else {
@@ -93,28 +101,40 @@ public class SnippetParameterInfo {
         return count;
     }
 
+    /**
+     * Is the {@code paramIdx}'th parameter {@linkplain ConstantParameter constant}?
+     */
     public boolean isConstantParameter(int paramIdx) {
         return ((constantParametersBits >>> paramIdx) & 1) != 0;
     }
 
+    /**
+     * Is the {@code paramIdx}'th parameter {@linkplain VarargsParameter varargs}?
+     */
     public boolean isVarargsParameter(int paramIdx) {
         return ((varargsParametersBits >>> paramIdx) & 1) != 0;
     }
 
+    /**
+     * Is the {@code paramIdx}'th parameter {@linkplain NonNullParameter non-null}?
+     */
     public boolean isNonNullParameter(int paramIdx) {
         return ((nonNullParametersBits >>> paramIdx) & 1) != 0;
     }
 
+    /**
+     * Gets the name of the {@code paramIdx}'th parameter. Returns {@code "%" + paramIdx} if name
+     * info is not available.
+     */
     public String getParameterName(int paramIdx) {
         if (names != null) {
             return names[paramIdx];
         }
-        return null;
+        return "%" + paramIdx;
     }
 
     /**
-     * The parameter names, taken from the local variables table. Only used for assertion checking,
-     * so use only within an assert statement.
+     * The parameter names, taken from a {@link LocalVariableTable}.
      */
     String[] names;
 
@@ -149,10 +169,30 @@ public class SnippetParameterInfo {
         return true;
     }
 
-    public void clearNames() {
-        names = null;
+    @Override
+    public String toString() {
+        List<String> params = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            List<String> parts = new ArrayList<>();
+            if (isConstantParameter(i)) {
+                parts.add("@" + ConstantParameter.class.getSimpleName());
+            }
+            if (isNonNullParameter(i)) {
+                parts.add("@" + NonNullParameter.class.getSimpleName());
+            }
+            if (isVarargsParameter(i)) {
+                parts.add("@" + VarargsParameter.class.getSimpleName());
+            }
+            parts.add(getParameterName(i));
+            params.add(String.join(" ", parts));
+        }
+        return "(" + String.join(", ", params) + ")";
     }
 
+    /**
+     * Gets a bit set denoting the parameters that are {@linkplain NonNullParameter non-null}
+     * according to {@code info}. Bit n is set iff the n'th parameter is non-null.
+     */
     public static BitSet getNonNullParameters(SnippetParameterInfo info) {
         BitSet nonNullParameters = new BitSet(info.getParameterCount());
         for (int i = 0; i < info.getParameterCount(); i++) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BeginStateSplitNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.MemoryProxyNode;
+import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -70,12 +71,18 @@ public class CaptureStateBeginNode extends BeginStateSplitNode implements Canoni
     public boolean verifyNode() {
         if (predecessor() instanceof LoopExitNode loopExit) {
             /*
-             * Must guarantee only value and memory proxies are attached to the loop exit. Anything
-             * else should be attached to this node
+             * Must guarantee that only value and memory proxies or safepoints are attached to the
+             * loop exit. Anything else should be attached to this node.
              */
-            assert loopExit.usages().stream().allMatch(NodePredicates.isA(ValueProxyNode.class).or(MemoryProxyNode.class)) : String.format("LoopExit has disallowed usages %s", loopExit);
+            assert loopExit.usages().stream().allMatch(NodePredicates.isA(ValueProxyNode.class).or(MemoryProxyNode.class).or(SafepointNode.class)) : String.format(
+                            "LoopExit %s has disallowed usages %s", loopExit, loopExit.usages().snapshot());
         }
 
         return super.verifyNode();
+    }
+
+    @Override
+    public boolean mustNotMoveAttachedGuards() {
+        return true;
     }
 }

@@ -1,0 +1,183 @@
+/*
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package org.graalvm.visualizer.source.impl.ui;
+
+import org.graalvm.visualizer.source.impl.FileGroup;
+import org.graalvm.visualizer.source.impl.SourceRepositoryImpl;
+import org.graalvm.visualizer.source.impl.SourceRepositoryNode;
+import org.openide.explorer.ExplorerManager;
+import org.openide.filesystems.FileChooserBuilder;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileStateInvalidException;
+import org.openide.filesystems.FileUtil;
+import org.openide.nodes.AbstractNode;
+import org.openide.nodes.FilterNode;
+import org.openide.nodes.Node;
+
+import javax.swing.JFileChooser;
+import javax.swing.plaf.FileChooserUI;
+import javax.swing.plaf.basic.BasicFileChooserUI;
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+
+/**
+ * @author sdedic
+ */
+public class CreateRootPanel extends javax.swing.JPanel {
+    private JFileChooser chooser;
+    private SourceRepositoryImpl impl;
+    private final ExplorerManager mgr = new ExplorerManager();
+    private final RootPlacementUI rootPlacement;
+
+    /**
+     * Creates new form CreateRootPanel
+     */
+    public CreateRootPanel(FileObject f, SourceRepositoryImpl impl) throws FileStateInvalidException {
+        this.impl = impl;
+        initComponents();
+        File workingDir = FileUtil.toFile(f);
+        FileChooserBuilder b = FileChooserBuilder.
+                create(f.getFileSystem()).
+                setDirectoriesOnly(true).
+                setDefaultWorkingDirectory(workingDir).
+                setControlButtonsAreShown(false);
+        chooserParent.add(chooser = b.createFileChooser());
+
+        rootPlacement = new RootPlacementUI(chooser, impl);
+        placement.add(rootPlacement, BorderLayout.CENTER);
+
+        SourceRepositoryNode rNode = new SourceRepositoryNode(impl, true);
+        FilterNode.Children fChildren = new FilterNode.Children(rNode) {
+            @Override
+            protected Node[] createNodes(Node key) {
+                if (key.getLookup().lookup(FileGroup.class) == null) {
+                    return null;
+                }
+                return new Node[]{new FilterNode(key, org.openide.nodes.Children.LEAF)};
+            }
+        };
+        AbstractNode an = new AbstractNode(fChildren);
+        mgr.setRootContext(an);
+    }
+
+    boolean invokeCancelListener(ActionEvent ev) {
+        FileChooserUI ui = chooser.getUI();
+        ActionListener l;
+
+        if (ui instanceof BasicFileChooserUI) {
+            l = ((BasicFileChooserUI) ui).getCancelSelectionAction();
+        } else {
+            l = chooser.getActionMap().get("cancelSelection");
+            if (l == null) {
+                return false;
+            }
+        }
+        ActionEvent ae = new ActionEvent(chooser, 0, JFileChooser.CANCEL_SELECTION, ev.getWhen(), ev.getModifiers());
+        l.actionPerformed(ae);
+        return true;
+    }
+
+    boolean invokeApproveListener(ActionEvent ev) {
+        FileChooserUI ui = chooser.getUI();
+        ActionListener l;
+
+        if (ui instanceof BasicFileChooserUI) {
+            l = ((BasicFileChooserUI) ui).getApproveSelectionAction();
+        } else {
+            l = chooser.getActionMap().get("approveSelection");
+            if (l == null) {
+                return false;
+            }
+        }
+        ActionEvent ae = new ActionEvent(chooser, 0, JFileChooser.APPROVE_SELECTION, ev.getWhen(), ev.getModifiers());
+        l.actionPerformed(ae);
+        return true;
+    }
+
+    void setFileGroup(FileGroup g) {
+        rootPlacement.setFileGroup(g);
+    }
+
+    public void addActionListener(ActionListener al) {
+        chooser.addActionListener(al);
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        chooserParent = new javax.swing.JPanel();
+        placement = new javax.swing.JPanel();
+
+        chooserParent.setLayout(new java.awt.BorderLayout());
+
+        placement.setLayout(new java.awt.BorderLayout());
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(chooserParent, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(placement, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addContainerGap())
+        );
+        layout.setVerticalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(chooserParent, javax.swing.GroupLayout.DEFAULT_SIZE, 107, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(placement, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addContainerGap())
+        );
+    }// </editor-fold>//GEN-END:initComponents
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel chooserParent;
+    private javax.swing.JPanel placement;
+    // End of variables declaration//GEN-END:variables
+
+
+    public FileObject getSelectedRoot() {
+        File f = chooser.getSelectedFile();
+        return f == null ? null : FileUtil.toFileObject(f);
+    }
+
+    public String getDescription() {
+        return rootPlacement.getDescription();
+    }
+
+    public FileGroup getParentGroup() {
+        return rootPlacement.getParentGroup();
+    }
+}
