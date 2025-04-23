@@ -140,11 +140,8 @@ public abstract class TypeEntry {
             case ArrayTypeEntry a -> "Array";
             case InterfaceClassEntry i -> "Interface";
             case EnumClassEntry e -> "Enum";
-            case ForeignWordTypeEntry fw -> "ForeignWord";
             case ForeignStructTypeEntry fs -> "ForeignStruct";
-            case ForeignPointerTypeEntry fp -> "ForeignPointer";
-            case ForeignIntegerTypeEntry fi -> "ForeignInteger";
-            case ForeignFloatTypeEntry ff -> "ForeignFloat";
+            case PointerToTypeEntry fs -> "PointerTo";
             case ClassEntry c -> "Instance";
             default -> "";
         };
