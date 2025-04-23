@@ -26,7 +26,6 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -42,7 +41,6 @@ import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
@@ -50,7 +48,6 @@ import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -318,32 +315,6 @@ public class SubstrateJVM {
             return JavaThreads.getCurrentThreadId();
         }
         return 0;
-    }
-
-    /**
-     * Register virtual threads if they aren't registered already. Platform threads are registered
-     * eagerly when started and at chunk rotations.
-     */
-    @Uninterruptible(reason = "Epoch should not change while checking generation.")
-    public static void maybeRegisterVirtualThread(Thread thread) {
-        // Do quick preliminary checks to avoid global locking unless necessary.
-        if (JavaThreads.isVirtual(thread)) {
-            Target_java_lang_VirtualThread tjlv = SubstrateUtil.cast(thread, Target_java_lang_VirtualThread.class);
-            int currentEpochGen = JfrTraceIdEpoch.getInstance().currentEpochGeneration();
-            if (tjlv.jfrGeneration != currentEpochGen) {
-                getThreadRepo().registerThread(thread);
-                tjlv.jfrGeneration = currentEpochGen;
-            }
-        }
-    }
-
-    /**
-     * {@link SubstrateJVM#maybeRegisterVirtualThread(Thread)} Is preferred over this method since
-     * it can perform preliminary checks to avoid locking the Thread Repository unnecessarily.
-     */
-    @Uninterruptible(reason = "Epoch should not change while checking generation.")
-    public static void maybeRegisterVirtualThread(long tid) {
-        getThreadRepo().registerThread(tid);
     }
 
     /**
