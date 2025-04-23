@@ -445,8 +445,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/250eb743c112fbcc45bf2b3ded1c644b19893577/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L465-L625",
-              sha1 = "1fb0a66183a752797b07a39526a981f2a89f5044")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/9eeb86d972ac4cc38d923b2b868b426bbd27a4e8/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L465-L625",
+              sha1 = "2d66e0ccf8dbf69f575be2633d5a17f77a20131d")
     // @formatter:on
     @SuppressWarnings("unused")
     private static boolean tryLightweightLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
