@@ -562,7 +562,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * ordered by offset and added as {@link FieldEntry field entries} to the foreign type entry.
      * 
      * @param type the given type
-     * @param foreignStructTypeEntry the {@code ForeignTypeEntry} of the type
+     * @param foreignStructTypeEntry the {@code ForeignStructTypeEntry} of the type
      */
     private void processForeignTypeFields(HostedType type, ForeignStructTypeEntry foreignStructTypeEntry) {
         ElementInfo elementInfo = nativeLibs.findElementInfo(type);
