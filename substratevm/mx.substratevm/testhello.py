@@ -971,7 +971,7 @@ def test():
     exec_string = execute("info types com.oracle.svm.test.debug.CStructTests\$")
     rexp = [
         fr"{spaces_pattern}typedef composite_struct \* com\.oracle\.svm\.test\.debug\.CStructTests\$CompositeStruct;",
-        fr"{spaces_pattern}typedef int32_t \* com\.oracle\.svm\.test\.debug\.CStructTests\$MyCIntPointer;",
+        fr"{spaces_pattern}typedef int \* com\.oracle\.svm\.test\.debug\.CStructTests\$MyCIntPointer;",
         fr"{spaces_pattern}typedef simple_struct \* com\.oracle\.svm\.test\.debug\.CStructTests\$SimpleStruct;",
         fr"{spaces_pattern}typedef simple_struct2 \* com\.oracle\.svm\.test\.debug\.CStructTests\$SimpleStruct2;",
         fr"{spaces_pattern}typedef weird \* com\.oracle\.svm\.test\.debug\.CStructTests\$Weird;"]
@@ -1012,8 +1012,8 @@ def test():
             fr"/\*{spaces_pattern}24{spaces_pattern}\|{spaces_pattern}4{spaces_pattern}\*/{spaces_pattern}float f_float;",
             fr"/\*{spaces_pattern}XXX{spaces_pattern}4-byte hole{spaces_pattern}\*/",
             fr"/\*{spaces_pattern}32{spaces_pattern}\|{spaces_pattern}8{spaces_pattern}\*/{spaces_pattern}double f_double;",
-            fr"/\*{spaces_pattern}40{spaces_pattern}\|{spaces_pattern}32{spaces_pattern}\*/{spaces_pattern}int32_t a_int\[8\];",
-            fr"/\*{spaces_pattern}72{spaces_pattern}\|{spaces_pattern}12{spaces_pattern}\*/{spaces_pattern}(u)?int8_t a_char\[12\];",
+            fr"/\*{spaces_pattern}40{spaces_pattern}\|{spaces_pattern}32{spaces_pattern}\*/{spaces_pattern}int a_int\[8\];",
+            fr"/\*{spaces_pattern}72{spaces_pattern}\|{spaces_pattern}12{spaces_pattern}\*/{spaces_pattern}char a_char\[12\];",
             fr"/\*{spaces_pattern}XXX{spaces_pattern}4-byte padding{spaces_pattern}\*/",
             fr"{spaces_pattern}/\* total size \(bytes\):{spaces_pattern}88 \*/",
             fr"{spaces_pattern}}} \*"]
