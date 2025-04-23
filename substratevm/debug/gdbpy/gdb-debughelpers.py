@@ -233,6 +233,7 @@ class SVMUtil:
         self.heap_base_regnum = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_heap_base_regnum')), 0, gdb.error)
         self.frame_size_status_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_frame_size_status_mask')), 0, gdb.error)
         self.object_type = gdb.lookup_type("java.lang.Object")
+        self.object_header_type = gdb.lookup_type("_objhdr")
         self.stack_type = gdb.lookup_type("long")
         self.hub_type = gdb.lookup_type("java.lang.Class")
         self.object_header_type = gdb.lookup_type("_objhdr")
@@ -372,6 +373,12 @@ class SVMUtil:
         trace(f'<SVMUtil> - get_java_string({hex(self.get_adr(obj))}) = {result}')
         return result
 
+    def get_hub_field(self, obj: gdb.Value) -> gdb.Value:
+        try:
+            return obj.cast(self.object_header_type)[self.hub_field_name]
+        except gdb.error:
+            return self.null
+        
     def get_obj_field(self, obj: gdb.Value, field_name: str, default: gdb.Value = None) -> gdb.Value:
         try:
             return obj[field_name]
@@ -387,7 +394,7 @@ class SVMUtil:
 
     def get_classloader_namespace(self, obj: gdb.Value) -> str:
         try:
-            hub = self.get_obj_field(obj, SVMUtil.hub_field_name)
+            hub = self.get_hub_field(obj)
             if self.is_null(hub):
                 return ""
 
@@ -425,7 +432,7 @@ class SVMUtil:
         if self.get_uncompressed_type(SVMUtil.get_basic_type(obj.type)).code == gdb.TYPE_CODE_UNION:
             obj = self.cast_to(obj, self.object_type)
 
-        hub = self.get_obj_field(obj, SVMUtil.hub_field_name)
+        hub = self.get_hub_field(obj)
         if self.is_null(hub):
             return static_type
 
@@ -509,15 +516,18 @@ class SVMUtil:
 
     def find_shared_types(self, type_list: list, t: gdb.Type) -> list:  # list[gdb.Type]
         if len(type_list) == 0:
+            # fill type list -> java.lang.Object will be last element
             while t != self.object_type:
                 type_list += [t]
                 t = self.get_base_class(t)
             return type_list
         else:
+            # find first type in hierarchy of t that is contained in the type list
             while t != self.object_type:
                 if t in type_list:
                     return type_list[type_list.index(t):]
                 t = self.get_base_class(t)
+            # if nothing matches return the java.lang.Object
             return [self.object_type]
 
     def is_java_type(self, t: gdb.Type) -> bool:
@@ -851,6 +861,8 @@ class ArrayList:
         for i, elem in enumerate(self, 1):
             if not self.__svm_util.is_null(elem):  # check for null values
                 elem_type = self.__svm_util.find_shared_types(elem_type, self.__svm_util.get_rtt(elem))
+            # java.lang.Object will always be the last element in a type list
+            # if it is the only element in the list we cannot infer more than java.lang.Object
             if (len(elem_type) > 0 and elem_type[0] == self.__svm_util.object_type) or (0 <= svm_infer_generics.value <= i):
                 break
 
@@ -928,6 +940,8 @@ class HashMap:
                 key_type = self.__svm_util.find_shared_types(key_type, self.__svm_util.get_rtt(key))
             if not self.__svm_util.is_null(value) and (len(value_type) == 0 or value_type[0] != self.__svm_util.object_type):
                 value_type = self.__svm_util.find_shared_types(value_type, self.__svm_util.get_rtt(value))
+            # java.lang.Object will always be the last element in a type list
+            # if it is the only element in the list we cannot infer more than java.lang.Object
             if (0 <= svm_infer_generics.value <= i) or (len(key_type) > 0 and key_type[0] == self.__svm_util.object_type and
                                                        len(value_type) > 0 and value_type[0] == self.__svm_util.object_type):
                 break
@@ -1014,6 +1028,8 @@ class EconomicMapImpl:
                 key_type = self.__svm_util.find_shared_types(key_type, self.__svm_util.get_rtt(key))
             if not self.__svm_util.is_null(value) and (len(value_type) == 0 or value_type[0] != self.__svm_util.object_type):
                 value_type = self.__svm_util.find_shared_types(value_type, self.__svm_util.get_rtt(value))
+            # java.lang.Object will always be the last element in a type list
+            # if it is the only element in the list we cannot infer more than java.lang.Object
             if (0 <= svm_infer_generics.value <= i) or (len(key_type) > 0 and key_type[0] == self.__svm_util.object_type and
                                                         len(value_type) > 0 and value_type[0] == self.__svm_util.object_type):
                 break

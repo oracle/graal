@@ -1158,7 +1158,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                 else:
                     c_command = ['cl', '-MD', join(tutorial_c_source_dir, 'cinterfacetutorial.c'), '-I.',
                                  'libcinterfacetutorial.lib']
-                mx.log(' '.join(c_command))
                 mx.run(c_command, cwd=build_dir)
         if mx.get_os() == 'linux':
             logfile = join(path, pathlib.Path(testfile).stem + ('' if with_isolates else '_no_isolates') + '.log')
@@ -1169,7 +1168,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                 '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
                 '-x', testfile, join(build_dir, image_name)
             ]
-            log_gdb_command(gdb_command)
             # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
             return mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
         return 0
@@ -1194,10 +1192,6 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
     if status != 0:
         mx.abort(status)
-
-
-def log_gdb_command(gdb_command):
-    mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
 
 
 def _runtimedebuginfotest(native_image, output_path, args=None):
@@ -1253,7 +1247,6 @@ def _runtimedebuginfotest(native_image, output_path, args=None):
         '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
         '-x', test_runtime_compilation_py, runtime_compile_binary
     ]
-    log_gdb_command(gdb_command)
     # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
     status = mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
 
@@ -1276,7 +1269,6 @@ def _runtimedebuginfotest(native_image, output_path, args=None):
             '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
             '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
         ]
-        log_gdb_command(gdb_command)
         # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
         return mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
 
