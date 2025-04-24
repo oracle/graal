@@ -104,7 +104,7 @@ public final class NativeImageHeapWriter {
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
-                assert !heap.isBlacklisted(info.getObject());
+                assert !heap.isBlacklisted(info.getObject()) : "Backlisted object: " + info.getObject();
                 if (info.getConstant().isWrittenInPreviousLayer()) {
                     /*
                      * Base layer constants already written in the base layer heap are only added to

@@ -114,7 +114,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         }
         MethodAggregator visitor = new MethodAggregator(aggregation, assertionErrorConstructorList);
         AnalysisMethodCalleeWalker walker = new AnalysisMethodCalleeWalker();
-        for (AnalysisMethod method : aggregation.keySet().toArray(new AnalysisMethod[0])) {
+        for (AnalysisMethod method : aggregation.keySet().toArray(AnalysisMethod.EMPTY_ARRAY)) {
             walker.walkMethod(method, visitor);
         }
         calleeToCallerMap = Collections.unmodifiableMap(aggregation);
