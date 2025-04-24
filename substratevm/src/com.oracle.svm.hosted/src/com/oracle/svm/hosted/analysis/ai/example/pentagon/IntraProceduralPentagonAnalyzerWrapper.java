@@ -1,16 +1,12 @@
 package com.oracle.svm.hosted.analysis.ai.example.pentagon;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.checker.example.PentagonDomainChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
 
-import java.io.IOException;
-
-public class IntraProceduralPentagonAnalyzer {
+public class IntraProceduralPentagonAnalyzerWrapper {
 
     private final IntraProceduralAnalyzer<PentagonDomain<AccessPath>> analyzer;
 
@@ -19,15 +15,15 @@ public class IntraProceduralPentagonAnalyzer {
              the graph as unreachable, for optimization. Therefore, to make our life easier, we will pass
              the {@link StructuredGraph} to the constructor of the analyzer.
      */
-    public IntraProceduralPentagonAnalyzer(StructuredGraph graph) {
+    public IntraProceduralPentagonAnalyzerWrapper() {
         this.analyzer = new IntraProceduralAnalyzer.Builder<>(
                 new PentagonDomain<>(),
                 new PentagonNodeInterpreter())
-                .registerChecker(new PentagonDomainChecker(graph))
+                .registerChecker(new PentagonDomainChecker())
                 .build();
     }
 
-    public void run(AnalysisMethod method, DebugContext debug) throws IOException {
-        analyzer.analyzeMethod(method, debug);
+    public Analyzer<PentagonDomain<AccessPath>> getAnalyzer() {
+        return analyzer;
     }
 }

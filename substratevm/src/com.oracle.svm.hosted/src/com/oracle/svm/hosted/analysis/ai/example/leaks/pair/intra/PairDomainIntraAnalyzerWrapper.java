@@ -1,27 +1,24 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.intra;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.pair.LeaksPairDomainNodeInterpreter;
-import jdk.graal.compiler.debug.DebugContext;
 
-public class PairDomainIntraAnalyzer {
+public class PairDomainIntraAnalyzerWrapper {
 
     private final IntraProceduralAnalyzer<PairDomain<CountDomain, BooleanOrDomain>> analyzer;
 
-    public PairDomainIntraAnalyzer() {
+    public PairDomainIntraAnalyzerWrapper() {
         analyzer = new IntraProceduralAnalyzer.Builder<>(
                 new PairDomain<>(new CountDomain(1024), new BooleanOrDomain(false)),
                 new LeaksPairDomainNodeInterpreter())
                 .build();
     }
 
-    public void run(AnalysisMethod method, DebugContext debug) {
-        /* CountDomain is default constructed with 0 and BooleanOrDomain is default constructed with false,
-         * but we pass these arguments explicitly to constructors to be more explicit in this example */
-        analyzer.analyzeMethod(method, debug);
+    public Analyzer<PairDomain<CountDomain, BooleanOrDomain>> getAnalyzer() {
+        return analyzer;
     }
 }

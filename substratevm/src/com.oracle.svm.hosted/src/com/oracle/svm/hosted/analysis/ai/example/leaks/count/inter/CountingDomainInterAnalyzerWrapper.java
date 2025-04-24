@@ -1,22 +1,19 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.count.inter;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.count.LeaksCountingDomainNodeInterpreter;
-import jdk.graal.compiler.debug.DebugContext;
-
-import java.io.IOException;
 
 /**
  * Example of a simple inter-procedural leaks analysis domain
  * that counts the number of FileInputStream objects opened in a analysisMethod.
  */
-public class CountingDomainInterAnalyzer {
+public class CountingDomainInterAnalyzerWrapper {
 
     private final InterProceduralAnalyzer<CountDomain> analyzer;
 
-    public CountingDomainInterAnalyzer() {
+    public CountingDomainInterAnalyzerWrapper() {
         analyzer = new InterProceduralAnalyzer.Builder<>(
                 new CountDomain(1024),
                 new LeaksCountingDomainNodeInterpreter(),
@@ -24,7 +21,7 @@ public class CountingDomainInterAnalyzer {
                 .build();
     }
 
-    public void run(AnalysisMethod root, DebugContext debug) throws IOException {
-        analyzer.analyzeMethod(root, debug);
+    public Analyzer<CountDomain> getAnalyzer() {
+        return analyzer;
     }
 }
