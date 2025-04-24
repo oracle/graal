@@ -3,17 +3,8 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 /**
  * Basic API for Abstract Domains.
  * More detailed description can be found here:
- * Patrick Cousot & Radhia Cousot. Abstract interpretation: a unified lattice
- * model for static analysis of programs by construction or approximation of
- * fixpoints.
- * NOTE: We do not use the narrowing operation in our abstract interpretation.
+ * <a href="https://dl.acm.org/doi/10.1145/512950.512973"></a>
  * All derived abstract domains need to extend this class
- * Sample usage:
- * public final class MyCustomDomain extends AbstractDomain<MyCustomDomain> {
- * public MyCustomDomain() {}
- * public MyCustomDomain(MyCustomDomain other) {}
- * ...
- * }
  *
  * @param <Derived> type of the derived {@link AbstractDomain}
  */
