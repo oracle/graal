@@ -543,7 +543,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
     @Operation
     public static final class InvokeRecursive {
-        @Specialization(guards = "true")
+        @Specialization(guards = "true", excludeForUncached = true)
         public static Object doRootNode(@Variadic Object[] args, @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(args);
         }
