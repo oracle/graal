@@ -58,7 +58,6 @@ import org.graalvm.nativeimage.ImageInfo;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 
-@SuppressWarnings("deprecation")
 final class ExtLayout extends LayoutImpl {
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
     public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);

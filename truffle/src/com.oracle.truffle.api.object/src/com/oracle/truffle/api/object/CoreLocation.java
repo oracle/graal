@@ -80,7 +80,6 @@ abstract class CoreLocation extends LocationImpl {
      * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
      * usually know more about the value to be set.
      */
-    @SuppressWarnings("deprecation")
     static boolean valueEquals(Object val1, Object val2) {
         return val1 == val2 || (val1 != null && equalsBoundary(val1, val2));
     }

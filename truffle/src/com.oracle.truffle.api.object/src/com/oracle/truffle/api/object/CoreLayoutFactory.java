@@ -40,16 +40,14 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.Assumption;
 
-@SuppressWarnings("deprecation")
-public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFactory {
+class CoreLayoutFactory implements LayoutFactory {
 
     @Override
     public final Property createProperty(Object id, Location location, int flags) {
@@ -70,17 +68,14 @@ public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFa
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public final Shape createShape(Object builderArgs) {
-        Object[] args = (Object[]) builderArgs;
-        Class<? extends DynamicObject> layoutClass = (Class<? extends DynamicObject>) args[0];
-        int implicitCastFlags = (int) args[1];
-        Object dynamicType = args[2];
-        Object sharedData = args[3];
-        int shapeFlags = (int) args[4];
-        var constantProperties = (UnmodifiableEconomicMap<Object, Pair<Object, Integer>>) args[5];
-        var singleContextAssumption = (Assumption) args[6];
-        var layoutLookup = (MethodHandles.Lookup) args[7];
+    public final Shape createShape(Class<? extends DynamicObject> layoutClass,
+                    int implicitCastFlags,
+                    Object dynamicType,
+                    Object sharedData,
+                    int shapeFlags,
+                    EconomicMap<Object, Pair<Object, Integer>> constantProperties,
+                    Assumption singleContextAssumption,
+                    Lookup layoutLookup) {
 
         LayoutImpl impl = createLayout(layoutClass, layoutLookup, implicitCastFlags);
         ShapeImpl shape = impl.newShape(dynamicType, sharedData, shapeFlags, singleContextAssumption);
@@ -88,7 +83,7 @@ public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFa
         if (constantProperties != null) {
             var cursor = constantProperties.getEntries();
             while (cursor.advance()) {
-                shape = shape.addProperty(Property.create(cursor.getKey(), impl.createAllocator().constantLocation(cursor.getValue().getLeft()), cursor.getValue().getRight()));
+                shape = shape.addProperty(createProperty(cursor.getKey(), impl.createAllocator().constantLocation(cursor.getValue().getLeft()), cursor.getValue().getRight()));
             }
         }
 

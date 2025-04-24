@@ -52,33 +52,24 @@ import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 
-/** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
 abstract class LayoutStrategy {
-    /**
-     * @since 0.17 or earlier
-     */
+
     protected LayoutStrategy() {
     }
 
     protected abstract int getLocationOrdinal(Location location);
 
-    /** @since 0.17 or earlier */
     protected abstract boolean updateShape(DynamicObject object);
 
-    /** @since 0.17 or earlier */
     protected abstract ShapeImpl ensureValid(ShapeImpl newShape);
 
-    /** @since 0.17 or earlier */
     protected abstract ShapeImpl ensureSpace(ShapeImpl shape, Location location);
 
-    /** @since 0.17 or earlier */
     protected abstract BaseAllocator createAllocator(LayoutImpl shape);
 
-    /** @since 0.17 or earlier */
     protected abstract BaseAllocator createAllocator(ShapeImpl shape);
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags) {
         return defineProperty(shape, key, value, flags, Flags.DEFAULT);
     }
@@ -193,12 +184,10 @@ abstract class LayoutStrategy {
         return createSeparateShape(oldShape).addProperty(property);
     }
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
         return directReplaceProperty(shape, oldProperty, newProperty);
     }
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
         shape.onPropertyTransition(property);
 
@@ -327,12 +316,10 @@ abstract class LayoutStrategy {
         return newShape;
     }
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property) {
         return addProperty(shape, property, true);
     }
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property, boolean ensureValid) {
         ShapeImpl newShape = addPropertyInner(shape, property);
 
@@ -378,7 +365,6 @@ abstract class LayoutStrategy {
         return location;
     }
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl applyTransition(ShapeImpl shape, Transition transition, boolean append) {
         if (transition instanceof AddPropertyTransition) {
             Property property = ((AddPropertyTransition) transition).getProperty();
@@ -416,8 +402,6 @@ abstract class LayoutStrategy {
 
     /**
      * Get the (parent) shape that holds the given property.
-     *
-     * @since 0.17 or earlier
      */
     protected static ShapeImpl getShapeFromProperty(ShapeImpl shape, Object propertyName) {
         ShapeImpl current = shape;

@@ -44,17 +44,12 @@ import java.util.Iterator;
 
 /**
  * Immutable property map.
- *
- * @since 0.17 or earlier
  */
 abstract class PropertyMap implements ImmutableMap<Object, Property> {
-    /**
-     * @since 0.17 or earlier
-     */
+
     protected PropertyMap() {
     }
 
-    /** @since 0.17 or earlier */
     public static PropertyMap empty() {
         if (ObjectStorageOptions.TriePropertyMap) {
             return TriePropertyMap.empty();
@@ -63,27 +58,19 @@ abstract class PropertyMap implements ImmutableMap<Object, Property> {
         }
     }
 
-    /** @since 0.17 or earlier */
     public abstract Iterator<Object> orderedKeyIterator();
 
-    /** @since 0.17 or earlier */
     public abstract Iterator<Object> reverseOrderedKeyIterator();
 
-    /** @since 0.17 or earlier */
     public abstract Iterator<Property> orderedValueIterator();
 
-    /** @since 0.17 or earlier */
     public abstract Iterator<Property> reverseOrderedValueIterator();
 
-    /** @since 0.17 or earlier */
     public abstract Property getLastProperty();
 
-    /** @since 0.17 or earlier */
     public abstract PropertyMap putCopy(Property element);
 
-    /** @since 0.17 or earlier */
     public abstract PropertyMap replaceCopy(Property oldValue, Property newValue);
 
-    /** @since 0.17 or earlier */
     public abstract PropertyMap removeCopy(Property value);
 }

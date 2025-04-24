@@ -52,7 +52,6 @@ import com.oracle.truffle.api.object.ExtLocations.IntLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongLocation;
 import com.oracle.truffle.api.object.ExtLocations.ObjectLocation;
 
-@SuppressWarnings("deprecation")
 abstract class Obsolescence {
 
     private static final DebugCounter mergedShapeCount = DebugCounter.create("Compatible shapes merged");

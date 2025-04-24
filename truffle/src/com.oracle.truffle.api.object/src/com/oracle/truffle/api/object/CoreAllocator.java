@@ -61,7 +61,6 @@ import com.oracle.truffle.api.object.CoreLocations.ValueLocation;
 
 import sun.misc.Unsafe;
 
-@SuppressWarnings("deprecation")
 class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     CoreAllocator(LayoutImpl layout) {

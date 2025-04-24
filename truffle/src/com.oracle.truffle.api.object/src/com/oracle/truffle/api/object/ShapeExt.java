@@ -47,7 +47,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-@SuppressWarnings("deprecation")
 final class ShapeExt extends ShapeImpl {
 
     /**

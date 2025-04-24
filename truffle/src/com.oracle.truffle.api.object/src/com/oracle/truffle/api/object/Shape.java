@@ -461,7 +461,7 @@ public abstract sealed class Shape permits ShapeImpl {
             }
 
             int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Shape shape = Layout.getFactory().createShape(new Object[]{
+            Shape shape = Layout.getFactory().createShape(
                             layoutClass,
                             implicitCastFlags,
                             dynamicType,
@@ -469,7 +469,7 @@ public abstract sealed class Shape permits ShapeImpl {
                             flags,
                             properties,
                             singleContextAssumption,
-                            layoutLookup});
+                            layoutLookup);
 
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
@@ -833,24 +833,13 @@ public abstract sealed class Shape permits ShapeImpl {
     public abstract boolean check(DynamicObject subject);
 
     /**
-     * Get the shape's layout.
-     *
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Use {@link #getLayoutClass()} to get the layout class.
-     */
-    @Deprecated(since = "24.2")
-    @SuppressWarnings("deprecation")
-    protected abstract Layout getLayout();
-
-    /**
      * Get the shape's layout class.
      *
      * @see Shape.Builder#layout(Class, Lookup)
      * @since 21.1
      */
-    @SuppressWarnings("deprecation")
     public Class<? extends DynamicObject> getLayoutClass() {
-        return getLayout().getType();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**

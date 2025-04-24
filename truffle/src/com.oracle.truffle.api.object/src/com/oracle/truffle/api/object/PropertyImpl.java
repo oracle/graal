@@ -47,8 +47,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.
  * Optionally, properties may have metadata attached to them.
- *
- * @since 0.17 or earlier
  */
 @SuppressWarnings("deprecation")
 final class PropertyImpl extends Property {
@@ -62,7 +60,6 @@ final class PropertyImpl extends Property {
      * @param key the name of the property
      * @param location the storage location used to access the property
      * @param flags property flags (optional)
-     * @since 0.17 or earlier
      */
     PropertyImpl(Object key, Location location, int flags) {
         CompilerAsserts.neverPartOfCompilation();
@@ -71,19 +68,16 @@ final class PropertyImpl extends Property {
         this.flags = flags;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public Object getKey() {
         return key;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public int getFlags() {
         return flags;
     }
 
-    /** @since 0.17 or earlier */
     public Property relocate(Location newLocation) {
         if (!getLocation().equals(newLocation)) {
             return new PropertyImpl(key, newLocation, flags);
@@ -91,19 +85,16 @@ final class PropertyImpl extends Property {
         return this;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public Object get(DynamicObject store, Shape shape) {
         return getLocation().get(store, shape);
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public Object get(DynamicObject store, boolean condition) {
         return getLocation().get(store, condition);
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -120,7 +111,6 @@ final class PropertyImpl extends Property {
         return (key == other.key || key.equals(other.key)) && flags == other.flags && (location == other.location || location.equals(other.location));
     }
 
-    /** @since 0.17 or earlier */
     public boolean isSame(Property obj) {
         if (this == obj) {
             return true;
@@ -136,7 +126,6 @@ final class PropertyImpl extends Property {
         return key.equals(other.key) && flags == other.flags;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -147,25 +136,21 @@ final class PropertyImpl extends Property {
         return result;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public String toString() {
         return "\"" + key + "\"" + ":" + location + (flags == 0 ? "" : "%" + flags);
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public Location getLocation() {
         return location;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean isHidden() {
         return key instanceof HiddenKey;
     }
 
-    /** @since 0.17 or earlier */
     public Property copyWithFlags(int newFlags) {
         return new PropertyImpl(key, location, newFlags);
     }

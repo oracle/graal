@@ -42,7 +42,6 @@ package com.oracle.truffle.api.object;
 
 import com.oracle.truffle.api.Assumption;
 
-@SuppressWarnings("deprecation")
 final class ShapeBasic extends ShapeImpl {
     ShapeBasic(com.oracle.truffle.api.object.Layout layout, Object sharedData, Object objectType, int flags, Assumption singleContextAssumption) {
         super(layout, objectType, sharedData, flags, singleContextAssumption);

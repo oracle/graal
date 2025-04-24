@@ -42,8 +42,7 @@ package com.oracle.truffle.api.object;
 
 import java.lang.invoke.MethodHandles.Lookup;
 
-@SuppressWarnings("deprecation")
-public class ExtLayoutFactory extends CoreLayoutFactory {
+class ExtLayoutFactory extends CoreLayoutFactory {
 
     static boolean isLayoutSupported() {
         return true;

@@ -48,7 +48,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-@SuppressWarnings("deprecation")
 class ShapeProfiler {
     private static final String LINE_SEPARATOR = "***********************************************";
     private static final String BULLET = "* ";

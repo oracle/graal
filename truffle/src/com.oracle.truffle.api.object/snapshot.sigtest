@@ -178,36 +178,6 @@ meth public abstract int getInt(com.oracle.truffle.api.object.DynamicObject,com.
 meth public abstract void setInt(com.oracle.truffle.api.object.DynamicObject,int,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
 
-CLSS public abstract com.oracle.truffle.api.object.Layout
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.1")
-cons protected init()
-fld public final static java.lang.String OPTION_PREFIX = "truffle.object."
-innr protected abstract static Access
-meth protected com.oracle.truffle.api.object.Shape buildShape(java.lang.Object,java.lang.Object,int,com.oracle.truffle.api.Assumption)
-meth protected static com.oracle.truffle.api.object.LayoutFactory getFactory()
-meth public abstract java.lang.Class<? extends com.oracle.truffle.api.object.DynamicObject> getType()
-supr java.lang.Object
-hfds INT_TO_DOUBLE_FLAG,INT_TO_LONG_FLAG,LAYOUT_FACTORY
-
-CLSS protected abstract static com.oracle.truffle.api.object.Layout$Access
- outer com.oracle.truffle.api.object.Layout
-cons protected init()
-meth public final com.oracle.truffle.api.object.Shape getShape(com.oracle.truffle.api.object.DynamicObject)
-meth public final int[] getPrimitiveArray(com.oracle.truffle.api.object.DynamicObject)
-meth public final java.lang.Class<? extends java.lang.annotation.Annotation> getDynamicFieldAnnotation()
-meth public final java.lang.Object[] getObjectArray(com.oracle.truffle.api.object.DynamicObject)
-meth public final void setObjectArray(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[])
-meth public final void setPrimitiveArray(com.oracle.truffle.api.object.DynamicObject,int[])
-meth public final void setShape(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
-supr java.lang.Object
-
-CLSS public abstract interface com.oracle.truffle.api.object.LayoutFactory
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract com.oracle.truffle.api.object.Property createProperty(java.lang.Object,com.oracle.truffle.api.object.Location,int)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
-meth public abstract int getPriority()
-meth public com.oracle.truffle.api.object.Shape createShape(java.lang.Object)
-
 CLSS public abstract com.oracle.truffle.api.object.Location
 cons protected init()
 meth protected double getDouble(com.oracle.truffle.api.object.DynamicObject,boolean) throws com.oracle.truffle.api.nodes.UnexpectedResultException
@@ -297,8 +267,6 @@ CLSS public abstract com.oracle.truffle.api.object.Shape
 cons protected init()
 innr public final static Builder
 innr public final static DerivedBuilder
-meth protected abstract com.oracle.truffle.api.object.Layout getLayout()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 meth protected abstract com.oracle.truffle.api.object.Shape addProperty(com.oracle.truffle.api.object.Property)
 meth protected abstract com.oracle.truffle.api.object.Shape defineProperty(java.lang.Object,java.lang.Object,int,int)
 meth protected abstract com.oracle.truffle.api.object.Shape removeProperty(com.oracle.truffle.api.object.Property)

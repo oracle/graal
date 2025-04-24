@@ -43,7 +43,7 @@ package com.oracle.truffle.api.object;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
-import java.util.ServiceLoader;
+import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
 
@@ -51,17 +51,12 @@ import com.oracle.truffle.api.Assumption;
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
  *
  * An object may change its shape but only to shapes of the same layout.
- *
- * NB: Instances of this class should be created only in static initializers.
- *
- * @since 0.8 or earlier
- * @deprecated since 21.1. Use {@link Shape.Builder} instead.
  */
-@SuppressWarnings("deprecation")
-@Deprecated(since = "21.1")
-public abstract class Layout {
-    /** @since 0.8 or earlier */
+abstract class Layout {
+
     public static final String OPTION_PREFIX = "truffle.object.";
+
+    private static final Iterable<LayoutFactory> LAYOUT_FACTORIES = List.of(new CoreLayoutFactory(), new ExtLayoutFactory());
 
     private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
 
@@ -76,7 +71,6 @@ public abstract class Layout {
     protected Layout() {
     }
 
-    /** @since 0.8 or earlier */
     public abstract Class<? extends DynamicObject> getType();
 
     /**
@@ -89,17 +83,12 @@ public abstract class Layout {
         throw new UnsupportedOperationException();
     }
 
-    /** @since 0.8 or earlier */
     protected static LayoutFactory getFactory() {
         return LAYOUT_FACTORY;
     }
 
     private static LayoutFactory loadLayoutFactory() {
-        ModuleLayer moduleLayer = Layout.class.getModule().getLayer();
-        ServiceLoader<LayoutFactory> serviceLoader = moduleLayer != null
-                        ? ServiceLoader.load(moduleLayer, LayoutFactory.class)
-                        : ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
-        LayoutFactory layoutFactory = selectLayoutFactory(serviceLoader);
+        LayoutFactory layoutFactory = selectLayoutFactory(LAYOUT_FACTORIES);
         if (layoutFactory == null) {
             throw shouldNotReachHere("LayoutFactory not found");
         }

@@ -42,8 +42,7 @@ package com.oracle.truffle.api.object;
 
 import java.lang.invoke.MethodHandles.Lookup;
 
-@SuppressWarnings("deprecation")
-public class ExtDefaultLayoutFactory extends ExtLayoutFactory {
+class ExtDefaultLayoutFactory extends ExtLayoutFactory {
 
     @Override
     public int getPriority() {

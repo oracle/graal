@@ -58,7 +58,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.CoreLocations.LongLocation;
 import com.oracle.truffle.api.object.CoreLocations.ObjectLocation;
 
-@SuppressWarnings("deprecation")
 class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
     private final LongLocation[] primitiveFields;

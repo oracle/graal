@@ -46,31 +46,22 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-/** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
 abstract non-sealed class LocationImpl extends Location {
-    /**
-     * @since 0.17 or earlier
-     */
+
     protected LocationImpl() {
     }
 
-    /** @since 0.17 or earlier */
     interface LocationVisitor {
-        /** @since 0.17 or earlier */
         void visitObjectField(int index, int count);
 
-        /** @since 0.17 or earlier */
         void visitObjectArray(int index, int count);
 
-        /** @since 0.17 or earlier */
         void visitPrimitiveField(int index, int count);
 
-        /** @since 0.17 or earlier */
         void visitPrimitiveArray(int index, int count);
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public void set(DynamicObject store, Object value, Shape shape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, checkShape(store, shape), false);
@@ -174,36 +165,30 @@ abstract non-sealed class LocationImpl extends Location {
         return store.getShape() == shape;
     }
 
-    /** @since 0.17 or earlier */
     protected final void setInternal(DynamicObject store, Object value) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, false, true);
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean canStore(Object value) {
         return true;
     }
 
-    /** @since 0.17 or earlier */
     @SuppressWarnings("unused")
     protected boolean canStoreFinal(DynamicObject store, Object value) {
         return true;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean isFinal() {
         return false;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean isConstant() {
         return false;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -212,7 +197,6 @@ abstract non-sealed class LocationImpl extends Location {
         return result;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -227,7 +211,6 @@ abstract non-sealed class LocationImpl extends Location {
         return true;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public String toString() {
         String finalString = isFinal() ? "f" : "";
@@ -235,15 +218,12 @@ abstract non-sealed class LocationImpl extends Location {
         return finalString + typeString + getWhereString();
     }
 
-    /** @since 0.17 or earlier */
     protected String getWhereString() {
         return "";
     }
 
     /**
      * Get the number of object array elements this location requires.
-     *
-     * @since 0.17 or earlier
      */
     public int objectArrayCount() {
         return 0;
@@ -251,8 +231,6 @@ abstract non-sealed class LocationImpl extends Location {
 
     /**
      * Get the number of in-object {@link Object} fields this location requires.
-     *
-     * @since 0.17 or earlier
      */
     public int objectFieldCount() {
         return 0;
@@ -260,8 +238,6 @@ abstract non-sealed class LocationImpl extends Location {
 
     /**
      * Get the number of in-object primitive fields this location requires.
-     *
-     * @since 0.17 or earlier
      */
     public int primitiveFieldCount() {
         return 0;
@@ -269,8 +245,6 @@ abstract non-sealed class LocationImpl extends Location {
 
     /**
      * Get the number of primitive array elements this location requires.
-     *
-     * @since 0.17 or earlier
      */
     public int primitiveArrayCount() {
         return 0;
@@ -280,7 +254,6 @@ abstract non-sealed class LocationImpl extends Location {
      * Accept a visitor for location allocation for this and every nested location.
      *
      * @param locationVisitor visitor to be notified of every allocated slot in use by this location
-     * @since 0.17 or earlier
      */
     public abstract void accept(LocationVisitor locationVisitor);
 

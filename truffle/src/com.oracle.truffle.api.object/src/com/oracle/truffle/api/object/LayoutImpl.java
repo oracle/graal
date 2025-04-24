@@ -52,19 +52,14 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.truffle.api.Assumption;
 
-/** @since 0.17 or earlier */
-@SuppressWarnings("deprecation")
 abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     private static final int INT_TO_DOUBLE_FLAG = 1;
     private static final int INT_TO_LONG_FLAG = 2;
 
-    /** @since 0.17 or earlier */
     protected final LayoutStrategy strategy;
-    /** @since 0.17 or earlier */
     protected final Class<? extends DynamicObject> clazz;
     private final int allowedImplicitCasts;
 
-    /** @since 0.17 or earlier */
     protected LayoutImpl(Class<? extends DynamicObject> clazz, LayoutStrategy strategy, int implicitCastFlags) {
         this.strategy = strategy;
         this.clazz = Objects.requireNonNull(clazz);
@@ -72,7 +67,6 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         this.allowedImplicitCasts = implicitCastFlags;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public Class<? extends DynamicObject> getType() {
         return clazz;
@@ -85,32 +79,24 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
 
-    /** @since 0.17 or earlier */
     public boolean isAllowedIntToDouble() {
         return (allowedImplicitCasts & INT_TO_DOUBLE_FLAG) != 0;
     }
 
-    /** @since 0.17 or earlier */
     public boolean isAllowedIntToLong() {
         return (allowedImplicitCasts & INT_TO_LONG_FLAG) != 0;
     }
 
-    /** @since 0.17 or earlier */
     protected abstract boolean hasObjectExtensionArray();
 
-    /** @since 0.17 or earlier */
     protected abstract boolean hasPrimitiveExtensionArray();
 
-    /** @since 0.17 or earlier */
     protected abstract int getObjectFieldCount();
 
-    /** @since 0.17 or earlier */
     protected abstract int getPrimitiveFieldCount();
 
-    /** @since 0.17 or earlier */
     public abstract ShapeImpl.BaseAllocator createAllocator();
 
-    /** @since 0.17 or earlier */
     public LayoutStrategy getStrategy() {
         return strategy;
     }

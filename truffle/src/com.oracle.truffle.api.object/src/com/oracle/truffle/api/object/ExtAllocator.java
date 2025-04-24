@@ -76,7 +76,6 @@ import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
 
 import sun.misc.Unsafe;
 
-@SuppressWarnings("deprecation")
 abstract class ExtAllocator extends BaseAllocator {
 
     /** Placeholder for when no value is available or no type speculation should be performed. */

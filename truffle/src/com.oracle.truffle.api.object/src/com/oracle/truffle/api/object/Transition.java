@@ -42,22 +42,17 @@ package com.oracle.truffle.api.object;
 
 import java.util.Objects;
 
-/** @since 0.17 or earlier */
 abstract class Transition {
-    /**
-     * @since 0.17 or earlier
-     */
+
     protected Transition() {
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public int hashCode() {
         int result = 1;
         return result;
     }
 
-    /** @since 0.17 or earlier */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -72,20 +67,17 @@ abstract class Transition {
         return true;
     }
 
-    /** @since 0.17 or earlier */
     public abstract boolean isDirect();
 
     protected boolean hasConstantLocation() {
         return false;
     }
 
-    /** @since 0.17 or earlier */
     abstract static class PropertyTransition extends Transition {
         protected final Property property;
         protected final Object key;
         protected final int flags;
 
-        /** @since 0.17 or earlier */
         PropertyTransition(Property property) {
             this.property = property;
             this.key = property.getKey();
@@ -98,7 +90,6 @@ abstract class Transition {
             this.flags = flags;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public int hashCode() {
             final int prime = 31;
@@ -108,7 +99,6 @@ abstract class Transition {
             return result;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean equals(Object obj) {
             if (!super.equals(obj)) {
@@ -124,7 +114,6 @@ abstract class Transition {
             return true;
         }
 
-        /** @since 0.17 or earlier */
         public Property getProperty() {
             return Objects.requireNonNull(property);
         }
@@ -186,9 +175,8 @@ abstract class Transition {
         }
     }
 
-    /** @since 0.17 or earlier */
     static final class AddPropertyTransition extends TypedPropertyTransition {
-        /** @since 0.17 or earlier */
+
         AddPropertyTransition(Property property, Object locationOrType) {
             super(property, locationOrType);
         }
@@ -197,20 +185,17 @@ abstract class Transition {
             super(key, flags, locationType);
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean isDirect() {
             return true;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public String toString() {
             return String.format("add(%s)", propertyToString());
         }
     }
 
-    /** @since 0.17 or earlier */
     static final class RemovePropertyTransition extends TypedPropertyTransition {
         private final boolean direct;
 
@@ -219,40 +204,33 @@ abstract class Transition {
             this.direct = direct;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean isDirect() {
             return direct;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public String toString() {
             return String.format("remove(%s)", propertyToString());
         }
     }
 
-    /** @since 0.17 or earlier */
     static final class ObjectTypeTransition extends Transition {
         private final Object objectType;
 
-        /** @since 0.17 or earlier */
         ObjectTypeTransition(Object objectType) {
             this.objectType = objectType;
         }
 
-        /** @since 0.17 or earlier */
         public Object getObjectType() {
             return objectType;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean equals(Object other) {
             return super.equals(other) && Objects.equals(objectType, ((ObjectTypeTransition) other).objectType);
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public int hashCode() {
             final int prime = 31;
@@ -261,40 +239,33 @@ abstract class Transition {
             return result;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean isDirect() {
             return true;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public String toString() {
             return String.format("objectType(%s)", getObjectType());
         }
     }
 
-    /** @since 0.17 or earlier */
     abstract static class AbstractReplacePropertyTransition extends PropertyTransition {
         private final Property after;
 
-        /** @since 0.17 or earlier */
         AbstractReplacePropertyTransition(Property before, Property after) {
             super(before);
             this.after = after;
         }
 
-        /** @since 0.17 or earlier */
         public Property getPropertyBefore() {
             return this.getProperty();
         }
 
-        /** @since 0.17 or earlier */
         public Property getPropertyAfter() {
             return after;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean equals(Object obj) {
             if (!super.equals(obj)) {
@@ -310,7 +281,6 @@ abstract class Transition {
             return true;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public int hashCode() {
             final int prime = 31;
@@ -320,7 +290,6 @@ abstract class Transition {
             return result;
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public String toString() {
             return String.format("replace(%s,%s)", getPropertyBefore(), getPropertyAfter());
@@ -332,41 +301,35 @@ abstract class Transition {
         }
     }
 
-    /** @since 0.17 or earlier */
     static final class IndirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
-        /** @since 0.17 or earlier */
+
         IndirectReplacePropertyTransition(Property before, Property after) {
             super(before, after);
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean isDirect() {
             return false;
         }
     }
 
-    /** @since 0.17 or earlier */
     static final class DirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
-        /** @since 0.17 or earlier */
+
         DirectReplacePropertyTransition(Property before, Property after) {
             super(before, after);
         }
 
-        /** @since 0.17 or earlier */
         @Override
         public boolean isDirect() {
             return true;
         }
     }
 
-    /** @since 0.18 */
     static final class ShareShapeTransition extends Transition {
-        /** @since 0.18 */
+
         ShareShapeTransition() {
         }
 
-        /** @since 0.18 */
         @Override
         public boolean isDirect() {
             return true;
