@@ -158,17 +158,6 @@ class SVMUtil:
             test_nodes = [parent for node in test_nodes for parent in cls.parents.get(node, [])]
 
     @classmethod
-    def is_compressed(cls, t: gdb.Type) -> bool:
-        type_name = cls.get_basic_type(t).name
-        if type_name is None:
-            # fallback to the GDB type printer for t
-            type_name = str(t)
-        # compressed types from a different classLoader have the format <loader_name>::_z_.<type_name>
-        result = type_name.startswith(cls.compressed_ref_prefix) or ('::' + cls.compressed_ref_prefix) in type_name
-        trace(f'<SVMUtil> - is_compressed({type_name}) = {result}')
-        return result
-
-    @classmethod
     def is_primitive(cls, t: gdb.Type) -> bool:
         result = cls.get_basic_type(t).is_scalar
         trace(f'<SVMUtil> - is_primitive({t}) = {result}')
@@ -235,7 +224,7 @@ class SVMUtil:
         self.object_type = gdb.lookup_type("java.lang.Object")
         self.object_header_type = gdb.lookup_type("_objhdr")
         self.stack_type = gdb.lookup_type("long")
-        self.hub_type = gdb.lookup_type("java.lang.Class")
+        self.hub_type = gdb.lookup_type("Encoded$Dynamic$Hub")
         self.object_header_type = gdb.lookup_type("_objhdr")
         self.classloader_type = gdb.lookup_type("java.lang.ClassLoader")
         self.wrapper_types = [gdb.lookup_type(f'java.lang.{x}') for x in
@@ -267,9 +256,24 @@ class SVMUtil:
     def is_null(self, obj: gdb.Value) -> bool:
         return self.get_adr(obj) == 0
 
+    def is_compressed(self, t: gdb.Type) -> bool:
+        # for the hub type we always want handle it as compressed as there is no clear distinction in debug info for
+        # the hub field, and it may always have an expression in the type's data_location attribute
+        if self.get_basic_type(t) == self.hub_type:
+            return True
+
+        type_name = self.get_basic_type(t).name
+        if type_name is None:
+            # fallback to the GDB type printer for t
+            type_name = str(t)
+        # compressed types from a different classLoader have the format <loader_name>::_z_.<type_name>
+        result = type_name.startswith(self.compressed_ref_prefix) or ('::' + self.compressed_ref_prefix) in type_name
+        trace(f'<SVMUtil> - is_compressed({type_name}) = {result}')
+        return result
+
     def get_compressed_oop(self, obj: gdb.Value) -> int:
         # use compressed ref if available - only compute it if necessary
-        if obj.type.code == gdb.TYPE_CODE_PTR and SVMUtil.is_compressed(obj.type):
+        if obj.type.code == gdb.TYPE_CODE_PTR and self.is_compressed(obj.type):
             return int(obj)
 
         obj_adr = self.get_adr(obj)
@@ -279,7 +283,7 @@ class SVMUtil:
         # recreate compressed oop from the object address
         # this reverses the uncompress expression from
         # com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl#writeIndirectOopConversionExpression
-        is_hub = self.get_basic_type(obj) == self.hub_type
+        is_hub = self.get_basic_type(obj.type) == self.hub_type
         compression_shift = self.compression_shift
         num_reserved_bits = int.bit_count(self.reserved_bits_mask)
         num_alignment_bits = int.bit_count(self.object_alignment - 1)
@@ -299,7 +303,7 @@ class SVMUtil:
         return compressed_oop
 
     def adr_str(self, obj: gdb.Value) -> str:
-        if not svm_print_address.absolute_adr and SVMUtil.is_compressed(obj.type):
+        if not svm_print_address.absolute_adr and self.is_compressed(obj.type):
             result = f' @z({hex(self.get_compressed_oop(obj))})'
         else:
             result = f' @({hex(self.get_adr(obj))})'
@@ -375,7 +379,7 @@ class SVMUtil:
 
     def get_hub_field(self, obj: gdb.Value) -> gdb.Value:
         try:
-            return obj.cast(self.object_header_type)[self.hub_field_name]
+            return self.cast_to(obj, self.object_header_type)[self.hub_field_name]
         except gdb.error:
             return self.null
         
@@ -472,7 +476,7 @@ class SVMUtil:
         else:
             rtt = gdb.lookup_type(rtt_name)
 
-        if SVMUtil.is_compressed(obj.type) and not SVMUtil.is_compressed(rtt):
+        if self.is_compressed(obj.type) and not self.is_compressed(rtt):
             rtt = self.get_compressed_type(rtt)
 
         trace(f'<SVMUtil> - get_rtt({hex(self.get_adr(obj))}) = {rtt_name}')
@@ -483,7 +487,7 @@ class SVMUtil:
             return obj
 
         # get objects address, take care of compressed oops
-        if SVMUtil.is_compressed(t):
+        if self.is_compressed(t):
             obj_oop = self.get_compressed_oop(obj)
         else:
             obj_oop = self.get_adr(obj)
@@ -501,7 +505,7 @@ class SVMUtil:
         # compressed types only exist for java type which are either struct or union
         if t.code != gdb.TYPE_CODE_STRUCT and t.code != gdb.TYPE_CODE_UNION:
             return t
-        result = self.get_base_class(t) if SVMUtil.is_compressed(t) else t
+        result = self.get_base_class(t) if (self.is_compressed(t) and t != self.hub_type) else t
         trace(f'<SVMUtil> - get_uncompressed_type({t}) = {result}')
         return result
 
@@ -546,7 +550,7 @@ class SVMUtil:
         t = SVMUtil.get_basic_type(t)
         # compressed types only exist for java types which are either struct or union
         # do not compress types that already have the compressed prefix
-        if not self.is_java_type(t) or SVMUtil.is_compressed(t):
+        if not self.is_java_type(t) or self.is_compressed(t):
             return t
 
         type_name = t.name
@@ -1345,7 +1349,7 @@ class SVMCommandPrint(gdb.Command):
         if static_type.name == rtt.name:
             return obj, obj_str
         else:
-            obj_oop = self.svm_util.get_compressed_oop(obj) if SVMUtil.is_compressed(rtt) else self.svm_util.get_adr(obj)
+            obj_oop = self.svm_util.get_compressed_oop(obj) if self.svm_util.is_compressed(rtt) else self.svm_util.get_adr(obj)
             return obj, f"(('{rtt.name}' *)({obj_oop}))"
 
     # Define the token specifications
@@ -1391,6 +1395,7 @@ class SVMCommandPrint(gdb.Command):
             raise RuntimeError(f"{expected} expected after {self.expr[:self.t.end]} but got {self.sym}")
 
     def parse(self, completion: bool = False) -> str:
+        self.svm_util = SVMUtil()
         self.scan()
         if self.sym == "" and completion:
             raise self.AutoComplete(gdb.COMPLETE_EXPRESSION)
@@ -1541,7 +1546,7 @@ class SVMCommandPrint(gdb.Command):
                     obj_str += self.t.val
 
             obj = gdb.parse_and_eval(obj_str)  # check if gdb can handle the current param
-            if self.svm_util.is_java_type(obj.type) and SVMUtil.is_compressed(obj.type):
+            if self.svm_util.is_java_type(obj.type) and self.svm_util.is_compressed(obj.type):
                 # uncompress compressed java params
                 obj_str = f"(('{self.svm_util.get_uncompressed_type(SVMUtil.get_basic_type(obj.type)).name}' *)({self.svm_util.get_adr(obj)}))"
             param_str += obj_str
@@ -1567,8 +1572,6 @@ class SVMCommandPrint(gdb.Command):
         return i_obj_str
 
     def complete(self, text: str, word: str):  # -> list[str] | int:
-        self.svm_util = SVMUtil()
-
         if not svm_print.value:
             return gdb.COMPLETE_EXPRESSION
 
@@ -1582,8 +1585,6 @@ class SVMCommandPrint(gdb.Command):
         return gdb.COMPLETE_NONE
 
     def invoke(self, arg: str, from_tty: bool) -> None:
-        self.svm_util = SVMUtil()
-
         if not svm_print.value:
             gdb.execute(f"print {arg}")
             return

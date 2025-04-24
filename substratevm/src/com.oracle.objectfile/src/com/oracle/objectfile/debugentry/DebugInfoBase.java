@@ -182,7 +182,7 @@ public abstract class DebugInfoBase {
      * The name of the type for header field hub which needs special case processing to remove tag
      * bits.
      */
-    public static final String HUB_TYPE_NAME = "java.lang.Class";
+    public static final String HUB_TYPE_NAME = "Encoded$Dynamic$Hub";
     public static final String FOREIGN_METHOD_LIST_TYPE = "Foreign$Method$List";
 
     public DebugInfoBase(ByteOrder byteOrder) {
@@ -311,7 +311,6 @@ public abstract class DebugInfoBase {
         assert classClass != null;
         return classClass;
     }
-
 
     /* Accessors to query the debug info model. */
     public ByteOrder getByteOrder() {

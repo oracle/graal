@@ -128,8 +128,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         this.nativeLibs = nativeLibs;
 
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
-        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
+        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
         primitiveStartOffset = (int) primitiveFields.getOffset();
         referenceStartOffset = (int) objectFields.getOffset();
 
@@ -381,7 +381,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      */
     @Override
     protected Stream<Object> dataInfo() {
-        return heap.getObjects().stream().filter(obj -> obj.getPartition().getStartOffset() > 0).map(obj -> obj);
+        return heap.getObjects().stream().filter(obj -> !obj.getPartition().isFiller()).map(obj -> obj);
     }
 
     @Override
