@@ -410,9 +410,15 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        StrictReflectionRegistry reflectionRegistry = null;
+        SubstrateOptions.StrictReflectionMode strictReflectionMode = SubstrateOptions.StrictReflection.getValue();
+        if (strictReflectionMode == SubstrateOptions.StrictReflectionMode.Warn || strictReflectionMode == SubstrateOptions.StrictReflectionMode.Enforce) {
+            reflectionRegistry = new StrictReflectionRegistry(providers, loader);
+            plugins.appendMethodParsingPlugin(reflectionRegistry::analyzeMethod);
+        }
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions,
-                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason, fallbackFeature);
+                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason, fallbackFeature, reflectionRegistry);
     }
 }
 
