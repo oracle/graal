@@ -36,7 +36,7 @@ import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 class CodeBreakdownProvider {
-    private final Map<String, Long> codeBreakdown;
+    private Map<String, Long> codeBreakdown;
 
     CodeBreakdownProvider(Collection<CompileTask> compilationTasks) {
         Map<String, Long> nameToSizeMap = new HashMap<>();
@@ -60,8 +60,17 @@ class CodeBreakdownProvider {
         codeBreakdown = Collections.unmodifiableMap(nameToSizeMap);
     }
 
-    public static Map<String, Long> get() {
-        return ImageSingletons.lookup(CodeBreakdownProvider.class).codeBreakdown;
+    /**
+     * Provides the code breakdown as map from name to size, and clears the cache to avoid memory
+     * footprint.
+     *
+     * @return the code breakdown
+     */
+    public static Map<String, Long> getAndClear() {
+        CodeBreakdownProvider singleton = ImageSingletons.lookup(CodeBreakdownProvider.class);
+        Map<String, Long> map = singleton.codeBreakdown;
+        singleton.codeBreakdown = null;
+        return map;
     }
 
     private static String findJARFile(Class<?> javaClass) {
