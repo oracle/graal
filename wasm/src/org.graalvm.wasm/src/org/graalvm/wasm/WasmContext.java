@@ -139,12 +139,6 @@ public final class WasmContext {
         return memWaitCallback;
     }
 
-    public void inheritCallbacksFromParentContext(WasmContext parent) {
-        setMemGrowCallback(parent.getMemGrowCallback());
-        setMemNotifyCallback(parent.getMemNotifyCallback());
-        setMemWaitCallback(parent.getMemWaitCallback());
-    }
-
     public MemoryContext memoryContext() {
         return memoryContext;
     }

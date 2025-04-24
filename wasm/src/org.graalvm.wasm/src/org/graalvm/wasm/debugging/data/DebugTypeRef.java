@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package org.graalvm.wasm.debugging.data;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+
 /**
  * Represents a reference to a {@link DebugType}. This is necessary to resolve circular dependencies
  * while parsing the debug information.
@@ -84,6 +86,21 @@ public final class DebugTypeRef extends DebugType {
             return DebugConstantObject.UNDEFINED;
         }
         return delegate.asValue(context, location);
+    }
+
+    @Override
+    public boolean isModifiableValue() {
+        if (delegate == null) {
+            return false;
+        }
+        return delegate.isModifiableValue();
+    }
+
+    @Override
+    public void setValue(DebugContext context, DebugLocation location, Object value, InteropLibrary lib) {
+        if (delegate != null) {
+            delegate.setValue(context, location, value, lib);
+        }
     }
 
     @Override

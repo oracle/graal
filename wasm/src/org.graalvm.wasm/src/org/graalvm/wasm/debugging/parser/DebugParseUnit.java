@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,19 @@ import org.graalvm.collections.EconomicMap;
 /**
  * Represents the result of parsing debug information.
  */
-public class DebugParseUnit {
+public final class DebugParseUnit {
     private final DebugData rootData;
     private final EconomicMap<Integer, DebugData> entries;
+    private final EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable;
+    private final int entryOffset;
+    private final int compilationUnitOffset;
 
-    public DebugParseUnit(DebugData rootData, EconomicMap<Integer, DebugData> entries) {
+    public DebugParseUnit(DebugData rootData, EconomicMap<Integer, DebugData> entries, EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable, int entryOffset, int compilationUnitOffset) {
         this.rootData = rootData;
         this.entries = entries;
+        this.abbreviationTable = abbreviationTable;
+        this.entryOffset = entryOffset;
+        this.compilationUnitOffset = compilationUnitOffset;
     }
 
     public DebugData rootData() {
@@ -61,5 +67,17 @@ public class DebugParseUnit {
 
     public EconomicMap<Integer, DebugData> entries() {
         return entries;
+    }
+
+    public EconomicMap<Integer, AbbreviationDeclaration> abbreviationTable() {
+        return abbreviationTable;
+    }
+
+    public int entryOffset() {
+        return entryOffset;
+    }
+
+    public int compilationUnitOffset() {
+        return compilationUnitOffset;
     }
 }

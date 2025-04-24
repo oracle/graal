@@ -150,9 +150,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @Children private Node[] callNodes;
     @CompilationFinal private Object osrMetadata;
 
-    @CompilationFinal private int bytecodeStartOffset;
-    @CompilationFinal private int bytecodeEndOffset;
-    @CompilationFinal(dimensions = 1) private byte[] bytecode;
+    private final int bytecodeStartOffset;
+    private final int bytecodeEndOffset;
+    @CompilationFinal(dimensions = 1) private final byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
 
     @Children private WasmMemoryLibrary[] memoryLibs;
@@ -170,16 +170,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.memoryLibs = memoryLibs;
     }
 
-    private void enterErrorBranch() {
-        codeEntry.errorBranch();
+    /**
+     * Copies a function node with instrumentation enabled in the <code>bytecode</code>. This should
+     * only be called by {@link WasmInstrumentableFunctionNode} when an instrument attaches and the
+     * bytecode needs to be rewritten to include instrumentation instructions.
+     * 
+     * @param node The existing {@link WasmFunctionNode} used for copying most information
+     * @param bytecode The instrumented bytecode
+     * @param notifyFunction The callback used by {@link Bytecode#NOTIFY} instructions to inform
+     *            instruments about statements in the bytecode
+     */
+    WasmFunctionNode(WasmFunctionNode node, byte[] bytecode, WasmNotifyFunction notifyFunction) {
+        this.module = node.module;
+        this.codeEntry = node.codeEntry;
+        this.bytecodeStartOffset = 0;
+        this.bytecodeEndOffset = bytecode.length;
+        this.bytecode = bytecode;
+        this.callNodes = new Node[node.callNodes.length];
+        for (int childIndex = 0; childIndex < callNodes.length; childIndex++) {
+            this.callNodes[childIndex] = insert(node.callNodes[childIndex].deepCopy());
+        }
+        this.memoryLibs = node.memoryLibs;
+        this.notifyFunction = notifyFunction;
     }
 
-    @SuppressWarnings("hiding")
-    void updateBytecode(byte[] bytecode, int bytecodeStartOffset, int bytecodeEndOffset, WasmNotifyFunction notifyFunction) {
-        this.bytecode = bytecode;
-        this.bytecodeStartOffset = bytecodeStartOffset;
-        this.bytecodeEndOffset = bytecodeEndOffset;
-        this.notifyFunction = notifyFunction;
+    private void enterErrorBranch() {
+        codeEntry.errorBranch();
     }
 
     private WasmMemory memory(WasmInstance instance, int index) {
@@ -253,7 +269,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings({"UnusedAssignment", "hiding"})
-    public Object executeBodyFromOffset(WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
+    public Object executeBodyFromOffset(WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLineIndex) {
         final int localCount = codeEntry.localCount();
         final byte[] bytecode = this.bytecode;
 
@@ -265,7 +281,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         int offset = startOffset;
         int stackPointer = startStackPointer;
-        int line = startLine;
+        int lineIndex = startLineIndex;
 
         final WasmStore store = instance.store();
         // Note: The module may not have any memories.
@@ -300,9 +316,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int resultCount = codeEntry.resultCount();
                     unwindStack(frame, stackPointer, localCount, resultCount);
                     dropStack(frame, stackPointer, localCount + resultCount);
-                    if (notifyFunction != null) {
-                        notifyFunction.notifyLine(frame, line, -1, line);
-                    }
                     return WasmConstant.RETURN_VALUE;
                 }
                 case Bytecode.LABEL_U8: {
@@ -378,7 +391,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         backEdgeCounter.count = 0;
                     }
                     if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, line), null, frame);
+                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
                         if (result != null) {
                             if (backEdgeCounter.count > 0) {
                                 LoopNode.reportLoopCount(this, backEdgeCounter.count);
@@ -1695,13 +1708,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.NOTIFY: {
-                    final int nextLine = rawPeekI32(bytecode, offset);
+                    final int nextLineIndex = rawPeekI32(bytecode, offset);
                     final int sourceCodeLocation = rawPeekI32(bytecode, offset + 4);
                     offset += 8;
-                    if (notifyFunction != null) {
-                        notifyFunction.notifyLine(frame, line, nextLine, sourceCodeLocation);
-                    }
-                    line = nextLine;
+                    assert notifyFunction != null;
+                    notifyFunction.notifyLine(frame, lineIndex, nextLineIndex, sourceCodeLocation);
+                    lineIndex = nextLineIndex;
                     break;
                 }
                 default:
