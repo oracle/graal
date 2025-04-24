@@ -482,8 +482,19 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return beforeJmp;
     }
 
+    /** Emits a jmp instruction with an immediate to be patched. Includes JCC erratum mitigation. */
     public void jmp() {
         mitigateJCCErratum(5);
+        rawJmpNoJCCErratumMitigation();
+    }
+
+    /**
+     * Emits a jmp instruction with an immediate to be patched. Does <em>not</em> include JCC
+     * erratum mitigation. Most use cases should use {@link #jmp()} instead. This method should only
+     * be used directly when predictable code size is more important than the performance penalty of
+     * a possibly misaligned jump.
+     */
+    public void rawJmpNoJCCErratumMitigation() {
         annotatePatchingImmediate(1, 4);
         emitByte(0xE9);
         emitInt(0);
