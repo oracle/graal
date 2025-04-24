@@ -54,7 +54,6 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -76,6 +75,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -97,33 +97,42 @@ public class SourceCacheTest {
     }
 
     @Test
-    public void testTraceSourceCacheEviction() throws IOException {
+    public void testTraceSourceCacheEviction() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation(); // Can't control GC in the isolate.
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream(); Context context = Context.newBuilder().option("engine.TraceSourceCache", "true").out(out).err(out).build()) {
-            Source auxiliarySource = Source.newBuilder(SourceCacheTestLanguage.ID, "x", "AuxiliarySource").build();
-            String sourceName = "TestSource";
-            String[] sourceHash = new String[1];
-            for (int i = 0; i < 2; i++) {
-                Source source = Source.newBuilder(SourceCacheTestLanguage.ID, "", sourceName).build();
-                int sourceHashCode = context.eval(source).asInt();
-                sourceHash[0] = String.format("0x%08x", sourceHashCode);
-                WeakReference<Source> souceRef = new WeakReference<>(source);
-                source = null;
-                GCUtils.assertGc("Source was not collected", souceRef);
-                context.eval(auxiliarySource);
-            }
-            List<String> logs = new ArrayList<>();
-            forEachLog(out.toByteArray(), (matcher) -> {
-                String logType = matcher.group(1);
-                if ("evict".equals(logType)) {
-                    logs.add(logType);
-                    Assert.assertEquals(sourceHash[0], matcher.group(2));
-                    Assert.assertEquals(sourceName, matcher.group(3));
+        Runnable runnable = () -> {
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream(); Context context = Context.newBuilder().option("engine.TraceSourceCache", "true").out(out).err(out).build()) {
+                Source auxiliarySource = Source.newBuilder(SourceCacheTestLanguage.ID, "x", "AuxiliarySource").build();
+                String sourceName = "TestSource";
+                String[] sourceHash = new String[1];
+                for (int i = 0; i < 2; i++) {
+                    Source source = Source.newBuilder(SourceCacheTestLanguage.ID, "", sourceName).build();
+                    int sourceHashCode = context.eval(source).asInt();
+                    sourceHash[0] = String.format("0x%08x", sourceHashCode);
+                    WeakReference<Source> souceRef = new WeakReference<>(source);
+                    source = null;
+                    GCUtils.assertGc("Source was not collected", souceRef);
+                    context.eval(auxiliarySource);
                 }
-            });
-            // at least one
-            Assert.assertFalse(logs.isEmpty());
-            Assert.assertEquals("evict", logs.get(1));
+                List<String> logs = new ArrayList<>();
+                forEachLog(out.toByteArray(), (matcher) -> {
+                    String logType = matcher.group(1);
+                    if ("evict".equals(logType)) {
+                        logs.add(logType);
+                        Assert.assertEquals(sourceHash[0], matcher.group(2));
+                        Assert.assertEquals(sourceName, matcher.group(3));
+                    }
+                });
+                // at least one
+                Assert.assertFalse(logs.isEmpty());
+                Assert.assertEquals("evict", logs.get(1));
+            } catch (IOException ioe) {
+                throw new AssertionError(ioe);
+            }
+        };
+        if (ImageInfo.inImageCode()) {
+            runnable.run();
+        } else {
+            SubprocessTestUtils.newBuilder(SourceCacheTest.class, runnable).run();
         }
     }
 
