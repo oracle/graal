@@ -119,6 +119,17 @@ public final class UnimplementedGraalIntrinsics {
                             // scalar operations
                             "jdk/internal/vm/vector/Float16Math.fma(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/Float16Math$TernaryOperator;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/Float16Math.sqrt(Ljava/lang/Class;Ljava/lang/Object;Ljava/util/function/UnaryOperator;)Ljava/lang/Object;");
+
+            add(toBeInvestigated,
+                            // JDK-8349721: Add aarch64 intrinsics for ML-KEM
+                            // JDK-8351412: Add AVX-512 intrinsics for ML-KEM
+                            "com/sun/crypto/provider/ML_KEM.implKyber12To16([BI[SI)I",
+                            "com/sun/crypto/provider/ML_KEM.implKyberAddPoly([S[S[S)I",
+                            "com/sun/crypto/provider/ML_KEM.implKyberAddPoly([S[S[S[S)I",
+                            "com/sun/crypto/provider/ML_KEM.implKyberBarrettReduce([S)I",
+                            "com/sun/crypto/provider/ML_KEM.implKyberInverseNtt([S[S)I",
+                            "com/sun/crypto/provider/ML_KEM.implKyberNtt([S[S)I",
+                            "com/sun/crypto/provider/ML_KEM.implKyberNttMult([S[S[S[S)I");
         }
 
         add(ignore,

@@ -494,6 +494,10 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fTSCINV_BIT = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.aes != 0)
     features->fAES = 1;
+  if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0)
+    features->fLZCNT = 1;
+  if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0)
+    features->fAMD_3DNOW_PREFETCH = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.erms != 0)
     features->fERMS = 1;
   if (_cpuid_info->sef_cpuid7_edx.bits.fast_short_rep_mov != 0)
@@ -512,6 +516,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fFMA = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.clflushopt != 0)
     features->fFLUSHOPT = 1;
+  if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0)
+    features->fCLWB = 1;
   if (_cpuid_info->ext_cpuid1_edx.bits.rdtscp != 0)
     features->fRDTSCP = 1;
   if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
@@ -520,47 +526,31 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
       _cpuid_info->xem_xcr0_eax.bits.apx_f != 0)
     features->fAPX_F = 1;
 
-  // AMD|Hygon features.
+  // AMD|Hygon additional features.
   if (is_amd_family(_cpuid_info))
   {
-    if ((_cpuid_info->ext_cpuid1_edx.bits.tdnow != 0) ||
-        (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0))
+    // PREFETCHW was checked above, check TDNOW here.
+    if (_cpuid_info->ext_cpuid1_edx.bits.tdnow != 0)
       features->fAMD_3DNOW_PREFETCH = 1;
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0)
-      features->fLZCNT = 1;
     if (_cpuid_info->ext_cpuid1_ecx.bits.sse4a != 0)
       features->fSSE4A = 1;
   }
 
-  // Intel features.
+  // Intel additional features.
   if (is_intel(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
-      features->fLZCNT = 1;
-    }
-    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
-      features->fAMD_3DNOW_PREFETCH = 1;
-    }
-    if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0) {
-      features->fCLWB = 1;
-    }
-    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0) {
+    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
       features->fSERIALIZE = 1;
-    }
-    if (_cpuid_info->sef_cpuid7_edx.bits.avx512_fp16 != 0) {
+    if (_cpuid_info->sef_cpuid7_edx.bits.avx512_fp16 != 0)
       features->fAVX512_FP16 = 1;
-    }
   }
 
-  // ZX features.
+  // ZX additional features.
   if (is_zx(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
-      features->fLZCNT = 1;
-    }
-    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
-      features->fAMD_3DNOW_PREFETCH = 1;
-    }
+    // We do not know if these are supported by ZX, so we cannot trust
+    // common CPUID bit for them.
+    features->fCLWB = 0;
   }
 
   // Protection key features.
