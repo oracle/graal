@@ -455,7 +455,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         writeInt(pos - lengthPos, buffer, typeOffsetPos);
 
         /* Write the type representing the object header. */
-        name = headerTypeEntry.getTypeName();
+        name = uniqueDebugString(headerTypeEntry.getTypeName());
         int headerSize = headerTypeEntry.getSize();
         log(context, "  [0x%08x] header type %s", pos, name);
         abbrevCode = AbbrevCode.OBJECT_HEADER;
@@ -486,7 +486,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] hub field", pos);
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        String fieldName = hubFieldEntry.fieldName();
+        String fieldName = uniqueDebugString(hubFieldEntry.fieldName());
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
         pos = writeStrSectionOffset(fieldName, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, hubTypeIdx, DwarfDebugInfo.HUB_TYPE_NAME);
@@ -967,8 +967,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         AbbrevCode abbrevCode = AbbrevCode.FOREIGN_STRUCT;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        String typedefName = foreignStructTypeEntry.getTypedefName();
-        typedefName = uniqueDebugString(typedefName);
+        String typedefName = uniqueDebugString(foreignStructTypeEntry.getTypedefName());
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(typedefName), typedefName);
         pos = writeStrSectionOffset(typedefName, buffer, pos);
         log(context, "  [0x%08x]     byte_size  0x%x", pos, size);
@@ -1022,8 +1021,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (name == null) {
             name = classEntry.getTypeName().replace('.', '/') + ".java";
         }
+        name = uniqueDebugString(name);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
-        pos = writeStrSectionOffset(uniqueDebugString(name), buffer, pos);
+        pos = writeStrSectionOffset(name, buffer, pos);
         String compilationDirectory = uniqueDebugString(dwarfSections.getCachePath());
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
@@ -1318,8 +1318,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, boolean isInlined, byte[] buffer, int p) {
         int pos = p;
-        String methodKey = method.getSymbolName();
-        String linkageName = uniqueDebugString(methodKey);
+        String linkageName = uniqueDebugString(method.getSymbolName());
         setMethodDeclarationIndex(method, pos);
         int modifiers = method.getModifiers();
         boolean isStatic = Modifier.isStatic(modifiers);
@@ -1409,7 +1408,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] method parameter declaration", pos);
         AbbrevCode abbrevCode;
-        String paramName = paramInfo.name();
+        String paramName = uniqueDebugString(paramInfo.name());
         TypeEntry paramType = paramInfo.type();
         int line = paramInfo.getLine();
         if (artificial) {
@@ -1422,7 +1421,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, level, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name %s", pos, paramName);
-        pos = writeStrSectionOffset(uniqueDebugString(paramName), buffer, pos);
+        pos = writeStrSectionOffset(paramName, buffer, pos);
         if (abbrevCode == AbbrevCode.METHOD_PARAMETER_DECLARATION_2) {
             log(context, "  [0x%08x]     file 0x%x", pos, fileIdx);
             pos = writeAttrData2((short) fileIdx, buffer, pos);

@@ -28,10 +28,13 @@ package com.oracle.objectfile.debugentry;
 
 public class HeaderTypeEntry extends StructureTypeEntry {
 
-    private final FieldEntry hubField;
+    private FieldEntry hubField;
 
-    public HeaderTypeEntry(String typeName, int size, long typeSignature, FieldEntry hubField) {
+    public HeaderTypeEntry(String typeName, int size, long typeSignature) {
         super(typeName, size, -1, typeSignature, typeSignature, typeSignature);
+    }
+
+    public void setHubField(FieldEntry hubField) {
         this.hubField = hubField;
     }
 

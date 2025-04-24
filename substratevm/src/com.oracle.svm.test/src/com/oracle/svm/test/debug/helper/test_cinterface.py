@@ -128,7 +128,7 @@ class TestCInterface(unittest.TestCase):
         exec_string = gdb_output("data")
         self.assertTrue(exec_string.startswith('my_data = {'), f"GDB output: '{exec_string}'")
         self.assertIn('f_primitive = 42', exec_string)
-        self.assertIn('f_array = int32_t [4] = {...}', exec_string)
+        self.assertIn('f_array = int [4] = {...}', exec_string)
         self.assertRegex(exec_string, f'f_cstr = 0x{hex_rexp.pattern} "Hello World"')
         self.assertRegex(exec_string, f'f_java_object_handle = 0x{hex_rexp.pattern}')
         self.assertRegex(exec_string, f'f_print_function = 0x{hex_rexp.pattern} <c_print>')

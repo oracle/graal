@@ -34,7 +34,6 @@ import static jdk.graal.compiler.options.OptionType.User;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -1035,7 +1034,7 @@ public class SubstrateOptions {
 
     private static void validateDebugInfoGenerationThreadCount(HostedOptionKey<Integer> optionKey) {
         int value = optionKey.getValue();
-        if (value <= 0) {
+        if (value < 0) {
             throw UserError.invalidOptionValue(optionKey, value, "The value must be bigger than 0");
         }
     }

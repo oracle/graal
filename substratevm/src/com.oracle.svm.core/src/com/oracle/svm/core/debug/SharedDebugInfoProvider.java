@@ -184,7 +184,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     protected final int referenceSize;
     protected final int pointerSize;
     protected final int objectAlignment;
-    protected final int reservedBitsMask;
+    protected final int reservedHubBitsMask;
 
     /**
      * The {@code SharedType} for {@link Class}. This is the type that represents a dynamic hub in
@@ -294,7 +294,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
         this.referenceSize = getObjectLayout().getReferenceSize();
         this.objectAlignment = getObjectLayout().getAlignment();
-        this.reservedBitsMask = Heap.getHeap().getObjectHeader().getReservedBitsMask();
+        this.reservedHubBitsMask = Heap.getHeap().getObjectHeader().getReservedHubBitsMask();
     }
 
     /**
@@ -334,8 +334,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
-    public int reservedBitsMask() {
-        return reservedBitsMask;
+    public int reservedHubBitsMask() {
+        return reservedHubBitsMask;
     }
 
     @Override
@@ -754,15 +754,14 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         // create the header type entry similar to a class entry without a super type
         ObjectLayout ol = getObjectLayout();
+        int hubOffset = ol.getHubOffset();
         headerTypeEntry = new HeaderTypeEntry(typeName, ol.getFirstFieldOffset(), typeSignature);
+        headerTypeEntry.setHubField(createSyntheticFieldEntry("hub", headerTypeEntry, hubType, hubOffset, ol.getHubSize()));
 
-        // add synthetic fields that hold the location of the hub and the idHash if it is in the
-        // object header
-        headerTypeEntry.addField(createSyntheticFieldEntry("hub", headerTypeEntry, hubType, ol.getHubOffset(), referenceSize));
-        if (ol.isIdentityHashFieldInObjectHeader()) {
-            int idHashSize = ol.sizeInBytes(JavaKind.Int);
-            headerTypeEntry.addField(createSyntheticFieldEntry("idHash", headerTypeEntry, (SharedType) metaAccess.lookupJavaType(JavaKind.Int.toJavaClass()), ol.getObjectHeaderIdentityHashOffset(),
-                            idHashSize));
+        if (hubOffset > 0) {
+            assert hubOffset == Integer.BYTES || hubOffset == Long.BYTES;
+            JavaKind kind = hubOffset == Integer.BYTES ? JavaKind.Int : JavaKind.Long;
+            headerTypeEntry.addField(createSyntheticFieldEntry("reserved", headerTypeEntry, (SharedType) metaAccess.lookupJavaType(kind.toJavaClass()), 0, hubOffset));
         }
     }
 
