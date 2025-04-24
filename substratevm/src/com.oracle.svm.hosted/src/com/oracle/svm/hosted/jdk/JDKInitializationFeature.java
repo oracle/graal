@@ -100,6 +100,9 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
         rci.initializeAtRunTime("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
+        rci.initializeAtBuildTime("java.beans.Introspector", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.beans.Introspector$1", JDK_CLASS_REASON);
+
         rci.initializeAtBuildTime("javax.annotation.processing", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.lang.model", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.management", JDK_CLASS_REASON);
