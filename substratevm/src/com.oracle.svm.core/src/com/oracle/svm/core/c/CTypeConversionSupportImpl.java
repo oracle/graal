@@ -28,8 +28,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.EnumSet;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -45,9 +45,13 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
-class CTypeConversionSupportImpl implements CTypeConversionSupport {
+class CTypeConversionSupportImpl implements CTypeConversionSupport, InitialLayerOnlyImageSingleton {
 
     static final CCharPointerHolder NULL_HOLDER = new CCharPointerHolder() {
         @Override
@@ -188,6 +192,16 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
     public ByteBuffer asByteBuffer(PointerBase address, int size) {
         ByteBuffer byteBuffer = DirectByteBufferUtil.allocate(address.rawValue(), size);
         return byteBuffer.order(ConfigurationValues.getTarget().arch.getByteOrder());
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
     }
 }
 

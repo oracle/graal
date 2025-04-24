@@ -185,8 +185,15 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             singletonDuringImageBuild = null;
         }
 
+        private static Object stripRuntimeWrapper(Object singleton) {
+            if (singleton instanceof RuntimeOnlyWrapper r) {
+                return r.wrappedObject();
+            }
+            return singleton;
+        }
+
         public static void persist() {
-            var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue() instanceof LayeredImageSingleton || e.getValue() instanceof RuntimeOnlyWrapper)
+            var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> stripRuntimeWrapper(e.getValue()) instanceof LayeredImageSingleton)
                             .sorted(Comparator.comparing(e -> e.getKey().getName()))
                             .toList();
             HostedImageLayerBuildingSupport.singleton().getWriter().writeImageSingletonInfo(list);
