@@ -78,7 +78,7 @@ import com.oracle.truffle.api.dsl.NonIdempotent;
  * @see Property
  * @since 0.8 or earlier
  */
-public abstract class Shape {
+public abstract sealed class Shape permits ShapeImpl {
     static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     static final int OBJECT_FLAGS_SHIFT = 0;
     static final int OBJECT_SHARED = 1 << 16;

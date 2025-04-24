@@ -80,7 +80,7 @@ import com.oracle.truffle.api.object.Transition.ShareShapeTransition;
  * @since 0.17 or earlier
  */
 @SuppressWarnings("deprecation")
-abstract class ShapeImpl extends Shape {
+abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     /** Shape and object flags. */
     protected final int flags;
 

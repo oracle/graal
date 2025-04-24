@@ -48,7 +48,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
-abstract class LocationImpl extends Location {
+abstract non-sealed class LocationImpl extends Location {
     /**
      * @since 0.17 or earlier
      */
