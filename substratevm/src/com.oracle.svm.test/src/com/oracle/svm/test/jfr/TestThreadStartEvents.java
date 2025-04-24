@@ -26,20 +26,21 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedThread;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedThread;
 
 public class TestThreadStartEvents extends JfrRecordingTest {
-
-    private static final String NAME = "worker-name";
+    private static final String THREAD_NAME = "TestThreadStartEvents-worker";
 
     @Test
     public void test() throws Throwable {
@@ -47,10 +48,10 @@ public class TestThreadStartEvents extends JfrRecordingTest {
         Recording recording = startRecording(events);
 
         Runnable work = () -> LockSupport.parkNanos(1);
-        Thread worker = new Thread(work);
-        worker.setName(NAME);
+        Thread worker = new Thread(work, THREAD_NAME);
         worker.start();
         worker.join();
+
         stopRecording(recording, TestThreadStartEvents::validateEvents);
     }
 
@@ -58,11 +59,11 @@ public class TestThreadStartEvents extends JfrRecordingTest {
         boolean foundEvent = false;
         for (RecordedEvent event : events) {
             RecordedThread eventThread = event.getThread("eventThread");
-            if (eventThread.getJavaName().equals(NAME)) {
+            if (eventThread.getJavaName().equals(THREAD_NAME)) {
                 foundEvent = true;
             }
 
-            checkStackTraceTrimming(event, "beforeThreadStart");
+            checkTopStackFrame(event, "beforeThreadStart");
         }
         assertTrue(foundEvent);
     }

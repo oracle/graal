@@ -115,7 +115,7 @@ public final class SamplerBuffersAccess {
             int sampleSize = current.readInt(0);
             current = current.add(Integer.BYTES);
 
-            /* Sample size, excluding the header and the end marker. */
+            /* Number of vframes that should be skipped at the top of the stack trace. */
             int skipCount = current.readInt(0);
             current = current.add(Integer.BYTES);
 

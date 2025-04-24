@@ -26,28 +26,29 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
+import org.junit.Test;
+
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.util.UnsignedUtils;
+
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
-import org.junit.Test;
-
-import java.util.List;
-
-import static org.junit.Assert.assertTrue;
 
 public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
-
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.ObjectAllocationSample.getName()};
         Recording recording = startRecording(events);
 
-        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+        int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
 
         // Allocate large arrays (always need a new TLAB).
         allocateByteArray(2 * alignedHeapChunkSize);
@@ -76,11 +77,10 @@ public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
                 // verify previous owner
                 if (className.equals(char[].class.getName())) {
                     foundCharArray = true;
-                    checkStackTraceTrimming(event, "slowPathNewArrayLikeObject0");
-
+                    checkTopStackFrame(event, "slowPathNewArrayLikeObject0");
                 } else if (className.equals(byte[].class.getName())) {
                     foundByteArray = true;
-                    checkStackTraceTrimming(event, "slowPathNewArrayLikeObject0");
+                    checkTopStackFrame(event, "slowPathNewArrayLikeObject0");
                 }
             }
         }
