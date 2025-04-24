@@ -48,7 +48,7 @@ public abstract class JMXService {
      * Dumps the heap to {@code outputFile} in hprof format.
      *
      * @param live if true, performs a full GC first so that only live objects are dumped
-     * @throws IOException if an IO error occurred dyring dumping
+     * @throws IOException if an IO error occurred during dumping
      */
     protected abstract void dumpHeap(String outputFile, boolean live) throws IOException;
 }

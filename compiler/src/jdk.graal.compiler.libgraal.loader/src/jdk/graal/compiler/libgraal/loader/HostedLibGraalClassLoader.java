@@ -94,7 +94,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     /**
      * A resource located in the jimage file or on the module path.
      */
-    static abstract class Resource {
+    abstract static class Resource {
         final String name;
 
         Resource(String name) {
@@ -381,7 +381,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
      * A {@link URLStreamHandler} for use with URLs returned by
      * {@link HostedLibGraalClassLoader#findResource(String)}.
      */
-    private class ImageURLStreamHandler extends URLStreamHandler {
+    private final class ImageURLStreamHandler extends URLStreamHandler {
         @Override
         public URLConnection openConnection(URL u) {
             String protocol = u.getProtocol();

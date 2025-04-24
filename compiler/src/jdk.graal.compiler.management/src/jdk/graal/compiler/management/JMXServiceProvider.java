@@ -89,10 +89,10 @@ public class JMXServiceProvider extends JMXService {
                 Files.delete(path);
             }
             hotspotMXBean.dumpHeap(outputFile, live);
-        } catch (RuntimeException re) {
-            throw re;
-        } catch (Exception exp) {
-            throw new RuntimeException(exp);
+        } catch (IOException | RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
