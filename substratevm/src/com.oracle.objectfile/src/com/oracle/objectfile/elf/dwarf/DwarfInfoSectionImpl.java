@@ -332,9 +332,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = uniqueDebugString(DwarfDebugInfo.HUB_TYPE_NAME);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
-        int size = hubType.getSize();
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
-        pos = writeAttrData2((short) size, buffer, pos);
+        int hubTypeSize = hubType.getSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, hubTypeSize);
+        pos = writeAttrData2((short) hubTypeSize, buffer, pos);
         /* Write a data location expression to mask and/or rebase hub pointers. */
         log(context, "  [0x%08x]     data_location", pos);
         pos = writeCompressedOopConversionExpression(true, buffer, pos);
@@ -354,9 +354,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         abbrevCode = AbbrevCode.TYPE_POINTER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int pointerSize = dwarfSections.referenceSize();
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
-        pos = writeAttrData1((byte) pointerSize, buffer, pos);
+        int hubSize = hubField.getSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, hubSize);
+        pos = writeAttrData1((byte) hubSize, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x", pos, hubLayoutTypeIdx);
         pos = writeAttrRef4(hubLayoutTypeIdx, buffer, pos);
 
@@ -365,15 +365,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* Write the type representing the object header. */
         name = headerTypeEntry.getTypeName();
-        size = hubField.getSize();
+        int headerSize = headerTypeEntry.getSize();
         log(context, "  [0x%08x] header type %s", pos, name);
         abbrevCode = AbbrevCode.OBJECT_HEADER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
-        log(context, "  [0x%08x]     byte_size  0x%x", pos, size);
-        pos = writeAttrData1((byte) size, buffer, pos);
+        log(context, "  [0x%08x]     byte_size  0x%x", pos, headerSize);
+        pos = writeAttrData1((byte) headerSize, buffer, pos);
         pos = writeHubField(context, hubField, hubTypeIdx, buffer, pos);
         pos = writeStructFields(context, headerTypeEntry.fields(), buffer, pos);
 
