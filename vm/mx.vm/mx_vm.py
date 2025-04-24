@@ -241,7 +241,7 @@ def register_community_tools_distribution(owner_suite, register_distribution):
                 'artifactId': 'tools-community',
                 'tag': ['default', 'public'],
             },
-            'description': 'This is POM dependency pulls in all tools for Graal Languages and Truffle Community Edition.',
+            'description': 'This is POM dependency includes all tools for Graal Languages and Truffle Community Edition.',
         }
         tools_community = mx_pomdistribution.POMDistribution(owner_suite, 'TOOLS_COMMUNITY', [], tools_meta_poms, sorted(list(tools_licenses)), **attrs)
         register_distribution(tools_community)
@@ -303,7 +303,7 @@ def register_community_languages_distribution(owner_suite, register_distribution
                 'artifactId': 'languages-community',
                 'tag': ['default', 'public'],
             },
-            'description': 'This POM dependency pulls in all Graal Languages and Truffle Community Edition.',
+            'description': 'This POM dependency includes all Graal Languages and Truffle Community Edition.',
         }
         languages_community = mx_pomdistribution.POMDistribution(owner_suite, 'LANGUAGES_COMMUNITY', [], languages_meta_poms, sorted(list(languages_licenses)), **attrs)
         register_distribution(languages_community)

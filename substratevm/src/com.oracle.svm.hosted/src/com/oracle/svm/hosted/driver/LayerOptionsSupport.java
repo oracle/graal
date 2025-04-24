@@ -29,7 +29,6 @@ import java.util.List;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 
 public class LayerOptionsSupport extends IncludeOptionsSupport {
 
@@ -44,16 +43,8 @@ public class LayerOptionsSupport extends IncludeOptionsSupport {
 
         public static LayerOption parse(List<String> options) {
             VMError.guarantee(!options.isEmpty());
-            // Check for the optional file name
-            Path fileName = null;
-            int skip = 0;
-            if (options.getFirst().endsWith(LayerArchiveSupport.LAYER_FILE_EXTENSION)) {
-                fileName = Path.of(options.getFirst());
-                skip = 1;
-            }
-            ExtendedOption[] extendedOptions = options.stream().skip(skip).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
-            return new LayerOption(fileName, extendedOptions);
+            ExtendedOption[] extendedOptions = options.stream().skip(1).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
+            return new LayerOption(Path.of(options.getFirst()), extendedOptions);
         }
     }
-
 }

@@ -378,7 +378,7 @@ public final class VMOperationControl {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         @Override
         public void run() {
-            ThreadingSupportImpl.pauseRecurringCallback("VM operation thread must not execute recurring callbacks.");
+            RecurringCallbackSupport.suspendCallbackTimer("VM operation thread must not execute recurring callbacks.");
             this.isolateThread = CurrentIsolate.getCurrentThread();
 
             VMOperationControl control = VMOperationControl.get();

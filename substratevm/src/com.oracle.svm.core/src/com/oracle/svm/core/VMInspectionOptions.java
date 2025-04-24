@@ -78,10 +78,6 @@ public final class VMInspectionOptions {
                     ", '" + MONITORING_JCMD_NAME + "' (experimental)" +
                     ", or '" + MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
-    static {
-        assert MONITORING_ALL_VALUES.stream().allMatch(v -> MONITORING_DEFAULT_NAME.equals(v) || MONITORING_ALLOWED_VALUES_TEXT.contains(v)) : "A value is missing in the user-facing help text";
-    }
-
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES_TEXT + ". " +
                     "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User) //
@@ -91,6 +87,10 @@ public final class VMInspectionOptions {
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
     public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::notSupportedOnWindows);
+
+    static {
+        assert MONITORING_ALL_VALUES.stream().allMatch(v -> MONITORING_DEFAULT_NAME.equals(v) || MONITORING_ALLOWED_VALUES_TEXT.contains(v)) : "A value is missing in the user-facing help text";
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void notSupportedOnWindows(HostedOptionKey<Boolean> optionKey) {
@@ -136,8 +136,9 @@ public final class VMInspectionOptions {
     }
 
     @Fold
-    public static String getHeapDumpCommandArgument() {
-        return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME);
+    public static String getHeapDumpNotSupportedMessage() {
+        return "Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native binaries built with '" +
+                        SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME) + "'.";
     }
 
     private static Set<String> getEnabledMonitoringFeatures() {
@@ -167,8 +168,7 @@ public final class VMInspectionOptions {
             System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
             return true;
         } else {
-            System.out.println("Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native executables built with '" +
-                            VMInspectionOptions.getHeapDumpCommandArgument() + "'.");
+            System.out.println(VMInspectionOptions.getHeapDumpNotSupportedMessage());
             return false;
         }
     }

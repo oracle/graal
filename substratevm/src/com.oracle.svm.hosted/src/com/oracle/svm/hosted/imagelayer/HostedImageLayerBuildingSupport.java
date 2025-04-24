@@ -32,22 +32,22 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.capnproto.ReaderOptions;
-import org.capnproto.Serialize;
+import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
+import com.oracle.svm.shaded.org.capnproto.Serialize;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
@@ -157,59 +157,99 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      */
     public static void processLayerOptions(EconomicMap<OptionKey<?>, Object> values, NativeImageClassLoaderSupport classLoaderSupport) {
         OptionValues hostedOptions = new OptionValues(values);
-        if (SubstrateOptions.LayerCreate.hasBeenSet(hostedOptions)) {
-            /* The last value wins, GR-55565 will warn about the overwritten values. */
-            ValueWithOrigin<String> valueWithOrigin = SubstrateOptions.LayerCreate.getValue(hostedOptions).lastValueWithOrigin().orElseThrow();
-            String layerCreateValue = String.join(",", OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, valueWithOrigin));
-            if (layerCreateValue.isEmpty()) {
-                /* Nothing to do, an empty --layer-create= disables the layer creation. */
-            } else {
-                LayerOption layerOption = LayerOption.parse(layerCreateValue);
-                classLoaderSupport.setLayerFile(layerOption.fileName());
 
-                String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
-                NativeImageClassLoaderSupport.IncludeSelectors layerSelectors = classLoaderSupport.getLayerSelectors();
-                for (IncludeOptionsSupport.ExtendedOption option : layerOption.extendedOptions()) {
-                    IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
-                }
-
-                SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);
-                SubstrateOptions.ClosedTypeWorld.update(values, false);
-                if (SubstrateOptions.imageLayerEnabledHandler != null) {
-                    SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
-                }
-                if (SubstrateOptions.imageLayerCreateEnabledHandler != null) {
-                    SubstrateOptions.imageLayerCreateEnabledHandler.onOptionEnabled(values);
-                }
-                SubstrateOptions.UseContainerSupport.update(values, false);
+        if (isLayerCreateOptionEnabled(hostedOptions)) {
+            ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(hostedOptions);
+            String layerCreateValue = getLayerCreateValue(valueWithOrigin);
+            LayerOption layerOption = LayerOption.parse(layerCreateValue);
+            String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
+            Path layerFileName = layerOption.fileName();
+            if (layerFileName.toString().isEmpty()) {
+                layerFileName = Path.of(SubstrateOptions.Name.getValue(hostedOptions) + LayerArchiveSupport.LAYER_FILE_EXTENSION);
             }
+            if (layerFileName.getParent() != null) {
+                throw UserError.abort("The given layer file '%s' in layer creation option '%s' from %s must be a simple file name, i.e., no path separators are allowed.",
+                                layerFileName, layerCreateArg, valueWithOrigin.origin());
+            }
+            Path layerFile = SubstrateOptions.getImagePath(hostedOptions).resolve(layerFileName);
+            classLoaderSupport.setLayerFile(layerFile);
+
+            NativeImageClassLoaderSupport.IncludeSelectors layerSelectors = classLoaderSupport.getLayerSelectors();
+            for (IncludeOptionsSupport.ExtendedOption option : layerOption.extendedOptions()) {
+                IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
+            }
+
+            SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);
+            SubstrateOptions.ClosedTypeWorld.update(values, false);
+            if (SubstrateOptions.imageLayerEnabledHandler != null) {
+                SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+            if (SubstrateOptions.imageLayerCreateEnabledHandler != null) {
+                SubstrateOptions.imageLayerCreateEnabledHandler.onOptionEnabled(values);
+            }
+            SubstrateOptions.UseContainerSupport.update(values, false);
+            enableConservativeUnsafeAccess(values);
         }
-        if (SubstrateOptions.LayerUse.hasBeenSet(hostedOptions)) {
-            /* The last value wins, GR-55565 will warn about the overwritten values. */
-            Path layerUseValue = SubstrateOptions.LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
-            if (layerUseValue.toString().isEmpty()) {
-                /* Nothing to do, an empty --layer-use= disables the layer application. */
-            } else {
-                SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
-                SubstrateOptions.ParseRuntimeOptions.update(values, false);
-                if (SubstrateOptions.imageLayerEnabledHandler != null) {
-                    SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
-                }
+
+        if (isLayerUseOptionEnabled(hostedOptions)) {
+            SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
+            SubstrateOptions.ParseRuntimeOptions.update(values, false);
+            if (SubstrateOptions.imageLayerEnabledHandler != null) {
+                SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
             }
+            enableConservativeUnsafeAccess(values);
         }
     }
 
-    private static boolean isLayerOptionEnabled(HostedOptionKey<? extends AccumulatingLocatableMultiOptionValue<?>> option, HostedOptionValues values) {
-        if (option.hasBeenSet(values)) {
-            Object lastOptionValue = option.getValue(values).lastValue().orElseThrow();
-            return !lastOptionValue.toString().isEmpty();
+    private static Path getLayerUseValue(OptionValues hostedOptions) {
+        return SubstrateOptions.LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
+    }
+
+    /**
+     * The default unsafe implementation assumes that all unsafe load/store operations can be
+     * tracked. This cannot be used in layered images.
+     *
+     * First, in the base layer we cannot track the future layers' unsafe accessed fields, so all
+     * unsafe loads must be conservatively saturated. Similarly, we cannot see any unsafe writes
+     * coming from future layers so all unsafe accessed fields are injected with all instantiated
+     * subtypes of their declared type.
+     *
+     * Second, application layer unsafe accessed fields cannot be linked to the base layer unsafe
+     * writes, so again they are injected with all instantiated subtypes of their declared type.
+     * Unsafe loads in the application layer are similarly saturated since we don't keep track of
+     * all unsafe accessed fields from the base layer. We could avoid saturating all application
+     * layer unsafe loads by persisting the base layer unsafe accessed fields per type, but these
+     * fields contain their declared type's all-instantiated so likely most loads would saturate.
+     */
+    private static void enableConservativeUnsafeAccess(EconomicMap<OptionKey<?>, Object> values) {
+        PointstoOptions.UseConservativeUnsafeAccess.update(values, true);
+    }
+
+    private static ValueWithOrigin<String> getLayerCreateValueWithOrigin(OptionValues hostedOptions) {
+        return SubstrateOptions.LayerCreate.getValue(hostedOptions).lastValueWithOrigin().orElseThrow();
+    }
+
+    public static boolean isLayerCreateOptionEnabled(OptionValues values) {
+        if (SubstrateOptions.LayerCreate.hasBeenSet(values)) {
+            return !getLayerCreateValue(getLayerCreateValueWithOrigin(values)).isEmpty();
+        }
+        return false;
+    }
+
+    private static String getLayerCreateValue(ValueWithOrigin<String> valueWithOrigin) {
+        return String.join(",", OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, valueWithOrigin));
+    }
+
+    private static boolean isLayerUseOptionEnabled(OptionValues values) {
+        if (SubstrateOptions.LayerUse.hasBeenSet(values)) {
+            return !getLayerUseValue(values).toString().isEmpty();
         }
         return false;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader) {
-        boolean buildingSharedLayer = isLayerOptionEnabled(SubstrateOptions.LayerCreate, values);
-        boolean buildingExtensionLayer = isLayerOptionEnabled(SubstrateOptions.LayerUse, values);
+        boolean buildingSharedLayer = isLayerCreateOptionEnabled(values);
+        boolean buildingExtensionLayer = isLayerUseOptionEnabled(values);
 
         boolean buildingImageLayer = buildingSharedLayer || buildingExtensionLayer;
         boolean buildingInitialLayer = buildingImageLayer && !buildingExtensionLayer;
@@ -229,7 +269,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         List<SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader> snapshots = null;
         List<FileChannel> graphsChannels = null;
         if (buildingExtensionLayer) {
-            Path layerFileName = SubstrateOptions.LayerUse.getValue(values).lastValue().orElseThrow();
+            Path layerFileName = getLayerUseValue(values);
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
             FilePaths filePaths = new FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
             List<FilePaths> loadPaths = List.of(filePaths);

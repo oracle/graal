@@ -536,6 +536,21 @@ public abstract class TruffleLanguage<C> {
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};
+
+        /**
+         * A declarative list of optional {@link InternalResource} identifiers associated with this
+         * language. It is recommended to register all optional resource identifiers here.
+         * Specifying the resource identifier allows the language use the resource even if its
+         * implementation was omitted at runtime. To use the resource when its implementation was
+         * omitted the {@code polyglot.engine.resourcePath.languageId} system property must be
+         * specified and point to a path with the resources. This allows to omit the resource
+         * implementation class in standalone distributions.
+         *
+         * @see InternalResource
+         * @see Id
+         * @since 25.0
+         */
+        String[] optionalResources() default {};
     }
 
     /**

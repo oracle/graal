@@ -157,7 +157,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel ifThenOperation;
     public OperationModel ifThenElseOperation;
     public OperationModel returnOperation;
-    public OperationModel sourceSectionOperation;
+    public OperationModel sourceSectionPrefixOperation;
+    public OperationModel sourceSectionSuffixOperation;
     public OperationModel sourceOperation;
     public CustomOperationModel prolog = null;
     public CustomOperationModel epilogReturn = null;
@@ -279,11 +280,15 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public OperationModel operation(OperationKind kind, String name, String javadoc) {
+        return operation(kind, name, javadoc, name);
+    }
+
+    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName) {
         if (operations.containsKey(name)) {
             addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
             return null;
         }
-        OperationModel op = new OperationModel(this, operationId++, kind, name, javadoc);
+        OperationModel op = new OperationModel(this, operationId++, kind, name, builderName, javadoc);
         operations.put(name, op);
         return op;
     }

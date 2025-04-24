@@ -35,7 +35,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/x86/macroAssembler_x86.hpp#L208-L211",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a55ccd267cdfbb7a52c0647fa3b2f93b36b1805f/src/hotspot/cpu/x86/macroAssembler_x86.hpp#L200-L203",
           sha1 = "2f4ca87d86c3b184d2b7826e51990a3a3682433f")
 // @formatter:on
 public final class AMD64HalfFloatToFloatOp extends AMD64LIRInstruction {

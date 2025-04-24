@@ -819,10 +819,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * part of more than one partitions.
      */
     public void registerUnsafeAccessedField(AnalysisField field) {
+        AnalysisError.guarantee(!universe.analysisPolicy().useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         ConcurrentLightHashSet.addElement(this, UNSAFE_ACCESS_FIELDS_UPDATER, field);
     }
 
     public Collection<AnalysisField> unsafeAccessedFields() {
+        AnalysisError.guarantee(!universe.analysisPolicy().useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         /*
          * Walk up the type hierarchy and collect all the unsafe fields of the current type and all
          * its super types. We optimize for the most likely outcome: the returned list is empty.

@@ -53,7 +53,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/03105fc92505e9e367354e763b99cbe02bf473d6/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L5913-L5948",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a55ccd267cdfbb7a52c0647fa3b2f93b36b1805f/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7316-L7351",
           sha1 = "4ccf6fdbe1a4dce5aedb73eb3afc26c003d81401")
 // @formatter:on
 public final class AArch64BigIntegerSquareToLenOp extends AArch64LIRInstruction {

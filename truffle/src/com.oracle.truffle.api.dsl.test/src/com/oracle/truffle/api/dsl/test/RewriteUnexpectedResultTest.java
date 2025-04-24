@@ -296,7 +296,7 @@ public class RewriteUnexpectedResultTest {
         // 3) the generic specialization has exactly the same guards and cached fields
         @Specialization(rewriteOn = UnexpectedResultException.class)
         int doInt(Object arg) throws UnexpectedResultException {
-            if (arg instanceof Integer i) {
+            if (arg instanceof Integer) {
                 return 42;
             }
             throw new UnexpectedResultException(arg);
@@ -696,7 +696,7 @@ public class RewriteUnexpectedResultTest {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         int doInt(Object arg) throws UnexpectedResultException {
-            if (arg instanceof Integer i) {
+            if (arg instanceof Integer) {
                 return 42;
             }
             throw new UnexpectedResultException(arg);
@@ -720,7 +720,7 @@ public class RewriteUnexpectedResultTest {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         int doInt(Object arg) throws UnexpectedResultException {
-            if (arg instanceof Integer i) {
+            if (arg instanceof Integer) {
                 return 42;
             }
             throw new UnexpectedResultException(arg);
@@ -742,7 +742,7 @@ public class RewriteUnexpectedResultTest {
 
         void executeVoid(Object arg) throws UnexpectedResultException {
             Object o = executeGeneric(arg);
-            if (o instanceof Integer i) {
+            if (o instanceof Integer) {
                 return;
             }
             throw new UnexpectedResultException(o);

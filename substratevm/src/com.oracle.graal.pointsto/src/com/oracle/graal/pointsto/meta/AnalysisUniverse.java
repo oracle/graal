@@ -93,7 +93,7 @@ public class AnalysisUniverse implements Universe {
     private final ConcurrentMap<ResolvedSignature<AnalysisType>, ResolvedSignature<AnalysisType>> uniqueSignatures = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentHashMap<Constant, Object> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
-    private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields;
 
     private boolean sealed;
 
@@ -149,6 +149,7 @@ public class AnalysisUniverse implements Universe {
         objectToConstantReplacers = (Function<Object, ImageHeapConstant>[]) new Function<?, ?>[0];
         featureSubstitutions = new SubstitutionProcessor[0];
         featureNativeSubstitutions = new SubstitutionProcessor[0];
+        unsafeAccessedStaticFields = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
     }
 
     @Override
@@ -598,11 +599,13 @@ public class AnalysisUniverse implements Universe {
     }
 
     public void registerUnsafeAccessedStaticField(AnalysisField field) {
+        AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         AnalysisError.guarantee(!field.getType().isWordType(), "static Word fields cannot be unsafe accessed %s", this);
         unsafeAccessedStaticFields.put(field, true);
     }
 
     public Set<AnalysisField> getUnsafeAccessedStaticFields() {
+        AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess(), "With conservative unsafe access we don't track unsafe accessed fields.");
         return unsafeAccessedStaticFields.keySet();
     }
 

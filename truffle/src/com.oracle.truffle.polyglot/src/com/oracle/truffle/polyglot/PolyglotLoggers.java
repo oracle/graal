@@ -187,6 +187,14 @@ final class PolyglotLoggers {
         return (logRecord instanceof ImmutableLogRecord ? ((ImmutableLogRecord) logRecord).getFormatKind() : ImmutableLogRecord.FormatKind.DEFAULT).name();
     }
 
+    static boolean isCallerClassSet(LogRecord logRecord) {
+        return logRecord instanceof ImmutableLogRecord && ((ImmutableLogRecord) logRecord).isCallerClassSet();
+    }
+
+    static boolean isCallerMethodSet(LogRecord logRecord) {
+        return logRecord instanceof ImmutableLogRecord && ((ImmutableLogRecord) logRecord).isCallerMethodSet();
+    }
+
     static final class LoggerCache {
 
         static final LoggerCache DEFAULT = new LoggerCache(PolyglotLogHandler.INSTANCE, true, null, Collections.emptySet());
@@ -646,6 +654,8 @@ final class PolyglotLoggers {
 
         private static final long serialVersionUID = 1L;
         private final FormatKind formatKind;
+        private final boolean isCallerClassSet;
+        private final boolean isCallerMethodSet;
 
         enum FormatKind {
             RAW,
@@ -659,9 +669,15 @@ final class PolyglotLoggers {
             super.setLoggerName(loggerName);
             if (className != null) {
                 super.setSourceClassName(className);
+                this.isCallerClassSet = true;
+            } else {
+                this.isCallerClassSet = false;
             }
             if (methodName != null) {
                 super.setSourceMethodName(methodName);
+                this.isCallerMethodSet = true;
+            } else {
+                this.isCallerMethodSet = false;
             }
             Object[] copy = parameters;
             if (parameters != null && parameters.length > 0) {
@@ -739,6 +755,14 @@ final class PolyglotLoggers {
 
         FormatKind getFormatKind() {
             return formatKind;
+        }
+
+        boolean isCallerClassSet() {
+            return isCallerClassSet;
+        }
+
+        public boolean isCallerMethodSet() {
+            return isCallerMethodSet;
         }
 
         private static Object safeValue(final Object param) {

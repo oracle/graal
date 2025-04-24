@@ -449,7 +449,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = ol.getHubOffset();
 
-        NativeImageDebugHeaderFieldInfo hubField = new NativeImageDebugHeaderFieldInfo("hub", hubType, hubOffset, referenceSize);
+        NativeImageDebugHeaderFieldInfo hubField = new NativeImageDebugHeaderFieldInfo("hub", hubType, hubOffset, ol.getHubSize());
         NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", ol.getFirstFieldOffset(), hubField);
         if (hubOffset > 0) {
             assert hubOffset == Integer.BYTES || hubOffset == Long.BYTES;

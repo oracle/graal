@@ -1751,7 +1751,9 @@ public final class ObjectKlass extends Klass {
             for (Method.MethodVersion removedMethod : removedMethods) {
                 virtualMethodsModified |= isVirtual(removedMethod.getLinkedMethod().getParserMethod());
                 ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
-                checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
+                if (invalidatedClasses != null) {
+                    checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
+                }
                 removedMethod.getMethod().removedByRedefinition();
                 ClassRedefinition.LOGGER.fine(
                                 () -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
@@ -1762,11 +1764,13 @@ public final class ObjectKlass extends Klass {
                 Method.MethodVersion added = new Method(this, linkedMethod, pool).getMethodVersion();
                 newDeclaredMethods.addLast(added);
                 virtualMethodsModified |= isVirtual(addedMethod);
-                checkSuperMethods(superKlass, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
+                if (invalidatedClasses != null) {
+                    checkSuperMethods(superKlass, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
+                }
                 ClassRedefinition.LOGGER.fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
             }
 
-            if (virtualMethodsModified) {
+            if (virtualMethodsModified && invalidatedClasses != null) {
                 invalidatedClasses.addAll(getSubTypes());
             }
 
@@ -1856,7 +1860,7 @@ public final class ObjectKlass extends Klass {
             }
 
             ChangePacket packet = new ChangePacket(null, linkedKlass.getParserKlass(), null, detectedChange);
-            return new KlassVersion(this, pool, linkedKlass, packet, Collections.emptyList());
+            return new KlassVersion(this, pool, linkedKlass, packet, null);
         }
 
         public Method.MethodVersion[][] getItable() {

@@ -30,8 +30,9 @@ public class ByteFormattingUtil {
     private static final double BYTES_TO_GB = 1000d * 1000d * 1000d;
 
     public static String bytesToHuman(long bytes) {
+        assert bytes >= 0;
         if (bytes < BYTES_TO_KB) {
-            return toHuman(bytes, "B");
+            return plainBytes(bytes, "B");
         } else if (bytes < BYTES_TO_MB) {
             return toHuman(bytes / BYTES_TO_KB, "kB");
         } else if (bytes < BYTES_TO_GB) {
@@ -47,5 +48,10 @@ public class ByteFormattingUtil {
 
     private static String toHuman(double value, String unit) {
         return "%.2f%s".formatted(value, unit);
+    }
+
+    private static String plainBytes(long value, String unit) {
+        assert 0 <= value && value < BYTES_TO_KB;
+        return "%d%s".formatted(value, unit);
     }
 }

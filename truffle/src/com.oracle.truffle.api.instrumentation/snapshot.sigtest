@@ -483,6 +483,7 @@ meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
+meth public abstract !hasdefault java.lang.String[] optionalResources()
 meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider

@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.common;
 
 import org.graalvm.collections.EconomicMap;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -111,6 +112,15 @@ public interface LibGraalSupport {
      * If automatic reference handling is enabled, this method is a no-op.
      */
     void processReferences();
+
+    /**
+     * Dumps the heap to {@code outputFile} in hprof format.
+     *
+     * @param live if true, performs a full GC first so that only live objects are dumped
+     * @throws IOException if an IO error occurred dyring dumping
+     * @throws UnsupportedOperationException if this operation is not supported.
+     */
+    void dumpHeap(String outputFile, boolean live) throws IOException;
 
     /**
      * Gets the address of the current isolate.

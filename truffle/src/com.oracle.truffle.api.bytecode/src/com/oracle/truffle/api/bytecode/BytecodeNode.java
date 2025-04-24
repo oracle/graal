@@ -1015,28 +1015,29 @@ public abstract class BytecodeNode extends Node {
         for (Instruction i : instructions) {
             indexedInstructions.add(new IndexedInstruction(i, indexedInstructions.size()));
         }
+        List<Throwable> errors = new ArrayList<>();
 
-        String instructionsDump = formatList(indexedInstructions,
+        String instructionsDump = formatList(errors, indexedInstructions,
                         (i) -> i.instruction().getBytecodeIndex() == highlightedBci,
-                        (i) -> Instruction.formatInstruction(i.index(), i.instruction(), maxLabelSize, maxArgumentSize));
+                        (i) -> Instruction.formatInstruction(errors, i.index(), i.instruction(), maxLabelSize, maxArgumentSize));
 
         int exceptionCount = exceptions.size();
-        String exceptionDump = formatList(exceptions,
+        String exceptionDump = formatList(errors, exceptions,
                         (e) -> highlightedBci >= e.getStartBytecodeIndex() && highlightedBci < e.getEndBytecodeIndex(),
                         ExceptionHandler::toString);
 
         int localsCount = locals.size();
-        String localsDump = formatList(locals,
+        String localsDump = formatList(errors, locals,
                         (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex(),
                         LocalVariable::toString);
 
         String sourceInfoCount = sourceInformation != null ? String.valueOf(sourceInformation.size()) : "-";
-        String sourceDump = formatList(sourceInformation,
+        String sourceDump = formatList(errors, sourceInformation,
                         (s) -> highlightedBci >= s.getStartBytecodeIndex() && highlightedBci < s.getEndBytecodeIndex(),
                         SourceInformation::toString);
 
-        String tagDump = formatTagTree(getTagTree(), (s) -> highlightedBci >= s.getEnterBytecodeIndex() && highlightedBci <= s.getReturnBytecodeIndex());
-        return String.format("""
+        String tagDump = formatTagTree(errors, getTagTree(), (s) -> highlightedBci >= s.getEnterBytecodeIndex() && highlightedBci <= s.getReturnBytecodeIndex());
+        String result = String.format("""
                         %s(name=%s)[
                             instructions(%s) = %s
                             exceptionHandlers(%s) = %s
@@ -1050,9 +1051,19 @@ public abstract class BytecodeNode extends Node {
                         localsCount, localsDump,
                         sourceInfoCount, sourceDump,
                         tagDump);
+
+        if (!errors.isEmpty()) {
+            IllegalStateException s = new IllegalStateException("Failed to dump. Individual errors are attached as suppressed errors. Incomplete dump: " + result);
+            for (Throwable e : errors) {
+                s.addSuppressed(e);
+            }
+            throw s;
+        }
+        return result;
+
     }
 
-    private static <T> String formatList(List<T> list, Predicate<T> highlight, Function<T, String> toString) {
+    private static <T> String formatList(List<Throwable> errors, List<T> list, Predicate<T> highlight, Function<T, String> toString) {
         if (list == null) {
             return "Not Available";
         } else if (list.isEmpty()) {
@@ -1065,19 +1076,26 @@ public abstract class BytecodeNode extends Node {
             } else {
                 b.append("\n        ");
             }
-            b.append(toString.apply(o));
+            String v;
+            try {
+                v = toString.apply(o);
+            } catch (Throwable t) {
+                v = t.toString();
+                errors.add(t);
+            }
+            b.append(v);
         }
         return b.toString();
     }
 
-    private static String formatTagTree(TagTree tree, Predicate<TagTree> highlight) {
+    private static String formatTagTree(List<Throwable> errors, TagTree tree, Predicate<TagTree> highlight) {
         if (tree == null) {
             return " = Not Available";
         }
         int maxWidth = maxTagTreeWidth(0, tree);
 
         StringBuilder b = new StringBuilder();
-        int count = appendTagTree(b, 0, maxWidth, tree, highlight);
+        int count = appendTagTree(errors, b, 0, maxWidth, tree, highlight);
         b.insert(0, "(" + count + ") = ");
         return b.toString();
     }
@@ -1090,27 +1108,31 @@ public abstract class BytecodeNode extends Node {
         return width;
     }
 
-    private static int appendTagTree(StringBuilder sb, int indentation, int maxWidth, TagTree tree, Predicate<TagTree> highlight) {
+    private static int appendTagTree(List<Throwable> errors, StringBuilder sb, int indentation, int maxWidth, TagTree tree, Predicate<TagTree> highlight) {
         TagTreeNode node = (TagTreeNode) tree;
         sb.append("\n");
 
-        String line = formatTagTreeLabel(indentation, tree, highlight, node);
-        sb.append(line);
+        try {
+            String line = formatTagTreeLabel(indentation, tree, highlight, node);
+            sb.append(line);
 
-        int spaces = maxWidth - line.length();
-        for (int i = 0; i < spaces; i++) {
-            sb.append(" ");
+            int spaces = maxWidth - line.length();
+            for (int i = 0; i < spaces; i++) {
+                sb.append(" ");
+            }
+            sb.append(" | ");
+
+            SourceSection sourceSection = node.getSourceSection();
+            if (sourceSection != null) {
+                sb.append(SourceInformation.formatSourceSection(sourceSection, 60));
+            }
+        } catch (Throwable t) {
+            sb.append(t.toString());
+            errors.add(t);
         }
-        sb.append(" | ");
-
-        SourceSection sourceSection = node.getSourceSection();
-        if (sourceSection != null) {
-            sb.append(SourceInformation.formatSourceSection(sourceSection, 60));
-        }
-
         int count = 1;
         for (TagTree child : tree.getTreeChildren()) {
-            count += appendTagTree(sb, indentation + 2, maxWidth, child, highlight);
+            count += appendTagTree(errors, sb, indentation + 2, maxWidth, child, highlight);
         }
         return count;
     }

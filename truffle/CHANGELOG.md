@@ -11,11 +11,12 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57063 Bytecode-DSL: Added a `variadicStackLimit` parameter to `@GenerateBytecode` that allows to specify how many variable arguments are stored on the stack before they are collapsed into an object array. 
 * GR-50017 TruffleStringIterator.NextNode and TruffleStringIterator.PreviousNode now require the iterated string's encoding as a parameter for performance reasons.
 * GR-63075 Java host interop again inherits public method methods from non-public base classes if public access is enabled. This was originally changed in 24.1.
+* GR-63201 Added `TruffleLanguage.Registration.optionalResources` and `TruffleInstrument.Registration.optionalResources` attributes to support optional resources which implementations are not available at the runtime. Optional resources, if omitted at runtime, can still be used as long as their resource path is specified via the `polyglot.engine.resourcePath.<componentId>` system property.
+* GR-61282 Bytecode DSL: Bytecode builders now also allow emitting source sections using the start and length source indices in the end method in addition to the begin method. This was added to support linear parsing without look-ahead.
+* GR-61282 Bytecode DSL: (breaking) If multiple source sections were specified around root operations, only the innermost source section directly encapsulating the root will be accessible. Other encapsulating source sections will be discarded for outer most root operations.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
-
-## Version 24.2.0
 * GR-57658 Added `TruffleLanguage.Env.getLanguageInfo(Class<? extends TruffleLanguage>)` to lookup a `LanguageInfo` instance for a language class returned by `InteropLibrary.getLanguage(Object)`.
 * GR-57164 Added support for reading unaligned ints, shorts and long to `ByteArraySupport`.
 * GR-57164 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
@@ -36,8 +37,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-55296 Added support to convert any string to a `byte[]` with a given `Value.StringEncoding` using `Value.asStringBytes(...)`. 
 * GR-40323 Deprecated `Shape.Builder.layout(Class)` for removal and added replacement API [`Shape.Builder.layout(Class, MethodHandles.Lookup)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/Shape.Builder.html#layout(java.lang.Class,java.lang.MethodHandles.Lookup)). Replace usages with the new method, additionally providing a `Lookup` that has full privilege access to the layout class or the module in which it is declared, as obtained by `MethodHandles.lookup()`. See javadoc for the updated usage.
 * GR-55296 Added support for UTF-16 and UTF-32 in non-system-endianness without dependency on the JCodings library in TruffleString.
-
-
 * GR-58550 Added `FrameDescriptor.Builder.illegalDefaultValue()` which initializes all frame slots as `FrameSlotKind.Illegal` for newly created frames. This is different from the default behavior, which initializes all frame slot kinds as `FrameSlotKind.Object`. This means that frame slots, when they are read before they were written, throw a `FrameSlotTypeException`, consistent with the behavior after clearing a frame slot.
 * GR-58550 Deprecated the default constructor for `FrameSlotTypeException` and replaced it with `FrameSlotTypeException.create(...)`. Exceptions of this kind thrown by the `Frame` now contain the slot index and the expected and the actual frame slot kind which are accessible with the respective instance methods.
 * GR-58550 Fixed invalid `PolyglotException.getMessage()` javadoc. A polyglot exception may in fact return a `null` message.

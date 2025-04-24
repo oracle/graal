@@ -213,13 +213,11 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         String briefHelp = helpLines.getFirst();
-        List<String> extraHelp;
         if (briefHelp.isEmpty()) {
             if (helpLines.size() > 1) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "First line of multi-line help text cannot be empty", element);
                 return;
             }
-            extraHelp = List.of();
         } else {
             if (helpLines.size() > 1) {
                 if (briefHelp.charAt(briefHelp.length() - 1) != '.' && !helpLines.get(1).isBlank()) {
@@ -233,7 +231,6 @@ public class OptionProcessor extends AbstractProcessor {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Option help text must start with an upper case letter", element);
                 return;
             }
-            extraHelp = helpLines.subList(1, helpLines.size());
         }
 
         String stability = getAnnotationValue(annotation, "stability", VariableElement.class).getSimpleName().toString();
@@ -252,12 +249,16 @@ public class OptionProcessor extends AbstractProcessor {
         }
         boolean deprecated = getAnnotationValue(annotation, "deprecated", Boolean.class);
         String deprecationMessage = getAnnotationValue(annotation, "deprecationMessage", String.class);
-        OptionInfo info = new OptionInfo(optionName, optionTypeName, briefHelp, extraHelp, optionType, declaringClass, fieldName, stability, deprecated, deprecationMessage);
+        OptionInfo info = new OptionInfo(optionName, optionTypeName, String.join("\n", helpLines), optionType, declaringClass, fieldName, stability, deprecated, deprecationMessage);
         optionsDeclarer.options.add(info);
     }
 
     private static String literal(String help) {
-        return "\"" + help.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+        String quoted = help.replace("\\", "\\\\").replace("\"", "\\\"");
+        if (help.indexOf('\n') != -1) {
+            return "\"\"\"\n" + quoted + "\"\"\"";
+        }
+        return "\"" + quoted + "\"";
     }
 
     static void createOptionsDescriptorsFile(ProcessingEnvironment processingEnv, OptionsDeclarer optionsDeclarer) {
@@ -310,7 +311,6 @@ public class OptionProcessor extends AbstractProcessor {
                 String optionType = option.optionType;
                 String type = option.type;
                 String help = option.help;
-                List<String> extraHelp = option.extraHelp;
                 String fieldName = option.field;
                 String stability = option.stability;
                 boolean deprecated = option.deprecated;
@@ -320,16 +320,9 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("                /*optionType*/ %s.%s,\n", getSimpleName(OPTION_TYPE_CLASS_NAME), optionType);
                 out.printf("                /*optionValueType*/ %s.class,\n", type);
                 out.printf("                /*help*/ %s,\n", literal(help));
-                if (!extraHelp.isEmpty()) {
-                    out.printf("                /*extraHelp*/ new String[] {\n");
-                    for (String line : extraHelp) {
-                        out.printf("                         %s,\n", literal(line));
-                    }
-                    out.printf("                              },\n");
-                }
                 out.printf("                /*container*/ getContainer(),\n");
-                out.printf("                /*fieldName*/ \"%s\",\n", fieldName);
                 out.printf("                /*option*/ %s,\n", optionField);
+                out.printf("                /*fieldName*/ \"%s\",\n", fieldName);
                 out.printf("                /*stability*/ %s.%s,\n", getSimpleName(OPTION_STABILITY_CLASS_NAME), stability);
                 out.printf("                /*deprecated*/ %b,\n", deprecated);
                 out.printf("                /*deprecationMessage*/ \"%s\");\n", deprecationMessage);
@@ -368,7 +361,7 @@ public class OptionProcessor extends AbstractProcessor {
     /**
      * The details of a single option, derived from an {@code @Option} annotated field.
      */
-    record OptionInfo(String name, String optionType, String help, List<String> extraHelp, String type,
+    record OptionInfo(String name, String optionType, String help, String type,
                     String declaringClass, String field, String stability, boolean deprecated,
                     String deprecationMessage) implements Comparable<OptionInfo> {
 

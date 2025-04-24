@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.IfNode;
@@ -38,8 +40,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.phases.common.AbstractInliningPhase;
-import org.junit.Test;
-
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.code.site.Site;
@@ -440,18 +440,22 @@ public class InstanceOfTest extends TypeCheckTest {
         test("conditionalInstantiation", 1);
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyObject(Thread thread) {
         return thread != null && ((Object) thread).getClass() == Object.class;
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyObjectArray(Thread[] threads) {
         return threads != null && ((Object[]) threads).getClass() == Object[].class;
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyString(Thread thread) {
         return thread != null && ((Object) thread).getClass() == String.class;
     }
 
+    @SuppressWarnings("cast")
     public boolean exactlyStringArray(Thread[] threads) {
         return threads != null && ((Object[]) threads).getClass() == String[].class;
     }

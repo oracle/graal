@@ -151,7 +151,7 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
             return;
         }
 
-        assert a instanceof AArch64MacroAssembler.AdrpAddMacroInstruction annotation;
+        assert a instanceof AArch64MacroAssembler.AdrpAddMacroInstruction;
         AArch64MacroAssembler.AdrpAddMacroInstruction annotation = (AArch64MacroAssembler.AdrpAddMacroInstruction) a;
 
         resolverPatchOffset = annotation.instructionPosition;

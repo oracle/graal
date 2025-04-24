@@ -138,6 +138,10 @@ public class OperationModel implements PrettyPrintable {
     public final int id;
     public final OperationKind kind;
     public final String name;
+    /*
+     * Name used to generate builder methods.
+     */
+    public final String builderName;
     public final String javadoc;
 
     /**
@@ -179,11 +183,12 @@ public class OperationModel implements PrettyPrintable {
     // A unique identifier for instrumentation instructions.
     public int instrumentationIndex;
 
-    public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String javadoc) {
+    public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String builderName, String javadoc) {
         this.parent = parent;
         this.id = id;
         this.kind = kind;
         this.name = name;
+        this.builderName = builderName;
         this.javadoc = javadoc;
     }
 
@@ -326,4 +331,10 @@ public class OperationModel implements PrettyPrintable {
     public String getConstantName() {
         return name.toUpperCase();
     }
+
+    @Override
+    public String toString() {
+        return "OperationModel [id=" + id + ", kind=" + kind + ", name=" + name + "]";
+    }
+
 }

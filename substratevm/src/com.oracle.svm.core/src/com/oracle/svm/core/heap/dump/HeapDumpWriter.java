@@ -83,7 +83,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
@@ -421,7 +421,7 @@ public class HeapDumpWriter {
 
     public boolean dumpHeap(RawFileDescriptor fd) {
         assert VMOperation.isInProgressAtSafepoint();
-        assert ThreadingSupportImpl.isRecurringCallbackPaused();
+        assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
 
         noAllocationVerifier.open();
         try {

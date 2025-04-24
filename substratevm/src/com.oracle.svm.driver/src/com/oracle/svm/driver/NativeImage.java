@@ -267,7 +267,7 @@ public class NativeImage {
     final String oHModule = oH(SubstrateOptions.Module);
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
-    final String oHPath = oH(SubstrateOptions.Path);
+    final String oHPath = oH(SubstrateOptions.ConcealedOptions.Path);
     final String oHUseLibC = oH(SubstrateOptions.UseLibC);
     final String oHEnableStaticExecutable = oHEnabled(SubstrateOptions.StaticExecutable);
     final String oHEnableSharedLibraryFlagPrefix = oHEnabled + SubstrateOptions.SharedLibrary.getName();
@@ -1292,6 +1292,9 @@ public class NativeImage {
             }
 
             Optional<ArgumentEntry> lastImageName = getHostedOptionArgument(imageBuilderArgs, oHName);
+            if (!lastImageName.isEmpty()) {
+                validateImageName(lastImageName.get().value());
+            }
 
             if (!jarOptionMode) {
                 mainClassModule = getHostedOptionArgumentValue(imageBuilderArgs, oHModule);
@@ -1333,7 +1336,7 @@ public class NativeImage {
                     boolean extraNameIsLast = lastImageName.isEmpty() || lastImageName.get().index < extraImageName.index;
                     if (extraNameIsLast) {
                         /* extraImageArg that comes after lastImageName wins */
-                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageName.value);
+                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + validateImageName(extraImageName.value));
                     }
                 }
             } else { /* jarOptionMode */
@@ -1453,6 +1456,13 @@ public class NativeImage {
                 performANSIReset();
             }
         }
+    }
+
+    private static String validateImageName(String imageName) {
+        if (imageName.startsWith("-")) {
+            LogUtils.warning("Image name ('" + imageName + "') start with a dash. Is another option wrongly interpreted as image name? (see --help)");
+        }
+        return imageName;
     }
 
     private static void updateArgumentEntryValue(List<String> argList, ArgumentEntry listEntry, String newValue) {

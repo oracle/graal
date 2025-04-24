@@ -101,11 +101,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
         UnsignedWord alignedHeaderSize = RememberedSet.get().getHeaderSizeOfAlignedChunk();
-        UnsignedWord unalignedHeaderSize = RememberedSet.get().getHeaderSizeOfUnalignedChunk();
         UnsignedWord hugeThreshold = HeapParameters.getAlignedHeapChunkSize().subtract(alignedHeaderSize);
-        if (unalignedHeaderSize.belowThan(alignedHeaderSize)) {
-            hugeThreshold = hugeThreshold.unsignedDivide(2);
-        }
         this.hugeObjectThreshold = hugeThreshold.rawValue();
     }
 

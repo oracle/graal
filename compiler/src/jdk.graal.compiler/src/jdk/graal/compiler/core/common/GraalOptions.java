@@ -336,4 +336,12 @@ public final class GraalOptions {
     @Option(help = "Optimize integer division operation by using various mathematical foundations to "
                     + " express it in faster, equivalent, arithmetic.", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptimizeDiv = new OptionKey<>(true);
+
+    @Option(help = "If the probability that a type check will hit one of the profiled types (up to " +
+                   "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info.", type = OptionType.Debug)
+    public static final OptionKey<Double> TypeCheckMinProfileHitProbability = new OptionKey<>(0.5);
+
+    @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
+                    "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Debug)
+    public static final OptionKey<Integer> TypeCheckMaxHints = new OptionKey<>(2);
 }

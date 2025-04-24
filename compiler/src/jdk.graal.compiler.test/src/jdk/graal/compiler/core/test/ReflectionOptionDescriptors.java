@@ -95,7 +95,7 @@ public class ReflectionOptionDescriptors implements OptionDescriptors {
 
     private void addOption(String fieldName, String help) {
         try {
-            Field f = container.getDeclaringClass().getDeclaredField(fieldName);
+            Field f = container.declaringClass().getDeclaredField(fieldName);
             if (!OptionKey.class.isAssignableFrom(f.getType())) {
                 throw new IllegalArgumentException(String.format("Option field must be of type %s: %s", OptionKey.class.getName(), f));
             }

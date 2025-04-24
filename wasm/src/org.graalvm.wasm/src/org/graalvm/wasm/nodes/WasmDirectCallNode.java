@@ -45,6 +45,10 @@ import java.util.Objects;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.NeverDefault;
 
+/**
+ * Direct call node for direct function (code entry) calls within the same module. The call target
+ * is resolved during module instantiation, before linking.
+ */
 public final class WasmDirectCallNode extends WasmCallNode {
 
     private final CallTarget target;
@@ -54,7 +58,7 @@ public final class WasmDirectCallNode extends WasmCallNode {
         this.target = Objects.requireNonNull(target);
     }
 
-    public CallTarget getTarget() {
+    public CallTarget target() {
         return target;
     }
 

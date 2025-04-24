@@ -134,6 +134,15 @@ public class PointstoOptions {
     @Option(help = "Allow a type flow state to contain types not compatible with its declared type.")//
     public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
+    /**
+     * This flag enables conservative modeling of unsafe access during the analysis. First, the type
+     * state of unsafe accessed fields now contains all instantiated subtypes of their declared
+     * type. Second, all unsafe loads are saturated by default; we do this because we assume we
+     * cannot accurately track which fields can be unsafe accessed.
+     */
+    @Option(help = "Conservative unsafe access injects all unsafe accessed fields with the instantiated subtypes of their declared type and saturates all unsafe loads.")//
+    public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(false);
+
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//
     static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 

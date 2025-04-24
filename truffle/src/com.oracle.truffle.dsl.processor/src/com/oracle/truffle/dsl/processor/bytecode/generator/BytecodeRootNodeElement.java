@@ -489,6 +489,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(createIsQuickening(boxingEliminatedType));
             }
             this.add(createUndoQuickening());
+            this.add(createCreateCachedTags());
+
+        }
+
+        if (cloneUninitializedNeedsUnquickenedBytecode()) {
+            this.add(createUnquickenBytecode());
         }
 
         if (model.isBytecodeUpdatable()) {
@@ -833,6 +839,18 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         bytecodeUpdater.createInitBuilder().startStaticCall(type(AtomicReferenceFieldUpdater.class), "newUpdater").typeLiteral(this.asType()).typeLiteral(
                         abstractBytecodeNode.asType()).doubleQuote("bytecode").end();
         return bytecodeUpdater;
+    }
+
+    private CodeExecutableElement createCreateCachedTags() {
+        CodeExecutableElement executable = new CodeExecutableElement(Set.of(PRIVATE, STATIC),
+                        type(byte[].class), "createCachedTags",
+                        new CodeVariableElement(type(int.class), "numLocals"));
+
+        CodeTreeBuilder b = executable.createBuilder();
+        b.statement("byte[] localTags = new byte[numLocals]");
+        b.statement("Arrays.fill(localTags, FrameSlotKind.Illegal.tag)");
+        b.statement("return localTags");
+        return executable;
     }
 
     private CodeExecutableElement createUndoQuickening() {
@@ -1446,38 +1464,36 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.startStatement();
         b.string("cloneReferences.forEach((clone) -> ").startBlock();
 
-        b.declaration(abstractBytecodeNode.asType(), "cloneOldBytecode");
-        b.declaration(abstractBytecodeNode.asType(), "cloneNewBytecode");
-        b.startDoBlock();
-        b.statement("cloneOldBytecode = clone.bytecode");
-        b.statement("cloneNewBytecode = clone.insert(this.bytecode.cloneUninitialized())");
+        b.startStatement();
 
-        b.startIf().string("bytecodes_ == null").end().startBlock();
-        b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
-        b.statement("cloneNewBytecode.adoptNodesAfterUpdate()");
-        b.end();
-        emitFence(b);
-        b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("clone").string("cloneOldBytecode").string("cloneNewBytecode").end().end();
-        b.newLine();
-        if (model.isBytecodeUpdatable()) {
-            b.startIf().string("bytecodes_ != null").end().startBlock();
-            b.startStatement().startCall("cloneOldBytecode.invalidate");
-            b.string("cloneNewBytecode");
-            b.string("reason");
-            b.end(2);
-            b.end();
-            if (model.enableYield) {
-                // We need to patch the BytecodeNodes for continuations.
-                b.startStatement().startCall("cloneOldBytecode.updateContinuationRootNodes");
-                b.string("cloneNewBytecode");
-                b.string("reason");
-                b.string("continuationLocations");
-                b.string("bytecodes_ != null");
-                b.end(2);
+        b.startCall("clone", "updateBytecode");
+        for (VariableElement var : ex.getParameters()) {
+            switch (var.getSimpleName().toString()) {
+                case "bytecodes_":
+                    b.startGroup();
+                    b.string("bytecodes_ != null ? ");
+                    b.startCall("unquickenBytecode");
+                    b.string(var.getSimpleName().toString());
+                    b.end();
+                    b.string(" : null");
+                    b.end();
+                    break;
+                case "tagRoot_":
+                    b.startGroup();
+                    b.string("tagRoot_ != null ? ");
+                    b.cast(tagRootNode.asType());
+                    b.string("tagRoot_.deepCopy() : null");
+                    b.end();
+                    break;
+                default:
+                    b.string(var.getSimpleName().toString());
+                    break;
             }
         }
 
         b.end();
+        b.end();
+
         b.end(); // block
         b.string(")");
         b.end(); // statement
@@ -1660,6 +1676,79 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn().string("tagMask").end();
         }
 
+        return ex;
+    }
+
+    private boolean cloneUninitializedNeedsUnquickenedBytecode() {
+        // If the node supports BE/quickening, cloneUninitialized should unquicken the bytecode.
+        // Uncached nodes don't rewrite bytecode, so we only need to unquicken if cached.
+        return (model.usesBoxingElimination() || model.enableQuickening);
+    }
+
+    private CodeExecutableElement createUnquickenBytecode() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(byte.class)), "unquickenBytecode");
+        ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "original"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+        b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
+
+        Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
+                        .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+
+        List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
+                        .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
+                        .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
+                        .toList();
+
+        List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
+                        .collect(deterministicGroupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
+                        .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> {
+                            InstructionKind kind = entry.getKey().kind;
+                            return kind == InstructionKind.CUSTOM || kind == InstructionKind.CUSTOM_SHORT_CIRCUIT;
+                        }).thenComparing(entry -> entry.getKey().getInstructionLength())) //
+                        .toList();
+
+        b.declaration(type(int.class), "bci", "0");
+
+        b.startWhile().string("bci < copy.length").end().startBlock();
+        b.startSwitch().tree(readInstruction("copy", "bci")).end().startBlock();
+
+        for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
+            InstructionModel quickeningRoot = quickenedGroup.getKey();
+            List<InstructionModel> instructions = quickenedGroup.getValue();
+            int instructionLength = instructions.get(0).getInstructionLength();
+            for (InstructionModel instruction : instructions) {
+                if (instruction.getInstructionLength() != instructionLength) {
+                    throw new AssertionError("quickened group has multiple different instruction lengths");
+                }
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+            }
+            b.startCaseBlock();
+
+            b.statement(writeInstruction("copy", "bci", createInstructionConstant(quickeningRoot)));
+            b.startStatement().string("bci += ").string(instructionLength).end();
+            b.statement("break");
+            b.end();
+        }
+
+        for (var regularGroup : regularGroupedByLength) {
+            int instructionLength = regularGroup.getKey();
+            List<InstructionModel> instructions = regularGroup.getValue();
+            for (InstructionModel instruction : instructions) {
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+            }
+            b.startCaseBlock();
+            b.startStatement().string("bci += ").string(instructionLength).end();
+            b.statement("break");
+            b.end();
+        }
+
+        b.end(); // switch
+        b.end(); // while
+
+        b.startReturn();
+        b.string("copy");
+        b.end();
         return ex;
     }
 
@@ -2596,12 +2685,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             this.add(createDoEmitFinallyHandler());
             this.add(createDoCreateExceptionHandler());
+
+            this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "PATCH_CURRENT_SOURCE")).createInitBuilder().string("-2");
+            this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "PATCH_NODE_SOURCE")).createInitBuilder().string("-3");
+
+            this.add(createDoPatchSourceInfo());
             this.add(createDoEmitSourceInfo());
             this.add(createFinish());
             this.add(createBeforeEmitBranch());
             this.add(createBeforeEmitReturn());
             this.add(createPatchHandlerTable());
-            this.add(createDoEmitRoot());
+            this.add(createDoEmitRootSourceSection());
             this.add(createAllocateNode());
             this.add(createAllocateBytecodeLocal());
             this.add(createAllocateBranchProfile());
@@ -3256,9 +3350,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.startStatement();
                 if (operation.hasChildren()) {
-                    b.startCall("begin" + operation.name);
+                    b.startCall("begin" + operation.builderName);
                 } else {
-                    b.startCall("emit" + operation.name);
+                    b.startCall("emit" + operation.builderName);
                 }
 
                 for (int i = 0; i < operation.operationBeginArguments.length; i++) {
@@ -3280,7 +3374,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     if (operation.kind == OperationKind.ROOT) {
                         b.startStatement();
-                        b.type(BytecodeRootNodeElement.this.asType()).string(" node = ").cast(BytecodeRootNodeElement.this.asType()).string("end" + operation.name + "()");
+                        b.type(BytecodeRootNodeElement.this.asType()).string(" node = ").cast(BytecodeRootNodeElement.this.asType()).string("end" + operation.builderName + "()");
                         b.end();
 
                         b.declaration(type(int.class), "serializedContextDepth", "buffer.readInt()");
@@ -3295,7 +3389,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                         b.startStatement().startCall("context.builtNodes.set").string("buffer.readInt()").string("node").end().end();
                     } else {
-                        b.startStatement().startCall("end" + operation.name);
+                        b.startStatement().startCall("end" + operation.builderName);
                         for (int i = 0; i < operation.operationEndArguments.length; i++) {
                             b.string(operation.getOperationEndArgumentName(i));
                         }
@@ -3680,7 +3774,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             int i = 1;
             for (OperationModel op : model.getOperations()) {
                 if (op.id != i) {
-                    throw new AssertionError();
+                    throw new AssertionError(op.toString());
                 }
 
                 i++;
@@ -3882,7 +3976,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 return createBeginRoot(operation);
             }
             Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), type(void.class), "begin" + operation.name);
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), type(void.class), "begin" + operation.builderName);
 
             for (OperationArgument arg : operation.operationBeginArguments) {
                 ex.addParameter(arg.toVariableElement());
@@ -4373,12 +4467,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startThrow().startCall("failState").doubleQuote("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.").end().end();
                     b.end();
 
-                    String index = operation.getOperationBeginArgumentName(0);
-                    String length = operation.getOperationBeginArgumentName(1);
-
-                    // Negative values are only permitted for the combination (-1, -1).
-                    b.startAssert().string("(", index, " == -1 && ", length, " == -1) || (", index, " >= 0 && ", length, " >= 0)").end();
-
                     b.declaration(type(int.class), "startBci");
                     b.startIf().string("rootOperationSp == -1").end().startBlock();
                     b.lineComment("not in a root yet");
@@ -4387,7 +4475,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("startBci = bci");
                     b.end();
 
-                    yield createOperationData(className, "foundSourceIndex", "startBci", index, length);
+                    if (operation.operationBeginArguments.length == 0) {
+                        yield createOperationData(className, "foundSourceIndex", "startBci", "-2", "-2");
+                    } else {
+                        String index = operation.getOperationBeginArgumentName(0);
+                        String length = operation.getOperationBeginArgumentName(1);
+
+                        emitValidateSourceSection(b, index, length);
+
+                        yield createOperationData(className, "foundSourceIndex", "startBci", index, length);
+                    }
                 }
                 default -> {
                     if (operation.isTransparent) {
@@ -4460,7 +4557,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), type(void.class), "end" + operation.name);
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), type(void.class), "end" + operation.builderName);
 
             if (operation.kind == OperationKind.TAG) {
                 ex.setVarArgs(true);
@@ -4565,13 +4662,38 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.end();
                     break;
                 case SOURCE_SECTION:
-                    b.startStatement().startCall("doEmitSourceInfo");
-                    b.string("operationData.sourceIndex");
-                    b.string("operationData.startBci");
-                    b.string("bci");
-                    b.string("operationData.start");
-                    b.string("operationData.length");
-                    b.end(2);
+
+                    String index;
+                    String length;
+                    if (operation.operationBeginArguments.length == 0) {
+                        index = operation.getOperationEndArgumentName(0);
+                        length = operation.getOperationEndArgumentName(1);
+
+                        emitValidateSourceSection(b, index, length);
+
+                        b.startStatement().startCall("doPatchSourceInfo");
+                        b.string("operationData.nodeId");
+                        b.string("operationData.start");
+                        b.string(index);
+                        b.string(length);
+                        b.end(2);
+
+                        b.startStatement().startCall("doEmitSourceInfo");
+                        b.string("operationData.sourceIndex");
+                        b.string("operationData.startBci");
+                        b.string("bci");
+                        b.string(index);
+                        b.string(length);
+                        b.end(2);
+                    } else {
+                        b.startStatement().startCall("doEmitSourceInfo");
+                        b.string("operationData.sourceIndex");
+                        b.string("operationData.startBci");
+                        b.string("bci");
+                        b.string("operationData.start");
+                        b.string("operationData.length");
+                        b.end(2);
+                    }
                     break;
                 case SOURCE:
                     break;
@@ -4766,6 +4888,28 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
+        private void emitValidateSourceSection(CodeTreeBuilder b, String index, String length) {
+            b.startIf().string(index, " != -1 && ", length, " != -1").end().startBlock();
+
+            b.startIf().string(index, " < 0 ").end().startBlock();
+            b.startThrow().startNew(type(IllegalArgumentException.class));
+            b.startGroup();
+            b.doubleQuote("Invalid " + index + " provided:").string(" + ", index);
+            b.end();
+            b.end().end();
+            b.end(); // block
+
+            b.startIf().string(length, " < 0").end().startBlock();
+            b.startThrow().startNew(type(IllegalArgumentException.class));
+            b.startGroup();
+            b.doubleQuote("Invalid " + length + " provided:").string(" + ", index);
+            b.end();
+            b.end().end();
+            b.end(); // block
+
+            b.end(); // block
+        }
+
         private void emitCallAfterChild(CodeTreeBuilder b, OperationModel op, String producedValue, String childBci) {
             b.startStatement().startCall("afterChild");
             b.tree(createOperationConstant(op));
@@ -4899,7 +5043,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.defaultDeclaration(e.asType(), e.getSimpleName().toString() + "_");
             }
 
-            b.statement("doEmitRoot()");
+            b.statement("doEmitRootSourceSection(operationData.index)");
             b.startIf().string("parseSources").end().startBlock();
             CodeTree copyOf = CodeTreeBuilder.createBuilder().startStaticCall(type(Arrays.class), "copyOf").string("sourceInfo").string("sourceInfoIndex").end().build();
             b.startAssign("sourceInfo_").tree(copyOf).end();
@@ -5094,7 +5238,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void buildBegin(CodeTreeBuilder b, OperationModel operation, String... args) {
-            b.startStatement().startCall("begin" + operation.name);
+            b.startStatement().startCall("begin" + operation.builderName);
             for (String arg : args) {
                 b.string(arg);
             }
@@ -5102,7 +5246,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void buildEnd(CodeTreeBuilder b, OperationModel operation, String... args) {
-            b.startStatement().startCall("end" + operation.name);
+            b.startStatement().startCall("end" + operation.builderName);
             for (String arg : args) {
                 b.string(arg);
             }
@@ -5110,7 +5254,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void buildEmit(CodeTreeBuilder b, OperationModel operation, String... args) {
-            b.startStatement().startCall("emit" + operation.name);
+            b.startStatement().startCall("emit" + operation.builderName);
             for (String arg : args) {
                 b.string(arg);
             }
@@ -5509,7 +5653,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createEmit(OperationModel operation) {
             Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), type(void.class), "emit" + operation.name);
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), type(void.class), "emit" + operation.builderName);
             ex.setVarArgs(operation.operationBeginArgumentVarArgs);
 
             for (OperationArgument arg : operation.operationBeginArguments) {
@@ -6907,8 +7051,38 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(2);
         }
 
+        private CodeExecutableElement createDoPatchSourceInfo() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doPatchSourceInfo");
+            ex.addParameter(new CodeVariableElement(type(int.class), "nodeId"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "sourceIndex"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "start"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "length"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(type(int[].class), "info");
+            b.startIf().string("nodeId >= 0").end().startBlock();
+            b.statement("info = builtNodes.get(nodeId).bytecode.sourceInfo");
+            b.end().startElseBlock();
+            b.statement("info = this.sourceInfo");
+            b.end();
+
+            b.declaration(type(int.class), "index", "sourceIndex");
+            b.startWhile().string("index >= 0").end().startBlock();
+
+            b.declaration(type(int.class), "oldStart", "info[index + SOURCE_INFO_OFFSET_START]");
+            b.declaration(type(int.class), "oldEnd", "info[index + SOURCE_INFO_OFFSET_LENGTH]");
+            b.statement("assert nodeId >= 0 ? oldEnd == PATCH_NODE_SOURCE : oldEnd == PATCH_CURRENT_SOURCE");
+            b.statement("info[index + SOURCE_INFO_OFFSET_START] = start");
+            b.statement("info[index + SOURCE_INFO_OFFSET_LENGTH] = length");
+            b.statement("index = oldStart");
+            b.end();
+
+            return ex;
+        }
+
         private CodeExecutableElement createDoEmitSourceInfo() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitSourceInfo");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitSourceInfo");
             ex.addParameter(new CodeVariableElement(type(int.class), "sourceIndex"));
             ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
             ex.addParameter(new CodeVariableElement(type(int.class), "endBci"));
@@ -6920,7 +7094,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startAssert().string("parseSources").end();
 
             b.startIf().string("rootOperationSp == -1").end().startBlock();
-            b.returnStatement();
+            b.statement("return -1");
             b.end();
 
             b.declaration(type(int.class), "index", "sourceInfoIndex");
@@ -6928,6 +7102,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startIf();
             b.string("prevIndex >= 0").newLine().startIndention();
+            b.string(" && start >= -1 && length >= -1");
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_SOURCE]) == sourceIndex").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START]) == start").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_LENGTH]) == length");
@@ -6937,13 +7112,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI]) == endBci");
             b.end(2).startBlock();
             b.lineComment("duplicate entry");
-            b.statement("return");
+            b.statement("return prevIndex");
             b.end();
 
             b.startElseIf().string("(sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI]) == startBci").end().startBlock();
             b.lineComment("contiguous entry");
             b.statement("sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI] = endBci");
-            b.statement("return");
+            b.statement("return prevIndex");
             b.end();
 
             b.end(); // if source, start, length match
@@ -6966,6 +7141,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             BytecodeRootNodeElement.this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_START")).createInitBuilder().string("3");
             BytecodeRootNodeElement.this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_LENGTH")).createInitBuilder().string("4");
             BytecodeRootNodeElement.this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_LENGTH")).createInitBuilder().string("5");
+
+            b.statement("return index");
 
             return ex;
         }
@@ -7175,8 +7352,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private CodeExecutableElement createDoEmitRoot() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitRoot");
+        private CodeExecutableElement createDoEmitRootSourceSection() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE),
+                            type(void.class), "doEmitRootSourceSection");
+            ex.addParameter(new CodeVariableElement(type(int.class), "nodeId"));
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startIf().string("!parseSources").end().startBlock();
@@ -7191,9 +7370,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             buildOperationStackWalk(b, "0", () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
-                b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
-                b.startCaseBlock();
-                emitCastOperationData(b, model.sourceSectionOperation, "i");
+                b.startCase().tree(createOperationConstant(model.sourceSectionPrefixOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.sourceSectionPrefixOperation, "i");
                 b.startStatement().startCall("doEmitSourceInfo");
                 b.string("operationData.sourceIndex");
                 b.string("0");
@@ -7201,9 +7380,22 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("operationData.start");
                 b.string("operationData.length");
                 b.end(2);
+                b.statement("return");
+                b.end();
 
-                b.statement("break");
-                b.end(); // case epilog
+                b.startCase().tree(createOperationConstant(model.sourceSectionSuffixOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.sourceSectionPrefixOperation, "i");
+                b.statement("operationData.nodeId = nodeId");
+                b.startAssign("operationData.start").startCall("doEmitSourceInfo");
+                b.string("operationData.sourceIndex");
+                b.string("0");
+                b.string("bci");
+                b.string("operationData.start");
+                b.string("PATCH_NODE_SOURCE");
+                b.end(2);
+                b.statement("return");
+                b.end();
 
                 b.end(); // switch
             });
@@ -7417,9 +7609,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("break");
                 b.end(); // case trycatch
 
-                b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
+                b.startCase().tree(createOperationConstant(model.sourceSectionPrefixOperation)).end();
                 b.startBlock();
-                emitCastOperationData(b, model.sourceSectionOperation, "i");
+                emitCastOperationData(b, model.sourceSectionPrefixOperation, "i");
                 b.startStatement().startCall("doEmitSourceInfo");
                 b.string("operationData.sourceIndex");
                 b.string("operationData.startBci");
@@ -7430,6 +7622,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("needsRewind = true");
                 b.statement("break");
                 b.end(); // case source section
+
+                b.startCase().tree(createOperationConstant(model.sourceSectionSuffixOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.sourceSectionSuffixOperation, "i");
+                b.startAssign("operationData.start").startCall("doEmitSourceInfo");
+                b.string("operationData.sourceIndex");
+                b.string("operationData.startBci");
+                b.string("bci");
+                b.string("operationData.start");
+                b.string("PATCH_CURRENT_SOURCE");
+                b.end(2);
+                b.statement("needsRewind = true");
+                b.statement("break");
+                b.end();
 
                 if (model.enableBlockScoping) {
                     b.startCase().tree(createOperationConstant(model.blockOperation)).end();
@@ -7502,9 +7708,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("break");
                 b.end(); // case trycatch
 
-                b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
+                b.startCase().tree(createOperationConstant(model.sourceSectionPrefixOperation)).end();
                 b.startBlock();
-                emitCastOperationData(b, model.sourceSectionOperation, "i");
+                emitCastOperationData(b, model.sourceSectionPrefixOperation, "i");
+                b.statement("operationData.startBci = bci");
+                b.statement("break");
+                b.end(); // case source section
+
+                b.startCase().tree(createOperationConstant(model.sourceSectionSuffixOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.sourceSectionSuffixOperation, "i");
                 b.statement("operationData.startBci = bci");
                 b.statement("break");
                 b.end(); // case source section
@@ -7709,8 +7922,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         fields = List.of(//
                                         field(type(int.class), "sourceIndex").asFinal(),
                                         field(type(int.class), "startBci"),
-                                        field(type(int.class), "start").asFinal(),
-                                        field(type(int.class), "length").asFinal(),
+                                        field(type(int.class), "start"),
+                                        field(type(int.class), "length"),
+                                        field(type(int.class), "nodeId").withInitializer("-1"),
                                         field(type(boolean.class), "producedValue").withInitializer("false"),
                                         field(type(int.class), "childBci").withInitializer(UNINIT));
                         break;
@@ -11821,30 +12035,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.startIf().string("info == null").end().startBlock();
+            b.startIf().string("info == null || info.length == 0").end().startBlock();
             b.startReturn().string("null").end();
             b.end();
 
-            b.lineComment("The source table encodes a preorder traversal of a logical tree of source sections (with entries in reverse).");
-            b.lineComment("The most specific source section corresponds to the \"lowest\" node in the tree that covers the whole bytecode range.");
-            b.lineComment("We find this node by iterating the entries from the root until we hit a node that does not cover the bytecode range.");
-            b.declaration(type(int.class), "mostSpecific", "-1");
-
-            b.startFor().string("int i = info.length - SOURCE_INFO_LENGTH; i >= 0; i -= SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "lastEntry", "info.length - SOURCE_INFO_LENGTH");
             b.startIf();
-            b.string("info[i + SOURCE_INFO_OFFSET_START_BCI] != 0 ||").startIndention().newLine();
-            b.string("info[i + SOURCE_INFO_OFFSET_END_BCI] != bytecodes.length").end();
+            b.string("info[lastEntry + SOURCE_INFO_OFFSET_START_BCI] == 0 &&").startIndention().newLine();
+            b.string("info[lastEntry + SOURCE_INFO_OFFSET_END_BCI] == bytecodes.length").end();
             b.end().startBlock();
-            b.statement("break");
-            b.end(); // if
-            b.statement("mostSpecific = i"); // best so far
-            b.end(); // for
-
-            b.startIf().string("mostSpecific != -1").end().startBlock();
             b.startReturn();
-            b.string("createSourceSection(sources, info, mostSpecific)");
+            b.string("createSourceSection(sources, info, lastEntry)");
             b.end();
-            b.end();
+            b.end(); // if
+
             b.startReturn().string("null").end();
             return ex;
         }
@@ -12039,9 +12243,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createToCached());
             this.add(createUpdate());
             this.add(createCloneUninitialized());
-            if (cloneUninitializedNeedsUnquickenedBytecode()) {
-                this.add(createUnquickenBytecode());
-            }
             this.add(createGetCachedNodes());
             this.add(createGetBranchProfiles());
             this.add(createFindBytecodeIndex1());
@@ -12770,12 +12971,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private boolean cloneUninitializedNeedsUnquickenedBytecode() {
-            // If the node supports BE/quickening, cloneUninitialized should unquicken the bytecode.
-            // Uncached nodes don't rewrite bytecode, so we only need to unquicken if cached.
-            return (model.usesBoxingElimination() || model.enableQuickening) && tier.isCached();
-        }
-
         private CodeExecutableElement createCloneUninitialized() {
             CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "cloneUninitialized");
             CodeTreeBuilder b = ex.createBuilder();
@@ -12786,7 +12981,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (var.getSimpleName().contentEquals("tagRoot")) {
                     b.string("tagRoot != null ? ").cast(tagRootNode.asType()).string("tagRoot.deepCopy() : null");
                 } else if (var.getSimpleName().contentEquals("bytecodes")) {
-                    if (cloneUninitializedNeedsUnquickenedBytecode()) {
+                    if (tier.isCached() && cloneUninitializedNeedsUnquickenedBytecode()) {
                         b.startCall("unquickenBytecode").string("this.bytecodes").end();
                     } else {
                         b.startStaticCall(type(Arrays.class), "copyOf");
@@ -12798,77 +12993,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
                 b.end();
             }
+
             if (tier.isCached() && model.usesBoxingElimination()) {
-                b.string("this.localTags_.length");
+                b.string("createCachedTags(this.localTags_.length)");
             }
             b.end();
-            b.end();
-            return ex;
-        }
-
-        private CodeExecutableElement createUnquickenBytecode() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(byte.class)), "unquickenBytecode");
-            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "original"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
-
-            Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                            .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
-
-            List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
-                            .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
-                            .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
-                            .toList();
-
-            List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
-                            .collect(deterministicGroupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
-                            .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> {
-                                InstructionKind kind = entry.getKey().kind;
-                                return kind == InstructionKind.CUSTOM || kind == InstructionKind.CUSTOM_SHORT_CIRCUIT;
-                            }).thenComparing(entry -> entry.getKey().getInstructionLength())) //
-                            .toList();
-
-            b.declaration(type(int.class), "bci", "0");
-
-            b.startWhile().string("bci < copy.length").end().startBlock();
-            b.startSwitch().tree(readInstruction("copy", "bci")).end().startBlock();
-
-            for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
-                InstructionModel quickeningRoot = quickenedGroup.getKey();
-                List<InstructionModel> instructions = quickenedGroup.getValue();
-                int instructionLength = instructions.get(0).getInstructionLength();
-                for (InstructionModel instruction : instructions) {
-                    if (instruction.getInstructionLength() != instructionLength) {
-                        throw new AssertionError("quickened group has multiple different instruction lengths");
-                    }
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                }
-                b.startCaseBlock();
-
-                b.statement(writeInstruction("copy", "bci", createInstructionConstant(quickeningRoot)));
-                b.startStatement().string("bci += ").string(instructionLength).end();
-                b.statement("break");
-                b.end();
-            }
-
-            for (var regularGroup : regularGroupedByLength) {
-                int instructionLength = regularGroup.getKey();
-                List<InstructionModel> instructions = regularGroup.getValue();
-                for (InstructionModel instruction : instructions) {
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                }
-                b.startCaseBlock();
-                b.startStatement().string("bci += ").string(instructionLength).end();
-                b.statement("break");
-                b.end();
-            }
-
-            b.end(); // switch
-            b.end(); // while
-
-            b.startReturn();
-            b.string("copy");
             b.end();
             return ex;
         }
@@ -12885,7 +13014,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.string("this.", var.getSimpleName().toString());
                     }
                     if (model.usesBoxingElimination()) {
-                        b.string("numLocals");
+                        b.string("createCachedTags(numLocals)");
                     }
                     b.end();
                     b.end();
@@ -12984,7 +13113,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.string(e.getSimpleName().toString() + "__");
                 }
                 if (model.usesBoxingElimination()) {
-                    b.string("this.localTags_.length");
+                    b.string("this.localTags_");
                 }
                 b.end();
                 b.end();
@@ -13219,8 +13348,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeExecutableElement ex = GeneratorUtils.createConstructorUsingFields(Set.of(), this);
             if (model.usesBoxingElimination()) {
-                // The cached node needs numLocals to allocate the tags array (below).
-                ex.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
+                ex.addParameter(new CodeVariableElement(type(byte[].class), "cachedTags"));
             }
 
             TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
@@ -13299,9 +13427,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             if (model.usesBoxingElimination()) {
-                b.declaration(type(byte[].class), "localTags", "new byte[numLocals]");
-                b.statement("Arrays.fill(localTags, FrameSlotKind.Illegal.tag)");
-                b.startAssign("this.localTags_").string("localTags").end();
+                b.statement("this.localTags_ = cachedTags");
+
                 if (model.enableYield) {
                     b.startAssign("this.stableTagsAssumption_");
                     b.string("hasContinuations ? ");

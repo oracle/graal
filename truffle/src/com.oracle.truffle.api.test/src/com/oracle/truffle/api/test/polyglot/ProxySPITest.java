@@ -936,7 +936,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         } catch (RuntimeException e) {
             InteropLibrary interop = InteropLibrary.getUncached();
             Assert.assertTrue(interop.isException(e));
-            Assert.assertEquals("Host Error", ((Exception) e).getMessage());
+            Assert.assertEquals("Host Error", e.getMessage());
             Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
         }
     }

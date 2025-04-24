@@ -79,7 +79,7 @@ if not _external_bootstrap_graalvm:
         _external_bootstrap_graalvm = java_home
 if _external_bootstrap_graalvm:
     if mx.is_darwin():
-        if not _external_bootstrap_graalvm.endswith('/Contents/Home'):
+        if not exists(join(_external_bootstrap_graalvm, 'release')) and exists(join(_external_bootstrap_graalvm, 'Contents', 'Home')):
             _external_bootstrap_graalvm = join(_external_bootstrap_graalvm, 'Contents', 'Home')
     _external_bootstrap_graalvm_jdk = mx.JDKConfig(_external_bootstrap_graalvm)
     release_dict = mx_sdk_vm.parse_release_file(join(_external_bootstrap_graalvm, 'release'))
@@ -201,8 +201,9 @@ class StandaloneLicensesBuildTask(mx.BuildTask):
         mx.rmtree(self.witness_file(), ignore_errors=True)
 
 class NativeImageProject(mx.Project, metaclass=ABCMeta):
-    def __init__(self, suite, name, deps, workingSets, theLicense=None, **kw_args):
+    def __init__(self, suite, name, deps, workingSets, theLicense=None, deliverable=None, **kw_args):
         super().__init__(suite, name, subDir=None, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kw_args)
+        self.deliverable = deliverable if deliverable else name
         if not hasattr(self, 'buildDependencies'):
             self.buildDependencies = []
         if not _external_bootstrap_graalvm and _has_stage1_components():
@@ -221,9 +222,8 @@ class NativeImageProject(mx.Project, metaclass=ABCMeta):
     def output_file_name(self):
         pass
 
-    @abstractmethod
     def base_file_name(self):
-        pass
+        return self.deliverable
 
     @abstractmethod
     def options_file_name(self):
@@ -294,9 +294,6 @@ class NativeImageExecutableProject(NativeImageProject):
         if mx_sdk_vm_impl._force_bash_launchers(self.output_file_name(), build_by_default=True):
             self.ignore = "Skipped executable"
 
-    def base_file_name(self):
-        return self.name
-
     def output_file_name(self):
         return mx.exe_suffix(self.base_file_name())
 
@@ -307,6 +304,12 @@ class NativeImageExecutableProject(NativeImageProject):
         return mx.exe_suffix("")
 
 class NativeImageLibraryProject(NativeImageProject):
+
+    def __init__(self, suite, name, deps, workingSets, theLicense=None, deliverable=None, **kw_args):
+        if not deliverable:
+            deliverable = name[3:] if name.startswith('lib') else name
+        super().__init__(suite, name, deps, workingSets, theLicense, deliverable, **kw_args)
+
     def resolveDeps(self):
         super().resolveDeps()
         if mx_sdk_vm_impl._skip_libraries(self.output_file_name(), build_by_default=True):
@@ -323,12 +326,6 @@ class NativeImageLibraryProject(NativeImageProject):
                 absolute_path = join(output_dir, e)
                 if isfile(absolute_path) and e.endswith('.h'):
                     yield absolute_path, e
-
-    def base_file_name(self):
-        name = self.name
-        if name.startswith('lib'):
-            name = name[3:]
-        return name
 
     def output_file_name(self):
         return mx.add_lib_prefix(mx.add_lib_suffix(self.base_file_name()))

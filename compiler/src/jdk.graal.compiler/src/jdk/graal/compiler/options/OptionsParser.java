@@ -80,7 +80,7 @@ public class OptionsParser {
              * OptionDescriptors.
              */
             ClassLoader libgraalLoader = OptionsParser.class.getClassLoader();
-            return OptionsContainer.load(libgraalLoader);
+            return OptionsContainer.getDiscoverableOptions(libgraalLoader);
         } else {
             /*
              * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
@@ -88,7 +88,7 @@ public class OptionsParser {
              * (instead of the platform class loader) to load the OptionDescriptors.
              */
             ClassLoader loader = ClassLoader.getSystemClassLoader();
-            return OptionsContainer.load(loader);
+            return OptionsContainer.getDiscoverableOptions(loader);
         }
     }
 

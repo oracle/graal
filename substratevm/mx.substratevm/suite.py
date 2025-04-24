@@ -205,6 +205,7 @@ suite = {
 
         "CAPNPROTO_RUNTIME": {
             "digest" : "sha512:94a7776511c344da60a1acdc346c133522a43c239d067d0d5d86c21291e0252a19bd4fa74e4b1d3a93e75dadd41af6557a5d118a1584e39d34c092485ce065b2",
+            "sourceDigest" : "sha512:a458654e16c4a723508130dfd33d2d410a1d346949fc2f8203b3188f78c01c1850b334394f654536652f9ea6d73b8ce0d308d46f877a944208c3a248249fba77",
             "maven" : {
                 "groupId" : "org.capnproto",
                 "artifactId" : "runtime",
@@ -252,6 +253,32 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "jacoco" : "include",
+        },
+
+        # Shade Cap'n Proto Runtime
+        "com.oracle.svm.shaded.org.capnproto": {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugsIgnoresGenerated" : True,
+            "shadedDependencies" : [
+                "CAPNPROTO_RUNTIME",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.capnproto" : "com.oracle.svm.shaded.org.capnproto",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "**/package.html",
+                ],
+            },
+            "description" : "Capn Proto Runtime library shaded for Native Image.",
+            "forceJavac" : "true",
+            "javac.lint.overrides" : "none",
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
 
         # This shaded ASM project is just a quickfix.
@@ -579,7 +606,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.common",
-                "CAPNPROTO_RUNTIME"
             ],
             "requires" : [
                 "jdk.internal.vm.ci"
@@ -685,6 +711,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.graal.reachability",
                 "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.shaded.org.capnproto",
                 "SVM_CONFIGURE",
             ],
             "requires" : [
@@ -798,6 +825,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.configure",
                 "com.oracle.svm.core.foreign"
             ],
             "distDependencies": [
@@ -1681,6 +1709,7 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "OBJECTFILE",
                 "POINTSTO",
+                "SVM_CAPNPROTO_RUNTIME",
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "SVM_CONFIGURE",
@@ -1778,11 +1807,29 @@ suite = {
                     "java.management": [
                         "sun.management",
                     ],
-                    "org.graalvm.nativeimage.pointsto": [
-                        "org.capnproto"
-                    ]
                 },
             },
+            "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
+        "SVM_CAPNPROTO_RUNTIME" : {
+            "subDir" : "src",
+            "description" : "Capn Proto Runtime shaded module.",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "dependencies" : [
+                "com.oracle.svm.shaded.org.capnproto",
+            ],
+             "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.shaded.capnproto",
+                 "exports" : [
+                    "com.oracle.svm.shaded.org.capnproto",
+                 ]
+            },
+            "allowsJavadocWarnings" : True,
             "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
@@ -2235,7 +2282,6 @@ suite = {
                 "NATIVE_IMAGE_BASE",
             ],
             "exclude": [
-                # "CAPNPROTO_RUNTIME",
             ],
             "moduleInfo" : {
               "name" : "org.graalvm.nativeimage.pointsto",

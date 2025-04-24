@@ -870,7 +870,7 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "20+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,Test",
       "jacoco" : "exclude",
@@ -2028,7 +2028,7 @@ suite = {
 
     "TRUFFLE_TCK_TESTS_LANGUAGE" : {
       "subDir" : "src",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "20+",
       "dependencies" : [
         "com.oracle.truffle.tck.tests.language"
       ],

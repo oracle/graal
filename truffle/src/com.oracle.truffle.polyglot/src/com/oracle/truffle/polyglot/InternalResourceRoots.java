@@ -160,7 +160,7 @@ final class InternalResourceRoots {
     InternalResourceCache findInternalResource(Path hostPath) {
         Root root = findRoot(hostPath);
         if (root != null) {
-            for (InternalResourceCache cache : root.caches) {
+            for (InternalResourceCache cache : root.resources) {
                 Path resourceRoot = cache.getPathOrNull();
                 // Used InternalResourceCache instances always have non-null root.
                 if (resourceRoot != null && hostPath.startsWith(resourceRoot)) {
@@ -202,7 +202,7 @@ final class InternalResourceRoots {
         InternalResourceRoots resourceRoots = runtimeCaches.computeIfAbsent(loaders, (k) -> new InternalResourceRoots());
         if (resourceRoots.roots != null) {
             for (Root root : resourceRoots.roots) {
-                for (InternalResourceCache cache : root.caches()) {
+                for (InternalResourceCache cache : root.resources()) {
                     cache.clearCache();
                 }
             }
@@ -362,7 +362,7 @@ final class InternalResourceRoots {
         PolyglotEngineImpl.logFallback(String.format(message + "%n", args));
     }
 
-    record Root(Path path, Kind kind, List<InternalResourceCache> caches) {
+    record Root(Path path, Kind kind, List<InternalResourceCache> resources) {
 
         enum Kind {
             COMPONENT,

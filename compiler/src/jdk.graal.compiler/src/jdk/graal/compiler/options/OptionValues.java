@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -215,8 +216,7 @@ public class OptionValues {
                                 desc.getOptionValueType(),
                                 containsKey(desc.getOptionKey()) ? ":=" : "=",
                                 edition,
-                                desc.getHelp(),
-                                desc.getExtraHelp());
+                                desc.getHelp());
             }
         }
     }
@@ -234,8 +234,7 @@ public class OptionValues {
                     Class<?> valueType,
                     String assign,
                     String edition,
-                    String help,
-                    List<String> extraHelp) {
+                    List<String> help) {
         String name = namePrefix + key;
         String linePrefix = String.format("%s %s %s %s", name, assign, quoteNonNullString(valueType, value), edition);
 
@@ -248,13 +247,22 @@ public class OptionValues {
             out.printf("%s[%s]%n", linePrefix, typeName);
         }
 
-        List<String> helpLines;
-        if (!help.isEmpty()) {
-            helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-            helpLines.addAll(extraHelp);
-        } else {
-            helpLines = extraHelp;
+        List<String> helpLines = help;
+        if (!helpLines.isEmpty()) {
+            String first = helpLines.getFirst();
+            if (first.isEmpty()) {
+                helpLines = List.of();
+            } else {
+                List<String> brief = wrap(first, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+                if (brief.size() > 1) {
+                    brief.addAll(helpLines.subList(1, helpLines.size()));
+                    helpLines = brief;
+                } else {
+                    GraalError.guarantee(brief.size() == 1 && brief.getFirst().equals(first), "%s", brief);
+                }
+            }
         }
+
         for (String line : helpLines) {
             out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
         }

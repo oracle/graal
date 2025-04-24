@@ -461,6 +461,13 @@ char* stringStream::as_string(bool c_heap) const {
   }
   return copy;
 }
+
+char* stringStream::as_string(Arena* arena) const {
+  char* copy = NEW_ARENA_ARRAY(arena, char, _written + 1);
+  ::memcpy(copy, _buffer, _written);
+  copy[_written] = '\0';  // terminating null
+  return copy;
+}
 #endif // !NATIVE_IMAGE
 
 stringStream::~stringStream() {
