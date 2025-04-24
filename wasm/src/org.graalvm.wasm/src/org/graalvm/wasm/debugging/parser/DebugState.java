@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ public class DebugState {
     private boolean epilogueBegin = false;
     private int isa = 0;
     private int discriminator = 0;
+    private boolean ignore = false;
 
     private final int lineBase;
     private final int lineRange;
@@ -108,10 +109,13 @@ public class DebugState {
         epilogueBegin = false;
         isa = 0;
         discriminator = 0;
+        ignore = false;
     }
 
     public void addRow() {
-        lineMaps[file].add(pc, line);
+        if (!ignore) {
+            lineMaps[file].add(pc, line);
+        }
         discriminator = 0;
         basicBlock = false;
         prologueEnd = false;
@@ -180,6 +184,10 @@ public class DebugState {
 
     public void setDiscriminator(int d) {
         discriminator = d;
+    }
+
+    public void setIgnore() {
+        ignore = true;
     }
 
     public void specialOpcode(int opcode) {

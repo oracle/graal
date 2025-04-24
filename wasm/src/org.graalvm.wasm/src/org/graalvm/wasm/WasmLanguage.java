@@ -51,6 +51,7 @@ import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.wasm.api.InteropCallAdapterNode;
 import org.graalvm.wasm.api.JsConstants;
 import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.debugging.representation.DebugPrimitiveValue;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
@@ -64,6 +65,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -75,7 +77,6 @@ import com.oracle.truffle.api.source.SourceSection;
                 byteMimeTypes = {WasmLanguage.WASM_MIME_TYPE}, //
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 fileTypeDetectors = WasmFileDetector.class, //
-                interactive = false, //
                 website = "https://www.graalvm.org/webassembly/", //
                 sandbox = SandboxPolicy.CONSTRAINED)
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
@@ -197,6 +198,31 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
         WasmModule getModule() {
             return module;
+        }
+    }
+
+    /**
+     * Parses simple expressions required to modify values during debugging.
+     * 
+     * @param request request for parsing
+     */
+    @Override
+    protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        final String expression = request.getSource().getCharacters().toString();
+        return new ParsePrimitiveExpressionRootNode(this, expression);
+    }
+
+    private static final class ParsePrimitiveExpressionRootNode extends ExecutableNode {
+        private final String expression;
+
+        private ParsePrimitiveExpressionRootNode(WasmLanguage language, String expression) {
+            super(language);
+            this.expression = expression;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return new DebugPrimitiveValue(expression);
         }
     }
 

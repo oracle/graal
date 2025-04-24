@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 25.0.0
+
+* Implemented support for editing primitive values during debugging. Fixed several debugger-related issues.
+
 ## Version 24.2.0
 
 * Updated developer metadata of Maven artifacts.

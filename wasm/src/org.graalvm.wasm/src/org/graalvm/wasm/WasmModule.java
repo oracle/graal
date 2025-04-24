@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -263,11 +262,10 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     }
 
     @TruffleBoundary
-    public EconomicMap<Integer, DebugFunction> debugFunctions(Node node) {
+    public EconomicMap<Integer, DebugFunction> debugFunctions() {
         // lazily load debug information if needed.
         if (debugFunctions == null && hasDebugInfo()) {
-            WasmContext context = WasmContext.get(node);
-            DebugTranslator translator = new DebugTranslator(customData, context.getContextOptions().debugCompDirectory(), context.environment());
+            DebugTranslator translator = new DebugTranslator(customData);
             debugFunctions = translator.readCompilationUnits(customData, debugInfoOffset);
         }
         return debugFunctions;

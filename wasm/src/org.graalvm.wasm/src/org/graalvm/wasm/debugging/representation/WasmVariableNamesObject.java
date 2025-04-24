@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,49 +39,49 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.debugging.data;
+package org.graalvm.wasm.debugging.representation;
 
-import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.debugging.encoding.Attributes;
-import org.graalvm.wasm.debugging.parser.DebugData;
-import org.graalvm.wasm.debugging.parser.DebugParserContext;
+import java.util.List;
 
-/**
- * Utility class used for resolving the data of a debug entry.
- */
-public final class DebugDataUtil {
-    private DebugDataUtil() {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@SuppressWarnings("static-method")
+@ExportLibrary(InteropLibrary.class)
+public final class WasmVariableNamesObject implements TruffleObject {
+    final List<String> names;
+
+    WasmVariableNamesObject(List<String> names) {
+        this.names = names;
     }
 
-    /**
-     * Extracts the pcs from the given data.
-     * 
-     * @param data the debug data.
-     * @param context the current debug context.
-     * @return the pc values int an int array or null, if the pcs are not present or malformed.
-     */
-    public static int[] readPcsOrNull(DebugData data, DebugParserContext context) {
-        int lowPc = data.asU32OrDefault(Attributes.LOW_PC, -1);
-        if (lowPc == -1) {
-            return null;
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    long getArraySize() {
+        return names.size();
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
         }
-        int highPc = data.asU32OrDefault(Attributes.HIGH_PC, -1);
-        if (highPc != -1) {
-            if (data.isConstant(Attributes.HIGH_PC)) {
-                highPc = lowPc + highPc;
-            }
-        } else {
-            final int rangeOffset = data.asU32OrDefault(Attributes.RANGES, -1);
-            if (rangeOffset == -1) {
-                return null;
-            }
-            final IntArrayList ranges = context.readRangeSectionOrNull(rangeOffset);
-            if (ranges == null || ranges.size() < 2) {
-                return null;
-            }
-            lowPc = ranges.get(0);
-            highPc = ranges.get(ranges.size() - 1);
-        }
-        return new int[]{lowPc, highPc};
+        return names.get((int) index);
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < names.size();
     }
 }
