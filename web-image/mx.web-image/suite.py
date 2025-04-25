@@ -11,25 +11,6 @@ suite = {
                 "name": "substratevm",
                 "subdir": "true",
             },
-            # Dynamic imports
-            {
-                "name": "graal-nodejs",
-                "subdir": True,
-                "dynamic": True,
-                "version": "20cf920b900b643c6e8ab05cd0a5e66e2ba4e687",
-                "urls": [
-                    {"url": "https://github.com/graalvm/graaljs.git", "kind": "git"},
-                ],
-            },
-            {
-                "name": "graal-js",
-                "subdir": True,
-                "dynamic": True,
-                "version": "20cf920b900b643c6e8ab05cd0a5e66e2ba4e687",
-                "urls": [
-                    {"url": "https://github.com/graalvm/graaljs.git", "kind": "git"},
-                ],
-            },
         ]
     },
     "libraries": {
