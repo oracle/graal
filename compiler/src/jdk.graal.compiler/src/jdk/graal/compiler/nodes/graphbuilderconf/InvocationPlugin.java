@@ -518,4 +518,16 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
             return true;
         }
     }
+
+    public abstract static class OptionalInlineOnlyInvocationPlugin extends OptionalInvocationPlugin {
+
+        public OptionalInlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean inlineOnly() {
+            return true;
+        }
+    }
 }

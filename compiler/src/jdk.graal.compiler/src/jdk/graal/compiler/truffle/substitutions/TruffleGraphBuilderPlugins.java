@@ -579,7 +579,6 @@ public class TruffleGraphBuilderPlugins {
     public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.FrameWithoutBoxing));
         registerFrameMethods(r, types);
-        registerUnsafeCast(r, types, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Long, JavaKind.Object);
         registerFrameAccessors(r, types, JavaKind.Object);
         registerFrameAccessors(r, types, JavaKind.Long);
