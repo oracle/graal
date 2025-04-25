@@ -484,6 +484,7 @@ suite = {
       "sourceDirs" : ["src"],
       "workingSets" : "Graal",
       "javaCompliance" : "21+",
+      "checkstyle" : "jdk.graal.compiler",
       "dependencies" : [
         "GRAAL",
         "GRAAL_MANAGEMENT",
@@ -504,7 +505,7 @@ suite = {
         ],
       },
       "annotationProcessors" : [
-        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
+        "GRAAL_PROCESSOR",
       ],
     },
 
@@ -513,6 +514,7 @@ suite = {
       "sourceDirs" : ["src"],
       "workingSets" : "Graal",
       "javaCompliance" : "21+",
+      "checkstyle" : "jdk.graal.compiler",
       "dependencies" : [
         "sdk:NATIVEIMAGE_LIBGRAAL",
       ],
@@ -701,7 +703,6 @@ suite = {
         "sdk:NATIVEIMAGE_LIBGRAAL",
         "sdk:COLLECTIONS",
         "sdk:JNIUTILS",
-        "sdk:NATIVEBRIDGE",
         "truffle:TRUFFLE_COMPILER"
       ],
       "maven": False,
