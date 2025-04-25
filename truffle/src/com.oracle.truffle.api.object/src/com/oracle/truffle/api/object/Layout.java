@@ -42,7 +42,6 @@ package com.oracle.truffle.api.object;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
@@ -113,55 +112,5 @@ abstract class Layout {
             }
         }
         return bestLayoutFactory;
-    }
-
-    /**
-     * Internal package access helper.
-     *
-     * @since 19.0
-     */
-    @SuppressWarnings("static-method")
-    protected abstract static class Access {
-        /** @since 19.0 */
-        protected Access() {
-            if (!getClass().getName().startsWith("com.oracle.truffle.api.object.")) {
-                throw new IllegalAccessError();
-            }
-        }
-
-        /** @since 19.0 */
-        public final void setShape(DynamicObject object, Shape shape) {
-            object.setShape(shape);
-        }
-
-        /** @since 20.2.0 */
-        public final void setObjectArray(DynamicObject object, Object[] value) {
-            object.setObjectStore(value);
-        }
-
-        /** @since 20.2.0 */
-        public final Object[] getObjectArray(DynamicObject object) {
-            return object.getObjectStore();
-        }
-
-        /** @since 20.2.0 */
-        public final void setPrimitiveArray(DynamicObject object, int[] value) {
-            object.setPrimitiveStore(value);
-        }
-
-        /** @since 20.2.0 */
-        public final int[] getPrimitiveArray(DynamicObject object) {
-            return object.getPrimitiveStore();
-        }
-
-        /** @since 20.2.0 */
-        public final Shape getShape(DynamicObject object) {
-            return object.getShape();
-        }
-
-        /** @since 20.2.0 */
-        public final Class<? extends Annotation> getDynamicFieldAnnotation() {
-            return DynamicObject.getDynamicFieldAnnotation();
-        }
     }
 }

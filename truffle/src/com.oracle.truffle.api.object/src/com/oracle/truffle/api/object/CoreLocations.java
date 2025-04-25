@@ -366,7 +366,7 @@ abstract class CoreLocations {
         }
 
         protected static final Object[] getArray(DynamicObject store) {
-            return LayoutImpl.ACCESS.getObjectArray(store);
+            return store.getObjectStore();
         }
 
         @Override
@@ -501,7 +501,7 @@ abstract class CoreLocations {
         }
 
         protected static final int[] getArray(DynamicObject store) {
-            return LayoutImpl.ACCESS.getPrimitiveArray(store);
+            return store.getPrimitiveStore();
         }
 
         @Override

@@ -306,7 +306,7 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
 
             performCopy(store, toCopy);
 
-            ExtLayout.ACCESS.setShapeWithStoreFence(store, newShape);
+            DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
             assert store.getShape() == newShape;
         } catch (StackOverflowError e) {
             throw STACK_OVERFLOW_ERROR;
@@ -328,15 +328,15 @@ final class ObsolescenceStrategy extends ExtLayoutStrategy {
     }
 
     private static void resizeStore(DynamicObject store, final ShapeImpl oldShape, ShapeImpl newShape) {
-        ExtLayout.ACCESS.resize(store, oldShape, newShape);
+        DynamicObjectSupport.resize(store, oldShape, newShape);
     }
 
     static boolean checkExtensionArrayInvariants(DynamicObject store, ShapeImpl newShape) {
         assert store.getShape() == newShape;
-        Object[] objectArray = ExtLayout.ACCESS.getObjectArray(store);
+        Object[] objectArray = store.getObjectStore();
         assert (objectArray == null && newShape.getObjectArrayCapacity() == 0) || (objectArray != null && objectArray.length == newShape.getObjectArrayCapacity());
         if (newShape.hasPrimitiveArray()) {
-            int[] primitiveArray = ExtLayout.ACCESS.getPrimitiveArray(store);
+            int[] primitiveArray = store.getPrimitiveStore();
             assert (primitiveArray == null && newShape.getPrimitiveArrayCapacity() == 0) || (primitiveArray != null && primitiveArray.length == newShape.getPrimitiveArrayCapacity());
         }
         return true;

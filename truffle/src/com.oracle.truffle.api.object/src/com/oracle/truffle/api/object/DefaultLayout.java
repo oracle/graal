@@ -203,7 +203,7 @@ class DefaultLayout extends LayoutImpl {
 
             Class<? extends DynamicObject> layoutClass = collectFields(clazz.getSuperclass().asSubclass(DynamicObject.class), layoutLookup, objectFieldList, primitiveFieldList);
 
-            Class<? extends Annotation> dynamicFieldAnnotation = ACCESS.getDynamicFieldAnnotation();
+            Class<? extends Annotation> dynamicFieldAnnotation = DynamicObject.getDynamicFieldAnnotation();
             boolean hasDynamicFields = false;
             for (Field field : clazz.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {

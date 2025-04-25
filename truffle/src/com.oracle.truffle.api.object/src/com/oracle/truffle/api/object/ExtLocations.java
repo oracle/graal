@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.object.ExtLayout.ACCESS;
+import static com.oracle.truffle.api.object.ExtLayout.UseVarHandle;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -611,7 +611,7 @@ abstract class ExtLocations {
         }
 
         protected static Object getArray(DynamicObject store, boolean condition) {
-            return UnsafeAccess.unsafeCast(ACCESS.getObjectArray(store), Object[].class, condition, true, true);
+            return UnsafeAccess.unsafeCast(store.getObjectStore(), Object[].class, condition, true, true);
         }
 
         protected final long getOffset() {
@@ -691,7 +691,7 @@ abstract class ExtLocations {
 
         @Override
         public Object get(DynamicObject store, boolean guard) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return field.varHandle().get(store);
             }
             field.receiverCheck(store);
@@ -709,7 +709,7 @@ abstract class ExtLocations {
         }
 
         protected final void setObjectInternal(DynamicObject store, Object value) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 field.varHandle().set(store, value);
                 return;
             }
@@ -718,7 +718,7 @@ abstract class ExtLocations {
         }
 
         protected final Object getFinalObject(DynamicObject store, boolean condition) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return field.varHandle().get(store);
             }
             field.receiverCheck(store);
@@ -831,7 +831,7 @@ abstract class ExtLocations {
 
         @Override
         public int getInt(DynamicObject store, boolean guard) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 if (field.type() == long.class) {
                     return (int) (long) field.varHandle().get(store);
                 } else {
@@ -864,7 +864,7 @@ abstract class ExtLocations {
         }
 
         protected void setIntInternal(DynamicObject store, int value) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 if (field.type() == long.class) {
                     field.varHandle().set(store, value & 0xffff_ffffL);
                 } else {
@@ -881,7 +881,7 @@ abstract class ExtLocations {
         }
 
         protected int getFinalInt(DynamicObject store, boolean condition) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 if (field.type() == long.class) {
                     return (int) (long) field.varHandle().get(store);
                 } else {
@@ -935,7 +935,7 @@ abstract class ExtLocations {
 
         @Override
         public double getDouble(DynamicObject store, boolean guard) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return Double.longBitsToDouble((long) field.varHandle().get(store));
             }
             field.receiverCheck(store);
@@ -955,7 +955,7 @@ abstract class ExtLocations {
         }
 
         protected void setDoubleInternal(DynamicObject store, double value) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 field.varHandle().set(store, Double.doubleToRawLongBits(value));
                 return;
             }
@@ -968,7 +968,7 @@ abstract class ExtLocations {
         }
 
         protected double getFinalDouble(DynamicObject store, boolean condition) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return Double.longBitsToDouble((long) field.varHandle().get(store));
             }
             field.receiverCheck(store);
@@ -1048,7 +1048,7 @@ abstract class ExtLocations {
 
         @Override
         public boolean getBoolean(DynamicObject store, boolean guard) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return UnsafeAccess.booleanCast((int) field.varHandle().get(store));
             }
             field.receiverCheck(store);
@@ -1064,7 +1064,7 @@ abstract class ExtLocations {
         }
 
         protected void setBooleanInternal(DynamicObject store, boolean value) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 field.varHandle().set(store, UnsafeAccess.intCast(value));
                 return;
             }
@@ -1073,7 +1073,7 @@ abstract class ExtLocations {
         }
 
         protected boolean getFinalBoolean(DynamicObject store, boolean condition) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return UnsafeAccess.booleanCast((int) field.varHandle().get(store));
             }
             field.receiverCheck(store);
@@ -1123,7 +1123,7 @@ abstract class ExtLocations {
         protected abstract int getBytes();
 
         protected static Object getArray(DynamicObject store, boolean condition) {
-            return UnsafeAccess.unsafeCast(ACCESS.getPrimitiveArray(store), int[].class, condition, true, true);
+            return UnsafeAccess.unsafeCast(store.getPrimitiveStore(), int[].class, condition, true, true);
         }
     }
 
@@ -1301,7 +1301,7 @@ abstract class ExtLocations {
 
         @Override
         public long getLong(DynamicObject store, boolean guard) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return (long) field.varHandle().get(store);
             }
             field.receiverCheck(store);
@@ -1317,7 +1317,7 @@ abstract class ExtLocations {
         }
 
         protected void setLongInternal(DynamicObject store, long value) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 field.varHandle().set(store, value);
                 return;
             }
@@ -1326,7 +1326,7 @@ abstract class ExtLocations {
         }
 
         protected long getFinalLong(DynamicObject store, boolean condition) {
-            if (ExtLayout.UseVarHandle) {
+            if (UseVarHandle) {
                 return (long) field.varHandle().get(store);
             }
             field.receiverCheck(store);

@@ -70,13 +70,13 @@ abstract non-sealed class LocationImpl extends Location {
     @Override
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         if (canStore(value)) {
-            LayoutImpl.ACCESS.grow(store, oldShape, newShape);
+            DynamicObjectSupport.grow(store, oldShape, newShape);
             try {
                 setInternal(store, value);
             } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
                 throw shouldNotHappen(ex);
             }
-            LayoutImpl.ACCESS.setShapeWithStoreFence(store, newShape);
+            DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
         } else {
             throw incompatibleLocation();
         }

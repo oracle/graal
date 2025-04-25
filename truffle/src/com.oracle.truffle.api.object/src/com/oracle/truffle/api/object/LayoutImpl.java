@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.object;
 
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -150,56 +149,4 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
             return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags && this.strategy == other.strategy;
         }
     }
-
-    @SuppressWarnings("static-method")
-    protected abstract static class Support extends Access {
-        protected Support() {
-        }
-
-        protected final void setShapeWithStoreFence(DynamicObject object, Shape shape) {
-            if (shape.isShared()) {
-                VarHandle.storeStoreFence();
-            }
-            super.setShape(object, shape);
-        }
-
-        protected final void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.grow(object, thisShape, otherShape);
-        }
-
-        protected final void resize(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.resize(object, thisShape, otherShape);
-        }
-
-        protected final void invalidateAllPropertyAssumptions(Shape shape) {
-            DynamicObjectSupport.invalidateAllPropertyAssumptions(shape);
-        }
-
-        protected final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
-            DynamicObjectSupport.trimToSize(object, thisShape, otherShape);
-        }
-
-        protected final Map<Object, Object> archive(DynamicObject object) {
-            return DynamicObjectSupport.archive(object);
-        }
-
-        protected final boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
-            return DynamicObjectSupport.verifyValues(object, archive);
-        }
-
-        protected void arrayCopy(Object[] from, Object[] to, int length) {
-            System.arraycopy(from, 0, to, 0, length);
-        }
-
-        protected void arrayCopy(int[] from, int[] to, int length) {
-            System.arraycopy(from, 0, to, 0, length);
-        }
-    }
-
-    static final class CoreAccess extends Support {
-        private CoreAccess() {
-        }
-    }
-
-    static final CoreAccess ACCESS = new CoreAccess();
 }

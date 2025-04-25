@@ -254,7 +254,7 @@ final class ExtLayout extends LayoutImpl {
 
             Class<? extends DynamicObject> layoutClass = collectFields(clazz.getSuperclass().asSubclass(DynamicObject.class), stop, layoutLookup, objectFieldList, primitiveFieldList);
 
-            Class<? extends Annotation> dynamicFieldAnnotation = ACCESS.getDynamicFieldAnnotation();
+            Class<? extends Annotation> dynamicFieldAnnotation = DynamicObject.getDynamicFieldAnnotation();
             boolean hasDynamicFields = false;
             for (Field field : clazz.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
@@ -310,21 +310,4 @@ final class ExtLayout extends LayoutImpl {
             return getClass().getName() + '[' + clazz.getName() + ']';
         }
     }
-
-    static final class EnterpriseAccess extends Support {
-        private EnterpriseAccess() {
-        }
-
-        @Override
-        protected void arrayCopy(int[] from, int[] to, int length) {
-            UnsafeAccess.arrayCopy(from, to, length);
-        }
-
-        @Override
-        protected void arrayCopy(Object[] from, Object[] to, int length) {
-            UnsafeAccess.arrayCopy(from, to, length);
-        }
-    }
-
-    static final EnterpriseAccess ACCESS = new EnterpriseAccess();
 }
