@@ -357,15 +357,15 @@ public class CommonOptionParser {
     }
 
     public static long parseLong(String v) {
-        String valueString = v.trim().toLowerCase();
+        String valueString = v.trim();
         long scale = 1;
-        if (valueString.endsWith("k")) {
+        if (valueString.endsWith("k") || valueString.endsWith("K")) {
             scale = 1024L;
-        } else if (valueString.endsWith("m")) {
+        } else if (valueString.endsWith("m") || valueString.endsWith("M")) {
             scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
+        } else if (valueString.endsWith("g") || valueString.endsWith("G")) {
             scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
+        } else if (valueString.endsWith("t") || valueString.endsWith("T")) {
             scale = 1024L * 1024L * 1024L * 1024L;
         }
 
