@@ -63,7 +63,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * HotSpot implementation of {@link HotSpotForeignCallsProvider}.
@@ -248,12 +247,11 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     public void invokeJavaMethodStub(OptionValues options,
                     HotSpotProviders providers,
                     HotSpotForeignCallDescriptor descriptor,
-                    long address,
-                    ResolvedJavaMethod staticMethod) {
+                    long address) {
         if (address == 0) {
             throw new IllegalArgumentException("Can't link foreign call with zero address");
         }
-        InvokeJavaMethodStub stub = new InvokeJavaMethodStub(options, jvmciRuntime, providers, address, descriptor, staticMethod);
+        InvokeJavaMethodStub stub = new InvokeJavaMethodStub(options, jvmciRuntime, providers, address, descriptor);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);

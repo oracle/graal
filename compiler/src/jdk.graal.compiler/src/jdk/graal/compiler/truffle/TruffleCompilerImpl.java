@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.core.common.util.Util;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -504,17 +505,16 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         TruffleCompilable compilable = wrapper.compilable;
 
         final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), wrapper.compilationId, new TruffleDebugJavaMethod(task, compilable), INVOCATION_ENTRY_BCI);
-        StructuredGraph graph = null;
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions());
                         TruffleInliningScope inlining = TruffleInliningScope.open(debug)) {
-            graph = truffleTier(wrapper, debug);
+            StructuredGraph graph = truffleTier(wrapper, debug);
 
             graph.checkCancellation();
             // The Truffle compiler owns the last 2 characters of the compilation name, and uses
             // them to encode the compilation tier, so escaping the target name is not
             // necessary.
-            String compilationName = wrapper.compilable.toString() + (task.isFirstTier() ? FIRST_TIER_COMPILATION_SUFFIX : SECOND_TIER_COMPILATION_SUFFIX);
+            String compilationName = asInstalledCodeName(compilable.toString() + (task.isFirstTier() ? FIRST_TIER_COMPILATION_SUFFIX : SECOND_TIER_COMPILATION_SUFFIX));
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(task.isFirstTier() ? config.firstTier() : config.lastTier());
             InstalledCode[] installedCode = {null};
             CompilationResult compilationResult = compilePEGraph(graph,
@@ -548,6 +548,30 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             }
             throw t;
         }
+    }
+
+    /**
+     * Copy of {@code InstalledCode.MAX_NAME_LENGTH} initialized by reflection that can be removed
+     * once JDK 21 support is removed.
+     */
+    public static final int MAX_NAME_LENGTH;
+    static {
+        int len = 2048;
+        try {
+            len = InstalledCode.class.getDeclaredField("MAX_NAME_LENGTH").getInt(null);
+        } catch (Exception e) {
+            // ignore
+        }
+        MAX_NAME_LENGTH = len;
+    }
+
+    /**
+     * Transforms {@code name} to be usable as an {@linkplain InstalledCode#getName() installed code
+     * name}. The value is {@linkplain Util#truncateString(String, int) truncated} if its length is
+     * greater than {@link #MAX_NAME_LENGTH}.
+     */
+    public static String asInstalledCodeName(String name) {
+        return Util.truncateString(name, MAX_NAME_LENGTH);
     }
 
     @SuppressWarnings("try")

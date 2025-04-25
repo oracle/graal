@@ -25,9 +25,9 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -35,10 +35,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -53,10 +55,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
@@ -92,9 +91,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * We call {@link #recordVirtualCallTarget} to register a virtual call that must be added as a root
  * in a subsequent layer. The logic for installing roots in subsequent layers is performed in
- * {@link LayeredDispatchTableSupportFeature#beforeAnalysis}.
+ * {@link #beforeAnalysis}.
  */
-public class LayeredDispatchTableSupport implements LayeredImageSingleton {
+@AutomaticallyRegisteredFeature
+public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFeature {
     public static final class Options {
         @Option(help = "Log discrepancies between layered open world type information. This is an experimental option which will be removed.")//
         public static final HostedOptionKey<Boolean> LogLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
@@ -103,36 +103,122 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         public static final HostedOptionKey<Boolean> ErrorOnLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
     }
 
-    final Set<String> priorUnresolvedSymbols;
-    final Map<Integer, PriorDispatchTable> priorDispatchTables;
-    /**
-     * Map from typeId to set of names generated via {@link #generateFormattedMethodName}.
-     */
-    final Map<Integer, Set<String>> priorVirtualCallTargets;
+    final Map<HostedType, PriorDispatchTable> priorDispatchTableCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
+    final Map<Integer, PriorDispatchMethod> priorDispatchMethodCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
+
+    final Set<HostedMethod> virtualCallTargets = ImageLayerBuildingSupport.buildingSharedLayer() ? ConcurrentHashMap.newKeySet() : null;
+    final boolean generateUnresolvedSymbolNames = ImageLayerBuildingSupport.buildingSharedLayer();
+    Map<HostedMethod, Integer> persistedHostedMethodIndexMap = ImageLayerBuildingSupport.buildingSharedLayer() ? new ConcurrentHashMap<>() : null;
 
     final Map<MethodPointer, HostedDispatchSlot> methodPointerToDispatchSlot = new IdentityHashMap<>();
     final Map<HostedType, HostedDispatchTable> typeToDispatchTable = new HashMap<>();
-    final Set<HostedMethod> virtualCallTargets = ImageLayerBuildingSupport.buildingSharedLayer() ? ConcurrentHashMap.newKeySet() : null;
-
-    private final boolean generateUnresolvedSymbolNames = ImageLayerBuildingSupport.buildingSharedLayer();
 
     /**
-     * Cache of builderModules. Set in {@link LayeredDispatchTableSupportFeature#beforeCompilation}.
+     * Cache of builderModules. Set in {@link #beforeCompilation}.
      */
     private Set<Module> builderModules;
 
-    public LayeredDispatchTableSupport() {
-        this(Map.of(), Set.of(), Map.of());
+    static final int INVALID_HOSTED_METHOD_INDEX = -1;
+
+    @Override
+    public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.buildingImageLayer();
     }
 
-    private LayeredDispatchTableSupport(Map<Integer, PriorDispatchTable> priorDispatchTables, Set<String> priorUnresolvedSymbols, Map<Integer, Set<String>> priorVirtualCallTargets) {
-        this.priorDispatchTables = priorDispatchTables;
-        this.priorUnresolvedSymbols = priorUnresolvedSymbols;
-        this.priorVirtualCallTargets = priorVirtualCallTargets;
+    @Override
+    public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+            getPriorVirtualCallTargets().forEach(aMethod -> {
+                config.registerAsRoot(aMethod, false, "in prior layer dispatch table");
+            });
+        }
     }
 
-    public static LayeredDispatchTableSupport singleton() {
-        return ImageSingletons.lookup(LayeredDispatchTableSupport.class);
+    @Override
+    public void beforeCompilation(Feature.BeforeCompilationAccess a) {
+        BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
+        installBuilderModules(access.getImageClassLoader().getBuilderModules());
+    }
+
+    private PriorDispatchMethod createPriorDispatchMethodInfo(int index) {
+        return priorDispatchMethodCache.computeIfAbsent(index, i -> {
+            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            var reader = loader.getHostedMethodData(i);
+            return new PriorDispatchMethod(reader.getMethodId(), reader.getSymbolName().toString(), reader.getVTableIndex(), reader.getIsVirtualCallTarget());
+        });
+    }
+
+    private PriorDispatchTable createPriorDispatchTable(HostedType hType) {
+        var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        var hubInfo = loader.getDynamicHubInfo(hType.getWrapped());
+        var localSlotIds = hubInfo.getLocallyDeclaredSlotsHostedMethodIndexes();
+        PriorDispatchMethod[] locallyDeclaredSlots = new PriorDispatchMethod[hubInfo.getLocallyDeclaredSlotsHostedMethodIndexes().size()];
+        for (int i = 0; i < locallyDeclaredSlots.length; i++) {
+            locallyDeclaredSlots[i] = createPriorDispatchMethodInfo(localSlotIds.get(i));
+        }
+
+        PriorDispatchSlot[] dispatchSlots;
+        if (hubInfo.hasDispatchTableSlotValues()) {
+            var dispatchSlotsReader = hubInfo.getDispatchTableSlotValues();
+            dispatchSlots = new PriorDispatchSlot[dispatchSlotsReader.size()];
+            for (int i = 0; i < dispatchSlots.length; i++) {
+                var slotInfo = dispatchSlotsReader.get(i);
+                PriorDispatchMethod declaredMethod = createPriorDispatchMethodInfo(slotInfo.getDeclaredHostedMethodIndex());
+                PriorDispatchMethod resolvedMethod = null;
+                if (slotInfo.getResolvedHostedMethodIndex() != INVALID_HOSTED_METHOD_INDEX) {
+                    resolvedMethod = createPriorDispatchMethodInfo(slotInfo.getResolvedHostedMethodIndex());
+                }
+                SlotResolutionStatus status = SlotResolutionStatus.values()[slotInfo.getResolutionStatus()];
+                String slotSymbolName = slotInfo.getSlotSymbolName().toString();
+                var dispatchSlot = new PriorDispatchSlot(declaredMethod, resolvedMethod, slotInfo.getSlotIndex(), status, slotSymbolName);
+                dispatchSlots[i] = dispatchSlot;
+            }
+        } else {
+            dispatchSlots = PriorDispatchSlot.EMPTY_ARRAY;
+        }
+        return new PriorDispatchTable(hubInfo.getTypeId(), hubInfo.getInstalled(), locallyDeclaredSlots, dispatchSlots);
+    }
+
+    private PriorDispatchTable getPriorDispatchTable(HostedType hType) {
+        if (hType.getWrapped().isInBaseLayer()) {
+            return priorDispatchTableCache.computeIfAbsent(hType, this::createPriorDispatchTable);
+        } else {
+            return null;
+        }
+    }
+
+    private static Set<String> getPriorUnresolvedSymbols() {
+        Set<String> unresolvedSymbols = new HashSet<>();
+        var hubInfos = HostedImageLayerBuildingSupport.singleton().getLoader().getDynamicHubInfos();
+        for (var hubInfo : hubInfos) {
+            if (hubInfo.getInstalled()) {
+                assert hubInfo.hasDispatchTableSlotValues();
+                var dispatchSlots = hubInfo.getDispatchTableSlotValues();
+                for (var slotInfo : dispatchSlots) {
+                    SlotResolutionStatus status = SlotResolutionStatus.values()[slotInfo.getResolutionStatus()];
+                    String slotSymbolName = slotInfo.getSlotSymbolName().toString();
+                    if (status == SlotResolutionStatus.UNRESOLVED || status == SlotResolutionStatus.NOT_COMPILED) {
+                        assert !slotSymbolName.equals(PriorDispatchSlot.INVALID_SYMBOL_NAME);
+                        unresolvedSymbols.add(slotSymbolName);
+                    }
+                }
+            }
+        }
+        return Collections.unmodifiableSet(unresolvedSymbols);
+    }
+
+    static Stream<AnalysisMethod> getPriorVirtualCallTargets() {
+        var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        var methods = loader.getHostedMethods();
+        return StreamSupport.stream(methods.spliterator(), false).filter(SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Reader::getIsVirtualCallTarget).map(data -> {
+            assert data.getMethodId() != PriorDispatchMethod.UNPERSISTED_METHOD_ID;
+            return loader.getAnalysisMethodForBaseLayerId(data.getMethodId());
+        });
+    }
+
+    public static LayeredDispatchTableFeature singleton() {
+        return ImageSingletons.lookup(LayeredDispatchTableFeature.class);
     }
 
     void installBuilderModules(Set<Module> newCoreTypes) {
@@ -150,11 +236,6 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         if (!(builderModules.contains(callerModule) || builderModules.contains(calleeModule))) {
             virtualCallTargets.add(callee);
         }
-    }
-
-    // GR-59009 remove once we persist more methods
-    static String generateFormattedMethodName(AnalysisMethod method) {
-        return method.format("%n(%P)%R");
     }
 
     public void registerDeclaredDispatchInfo(HostedType type, List<HostedMethod> declaredMethods) {
@@ -183,7 +264,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             arraySlotInfo.dispatchTable = arrayDispatchTable;
             arraySlotInfo.declaredMethod = objSlotInfo.declaredMethod;
             arraySlotInfo.resolvedMethod = objSlotInfo.resolvedMethod;
-            arraySlotInfo.slotNum = objSlotInfo.slotNum;
+            arraySlotInfo.slotIndex = objSlotInfo.slotIndex;
             arraySlotInfo.status = objSlotInfo.status;
 
             return arraySlotInfo;
@@ -210,7 +291,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         for (int i = 0; i < length; i++) {
             HostedDispatchSlot slot = new HostedDispatchSlot();
             slot.dispatchTable = dispatchTable;
-            slot.slotNum = i;
+            slot.slotIndex = i;
             slot.resolvedMethod = validTarget[i] ? resolvedMethods[i] : null;
             slot.declaredMethod = targetMethods[i];
             slot.status = validTarget[i] ? SlotResolutionStatus.COMPUTED : SlotResolutionStatus.UNRESOLVED;
@@ -224,7 +305,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
 
     private void injectPriorLayerInfo(HostedType type, HostedDispatchTable dispatchTable) {
         if (type.getWrapped().isInBaseLayer()) {
-            var priorInfo = priorDispatchTables.get(type.getWrapped().getId());
+            var priorInfo = getPriorDispatchTable(type);
             if (priorInfo != null) {
                 compareTypeInfo(dispatchTable, priorInfo);
                 dispatchTable.status = priorInfo.installed ? HubStatus.INSTALLED_PRIOR_LAYER : HubStatus.COMPUTED_PRIOR_LAYER;
@@ -248,7 +329,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         String errorMessage = "";
         int priorId = priorMethod.methodId();
         int curId = curMethod.getWrapped().getId();
-        if (priorId != PriorDispatchMethod.UNKNOWN_ID) {
+        if (priorId != PriorDispatchMethod.UNPERSISTED_METHOD_ID) {
             if (curId != priorId) {
                 errorMessage += String.format("mismatch in id %s %s%n", curId, priorId);
             }
@@ -261,8 +342,8 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         }
 
         int priorVTableIdx = priorMethod.vtableIndex;
-        int curVTableIdx = curMethod.hasVTableIndex() ? curMethod.getVTableIndex() : PriorDispatchMethod.UNKNOWN_VTABLE_IDX;
-        if (priorVTableIdx != PriorDispatchMethod.UNKNOWN_VTABLE_IDX && curVTableIdx != PriorDispatchMethod.UNKNOWN_VTABLE_IDX && priorVTableIdx != curVTableIdx) {
+        int curVTableIdx = curMethod.hasVTableIndex() ? curMethod.getVTableIndex() : HostedMethod.MISSING_VTABLE_IDX;
+        if (priorVTableIdx != HostedMethod.MISSING_VTABLE_IDX && curVTableIdx != HostedMethod.MISSING_VTABLE_IDX && priorVTableIdx != curVTableIdx) {
             errorMessage += String.format("mismatch in vtable index %s %s%n", curVTableIdx, priorVTableIdx);
         }
         if (!errorMessage.isEmpty()) {
@@ -363,7 +444,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             unresolvedTableSymbol = methodToSymbolMap.computeIfAbsent(resolvedMethod, k -> String.format("%s_unresolvedVTableSym", NativeImage.localSymbolNameForMethod(k)));
         } else {
             unresolvedTableSymbol = SubstrateOptions.ImageSymbolsPrefix.getValue() +
-                            String.format("unresolvedVTableSym_typeid%s_slot%s", slotInfo.dispatchTable.type.getWrapped().getId(), slotInfo.slotNum);
+                            String.format("unresolvedVTableSym_typeid%s_slot%s", slotInfo.dispatchTable.type.getWrapped().getId(), slotInfo.slotIndex);
         }
         return unresolvedTableSymbol;
     }
@@ -425,8 +506,8 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                          * Now that this method has been compiled we must define it.
                          */
 
-                        var priorInfo = priorDispatchTables.get(slotInfo.dispatchTable.type.getWrapped().getId());
-                        var symName = priorInfo.slots[slotInfo.slotNum].slotSymbolName;
+                        var priorInfo = getPriorDispatchTable(slotInfo.dispatchTable.type);
+                        var symName = priorInfo.slots[slotInfo.slotIndex].slotSymbolName;
                         var prev = resolvedPriorVTableMap.put(symName, slotInfo.resolvedMethod);
                         /*
                          * All slots with the same symbol name should have the same resolved method.
@@ -451,7 +532,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          * are defined to be linked to the invalid method handler.
          */
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-            priorUnresolvedSymbols.forEach(symbol -> {
+            getPriorUnresolvedSymbols().forEach(symbol -> {
                 if (!resolvedPriorVTableMap.containsKey(symbol)) {
                     CompilationResult result = codeCache.compilationResultFor(invalidMethod);
 
@@ -483,181 +564,79 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         return symbol;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+    public HostedMethod[] acquireHostedMethodArray() {
+        return persistedHostedMethodIndexMap.entrySet().stream()
+                        .sorted(Comparator.comparingInt(Map.Entry::getValue))
+                        .map(Map.Entry::getKey)
+                        .toArray(HostedMethod[]::new);
     }
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-
-        /*
-         * To reduce redundancy, we maintain a separate table of all methods we refer to within the
-         * dispatch tables.
-         */
-        Map<HostedMethod, Integer> methodToOffsetMap = new HashMap<>();
-        List<Boolean> methodBooleans = new ArrayList<>();
-        List<Integer> methodInts = new ArrayList<>();
-        List<String> methodStrings = new ArrayList<>();
-        Function<HostedMethod, Integer> methodToOffsetMapper = (hMethod) -> {
-            int offset;
-            if (methodToOffsetMap.containsKey(hMethod)) {
-                offset = methodToOffsetMap.get(hMethod);
-            } else {
-                offset = methodToOffsetMap.size();
-                methodToOffsetMap.put(hMethod, offset);
-                methodInts.add(hMethod.getWrapped().isTrackedAcrossLayers() ? hMethod.wrapped.getId() : PriorDispatchMethod.UNKNOWN_ID);
-                methodInts.add(hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : PriorDispatchMethod.UNKNOWN_VTABLE_IDX);
-                methodBooleans.add(virtualCallTargets.contains(hMethod));
-                methodStrings.add(NativeImage.localSymbolNameForMethod(hMethod));
-                methodStrings.add(generateFormattedMethodName(hMethod.getWrapped()));
-            }
-            return offset;
-        };
-
-        /*
-         * Write out dispatch tables for persisted types.
-         */
-        List<Integer> dispatchTableInts = new ArrayList<>();
-        List<Boolean> dispatchTableBooleans = new ArrayList<>();
-        List<Integer> dispatchSlotInts = new ArrayList<>();
-        List<String> dispatchSlotStrings = new ArrayList<>();
-        int nextSlotIdx = 0;
-        for (HostedDispatchTable info : typeToDispatchTable.values()) {
-            if (!info.type.getWrapped().isTrackedAcrossLayers()) {
-                // if a type contains target of a virtual call, then it should be persisted
-                assert Arrays.stream(info.locallyDeclaredSlots).noneMatch(virtualCallTargets::contains) : "Type should be persisted: " + info.type;
-                continue;
-            }
-
-            List<Integer> localTargets = new ArrayList<>();
-            List<Integer> slotOffsets = new ArrayList<>();
-
-            for (var hMethod : info.locallyDeclaredSlots) {
-                localTargets.add(methodToOffsetMapper.apply(hMethod));
-            }
-
-            boolean hubInstalled = info.status == HubStatus.INSTALLED_CURRENT_LAYER;
-            if (info.slots != null) {
-                for (var slotInfo : info.slots) {
-                    var symbolName = hubInstalled ? slotInfo.symbol : PriorDispatchSlot.INVALID_SYMBOL_NAME;
-                    dispatchSlotStrings.add(symbolName);
-                    dispatchSlotInts.add(slotInfo.slotNum);
-                    dispatchSlotInts.add(slotInfo.status.ordinal());
-                    dispatchSlotInts.add(methodToOffsetMapper.apply(slotInfo.declaredMethod));
-                    if (slotInfo.status.isResolved()) {
-                        assert slotInfo.resolvedMethod != null;
-                        dispatchSlotInts.add(methodToOffsetMapper.apply(slotInfo.resolvedMethod));
-                    } else {
-                        dispatchSlotInts.add(PriorDispatchSlot.UNKNOWN_METHOD);
-                    }
-                    slotOffsets.add(nextSlotIdx++);
-                }
-            }
-
-            dispatchTableInts.add(info.type.getWrapped().getId());
-            dispatchTableInts.add(localTargets.size());
-            dispatchTableInts.add(slotOffsets.size());
-            dispatchTableInts.addAll(localTargets);
-            dispatchTableInts.addAll(slotOffsets);
-            dispatchTableBooleans.add(hubInstalled);
-        }
-
-        writer.writeIntList("dispatchTableInts", dispatchTableInts);
-        writer.writeBoolList("dispatchTableBooleans", dispatchTableBooleans);
-        writer.writeIntList("dispatchSlotInts", dispatchSlotInts);
-        writer.writeStringList("dispatchSlotStrings", dispatchSlotStrings);
-        writer.writeBoolList("methodBooleans", methodBooleans);
-        writer.writeIntList("methodInts", methodInts);
-        writer.writeStringList("methodStrings", methodStrings);
-
-        return PersistFlags.CREATE;
+    public void releaseHostedMethodArray() {
+        persistedHostedMethodIndexMap = null;
     }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        List<Integer> dispatchTableInts = loader.readIntList("dispatchTableInts");
-        List<Boolean> dispatchTableBooleans = loader.readBoolList("dispatchTableBooleans");
-        List<Integer> dispatchSlotInts = loader.readIntList("dispatchSlotInts");
-        List<String> dispatchSlotStrings = loader.readStringList("dispatchSlotStrings");
-        List<Boolean> methodBooleans = loader.readBoolList("methodBooleans");
-        List<Integer> methodInts = loader.readIntList("methodInts");
-        List<String> methodStrings = loader.readStringList("methodStrings");
+    public void persistHostedMethod(HostedMethod hMethod, Supplier<SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Builder> methodInfoBuilderSupplier) {
+        assert persistedHostedMethodIndexMap.containsKey(hMethod);
 
-        Set<String> unresolvedSymbols = new HashSet<>();
-        Map<Integer, PriorDispatchTable> priorTypes = new HashMap<>();
-        Map<Integer, Set<String>> priorVirtualCallTargets = new HashMap<>();
-
-        ArrayList<PriorDispatchMethod> priorMethods = new ArrayList<>();
-        var intIterator = methodInts.iterator();
-        var stringIterator = methodStrings.iterator();
-        var boolIterator = methodBooleans.iterator();
-        while (stringIterator.hasNext()) {
-            String symbol = stringIterator.next();
-            String formattedName = stringIterator.next();
-            int methodId = intIterator.next();
-            int vtableIndex = intIterator.next();
-            boolean isVirtualCallTarget = boolIterator.next();
-
-            var target = new PriorDispatchMethod(methodId, symbol, vtableIndex, formattedName, isVirtualCallTarget);
-            priorMethods.add(target);
+        boolean persistedMethod = hMethod.getWrapped().isTrackedAcrossLayers();
+        var builder = methodInfoBuilderSupplier.get();
+        builder.setIndex(persistedHostedMethodIndexMap.get(hMethod));
+        builder.setMethodId(persistedMethod ? hMethod.getWrapped().getId() : PriorDispatchMethod.UNPERSISTED_METHOD_ID);
+        builder.setSymbolName(NativeImage.localSymbolNameForMethod(hMethod));
+        builder.setVTableIndex(hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : HostedMethod.MISSING_VTABLE_IDX);
+        builder.setIsVirtualCallTarget(virtualCallTargets.contains(hMethod));
+        builder.setInstalledOffset(hMethod.isCodeAddressOffsetValid() ? hMethod.getCodeAddressOffset() : HostedMethod.INVALID_CODE_ADDRESS_OFFSET);
+        if (persistedMethod) {
+            builder.setHostedMethodName(hMethod.getName());
+            builder.setHostedMethodUniqueName(hMethod.getUniqueShortName());
         }
+    }
 
-        ArrayList<PriorDispatchSlot> priorDispatchSlots = new ArrayList<>();
-        intIterator = dispatchSlotInts.iterator();
-        stringIterator = dispatchSlotStrings.iterator();
-        while (stringIterator.hasNext()) {
-            String slotSymbolName = stringIterator.next();
-            int slotNum = intIterator.next();
-            SlotResolutionStatus status = SlotResolutionStatus.values()[intIterator.next()];
-            PriorDispatchMethod declaredMethod = priorMethods.get(intIterator.next());
-            PriorDispatchMethod resolvedMethod = null;
-            int index = intIterator.next();
-            if (index != PriorDispatchSlot.UNKNOWN_METHOD) {
-                resolvedMethod = priorMethods.get(index);
+    public int getPersistedHostedMethodIndex(HostedMethod hMethod) {
+        int nextIdx = persistedHostedMethodIndexMap.size();
+        persistedHostedMethodIndexMap.putIfAbsent(hMethod, nextIdx);
+        return persistedHostedMethodIndexMap.get(hMethod);
+    }
+
+    public void persistDynamicHubInfo(HostedType hType, Supplier<SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo.Builder> typeInfoBuilderSupplier) {
+        var typeInfoBuilder = typeInfoBuilderSupplier.get();
+        typeInfoBuilder.setTypeId(hType.getWrapped().getId());
+
+        // typecheck info
+        typeInfoBuilder.setTypecheckId(hType.getTypeID());
+        typeInfoBuilder.setNumClassTypes(hType.getNumClassTypes());
+        typeInfoBuilder.setNumInterfaceTypes(hType.getNumInterfaceTypes());
+        SVMImageLayerWriter.initInts(typeInfoBuilder::initTypecheckSlotValues, Arrays.stream(hType.getOpenTypeWorldTypeCheckSlots()));
+
+        // dispatch table info
+        HostedDispatchTable hDispatchTable = typeToDispatchTable.get(hType);
+        if (hDispatchTable != null) {
+            boolean hubInstalled = hDispatchTable.status == HubStatus.INSTALLED_CURRENT_LAYER;
+            typeInfoBuilder.setInstalled(hubInstalled);
+
+            SVMImageLayerWriter.initInts(typeInfoBuilder::initLocallyDeclaredSlotsHostedMethodIndexes,
+                            Arrays.stream(hDispatchTable.locallyDeclaredSlots).mapToInt(this::getPersistedHostedMethodIndex));
+
+            assert !(hDispatchTable.status == HubStatus.UNINITIALIZED && hDispatchTable.slots != null) : hType;
+            if (hDispatchTable.slots != null) {
+                SVMImageLayerWriter.initSortedArray(typeInfoBuilder::initDispatchTableSlotValues, hDispatchTable.slots, (dispatchSlot, dispatchSlotInfoSupplier) -> {
+                    persistDynamicSlot(dispatchSlot, dispatchSlotInfoSupplier, hubInstalled);
+                });
             }
-
-            var slotInfo = new PriorDispatchSlot(declaredMethod, resolvedMethod, slotNum, status, slotSymbolName);
-            priorDispatchSlots.add(slotInfo);
+        } else {
+            assert hType.isPrimitive() : hType;
         }
+    }
 
-        intIterator = dispatchTableInts.iterator();
-        boolIterator = dispatchTableBooleans.iterator();
-        while (intIterator.hasNext()) {
-            int typeId = intIterator.next();
-            boolean hubInstalled = boolIterator.next();
-            int locallyDeclaredMethodsSize = intIterator.next();
-            int allSlotsSize = intIterator.next();
-            PriorDispatchMethod[] locallyDeclaredSlots = new PriorDispatchMethod[locallyDeclaredMethodsSize];
-            PriorDispatchSlot[] dispatchTableSlots = new PriorDispatchSlot[allSlotsSize];
-            for (int i = 0; i < locallyDeclaredMethodsSize; i++) {
-                locallyDeclaredSlots[i] = priorMethods.get(intIterator.next());
-            }
-            for (int i = 0; i < allSlotsSize; i++) {
-                dispatchTableSlots[i] = priorDispatchSlots.get(intIterator.next());
-                if (hubInstalled) {
-                    var status = dispatchTableSlots[i].status;
-                    if (status == SlotResolutionStatus.UNRESOLVED || status == SlotResolutionStatus.NOT_COMPILED) {
-                        assert !dispatchTableSlots[i].slotSymbolName.equals(PriorDispatchSlot.INVALID_SYMBOL_NAME);
-                        unresolvedSymbols.add(dispatchTableSlots[i].slotSymbolName);
-                    }
+    private void persistDynamicSlot(HostedDispatchSlot dispatchSlot, Supplier<SharedLayerSnapshotCapnProtoSchemaHolder.DispatchSlotInfo.Builder> dispatchSlotInfoSupplier, boolean hubInstalled) {
+        var dispatchSlotBuilder = dispatchSlotInfoSupplier.get();
 
-                }
-            }
+        dispatchSlotBuilder.setSlotIndex(dispatchSlot.slotIndex);
+        dispatchSlotBuilder.setResolutionStatus(dispatchSlot.status.ordinal());
 
-            var priorDispatchTable = new PriorDispatchTable(typeId, hubInstalled, locallyDeclaredSlots, dispatchTableSlots);
-            Object prev = priorTypes.put(typeId, priorDispatchTable);
-            assert prev == null : prev;
-
-            Set<String> priorVirtualCallNames = Arrays.stream(locallyDeclaredSlots).filter(PriorDispatchMethod::isVirtualCallTarget).map(PriorDispatchMethod::formattedName)
-                            .collect(Collectors.toSet());
-            if (!priorVirtualCallNames.isEmpty()) {
-                prev = priorVirtualCallTargets.put(typeId, priorVirtualCallNames);
-                assert prev == null : prev;
-            }
-        }
-
-        return new LayeredDispatchTableSupport(priorTypes, unresolvedSymbols, priorVirtualCallTargets);
+        dispatchSlotBuilder.setDeclaredHostedMethodIndex(getPersistedHostedMethodIndex(dispatchSlot.declaredMethod));
+        dispatchSlotBuilder.setResolvedHostedMethodIndex(dispatchSlot.status.isResolved() ? getPersistedHostedMethodIndex(dispatchSlot.resolvedMethod) : INVALID_HOSTED_METHOD_INDEX);
+        dispatchSlotBuilder.setSlotSymbolName(hubInstalled ? dispatchSlot.symbol : PriorDispatchSlot.INVALID_SYMBOL_NAME);
     }
 
     enum HubStatus {
@@ -696,7 +675,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         HostedDispatchTable dispatchTable;
         HostedMethod declaredMethod;
         HostedMethod resolvedMethod;
-        int slotNum;
+        int slotIndex;
         SlotResolutionStatus status;
 
         /**
@@ -718,62 +697,18 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
 
     record PriorDispatchSlot(
                     PriorDispatchMethod declaredMethod, PriorDispatchMethod resolvedMethod,
-                    int slotNum, SlotResolutionStatus status, String slotSymbolName) {
-        static final int UNKNOWN_METHOD = -1;
+                    int slotIndex, SlotResolutionStatus status, String slotSymbolName) {
         static final String INVALID_SYMBOL_NAME = "invalid";
+
+        static final PriorDispatchSlot[] EMPTY_ARRAY = new PriorDispatchSlot[0];
     }
 
     /**
      * Because methods are currently only persisted when a method is implementation invoked, it is
      * not always possible to match on method id. When it is not possible, we store
-     * {@link PriorDispatchMethod#UNKNOWN_ID} as the value.
-     *
-     * GR-59009 will resolve this issue. As part of this we will also remove
-     * {@link PriorDispatchMethod#formattedName}.
+     * {@link PriorDispatchMethod#UNPERSISTED_METHOD_ID} as the value.
      */
-    record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, String formattedName, boolean isVirtualCallTarget) {
-        static final int UNKNOWN_ID = -1;
-        static final int UNKNOWN_VTABLE_IDX = -1;
-    }
-}
-
-@AutomaticallyRegisteredFeature
-final class LayeredDispatchTableSupportFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.buildingImageLayer();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            ImageSingletons.add(LayeredDispatchTableSupport.class, new LayeredDispatchTableSupport());
-        }
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-            var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
-            var singleton = LayeredDispatchTableSupport.singleton();
-            for (var entry : singleton.priorVirtualCallTargets.entrySet()) {
-                AnalysisType type = loader.getAnalysisTypeForBaseLayerId(entry.getKey());
-                var methods = type.getOrCalculateOpenTypeWorldDispatchTableMethods();
-                var virtualCallTargets = entry.getValue();
-                methods.forEach(aMethod -> {
-                    if (virtualCallTargets.contains(LayeredDispatchTableSupport.generateFormattedMethodName(aMethod))) {
-                        config.registerAsRoot(aMethod, false, "in prior layer dispatch table");
-                    }
-                });
-            }
-        }
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess a) {
-        BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
-        LayeredDispatchTableSupport.singleton().installBuilderModules(access.getImageClassLoader().getBuilderModules());
+    record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, boolean isVirtualCallTarget) {
+        static final int UNPERSISTED_METHOD_ID = -1;
     }
 }
