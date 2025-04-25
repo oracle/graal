@@ -1257,7 +1257,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     /**
-     * Intrinsifiable compiler directive to tighten the type information for {@code args}.
+     * Intrinsifiable compiler directive to tighten the type information for {@code args}. This
+     * intrinsic only applies during runtime compilation.
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
@@ -1266,7 +1267,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     /**
-     * Intrinsifiable compiler directive to tighten the type information for {@code value}.
+     * Intrinsifiable compiler directive to tighten the type information for {@code value}. This
+     * intrinsic only applies during runtime compilation.
      *
      * @param type the type the compiler should assume for {@code value}
      * @param condition the condition that guards the assumptions expressed by this directive

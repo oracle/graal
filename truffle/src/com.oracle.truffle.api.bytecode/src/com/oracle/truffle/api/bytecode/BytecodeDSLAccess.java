@@ -131,7 +131,9 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLCheckedAccess,
     public abstract <T> void writeObject(T[] arr, int index, T value);
 
     /**
-     * Casts a value to the given class. Also assumes non-null.
+     * Casts a value to the given class. Also assumes non-null. If used in the form
+     * uncheckedCast(this.field, ...) and the field is a final field, then the field will get
+     * transformed into an immutable field read.
      *
      * @since 24.2
      */

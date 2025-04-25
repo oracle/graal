@@ -101,7 +101,6 @@ import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -155,7 +154,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.internal.misc.Unsafe;
@@ -184,7 +182,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
-
     private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(29, 1);
     private static final int MAX_JDK_VERSION = 29;
 
@@ -785,9 +782,6 @@ public final class TruffleBaseFeature implements InternalFeature {
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.
          */
-        if (hosted) {
-            InjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
-        }
     }
 
     @Override
