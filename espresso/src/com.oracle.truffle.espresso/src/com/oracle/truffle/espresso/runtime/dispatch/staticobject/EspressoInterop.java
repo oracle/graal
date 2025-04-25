@@ -1034,7 +1034,9 @@ public class EspressoInterop extends BaseInterop {
                     error.enter();
                     throw InvalidArrayIndexException.create(index);
                 }
-                return receiver.<StaticObject[]> unwrap(language)[(int) index];
+                // before returning from Espresso, we must unwrap the element
+                StaticObject rawResult = receiver.<StaticObject[]> unwrap(language)[(int) index];
+                return InteropUtils.unwrap(language, rawResult, receiver.getKlass().getMeta());
             }
 
             @SuppressWarnings("unused")
