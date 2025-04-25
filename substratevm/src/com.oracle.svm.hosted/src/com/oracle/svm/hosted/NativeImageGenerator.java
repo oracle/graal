@@ -1777,7 +1777,13 @@ public class NativeImageGenerator {
         checkName(bb, null, format);
     }
 
-    private static final Set<String> CHECK_NAME_EXCEPTIONS = Set.of("java.awt.Cursor.DOT_HOTSPOT_SUFFIX");
+    /**
+     * These are legit elements from the JDK that have hotspot in their name.
+     */
+    private static final Set<String> HOTSPOT_IN_NAME_EXCEPTIONS = Set.of(
+                    "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
+                    "sun.lwawt.macosx.CCustomCursor.fHotspot",
+                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()");
 
     private static void checkName(BigBang bb, AnalysisMethod method, String format) {
         /*
@@ -1790,8 +1796,11 @@ public class NativeImageGenerator {
         if (lformat.contains("hosted")) {
             report(bb, format, method, "Hosted element used at run time: " + format + ".");
         } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
-            if (!CHECK_NAME_EXCEPTIONS.contains(format)) {
-                report(bb, format, method, "HotSpot element used at run time: " + format + ".");
+            if (!HOTSPOT_IN_NAME_EXCEPTIONS.contains(format)) {
+                report(bb, format, method, "Element with HotSpot in its name used at run time: " + format + System.lineSeparator() +
+                                "If this is a regular JDK value, and not a HotSpot element that was accidentally included, you can add it to the NativeImageGenerator.HOTSPOT_IN_NAME_EXCEPTIONS" +
+                                System.lineSeparator() +
+                                "If this is HotSpot element that was accidentally included find a way to exclude it from the image.");
             }
         }
     }
