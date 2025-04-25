@@ -67,7 +67,7 @@ abstract class HostTargetMappingNode extends Node {
     abstract Object execute(Node node, Object value, Class<?> targetType, HostContext hostContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "targetType != null")
+    @Specialization(guards = "targetType != null", excludeForUncached = true)
     @ExplodeLoop
     protected Object doCached(Object operand, Class<?> targetType, HostContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority,
                     @Cached(value = "getMappings(context, targetType)", dimensions = 1, neverDefault = true) HostTargetMapping[] mappings,

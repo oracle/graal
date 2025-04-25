@@ -475,4 +475,22 @@ public @interface Specialization {
      */
     int unroll() default 0;
 
+    /**
+     * Excludes this specialization from use with {@link GenerateUncached}.
+     * <p>
+     * By default every specialization is included for {@link GenerateUncached}, except
+     * specializations that require a {@link #limit() limit} and are {@link #replaces() replaced},
+     * those are excluded by default. By setting {@link Specialization#excludeForUncached()}
+     * explicitly the default behavior can be overridden, e.g. to include or exclude a
+     * specialization for {@link GenerateUncached}.
+     * <p>
+     * Mark a specialization as excluded only when it is {@link #replaces() replaced} by a more
+     * generic one; otherwise cached and uncached nodes may diverge semantically. Any specialization
+     * may be excluded from uncached. It is considered an error if all specializations are excluded
+     * from uncached.
+     *
+     * @since 25.0
+     */
+    boolean excludeForUncached() default false;
+
 }

@@ -690,8 +690,9 @@ public class ExportNodeTest extends AbstractLibraryTest {
             @Specialization
             static void doFoo(TestObjectError13 receiver,
                             @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
-                                            "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
-                                            "To resolve this specify the uncached or allowUncached attribute in @Cached.") @Cached("nonTrivalInitializer(receiver)") TestObjectError13 cachedReceiver) {
+                                            "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope. " +
+                                            "To resolve this specify the uncached or allowUncached attribute in @Cached or exclude the specialization from @GenerateUncached using @Specialization(excludeForUncached=true).") //
+                            @Cached("nonTrivalInitializer(receiver)") TestObjectError13 cachedReceiver) {
             }
 
             static TestObjectError13 nonTrivalInitializer(TestObjectError13 v) {

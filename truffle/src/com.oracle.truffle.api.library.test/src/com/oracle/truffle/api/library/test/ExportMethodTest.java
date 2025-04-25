@@ -191,16 +191,14 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
         abstract String execute();
 
-        @Specialization(rewriteOn = ArithmeticException.class)
-        static String s0() throws ArithmeticException {
-            return "cached";
+        @Specialization
+        static String s0(@Cached(value = "true", uncached = "false") boolean cached) {
+            if (cached) {
+                return "cached";
+            } else {
+                return "uncached";
+            }
         }
-
-        @Specialization(replaces = "s0")
-        static String s1() {
-            return "uncached";
-        }
-
     }
 
     // export varargs as non-varargs

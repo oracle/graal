@@ -214,7 +214,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
         @Operation
         @ConstantOperand(type = SetTraceFuncRootNode.class)
         static final class Invoke {
-            @Specialization
+            @Specialization(excludeForUncached = true)
             public static void doInvoke(@SuppressWarnings("unused") SetTraceFuncRootNode callee,
                             @Cached("create(callee.getCallTarget())") DirectCallNode callNode) {
                 callNode.call();
