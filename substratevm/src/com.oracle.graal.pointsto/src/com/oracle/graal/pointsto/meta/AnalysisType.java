@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
 
@@ -110,6 +111,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideableMethodsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "overrideableMethods");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> SUBTYPES_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "subTypes");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> RESOLVED_METHODS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "resolvedMethods");
+
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
     private final String qualifiedName;
@@ -126,7 +131,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @SuppressWarnings("unused") private volatile Object unsafeAccessedFields;
 
     /** Immediate subtypes and this type itself. */
-    private final Set<AnalysisType> subTypes;
+    @SuppressWarnings("unused") private volatile Object subTypes;
     AnalysisType superClass;
 
     private final int id;
@@ -153,7 +158,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Map ResolvedJavaMethod to Object and not AnalysisMethod because when the type doesn't
      * implement the method the value stored is {@link AnalysisType#NULL_METHOD}.
      */
-    private final ConcurrentHashMap<ResolvedJavaMethod, Object> resolvedMethods = new ConcurrentHashMap<>();
+    @SuppressWarnings("unused") private volatile Object resolvedMethods;
 
     /**
      * Marker used in the {@link AnalysisType#resolvedMethods} map to signal that the type doesn't
@@ -314,7 +319,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * Only after setting the id, the hashCode and compareTo methods work properly. So only now
          * it is allowed to put the type into a hashmap, e.g., invoke addSubType.
          */
-        subTypes = ConcurrentHashMap.newKeySet();
         addSubType(this);
 
         /* Build subtypes. */
@@ -686,12 +690,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public <T> void registerObjectReachableCallback(ObjectReachableCallback<T> callback) {
         ConcurrentLightHashSet.addElement(this, objectReachableCallbacksUpdater, callback);
         /* Register the callback with already discovered subtypes too. */
-        for (AnalysisType subType : subTypes) {
+        ConcurrentLightHashSet.forEach(this, SUBTYPES_UPDATER, (AnalysisType subType) -> {
             /* Subtypes include this type itself. */
             if (!subType.equals(this)) {
                 subType.registerObjectReachableCallback(callback);
             }
-        }
+        });
     }
 
     public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object, ScanReason reason) {
@@ -1051,12 +1055,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     /** Get the immediate subtypes, including this type itself. */
-    public Set<AnalysisType> getSubTypes() {
-        return subTypes;
+    public Collection<AnalysisType> getSubTypes() {
+        return ConcurrentLightHashSet.getElements(this, SUBTYPES_UPDATER);
     }
 
     private void addSubType(AnalysisType subType) {
-        boolean result = this.subTypes.add(subType);
+        boolean result = ConcurrentLightHashSet.addElement(this, SUBTYPES_UPDATER, subType);
         /* Register the object reachability callbacks with the newly discovered subtype. */
         if (!subType.equals(this)) {
             /* Subtypes include this type itself. */
@@ -1113,7 +1117,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean hasSubTypes() {
         /* subTypes always includes this type itself. */
-        return subTypes.size() > 1;
+        return ConcurrentLightHashSet.size(this, SUBTYPES_UPDATER) > 1;
     }
 
     @Override
@@ -1128,7 +1132,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
-        Object resolvedMethod = resolvedMethods.get(method);
+        Object resolvedMethod = ConcurrentLightHashMap.get(this, RESOLVED_METHODS_UPDATER, method);
         if (resolvedMethod == null) {
             ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
             Object newResolvedMethod = null;
@@ -1155,7 +1159,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }
-            Object oldResolvedMethod = resolvedMethods.putIfAbsent(method, newResolvedMethod);
+            Object oldResolvedMethod = ConcurrentLightHashMap.putIfAbsent(this, RESOLVED_METHODS_UPDATER, method, newResolvedMethod);
             resolvedMethod = oldResolvedMethod != null ? oldResolvedMethod : newResolvedMethod;
         }
         return resolvedMethod == NULL_METHOD ? null : (AnalysisMethod) resolvedMethod;
