@@ -126,7 +126,7 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             assert testSelector != null : "must pass the name of the current unit test";
             String testName = testSelector.equals(ALL_TESTS) ? testClass.getName() : testClass.getName() + "#" + testSelector;
             mainClassAndArgs.add(testName);
-            boolean junitVerbose = getProcessCommandLine().contains("-JUnitVerbose");
+            boolean junitVerbose = String.valueOf(getProcessCommandLine()).contains("-JUnitVerbose");
             if (junitVerbose) {
                 mainClassAndArgs.add("-JUnitVerbose");
             }

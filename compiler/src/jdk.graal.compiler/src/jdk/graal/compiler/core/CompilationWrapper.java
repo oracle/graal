@@ -288,6 +288,7 @@ public abstract class CompilationWrapper<T> {
                 try (PrintStream ps = new PrintStream(baos)) {
                     ps.printf("%s: Compilation of %s failed: ", Thread.currentThread(), this);
                     cause.printStackTrace(ps);
+                    ps.println("Options: " + initialOptions);
                     printCompilationFailureActionAlternatives(ps, ExceptionAction.Silent, ExceptionAction.Diagnose);
                 }
                 TTY.print(baos.toString());
@@ -322,6 +323,7 @@ public abstract class CompilationWrapper<T> {
 
                 ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
                 cause.printStackTrace(ps);
+                ps.println("Options: " + initialOptions);
                 printCompilationFailureActionAlternatives(ps, ExceptionAction.Silent, ExceptionAction.Print);
                 if (dumpPath != null) {
                     ps.println("Retrying compilation of " + this);
