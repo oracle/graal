@@ -150,10 +150,12 @@ public class AMD64VectorShuffle {
                 }
                 case DWORD, SINGLE -> new PermuteOp(result, source, indices, encoding);
                 case QWORD, DOUBLE -> {
-                    if (encoding == AMD64SIMDInstructionEncoding.EVEX || avxSize != YMM) {
+                    if (encoding == AMD64SIMDInstructionEncoding.EVEX && avxSize != XMM) {
                         yield new PermuteOp(result, source, indices, encoding);
-                    } else {
+                    } else if (avxSize == YMM) {
                         yield new PermuteOpWithTemps(gen, result, source, indices, encoding, 2, false);
+                    } else {
+                        yield new PermuteOpWithTemps(gen, result, source, indices, encoding, 1, false);
                     }
                 }
                 default -> throw GraalError.shouldNotReachHereUnexpectedValue(eKind);
@@ -255,21 +257,35 @@ public class AMD64VectorShuffle {
                 }
                 case DWORD, SINGLE -> throw GraalError.shouldNotReachHere("should be PermuteOp");
                 case QWORD, DOUBLE -> {
-                    GraalError.guarantee(encoding == AMD64SIMDInstructionEncoding.VEX && avxSize == YMM, "should be PermuteOp");
-                    Register indexReg = asRegister(indices);
-                    Register xtmp1Reg = asRegister(xtmps[0]);
-                    Register xtmp2Reg = asRegister(xtmps[1]);
+                    if (avxSize == YMM) {
+                        GraalError.guarantee(encoding == AMD64SIMDInstructionEncoding.VEX, "should be PermuteOp");
+                        Register indexReg = asRegister(indices);
+                        Register xtmp1Reg = asRegister(xtmps[0]);
+                        Register xtmp2Reg = asRegister(xtmps[1]);
 
-                    // Transform into an int permute by transforming a 64-bit index with value v
-                    // into a pair of 32-bit indices v + 2, v * 2 + 1
-                    VexShiftOp.VPSLLQ.encoding(encoding).emit(masm, YMM, xtmp1Reg, indexReg, Integer.SIZE + 1);
-                    AMD64Address inc = (AMD64Address) crb.asLongConstRef(JavaConstant.forLong(1L << Integer.SIZE));
-                    VexRMOp.VPBROADCASTQ.encoding(encoding).emit(masm, YMM, xtmp2Reg, inc);
-                    VexRVMOp.VPOR.encoding(encoding).emit(masm, YMM, xtmp2Reg, xtmp1Reg, xtmp2Reg);
-                    VexShiftOp.VPSLLQ.encoding(encoding).emit(masm, YMM, xtmp1Reg, indexReg, 1);
-                    VexRVMOp.VPOR.encoding(encoding).emit(masm, YMM, xtmp1Reg, xtmp1Reg, xtmp2Reg);
-                    VexRVMOp op = eKind == AMD64Kind.QWORD ? VexRVMOp.VPERMD : VexRVMOp.VPERMPS;
-                    op.encoding(encoding).emit(masm, YMM, asRegister(result), xtmp1Reg, asRegister(source));
+                        // Transform into an int permute by transforming a 64-bit index with value v
+                        // into a pair of 32-bit indices v + 2, v * 2 + 1
+                        VexShiftOp.VPSLLQ.encoding(encoding).emit(masm, YMM, xtmp1Reg, indexReg, Integer.SIZE + 1);
+                        AMD64Address inc = (AMD64Address) crb.asLongConstRef(JavaConstant.forLong(1L << Integer.SIZE));
+                        VexRMOp.VPBROADCASTQ.encoding(encoding).emit(masm, YMM, xtmp2Reg, inc);
+                        VexRVMOp.VPOR.encoding(encoding).emit(masm, YMM, xtmp2Reg, xtmp1Reg, xtmp2Reg);
+                        VexShiftOp.VPSLLQ.encoding(encoding).emit(masm, YMM, xtmp1Reg, indexReg, 1);
+                        VexRVMOp.VPOR.encoding(encoding).emit(masm, YMM, xtmp1Reg, xtmp1Reg, xtmp2Reg);
+                        VexRVMOp op = eKind == AMD64Kind.QWORD ? VexRVMOp.VPERMD : VexRVMOp.VPERMPS;
+                        op.encoding(encoding).emit(masm, YMM, asRegister(result), xtmp1Reg, asRegister(source));
+                    } else {
+                        GraalError.guarantee(avxSize == XMM, "should be PermuteOp");
+                        Register xtmpReg = asRegister(xtmps[0]);
+                        /*
+                         * VPERMILPD uses the SECOND bit in each element as the index. Note that
+                         * although the textual description of the instruction in the Intel SDM
+                         * (March 2025) says that "The control bits are located at bit 0 of each
+                         * quadword element", the pseudocode in the same manual as well as
+                         * experiments show that it is actually the bit 1 that is the control bit.
+                         */
+                        VexShiftOp.VPSLLQ.encoding(encoding).emit(masm, XMM, xtmpReg, asRegister(indices), 1);
+                        VexRVMOp.VPERMILPD.encoding(encoding).emit(masm, XMM, asRegister(result), asRegister(source), xtmpReg);
+                    }
                 }
                 default -> throw GraalError.shouldNotReachHereUnexpectedValue(eKind);
             }
