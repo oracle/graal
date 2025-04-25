@@ -49,6 +49,7 @@ import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
+import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -160,6 +161,7 @@ public class GraphEncoder {
      * graphs for Native Image runtime compilation must not use this map as it will contain
      * hosted-only types.
      */
+    @ObjectCopier.NotExternalValue(reason = "Needs to be persisted separately")
     private static final NodeClassMap GLOBAL_NODE_CLASS_MAP = new NodeClassMap();
 
     private final InliningLogCodec inliningLogCodec;

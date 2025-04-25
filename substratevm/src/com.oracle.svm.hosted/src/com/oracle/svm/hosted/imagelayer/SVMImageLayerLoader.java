@@ -54,6 +54,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -190,6 +191,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     protected AnalysisMetaAccess metaAccess;
     protected HostedValuesProvider hostedValuesProvider;
     private final LayeredStaticFieldSupport layeredStaticFieldSupport = LayeredStaticFieldSupport.singleton();
+    private NodeClassMap globalNodeClassMap;
 
     public SVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport, SharedLayerSnapshot.Reader snapshot,
                     FileChannel graphChannel, boolean useSharedLayerGraphs) {
@@ -216,6 +218,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public void setMetaAccess(AnalysisMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
+    }
+
+    public void setGlobalNodeClassMap() {
+        byte[] encodedGlobalNodeClassMap = readEncodedObject(snapshot.getGlobalNodeClassMapLocation().toString());
+        globalNodeClassMap = (NodeClassMap) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, null, universe.getSnippetReflection(), false, globalNodeClassMap),
+                        encodedGlobalNodeClassMap);
     }
 
     public void setHostedValuesProvider(HostedValuesProvider hostedValuesProvider) {
@@ -989,8 +997,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private EncodedGraph getEncodedGraph(AnalysisMethod analysisMethod, Text.Reader location) {
-        byte[] encodedAnalyzedGraph = readEncodedGraph(location.toString());
-        EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
+        byte[] encodedAnalyzedGraph = readEncodedObject(location.toString());
+        EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), true, globalNodeClassMap),
+                        encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
             if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
                 encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
@@ -999,7 +1008,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return encodedGraph;
     }
 
-    private byte[] readEncodedGraph(String location) {
+    private byte[] readEncodedObject(String location) {
         int closingBracketAt = location.length() - 1;
         AnalysisError.guarantee(location.charAt(0) == '@' && location.charAt(closingBracketAt) == ']', "Location must start with '@' and end with ']': %s", location);
         int openingBracketAt = location.indexOf('[', 1, closingBracketAt);
@@ -1030,7 +1039,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     public void loadPriorStrengthenedGraphAnalysisElements(AnalysisMethod analysisMethod) {
         if (hasStrengthenedGraph(analysisMethod)) {
             PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
-            byte[] encodedAnalyzedGraph = readEncodedGraph(methodData.getStrengthenedGraphLocation().toString());
+            byte[] encodedAnalyzedGraph = readEncodedObject(methodData.getStrengthenedGraphLocation().toString());
             EncodedGraph graph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphHostedToAnalysisElementsDecoder(this, analysisMethod, universe.getSnippetReflection()),
                             encodedAnalyzedGraph);
             for (Object o : graph.getObjects()) {

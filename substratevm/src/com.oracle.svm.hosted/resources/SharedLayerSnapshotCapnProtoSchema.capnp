@@ -277,6 +277,7 @@ struct SharedLayerSnapshot {
   layeredRuntimeMetadataSingleton @17 :LayeredRuntimeMetadataSingleton;
   dynamicHubInfos @18 :List(DynamicHubInfo);
   hostedMethods @19 :List(PersistedHostedMethod);
+  globalNodeClassMapLocation @20 :Text;
 }
 
 struct StaticFinalFieldFoldingSingleton {

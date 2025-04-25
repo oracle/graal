@@ -1040,6 +1040,9 @@ public class NativeImageGenerator {
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
+                if (imageLayerLoader != null) {
+                    imageLayerLoader.setGlobalNodeClassMap();
+                }
 
                 /* Create the HeapScanner and install it into the universe. */
                 ImageHeap imageHeap = new ImageHeap();

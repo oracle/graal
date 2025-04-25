@@ -169,6 +169,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.meta.JavaConstant;
@@ -297,6 +298,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     public void dumpFiles() {
+        SVMImageLayerSnapshotUtil.SVMGraphEncoder graphEncoder = imageLayerSnapshotUtil.getGraphEncoder(false);
+        NodeClassMap globalMap = SVMImageLayerSnapshotUtil.SVMGraphEncoder.globalNodeClassMapBuiltin.getGlobalMap();
+        byte[] encodedGlobalMap = ObjectCopier.encode(graphEncoder, globalMap);
+        String location = graphsOutput.add(encodedGlobalMap);
+        snapshotBuilder.setGlobalNodeClassMapLocation(location);
+
         graphsOutput.finish();
 
         FileDumpingUtil.dumpFile(fileInfo.layerFilePath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
@@ -1062,7 +1069,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
              */
             return null;
         }
-        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(), analyzedGraph);
+        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(true), analyzedGraph);
         if (contains(encodedGraph, LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.getBytes(StandardCharsets.UTF_8))) {
             throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }
