@@ -2126,7 +2126,14 @@ public final class JDWP {
                 }
 
                 CallFrame[] frames = suspendedInfo.getStackFrames();
+                if (frames.length == 0 && startFrame == 0 && (requestedLength == -1 || requestedLength == 0)) {
+                    // in this special case we need to return an empty result
+                    controller.fine(() -> "returning zero frames for thread: " + controller.getContext().getThreadName(thread));
+                    reply.writeInt(0);
+                    return new CommandResult(reply);
+                }
                 if (startFrame < 0 || startFrame >= frames.length) {
+                    controller.fine(() -> "Invalid frame index requested when actual frames length is " + frames.length);
                     reply.errorCode(ErrorCodes.INVALID_INDEX);
                     return new CommandResult(reply);
                 }
