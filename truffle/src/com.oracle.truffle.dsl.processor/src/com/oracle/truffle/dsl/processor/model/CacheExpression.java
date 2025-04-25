@@ -234,7 +234,7 @@ public final class CacheExpression extends MessageContainer {
         this.uncachedExpression = getUncachedExpression;
     }
 
-    public Message getUncachedExpresionError() {
+    public Message getUncachedExpressionError() {
         return uncachedExpressionError;
     }
 

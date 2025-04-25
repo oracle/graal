@@ -1481,29 +1481,37 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.getUncachedExpression() == null) {
-                    uncachable = false;
-                    if (requireUncachable) {
-                        cache.addError("Failed to generate code for @%s: The specialization uses @%s without valid uncached expression. %s. " +
-                                        "To resolve this specify the uncached or allowUncached attribute in @%s.",
-                                        types.GenerateUncached.asElement().getSimpleName().toString(),
-                                        types.Cached.asElement().getSimpleName().toString(),
-                                        cache.getUncachedExpresionError() != null ? cache.getUncachedExpresionError().getText() : "",
-                                        types.Cached.asElement().getSimpleName().toString());
+
+                    if (specialization.isReplaced()) {
+                        // for compatibility reasons
+                        specialization.setExcludeForUncached(true);
+                    } else {
+                        uncachable = false;
                     }
-                    break;
+                    if (requireUncachable) {
+                        String message = String.format("Failed to generate code for @%s: The specialization uses @%s without valid uncached expression. %s " +
+                                        "To resolve this specify the uncached or allowUncached attribute in @%s or exclude the specialization from @%s using @%s(excludeForUncached=true).",
+                                        getSimpleName(types.GenerateUncached),
+                                        getSimpleName(types.Cached),
+                                        cache.getUncachedExpressionError() != null ? cache.getUncachedExpressionError().getText() : "",
+                                        getSimpleName(types.Cached),
+                                        getSimpleName(types.GenerateUncached),
+                                        getSimpleName(types.Specialization));
+
+                        if (uncachable) {
+                            // for compatibility reasons with previous DSL specifications we
+                            // need to emit this error as a warning.
+                            cache.addWarning(message + " This error is a warning for compatibility reasons. This specialization is ignored for @%s until the warning is fixed.",
+                                            getSimpleName(types.GenerateUncached));
+                        } else {
+                            cache.addError(message);
+                        }
+                    }
+                    if (!uncachable) {
+                        break;
+                    }
                 }
             }
-
-            if (!specialization.getExceptions().isEmpty()) {
-                uncachable = false;
-                if (requireUncachable) {
-                    specialization.addError(getAnnotationValue(specialization.getMarkerAnnotation(), "rewriteOn"),
-                                    "Failed to generate code for @%s: The specialization rewrites on exceptions and there is no specialization that replaces it. " +
-                                                    "Add a replaces=\"%s\" class to specialization below to resolve this problem.",
-                                    types.GenerateUncached.asElement().getSimpleName().toString(), specialization.getMethodName());
-                }
-            }
-
         }
 
         int effectiveExecutionCount = 0;
@@ -2601,9 +2609,43 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeBoxingOverloads(node);
         initializeProbability(node);
         initializeFallbackReachability(node);
+        initializeExcludeForUncached(node);
 
         initializeCheckedExceptions(node);
         initializeSpecializationIdsWithMethodNames(node.getSpecializations());
+    }
+
+    private void initializeExcludeForUncached(NodeData node) {
+        boolean allExcluded = true;
+        for (SpecializationData s : node.getReachableSpecializations()) {
+            if (s.getMethod() == null) {
+                continue;
+            }
+            boolean exclude;
+            Boolean annotationValue = ElementUtils.getAnnotationValue(Boolean.class, s.getMessageAnnotation(), "excludeForUncached", false);
+            if (annotationValue == null) {
+                if (s.isGuardBindsExclusiveCache() && s.isReplaced()) {
+                    exclude = true;
+                } else {
+                    exclude = false;
+                }
+            } else {
+                AnnotationValue v = ElementUtils.getAnnotationValue(s.getMessageAnnotation(), "excludeForUncached");
+                if (!node.isGenerateUncached() && mode == ParseMode.DEFAULT) {
+                    s.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED, s.getMessageAnnotation(), v,
+                                    "The attribute excludeForUncached has no effect as the node is not configured for uncached generation.");
+                }
+                exclude = annotationValue;
+            }
+            s.setExcludeForUncached(exclude);
+            if (!exclude) {
+                allExcluded = false;
+            }
+        }
+
+        if (allExcluded && node.isGenerateUncached()) {
+            node.addError("All specializations were excluded for uncached. At least one specialization must remain included. Set the excludeForUncached attribute to false for at least one specialization to resolve this problem.");
+        }
 
     }
 
