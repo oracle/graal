@@ -49,10 +49,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.ImageInfo;
 
@@ -68,8 +65,6 @@ class DefaultLayout extends LayoutImpl {
 
     static final ObjectLocation[] NO_OBJECT_FIELDS = new ObjectLocation[0];
     static final LongLocation[] NO_LONG_FIELDS = new LongLocation[0];
-
-    private static final Map<Key, DefaultLayout> LAYOUT_MAP = new ConcurrentHashMap<>();
 
     DefaultLayout(Class<? extends DynamicObject> dynamicObjectClass, Lookup layoutLookup, LayoutStrategy strategy, int implicitCastFlags) {
         super(dynamicObjectClass, strategy, implicitCastFlags);
@@ -91,13 +86,13 @@ class DefaultLayout extends LayoutImpl {
 
     private static DefaultLayout getOrCreateLayout(Class<? extends DynamicObject> type, Lookup layoutLookup, int implicitCastFlags) {
         Objects.requireNonNull(type, "DynamicObject layout class");
-        Key key = new Key(type, implicitCastFlags);
-        DefaultLayout layout = LAYOUT_MAP.get(key);
+        Key key = new Key(type, implicitCastFlags, DefaultStrategy.SINGLETON);
+        DefaultLayout layout = (DefaultLayout) LAYOUT_MAP.get(key);
         if (layout != null) {
             return layout;
         }
         DefaultLayout newLayout = new DefaultLayout(type, layoutLookup, DefaultStrategy.SINGLETON, implicitCastFlags);
-        layout = LAYOUT_MAP.putIfAbsent(key, newLayout);
+        layout = (DefaultLayout) LAYOUT_MAP.putIfAbsent(key, newLayout);
         return layout == null ? newLayout : layout;
     }
 
@@ -153,45 +148,12 @@ class DefaultLayout extends LayoutImpl {
         return getStrategy().createAllocator(layout);
     }
 
-    private static final class Key {
-        final Class<? extends DynamicObject> type;
-        final int implicitCastFlags;
-
-        Key(Class<? extends DynamicObject> type, int implicitCastFlags) {
-            this.type = type;
-            this.implicitCastFlags = implicitCastFlags;
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + implicitCastFlags;
-            result = prime * result + ((type == null) ? 0 : type.hashCode());
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (!(obj instanceof Key)) {
-                return false;
-            }
-            Key other = (Key) obj;
-            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags;
-        }
-    }
-
     private static final class LayoutInfo {
         final ObjectLocation[] objectFields;
         final LongLocation[] primitiveFields;
 
-        private static final ConcurrentMap<Class<? extends DynamicObject>, LayoutInfo> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
-
         static LayoutInfo getOrCreateLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass, Lookup layoutLookup) {
-            LayoutInfo layoutInfo = LAYOUT_INFO_MAP.get(dynamicObjectClass);
+            LayoutInfo layoutInfo = (LayoutInfo) LAYOUT_INFO_MAP.get(dynamicObjectClass);
             if (layoutInfo != null) {
                 return layoutInfo;
             }
@@ -220,7 +182,7 @@ class DefaultLayout extends LayoutImpl {
             } else {
                 newLayoutInfo = new LayoutInfo(objectFieldList, longFieldList);
             }
-            LayoutInfo layoutInfo = LAYOUT_INFO_MAP.putIfAbsent(dynamicObjectClass, newLayoutInfo);
+            LayoutInfo layoutInfo = (LayoutInfo) LAYOUT_INFO_MAP.putIfAbsent(dynamicObjectClass, newLayoutInfo);
             return layoutInfo == null ? newLayoutInfo : layoutInfo;
         }
 
@@ -295,13 +257,5 @@ class DefaultLayout extends LayoutImpl {
         public String toString() {
             return "LayoutInfo [objectFields=" + Arrays.toString(objectFields) + ", primitiveFields=" + Arrays.toString(primitiveFields) + "]";
         }
-    }
-
-    /**
-     * Resets the state for native image generation.
-     */
-    static void resetNativeImageState() {
-        LAYOUT_MAP.clear();
-        LayoutInfo.LAYOUT_INFO_MAP.clear();
     }
 }

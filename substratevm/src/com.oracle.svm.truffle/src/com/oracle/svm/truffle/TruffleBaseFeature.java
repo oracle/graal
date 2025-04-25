@@ -476,8 +476,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState",
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
-        // clean up cached object layouts
-        invokeStaticMethod("com.oracle.truffle.object.LayoutImpl", "resetNativeImageState", Collections.emptyList());
     }
 
     @Override
@@ -583,8 +581,8 @@ public final class TruffleBaseFeature implements InternalFeature {
         metaAccess = access.getMetaAccess();
 
         uncachedDispatchField = access.findField(LibraryFactory.class, "uncachedDispatch");
-        layoutInfoMapField = access.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
-        layoutMapField = access.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        layoutInfoMapField = access.findField("com.oracle.truffle.api.object.LayoutImpl", "LAYOUT_INFO_MAP");
+        layoutMapField = access.findField("com.oracle.truffle.api.object.LayoutImpl", "LAYOUT_MAP");
         libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             var classInitializationSupport = access.getHostVM().getClassInitializationSupport();
@@ -970,7 +968,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         } catch (IllegalAccessException e) {
             throw VMError.shouldNotReachHere(e);
         }
-        invokeStaticMethod("com.oracle.truffle.object.LayoutImpl", "initializeDynamicObjectLayout", List.of(Class.class, MethodHandles.Lookup.class), javaClass, privateLookup);
+        invokeStaticMethod("com.oracle.truffle.api.object.LayoutImpl", "initializeDynamicObjectLayout", List.of(Class.class, MethodHandles.Lookup.class), javaClass, privateLookup);
     }
 
     private static void registerDynamicObjectFields(BeforeAnalysisAccessImpl config) {

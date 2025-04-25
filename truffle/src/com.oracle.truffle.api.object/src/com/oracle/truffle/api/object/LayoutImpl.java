@@ -44,9 +44,13 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.TruffleOptions;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
@@ -119,33 +123,46 @@ abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     /**
      * Resets the state for native image generation.
      *
-     * NOTE: this method is called reflectively by downstream projects.
+     * @implNote this method is called reflectively by downstream projects.
+     * @since 25.0
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     static void resetNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        ((CoreLayoutFactory) getFactory()).resetNativeImageState();
+        assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
+        LAYOUT_MAP.clear();
+        LAYOUT_INFO_MAP.clear();
     }
 
     /**
      * Preinitializes DynamicObject layouts for native image generation.
      *
-     * NOTE: this method is called reflectively by downstream projects.
-     *
-     * @deprecated method overload for JDK 21 backwards compatibility.
+     * @implNote this method is called reflectively by downstream projects.
+     * @since 25.0
      */
-    @Deprecated(since = "24.2")
-    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass) {
-        initializeDynamicObjectLayout(dynamicObjectClass, null);
-    }
-
-    /**
-     * Preinitializes DynamicObject layouts for native image generation.
-     *
-     * NOTE: this method is called reflectively by downstream projects.
-     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass, MethodHandles.Lookup lookup) {
-        assert TruffleOptions.AOT : "Only supported during image generation";
+        assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
         ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
+    }
+
+    protected static final Map<Class<? extends DynamicObject>, Object> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
+    protected static final Map<LayoutImpl.Key, LayoutImpl> LAYOUT_MAP = new ConcurrentHashMap<>();
+
+    protected record Key(
+                    Class<? extends DynamicObject> type,
+                    int implicitCastFlags,
+                    LayoutStrategy strategy) {
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof Key other)) {
+                return false;
+            }
+            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags && this.strategy == other.strategy;
+        }
     }
 
     @SuppressWarnings("static-method")

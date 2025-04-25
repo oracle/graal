@@ -61,10 +61,6 @@ public class CoreLayoutFactory implements com.oracle.truffle.api.object.LayoutFa
         return 10;
     }
 
-    protected void resetNativeImageState() {
-        DefaultLayout.resetNativeImageState();
-    }
-
     protected void registerLayoutClass(Class<? extends DynamicObject> subclass, Lookup layoutLookup) {
         DefaultLayout.registerLayoutClass(subclass, layoutLookup);
     }
