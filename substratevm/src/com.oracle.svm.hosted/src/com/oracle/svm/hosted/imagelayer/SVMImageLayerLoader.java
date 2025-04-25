@@ -99,6 +99,7 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
@@ -870,14 +871,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private void createBaseLayerMethod(PersistedAnalysisMethod.Reader md, int mid, String name, AnalysisType[] parameterTypes, AnalysisType returnType) {
         AnalysisType type = getAnalysisTypeForBaseLayerId(md.getDeclaringTypeId());
         ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromArray(parameterTypes, returnType);
-        byte[] code = md.hasCode() ? md.getCode().toArray() : null;
+        byte[] code = md.hasBytecode() ? md.getBytecode().toArray() : null;
         IntrinsicMethod methodHandleIntrinsic = !md.hasMethodHandleIntrinsicName() ? null
                         : IntrinsicMethod.valueOf(md.getMethodHandleIntrinsicName().toString());
         Annotation[] annotations = getAnnotations(md.getAnnotationList());
 
         baseLayerMethods.computeIfAbsent(mid,
                         methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
-                                        md.getModifiers(), md.getIsSynthetic(), code, md.getCodeSize(), methodHandleIntrinsic, annotations));
+                                        md.getModifiers(), md.getIsSynthetic(), code, md.getBytecodeSize(), methodHandleIntrinsic, annotations));
         BaseLayerMethod baseLayerMethod = baseLayerMethods.get(mid);
 
         universe.lookup(baseLayerMethod);
@@ -922,6 +923,31 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         String descriptor = imageLayerSnapshotUtil.getMethodDescriptor(analysisMethod);
         Integer id = methodDescriptorToBaseLayerId.get(descriptor);
         return (id != null) ? findMethod(id) : null;
+    }
+
+    public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo.Reader> getDynamicHubInfos() {
+        return snapshot.getDynamicHubInfos();
+    }
+
+    public DynamicHubInfo.Reader getDynamicHubInfo(AnalysisType aType) {
+        DynamicHubInfo.Reader result = binarySearchUnique(aType.getId(), snapshot.getDynamicHubInfos(), DynamicHubInfo.Reader::getTypeId);
+        assert result != null : aType;
+        return result;
+    }
+
+    public StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Reader> getHostedMethods() {
+        return snapshot.getHostedMethods();
+    }
+
+    public SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Reader getHostedMethodData(int hMethodIndex) {
+        var reader = snapshot.getHostedMethods().get(hMethodIndex);
+        assert reader.getIndex() == hMethodIndex;
+        return reader;
+    }
+
+    public SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Reader getHostedMethodData(AnalysisMethod aMethod) {
+        var aMethodData = getMethodData(aMethod);
+        return getHostedMethodData(aMethodData.getHostedMethodIndex());
     }
 
     /**

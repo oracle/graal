@@ -61,6 +61,7 @@ import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.JavaMethodContext;
 import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.internal.vm.annotation.ForceInline;
@@ -82,6 +83,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
+    public static final int MISSING_VTABLE_IDX = -1;
+    public static final int INVALID_CODE_ADDRESS_OFFSET = -1;
+
     public final AnalysisMethod wrapped;
 
     private final HostedType holder;
@@ -95,14 +99,13 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * However, within the open type world, each type and interface has a unique table, so this
      * index is relative to the start of the appropriate table.
      */
-    int vtableIndex = -1;
+    int vtableIndex = MISSING_VTABLE_IDX;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
      * buffer.
      */
-    private int codeAddressOffset;
-    private boolean codeAddressOffsetValid;
+    private int codeAddressOffset = INVALID_CODE_ADDRESS_OFFSET;
     private boolean compiled;
     private boolean compiledInPriorLayer;
 
@@ -227,10 +230,9 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     public void setCodeAddressOffset(int address) {
         assert isCompiled();
-        assert !codeAddressOffsetValid;
+        assert codeAddressOffset == INVALID_CODE_ADDRESS_OFFSET && address != INVALID_CODE_ADDRESS_OFFSET : Assertions.errorMessage(codeAddressOffset, address);
 
         codeAddressOffset = address;
-        codeAddressOffsetValid = true;
     }
 
     /**
@@ -238,14 +240,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * the buffer.
      */
     public int getCodeAddressOffset() {
-        if (!codeAddressOffsetValid) {
+        if (!isCodeAddressOffsetValid()) {
             throw VMError.shouldNotReachHere(format("%H.%n(%p)") + ": has no code address offset set.");
         }
         return codeAddressOffset;
     }
 
     public boolean isCodeAddressOffsetValid() {
-        return codeAddressOffsetValid;
+        return codeAddressOffset != INVALID_CODE_ADDRESS_OFFSET;
     }
 
     public void setCompiled() {
@@ -347,12 +349,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     public boolean hasVTableIndex() {
-        return vtableIndex != -1;
+        return vtableIndex != MISSING_VTABLE_IDX;
     }
 
     @Override
     public int getVTableIndex() {
-        assert vtableIndex != -1 : "Missing vtable index for method " + this.format("%H.%n(%p)");
+        assert vtableIndex != MISSING_VTABLE_IDX : "Missing vtable index for method " + this.format("%H.%n(%p)");
         return vtableIndex;
     }
 

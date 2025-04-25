@@ -40,7 +40,7 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -219,7 +219,7 @@ public final class VTableBuilder {
         }
 
         if (openHubUtils.shouldRegisterType(type)) {
-            LayeredDispatchTableSupport.singleton().registerDeclaredDispatchInfo(type, table);
+            LayeredDispatchTableFeature.singleton().registerDeclaredDispatchInfo(type, table);
         }
 
         return table;
@@ -287,7 +287,7 @@ public final class VTableBuilder {
             }
 
             if (openHubUtils.shouldRegisterType(type)) {
-                LayeredDispatchTableSupport.singleton().registerNonArrayDispatchTable(type, validTarget);
+                LayeredDispatchTableFeature.singleton().registerNonArrayDispatchTable(type, validTarget);
             }
         }
 
@@ -322,7 +322,7 @@ public final class VTableBuilder {
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
                 if (openHubUtils.shouldRegisterType(type)) {
-                    LayeredDispatchTableSupport.singleton().registerArrayDispatchTable(type, objectType);
+                    LayeredDispatchTableFeature.singleton().registerArrayDispatchTable(type, objectType);
                 }
             }
             if (type.openTypeWorldDispatchTables == null) {
