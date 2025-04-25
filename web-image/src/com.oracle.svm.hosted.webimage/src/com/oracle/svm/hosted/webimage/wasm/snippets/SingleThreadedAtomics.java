@@ -27,12 +27,13 @@ package com.oracle.svm.hosted.webimage.wasm.snippets;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Implementation of atomic operations without atomicity.

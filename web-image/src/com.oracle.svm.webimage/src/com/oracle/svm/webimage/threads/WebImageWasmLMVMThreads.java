@@ -29,11 +29,11 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 @Platforms(WebImageWasmLMPlatform.class)

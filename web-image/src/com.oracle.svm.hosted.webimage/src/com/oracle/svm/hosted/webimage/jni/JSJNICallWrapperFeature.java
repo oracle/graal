@@ -26,10 +26,10 @@ package com.oracle.svm.hosted.webimage.jni;
 
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
 // TODO(GR-35288): Implement proper JNI call support.
 @AutomaticallyRegisteredFeature

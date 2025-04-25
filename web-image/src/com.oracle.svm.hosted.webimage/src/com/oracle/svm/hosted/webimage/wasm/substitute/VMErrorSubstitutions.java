@@ -27,11 +27,8 @@ package com.oracle.svm.hosted.webimage.wasm.substitute;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
-import jdk.graal.compiler.nodes.UnreachableNode;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -41,6 +38,10 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
+import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
+
+import jdk.graal.compiler.nodes.UnreachableNode;
 
 public class VMErrorSubstitutions {
 

@@ -28,11 +28,11 @@ package com.oracle.svm.hosted.webimage.wasm;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
 @Platforms(WebImageWasmLMPlatform.class)

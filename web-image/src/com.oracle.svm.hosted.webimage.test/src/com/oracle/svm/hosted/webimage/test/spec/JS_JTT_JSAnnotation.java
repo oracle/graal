@@ -31,6 +31,8 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
+import com.oracle.svm.hosted.webimage.test.util.WebImageTestOptions;
 import com.oracle.svm.webimage.jtt.api.CoercionConversionTest;
 import com.oracle.svm.webimage.jtt.api.HtmlApiExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JSErrorsTest;
@@ -42,8 +44,6 @@ import com.oracle.svm.webimage.jtt.api.JavaDocExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JavaProxyConversionTest;
 import com.oracle.svm.webimage.jtt.api.JavaProxyTest;
 import com.oracle.svm.webimage.jtt.testdispatcher.JSAnnotationTests;
-import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
-import com.oracle.svm.hosted.webimage.test.util.WebImageTestOptions;
 
 /**
  * Tests for the JavaScriptBody annotation.

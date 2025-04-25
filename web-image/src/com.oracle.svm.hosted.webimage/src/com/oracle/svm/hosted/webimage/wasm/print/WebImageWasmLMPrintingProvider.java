@@ -29,9 +29,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
-import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -39,6 +36,9 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPrintNode;
+import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
+import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 
 import jdk.graal.compiler.word.Word;
 

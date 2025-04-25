@@ -25,10 +25,9 @@
 
 package com.oracle.svm.hosted.webimage.wasm.stack;
 
-import jdk.graal.compiler.lir.VirtualStackSlot;
-
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.vm.ci.meta.VMConstant;
 
 /**

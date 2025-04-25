@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.webimage.codegen.oop;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.codegen.heap.ConstantMap;
 import com.oracle.svm.hosted.webimage.codegen.wrappers.JSEmitter;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.graal.compiler.hightiercodegen.IEmitter;

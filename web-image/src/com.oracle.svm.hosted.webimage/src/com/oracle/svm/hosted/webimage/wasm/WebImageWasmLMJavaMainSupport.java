@@ -32,8 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 
-import com.oracle.svm.webimage.WebImageJavaMainSupport;
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
@@ -41,6 +39,8 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
+import com.oracle.svm.webimage.WebImageJavaMainSupport;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @Platforms(WebImageWasmLMPlatform.class)
 public class WebImageWasmLMJavaMainSupport extends WebImageJavaMainSupport {

@@ -30,12 +30,12 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
+import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
-import com.oracle.svm.hosted.meta.HostedClass;
+import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 
 public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
 

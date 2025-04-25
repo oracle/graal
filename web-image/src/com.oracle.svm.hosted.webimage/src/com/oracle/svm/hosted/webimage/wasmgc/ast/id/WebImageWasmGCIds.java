@@ -25,10 +25,10 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc.ast.id;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.ResolverContext;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;

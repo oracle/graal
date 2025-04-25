@@ -30,18 +30,16 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSValue;
-import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.webimage.api.Nothing;
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -52,6 +50,8 @@ import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.util.ReflectUtil;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.api.Nothing;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.Stamp;

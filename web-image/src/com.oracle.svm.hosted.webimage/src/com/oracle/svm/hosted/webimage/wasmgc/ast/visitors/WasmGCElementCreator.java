@@ -33,12 +33,9 @@ import java.util.Set;
 
 import org.graalvm.webimage.api.JSValue;
 
-import com.oracle.svm.webimage.wasm.types.WasmPackedType;
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmStorageType;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
-import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.hosted.meta.HostedClass;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasm.ast.WasmModule;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
@@ -57,8 +54,11 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCCloneSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.hosted.meta.HostedClass;
-import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.wasm.types.WasmPackedType;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmStorageType;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
+import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaKind;

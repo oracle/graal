@@ -30,7 +30,6 @@ import jdk.graal.compiler.lir.asm.EntryPointDecorator;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

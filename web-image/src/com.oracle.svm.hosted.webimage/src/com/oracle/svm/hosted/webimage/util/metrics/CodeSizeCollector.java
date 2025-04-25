@@ -27,10 +27,10 @@ package com.oracle.svm.hosted.webimage.util.metrics;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.debug.MetricKey;
-
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
+
+import jdk.graal.compiler.debug.MetricKey;
 
 /**
  * A utility class used for measuring code size for different parts of the image. Wrap a block of

@@ -30,9 +30,9 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import com.oracle.svm.core.thread.VMThreads;
 
 @Platforms(WebImageWasmGCPlatform.class)
 public class WebImageWasmGCJavaMainSupport extends WebImageJavaMainSupport {

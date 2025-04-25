@@ -25,6 +25,9 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -35,10 +38,6 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.util.Providers;
-
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;

@@ -29,8 +29,9 @@ import java.io.FileDescriptor;
 import java.util.EnumMap;
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Provides primitives to print to stdout or stderr.

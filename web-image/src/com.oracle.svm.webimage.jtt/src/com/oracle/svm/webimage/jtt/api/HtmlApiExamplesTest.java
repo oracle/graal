@@ -25,10 +25,10 @@
 
 package com.oracle.svm.webimage.jtt.api;
 
+import java.util.stream.Stream;
+
 import com.oracle.svm.webimage.jtt.api.htmlexamples.issue43707.Issue43707;
 import com.oracle.svm.webimage.jtt.api.htmlexamples.issue43842.Issue43842;
-
-import java.util.stream.Stream;
 
 public class HtmlApiExamplesTest {
     public static final String[] OUTPUT = Stream.of(

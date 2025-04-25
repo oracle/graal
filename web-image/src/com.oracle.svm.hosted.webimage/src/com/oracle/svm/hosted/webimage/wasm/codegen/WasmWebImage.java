@@ -28,13 +28,13 @@ package com.oracle.svm.hosted.webimage.wasm.codegen;
 import java.util.List;
 
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.webimage.codegen.WebImage;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.webimage.codegen.WebImage;
 
 public class WasmWebImage extends WebImage {
 

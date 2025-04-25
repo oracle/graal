@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.webimage.test.spec;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.svm.webimage.jtt.xhr.UrlStreamTest;
 import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
+import com.oracle.svm.webimage.jtt.xhr.UrlStreamTest;
 
 public class JS_JTT_XHR extends JTTTestSuite {
     // @formatter:off

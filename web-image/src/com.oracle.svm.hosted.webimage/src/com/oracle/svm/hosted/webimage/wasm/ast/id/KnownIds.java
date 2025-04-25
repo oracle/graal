@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.webimage.wasm.ast.id;
 
 import java.util.List;
 
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
@@ -35,6 +34,7 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmFunctionTemplate;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 
 /**
  * Globally visible {@link WasmId}s that are known beforehand and are not generated dynamically

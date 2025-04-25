@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.phase;
 
+import com.oracle.svm.hosted.webimage.codegen.node.CompoundConditionNode;
+import com.oracle.svm.hosted.webimage.codegen.node.CompoundConditionNode.CompoundOp;
+import com.oracle.svm.hosted.webimage.logging.LoggerContext;
+import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -37,11 +42,6 @@ import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.Phase;
-
-import com.oracle.svm.hosted.webimage.codegen.node.CompoundConditionNode;
-import com.oracle.svm.hosted.webimage.codegen.node.CompoundConditionNode.CompoundOp;
-import com.oracle.svm.hosted.webimage.logging.LoggerContext;
-import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 
 @SuppressWarnings("try")
 public class IncrementalCompoundConditionalPhase extends Phase {

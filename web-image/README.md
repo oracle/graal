@@ -19,6 +19,10 @@ This produces `helloworld.js` and `helloworld.js.wasm` in your working
 directory. The JavaScript file is a wrapper that loads and runs the WebAssembly
 code and can be run with [Node.js](https://nodejs.org/en) 22 or later:
 
+The `--tool:svm-wasm` flag should be the first argument if possible. If any
+experimental options specific to the Wasm backend are used, they can only be
+added after the `--tool:svm-wasm` flag.
+
 ```bash
 $ node helloworld.js
 Hello World

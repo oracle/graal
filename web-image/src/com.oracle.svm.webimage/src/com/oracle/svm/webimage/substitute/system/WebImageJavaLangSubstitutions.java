@@ -43,11 +43,6 @@ import java.util.zip.DataFormatException;
 
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
-import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
-import com.oracle.svm.webimage.platform.WebImagePlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
@@ -59,6 +54,11 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
+import com.oracle.svm.webimage.platform.WebImagePlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 /*
  * Checkstyle: stop method name check

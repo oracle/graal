@@ -25,13 +25,13 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc.phases;
 
+import com.oracle.svm.hosted.webimage.codegen.phase.WebImageSuitesCreator;
+
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-
-import com.oracle.svm.hosted.webimage.codegen.phase.WebImageSuitesCreator;
 
 public class WebImageWasmGCSuitesCreator extends WebImageSuitesCreator {
     @Override

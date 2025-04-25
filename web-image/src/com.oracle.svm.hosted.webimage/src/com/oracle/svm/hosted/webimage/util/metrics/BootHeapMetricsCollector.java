@@ -25,12 +25,12 @@
 
 package com.oracle.svm.hosted.webimage.util.metrics;
 
-import com.oracle.svm.webimage.object.ObjectInspector;
-import com.oracle.svm.webimage.type.TypeControl;
-import com.oracle.svm.hosted.webimage.logging.LoggerScope;
-import com.oracle.svm.hosted.webimage.metrickeys.BootHeapMetricKeys;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.logging.LoggerScope;
+import com.oracle.svm.hosted.webimage.metrickeys.BootHeapMetricKeys;
+import com.oracle.svm.webimage.object.ObjectInspector;
+import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.vm.ci.common.JVMCIError;
 

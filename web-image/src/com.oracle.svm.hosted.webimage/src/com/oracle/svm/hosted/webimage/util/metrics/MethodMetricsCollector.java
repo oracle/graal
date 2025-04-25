@@ -29,9 +29,8 @@ import static com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.debug.MetricKey;
 
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.logging.LoggableMetric;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
@@ -39,7 +38,9 @@ import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 import com.oracle.svm.hosted.webimage.metrickeys.StackifierMetricKeys;
-import com.oracle.svm.hosted.meta.HostedMethod;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.MetricKey;
 
 /**
  * A utility class used to gather up method statistics and statistics from control-flow

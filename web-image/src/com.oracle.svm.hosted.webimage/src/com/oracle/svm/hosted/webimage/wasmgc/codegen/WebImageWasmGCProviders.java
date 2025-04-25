@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.webimage.wasmgc.codegen;
 
 import java.io.PrintStream;
 
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool;
@@ -36,7 +36,7 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmNodeLowerer;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;

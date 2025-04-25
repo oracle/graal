@@ -25,11 +25,11 @@
 
 package com.oracle.svm.webimage.wasm.code;
 
-import com.oracle.svm.webimage.wasm.stack.WebImageWasmFrameMap;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.webimage.wasm.stack.WebImageWasmFrameMap;
 
 /**
  * Stores stack frame metadata for a method.

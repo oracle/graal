@@ -29,8 +29,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.debug.GraalError;
 

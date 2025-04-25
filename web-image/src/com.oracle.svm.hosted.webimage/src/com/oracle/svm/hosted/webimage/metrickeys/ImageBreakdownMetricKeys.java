@@ -28,10 +28,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.hosted.webimage.logging.LoggerScope;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.MetricKey;
-
-import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 
 /**
  * A utility class that represents namespace of {@link MetricKey}s used as keys in

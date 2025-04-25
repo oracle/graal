@@ -28,8 +28,8 @@ package com.oracle.svm.hosted.webimage.js;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.webimage.api.JS;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;

@@ -26,8 +26,10 @@
 package com.oracle.svm.hosted.webimage.codegen;
 
 import java.lang.reflect.Constructor;
+import java.util.Objects;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -66,8 +68,26 @@ public interface ClosureCompilerSupport {
     static ClosureCompilerSupport getClosureSupport(String className, DeadlockWatchdog watchdog, JSCodeGenTool codeGenTool, String imageName) {
         assert isAvailable() : "Tried to get closure compiler even though it is not available";
         Class<?> clazz = ReflectionUtil.lookupClass(className);
+        exportModulePackagesToImplementations(clazz);
         Constructor<?> constructor = ReflectionUtil.lookupConstructor(clazz, DeadlockWatchdog.class, JSCodeGenTool.class, String.class);
         return (ClosureCompilerSupport) ReflectionUtil.newInstance(constructor, watchdog, codeGenTool, imageName);
+    }
+
+    /**
+     * Exports all packages in {@link ModuleSupport#SYSTEM_MODULES system modules} to the module of
+     * the given class and all its superclasses (except for classes in {@code java.base}).
+     * <p>
+     * The implementations of this interface may live in other modules that by default do not have
+     * access to the Compiler and Native Image modules.
+     */
+    private static void exportModulePackagesToImplementations(Class<?> baseClass) {
+        Class<?> clazz = baseClass;
+        while (!Objects.equals(clazz.getModule(), Object.class.getModule())) {
+            for (String systemModule : ModuleSupport.SYSTEM_MODULES) {
+                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, clazz, true, systemModule);
+            }
+            clazz = clazz.getSuperclass();
+        }
     }
 
     /**

@@ -33,11 +33,14 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.NativeImageHeapWriter;
+import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
@@ -53,10 +56,7 @@ import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.ast.visitors.WasmRelocationVisitor;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
 import com.oracle.svm.hosted.webimage.wasm.stack.InitialStackPointerConstant;
-import com.oracle.svm.hosted.image.NativeImageHeap;
-import com.oracle.svm.hosted.image.NativeImageHeapWriter;
-import com.oracle.svm.hosted.image.RelocatableBuffer;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;

@@ -25,13 +25,13 @@
 
 package com.oracle.svm.webimage.functionintrinsics;
 
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSValue;
-import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
 /**
  * Helper code for the JS backend to deal with conversions between the Java and JS world.
