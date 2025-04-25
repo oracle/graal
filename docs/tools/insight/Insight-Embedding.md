@@ -20,10 +20,9 @@ AutoCloseable handle = access.apply(agentSrc);
 ```
 
 Obtain `Engine` for `Context` and ask for the `insight` instrument.
-<p>
 Then create `Source` with the GraalVM Insight script and apply it while obtaining its instrumentation handle.
 Use `handle.close()` to disable all the script's instrumentation when no longer needed.
-For Example:
+For example:
 
 ```java
 Source instrument = Source.create("js", """
