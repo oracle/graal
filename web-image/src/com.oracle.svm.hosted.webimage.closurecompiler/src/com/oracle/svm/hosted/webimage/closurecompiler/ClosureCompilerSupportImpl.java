@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.webimage.codegen;
+package com.oracle.svm.hosted.webimage.closurecompiler;
 
 import static com.oracle.svm.hosted.webimage.codegen.WebImageJSCodeGen.ClosureWhitespaceTimer;
 import static org.graalvm.webimage.api.JS.Import;
@@ -68,6 +68,10 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.webimage.codegen.ClosureCompilerSupport;
+import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.hosted.webimage.codegen.WebImageEntryFunctionLowerer;
+import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 
 /**
@@ -252,7 +256,7 @@ public class ClosureCompilerSupportImpl implements ClosureCompilerSupport {
 
     private static SourceFile nodejsExterns() {
         return SourceFile.fromCode("externs-nodejs.js",
-                        new BufferedReader(new InputStreamReader(WebImageCodeGen.class.getResourceAsStream("externs/externs-node.js"))).lines().collect(Collectors.joining("\n")),
+                        new BufferedReader(new InputStreamReader(ClosureCompilerSupportImpl.class.getResourceAsStream("externs/externs-node.js"))).lines().collect(Collectors.joining("\n")),
                         StaticSourceFile.SourceKind.EXTERN);
     }
 

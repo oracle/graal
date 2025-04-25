@@ -25,10 +25,6 @@
 
 package com.oracle.svm.hosted.webimage.wasm.codegen;
 
-import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_CALLOC;
-import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_FREE;
-import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_MALLOC;
-import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_REALLOC;
 import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Binary;
 import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Call;
 import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Const;
@@ -41,16 +37,15 @@ import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Nop;
 import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Store;
 import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Throw;
 import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Unreachable;
+import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_CALLOC;
+import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_FREE;
+import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_MALLOC;
+import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_REALLOC;
 
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
-import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
-import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
@@ -61,6 +56,7 @@ import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.wasm.WasmImports;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmReservedRegisters;
@@ -82,7 +78,11 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPrintNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WebImageWasmVMThreadLocalSTHolderNode;
 import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
+import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
+import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.debug.GraalError;

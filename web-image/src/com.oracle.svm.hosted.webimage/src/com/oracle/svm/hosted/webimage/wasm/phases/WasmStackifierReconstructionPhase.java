@@ -25,11 +25,10 @@
 
 package com.oracle.svm.hosted.webimage.wasm.phases;
 
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierReconstructionPhase;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 public class WasmStackifierReconstructionPhase extends StackifierReconstructionPhase {
 

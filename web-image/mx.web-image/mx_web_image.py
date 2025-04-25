@@ -31,7 +31,6 @@ from argparse import ArgumentParser
 from os.path import join
 from pathlib import Path
 from typing import List, Optional, Union
-from xml.dom import minidom
 
 import mx
 import mx_gate
@@ -62,7 +61,64 @@ web_image_builder_jars = [
     "web-image:SVM_WASM_API",
     "web-image:SVM_WASM_JIMFS",
     "web-image:SVM_WASM_GUAVA",
+    "web-image:WEBIMAGE_CLOSURE_SUPPORT",
     "web-image:WEBIMAGE_GOOGLE_CLOSURE",
+]
+# Hosted options defined in the web-image-enterprise suite
+# This list has to be kept in sync with the code (the 'webimageoptions' gate tag checks this)
+# See also WebImageConfiguration.hosted_options
+web_image_hosted_options = [
+    "AnalyzeCompoundConditionals",
+    "AutoRunLibraries=",
+    "AutoRunVM",
+    "BenchmarkName=",
+    "ClearFreeMemory",
+    "CLIVisualizationMonochrome",
+    "ClosureCompiler",
+    "ClosurePrettyPrint=",
+    "CodeSizeDiagnostics",
+    "DebugNames",
+    "DisableStackTraces",
+    "DumpCurrentCompiledFunction",
+    "DumpPreClosure",
+    "DumpTypeControlGraph",
+    "EnableTruffle",
+    "EncodeImageHeapArraysBase64",
+    "EntryPointsConfig=",
+    "FatalUnsupportedNodes",
+    "ForceSinglePrecision",
+    "GCStressTest",
+    "GenerateSourceMap",
+    "GenTimingCode",
+    "GrowthTriggerThreshold=",
+    "HeapGrowthFactor=",
+    "ImageHeapObjectsPerFunction=",
+    "JSComments=",
+    "JSRuntime=",
+    "LogFilter=",
+    "LoggingFile=",
+    "LoggingStyle=",
+    "NamingConvention=",
+    "OutlineRuntimeChecks",
+    "ReportImageSizeBreakdown",
+    "RuntimeDebugChecks",
+    "SILENT_COMPILE",
+    "SourceMapSourceRoot=",
+    "StackSize=",
+    "StrictWarnings",
+    "UnsafeErrorMessages",
+    "UseBinaryen",
+    "UsePEA",
+    "UseRandomForTempFiles",
+    "UseVtable",
+    "VerificationPhases",
+    "VerifyAllocations",
+    "Visualization=",
+    "VMClassName=",
+    "WasmAsPath=",
+    "WasmComments=",
+    "WasmVerifyReferences",
+    "Wat2WasmPath=",
 ]
 
 
@@ -75,6 +131,24 @@ class WebImageConfiguration:
     svm_wasm_component = svm_wasm_component
 
     builder_jars = web_image_builder_jars
+
+    additional_modules = []
+    """Additional modules that are added to --add-modules for the web-image launcher"""
+
+    hosted_options = web_image_hosted_options
+    """
+    Options added to the ProvidedHostedOptions property for the svm-wasm tool macro
+
+    The native-image launcher checks the validity of options in the driver (not the builder),
+    for that it discovers all options on its classpath. This will not find the options for Wasm codegen because those
+    jars are not on the driver's classpath (they are only added to the builder's classpath through the macro).
+
+    The ProvidedHostedOptions property is a way to let the driver know about additional options it should accept.
+    The alternative, adding the Wasm codegen jars to the drivers classpath doesn't work in all cases. It works for the
+    bash launchers, but for the native image built from the driver in releases, the available options are looked up at
+    build-time in a Feature; there, only options available on the builder's classpath are discovered. It is not possible
+    to add the Wasm codegen jars to builder's classpath, because that would make it produce a Wasm binary.
+    """
 
     suite = None
     """Suite used to resolve the location of the web-image executable"""
@@ -95,37 +169,17 @@ class WebImageConfiguration:
     def get_builder_jars(cls) -> List[str]:
         return cls.builder_jars
 
+    @classmethod
+    def get_additional_modules(cls) -> List[str]:
+        return cls.additional_modules
+
+    @classmethod
+    def get_hosted_options(cls) -> List[str]:
+        return cls.hosted_options
+
 
 # For Web Image SVM_WASM is part of the modules implicitly available on the module-path
 mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes.append(web_image_builder)
-
-
-def concatCP(old, new):
-    if old and new:
-        return old + ":" + new
-    elif old:
-        return old
-    elif new:
-        return new
-    else:
-        return ""
-
-
-def addCP(vmargs, cp):
-    cpIndex, cpValue = mx.find_classpath_arg(vmargs)
-
-    if cpIndex:
-        vmargs[cpIndex] = concatCP(cp, cpValue)
-    else:
-        vmargs += ["-cp", cp]
-
-    return vmargs
-
-
-def run_javac(args, out=None, err=None, cwd=None, nonZeroIsFatal=True):
-    jdk = mx.get_jdk(tag="jvmci")
-    cmd = [jdk.javac] + args
-    mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 
 def web_image_main_class():
@@ -190,6 +244,7 @@ class GraalWebImageTags:
     webimageunittest = "webimageunittest"
     webimageprettier = "webimageprettier"
     webimagehelp = "webimagehelp"
+    webimageoptions = "webimageoptions"
 
 
 @mx.command(_suite.name, "webimageprettier")
@@ -280,6 +335,48 @@ def prettier_runner(args=None, files=None, nonZeroIsFatal=False):
     return (final_rc, outCapture.data, errCapture.data)
 
 
+def hosted_options_gate() -> None:
+    """
+    Checks that WebImageConfiguration.hosted_options matches the options in the code.
+
+    For that, there is an extra hosted option, DumpProvidedHostedOptionsAndExit, that just prints the expected
+    contents of the ProvidedHostedOptions property.
+    """
+    out = mx.LinesOutputCapture()
+    # The driver requires a class name to invoke the builder, so we just pass an arbitrary name, the builder will exit
+    # before it tries to load it anyway.
+    compile_web_image(
+        ["SomeClassName", "-H:+DumpProvidedHostedOptionsAndExit"],
+        out=out,
+        nonZeroIsFatal=True,
+        suite=WebImageConfiguration.get_suite(),
+    )
+    actual_options = sorted(out.lines)
+    hardcoded_options = sorted(WebImageConfiguration.get_hosted_options())
+
+    if hardcoded_options != actual_options:
+        actual_options_set = set(actual_options)
+        hardcoded_options_set = set(hardcoded_options)
+
+        missing_hardcoded_options = list(actual_options_set - hardcoded_options_set)
+        additional_hardcoded_options = list(hardcoded_options_set - actual_options_set)
+
+        mx.abort(
+            "Mismatch in hardcoded options and options defined in the code\n"
+            + (
+                "Options that are not hardcoded: " + str(missing_hardcoded_options) + "\n"
+                if missing_hardcoded_options
+                else ""
+            )
+            + (
+                "Hardcoded options that don't exist: " + str(additional_hardcoded_options) + "\n"
+                if additional_hardcoded_options
+                else ""
+            )
+            + "Please update the list of hardcoded options to reflect the Web Image options declared in the codebase"
+        )
+
+
 def determine_gate_unittest_args(gate_args):
     vm_options = ["-Dwebimage.test.max_failures=10"]
 
@@ -351,6 +448,14 @@ def gate_runner(args, tasks):
                     "This can happen if you add extra arguments the mx web-image call without checking if an argument was --help or --help-extra."
                 )
 
+    with Task(
+        "Check that ProvidedHostedOptions contains all Web Image options",
+        tasks,
+        tags=[GraalWebImageTags.webimageoptions],
+    ) as t:
+        if t:
+            hosted_options_gate()
+
 
 add_gate_runner(_suite, gate_runner)
 # Defaults to JS backend
@@ -418,16 +523,6 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
 mx_unittest.register_unittest_config(WebImageUnittestConfig())
 
 
-def pom_from_template(proj_dir):
-    # Create pom with correct version info from template
-    version = _suite.release_version(snapshotSuffix="SNAPSHOT")
-    dom = minidom.parse(os.path.join(proj_dir, "template-pom.xml"))
-    for element in dom.getElementsByTagName("webImageVersion"):
-        element.parentNode.replaceChild(dom.createTextNode(version), element)
-    with open(os.path.join(proj_dir, "pom.xml"), "w") as pom_file:
-        dom.writexml(pom_file)
-
-
 class WebImageMacroBuilder(mx.ArchivableProject):
     """
     Builds a ``native-image.properties`` file that contains the configuration needed to run the Web Image builder in the
@@ -444,6 +539,7 @@ class WebImageMacroBuilder(mx.ArchivableProject):
         macro_location: str,
         java_args: Optional[List[str]] = None,
         image_provided_jars: Optional[List[str]] = None,
+        provided_hosted_options: Optional[List[str]] = None,
     ):
         """
         :param builder_dists: Distributions included for the builder. Exactly these are added to
@@ -452,12 +548,14 @@ class WebImageMacroBuilder(mx.ArchivableProject):
         :param macro_location: Path to the macro directory. Generated paths in the macro will be relative to this path
         :param java_args: Additional flags to add to ``JavaArgs``
         :param image_provided_jars: Distributions that should be added to ``ImageProvidedJars``
+        :param provided_hosted_options: Options that should be added to ``ProvidedHostedOptions``
         """
         super().__init__(suite, name, [], None, None, buildDependencies=builder_dists)
         self.builder_dists = builder_dists
         self.macro_location = macro_location
         self.java_args = java_args or []
         self.image_provided_jars = image_provided_jars or []
+        self.provided_hosted_options = provided_hosted_options or []
 
     def output_dir(self):
         return self.get_output_root()
@@ -549,7 +647,7 @@ class WebImageMacroBuildTask(mx.ArchivableBuildTask):
             lines: List[str] = [
                 "# This file is auto-generated",
                 "ExcludeFromAll = true",
-                "ProvidedHostedOptions = Backend=",
+                "ProvidedHostedOptions = " + " ".join(self.subject.provided_hosted_options + ["Backend="]),
             ]
 
             if builder_jars:
@@ -603,6 +701,7 @@ def create_web_image_macro_builder(
     component: mx_sdk_vm.GraalVmComponent,
     builder_jars: List[str],
     java_args: Optional[List[str]] = None,
+    provided_hosted_options: Optional[List[str]] = None,
 ) -> WebImageMacroBuilder:
     """
     Creates a :class:`WebImageMacroBuilder`.
@@ -637,6 +736,7 @@ def create_web_image_macro_builder(
             macro_path,
             java_args=java_args,
             image_provided_jars=component.jar_distributions,
+            provided_hosted_options=provided_hosted_options,
         )
 
 
@@ -704,8 +804,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 # The closure compiler is only an optional dependency and as such is not part of the
                 # module graph by default (even if it is on the module path), it has to be added
                 # explicitly using `--add-modules`.
+                "--add-modules=org.graalvm.extraimage.closurecompiler",
                 "--add-modules=org.graalvm.wrapped.google.closure",
-            ],
+            ]
+            + ["--add-modules=" + module for module in WebImageConfiguration.get_additional_modules()],
         )
     )
 
@@ -716,19 +818,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "svm-wasm-macro-builder",
             wasm_component,
             wasm_component.builder_jar_distributions,
+            provided_hosted_options=WebImageConfiguration.get_hosted_options(),
         )
     )
-
-
-def assert_equals(msg, expected, actual):
-    if expected != actual:
-        mx.abort("Assertion failed: {} expected: {!r} but was: {!r}".format(msg, expected, actual))
-
-
-def graalvm_home():
-    capture = mx.OutputCapture()
-    mx.run_mx(["graalvm-home"], out=capture, quiet=True)
-    return capture.data.strip()
 
 
 # This callback is essential for mx to generate the manifest file so that the ServiceLoader can find

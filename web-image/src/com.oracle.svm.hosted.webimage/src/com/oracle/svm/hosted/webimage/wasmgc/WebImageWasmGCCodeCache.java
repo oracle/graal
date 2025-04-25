@@ -31,11 +31,11 @@ import java.util.Optional;
 
 import org.graalvm.collections.Pair;
 
-import com.oracle.svm.hosted.webimage.WebImageCodeCache;
-import com.oracle.svm.hosted.webimage.util.ReflectUtil;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.WebImageCodeCache;
+import com.oracle.svm.hosted.webimage.util.ReflectUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;

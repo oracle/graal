@@ -37,7 +37,6 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
@@ -46,6 +45,7 @@ import com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Binary;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmSwitchPhase;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;

@@ -25,11 +25,11 @@
 
 package com.oracle.svm.hosted.webimage.wasm.codegen;
 
+import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Const;
 import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.f32;
 import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.f64;
 import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.i32;
 import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.i64;
-import static com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Const;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,10 +39,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -64,6 +60,10 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmIRWalker.Requirements;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmIsNonZeroNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPopcntNode;
 import com.oracle.svm.hosted.webimage.wasm.snippets.WasmImportForeignCallDescriptor;
+import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;

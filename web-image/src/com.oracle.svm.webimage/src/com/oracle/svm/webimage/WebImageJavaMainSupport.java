@@ -32,9 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.JSExceptionSupport.ExceptionToNonLocalizedString;
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
-import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
@@ -42,6 +39,9 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.webimage.JSExceptionSupport.ExceptionToNonLocalizedString;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 
 import jdk.graal.compiler.debug.GraalError;
 

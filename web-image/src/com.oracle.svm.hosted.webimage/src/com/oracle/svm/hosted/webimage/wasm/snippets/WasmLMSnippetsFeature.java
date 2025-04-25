@@ -31,12 +31,12 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;

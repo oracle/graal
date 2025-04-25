@@ -41,8 +41,8 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.svm.webimage.substitute.system.WebImageFileSystem;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.webimage.substitute.system.WebImageFileSystem;
 
 /**
  * Tests the implementation of {@link WebImageFileSystem#canonicalizePath(String)} to make sure it

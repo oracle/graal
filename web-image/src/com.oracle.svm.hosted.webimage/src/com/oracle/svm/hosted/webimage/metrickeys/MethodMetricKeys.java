@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.webimage.metrickeys;
 
+import com.oracle.svm.hosted.webimage.logging.LoggerScope;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.MetricKey;
-
-import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 
 /**
  * A class used as a namespace for {@link MetricKey}s that are used as counter keys in

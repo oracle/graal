@@ -31,8 +31,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.svm.webimage.jtt.testdispatcher.BytecodeTest;
 import com.oracle.svm.hosted.webimage.test.util.JTTParameterizedTestSuite;
+import com.oracle.svm.webimage.jtt.testdispatcher.BytecodeTest;
 
 /**
  * Tests all bytecodes.

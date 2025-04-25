@@ -25,12 +25,12 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc.codegen;
 
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instructions;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 

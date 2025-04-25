@@ -29,13 +29,13 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.AnalysisUtil;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.js.JSBody;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Signature;

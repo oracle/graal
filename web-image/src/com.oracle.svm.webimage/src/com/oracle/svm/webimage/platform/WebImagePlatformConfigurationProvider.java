@@ -25,9 +25,9 @@
 
 package com.oracle.svm.webimage.platform;
 
-import jdk.graal.compiler.nodes.gc.BarrierSet;
-
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
+
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 
 public class WebImagePlatformConfigurationProvider extends SubstratePlatformConfigurationProvider {
     public WebImagePlatformConfigurationProvider(BarrierSet barrierSet) {

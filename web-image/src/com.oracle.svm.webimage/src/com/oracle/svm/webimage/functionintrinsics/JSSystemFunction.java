@@ -26,7 +26,6 @@ package com.oracle.svm.webimage.functionintrinsics;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**

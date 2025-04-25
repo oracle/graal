@@ -34,7 +34,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-
 import jdk.vm.ci.code.Architecture;
 
 public abstract class WebImageSuitesCreator extends SuitesProviderBase {

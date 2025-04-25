@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 @TargetClass(ByteBuffer.class)
 public final class Target_java_nio_ByteBuffer_Web {

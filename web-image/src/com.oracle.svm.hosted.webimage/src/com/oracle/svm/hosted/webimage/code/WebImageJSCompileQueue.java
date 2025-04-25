@@ -29,8 +29,8 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.hosted.FeatureHandler;
-import com.oracle.svm.hosted.webimage.compiletasks.Long64PreparationTask;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.webimage.compiletasks.Long64PreparationTask;
 
 import jdk.graal.compiler.debug.DebugContext;
 

@@ -34,18 +34,18 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.webimage.wasm.code.FrameData;
-import com.oracle.svm.webimage.wasm.code.WasmCodeInfoHolder;
-import com.oracle.svm.webimage.wasm.code.WasmCodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.webimage.WebImageCodeCache;
-import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmCompilationResult;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.webimage.WebImageCodeCache;
+import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmCompilationResult;
+import com.oracle.svm.webimage.wasm.code.FrameData;
+import com.oracle.svm.webimage.wasm.code.WasmCodeInfoHolder;
+import com.oracle.svm.webimage.wasm.code.WasmCodeInfoQueryResult;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;

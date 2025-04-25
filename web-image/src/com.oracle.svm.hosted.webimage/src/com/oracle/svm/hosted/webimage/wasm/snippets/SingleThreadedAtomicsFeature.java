@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted.webimage.wasm.snippets;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -34,6 +33,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 /**
  * TODO GR-42150 Replace with true atomics through either outgoing calls or threading proposal.

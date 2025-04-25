@@ -28,6 +28,8 @@ package com.oracle.svm.webimage.functionintrinsics;
 import java.lang.reflect.Constructor;
 import java.math.BigInteger;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSBigInt;
 import org.graalvm.webimage.api.JSBoolean;
@@ -38,9 +40,8 @@ import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSSymbol;
 import org.graalvm.webimage.api.JSUndefined;
 import org.graalvm.webimage.api.JSValue;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.JSExceptionSupport;
 import com.oracle.svm.webimage.JSNameGenerator;
 import com.oracle.svm.webimage.annotation.JSRawCall;
@@ -48,7 +49,6 @@ import com.oracle.svm.webimage.annotation.WebImage;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.JavaKind;

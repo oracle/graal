@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -48,6 +47,7 @@ import com.oracle.svm.hosted.webimage.codegen.WebImageNoRegisterConfig;
 import com.oracle.svm.hosted.webimage.codegen.phase.WebImageJSSuitesCreatorProvider;
 import com.oracle.svm.hosted.webimage.js.WebImageJSLoweringProvider;
 import com.oracle.svm.hosted.webimage.snippets.WebImageIdentityHashCodeSnippets;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;

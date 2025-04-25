@@ -33,8 +33,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -59,6 +57,8 @@ import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCCloneSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCBackend;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.phases.WebImageWasmGCSuitesCreatorProvider;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
+import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;

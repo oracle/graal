@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.wasm.ast.FunctionTypeDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.ImportDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
@@ -49,6 +48,7 @@ import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds.Param;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds.SwitchLabel;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds.TempLocal;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;

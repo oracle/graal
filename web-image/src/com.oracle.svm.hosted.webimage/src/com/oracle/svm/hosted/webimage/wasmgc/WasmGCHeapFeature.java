@@ -29,9 +29,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.webimage.heap.WebImageJSHeap;
-import com.oracle.svm.webimage.heap.WebImageNopAllocationSupport;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
@@ -41,6 +38,9 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCHeapLayouter;
+import com.oracle.svm.webimage.heap.WebImageJSHeap;
+import com.oracle.svm.webimage.heap.WebImageNopAllocationSupport;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 

@@ -31,9 +31,9 @@ import java.math.BigInteger;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.webimage.type.TypeControl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.vm.ci.common.JVMCIError;

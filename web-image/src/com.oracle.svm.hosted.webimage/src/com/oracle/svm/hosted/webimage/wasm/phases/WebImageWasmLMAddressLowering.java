@@ -25,8 +25,8 @@
 
 package com.oracle.svm.hosted.webimage.wasm.phases;
 
-import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmAddressNode;
+import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
 
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;

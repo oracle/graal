@@ -33,11 +33,11 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.webimage.type.TypeControl;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Signature;

@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.hosted.webimage.compiletasks;
 
+import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.webimage.phases.PrepareLongEmulationPhase;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-
-import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.svm.hosted.webimage.phases.PrepareLongEmulationPhase;
-import com.oracle.svm.hosted.meta.HostedMethod;
 
 public class Long64PreparationTask implements CompletionExecutor.DebugContextRunnable {
     private final HostedMethod method;

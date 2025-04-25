@@ -25,10 +25,10 @@
 
 package com.oracle.svm.hosted.webimage.wasm.ast.id;
 
+import com.oracle.svm.webimage.NamingConvention;
+
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-
-import com.oracle.svm.webimage.NamingConvention;
 
 /**
  * TODO GR-41720

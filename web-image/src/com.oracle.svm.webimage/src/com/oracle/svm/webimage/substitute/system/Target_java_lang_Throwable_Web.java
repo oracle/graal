@@ -32,11 +32,6 @@ import java.io.PrintWriter;
 
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.JSExceptionSupport;
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -44,6 +39,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.webimage.JSExceptionSupport;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @TargetClass(Throwable.class)
 @SuppressWarnings({"static-method", "unused"})

@@ -27,20 +27,20 @@ package com.oracle.svm.hosted.webimage.js;
 
 import java.util.List;
 
-import org.graalvm.webimage.api.JS;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.webimage.annotation.JSRawCall;
-import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.annotation.JSRawCall;
+import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;

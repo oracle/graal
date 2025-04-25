@@ -39,8 +39,8 @@ import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
 import com.oracle.svm.hosted.jni.JNIAccessFeature;
+import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.CallTargetNode;
