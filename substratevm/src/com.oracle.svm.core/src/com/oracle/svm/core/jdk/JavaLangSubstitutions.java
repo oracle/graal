@@ -191,10 +191,6 @@ final class Target_java_lang_String {
 
     @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
     public byte[] value;
-
-    @Alias //
-    int hash;
-
 }
 
 @TargetClass(className = "java.lang.StringLatin1")
