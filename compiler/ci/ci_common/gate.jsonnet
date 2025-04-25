@@ -271,7 +271,7 @@
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
 
-    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00"),
+    "daily-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
 
     "daily-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores,
     "daily-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores
@@ -298,17 +298,18 @@
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("3:00:00"),
+    "weekly-compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("6:00:00"),
+    "weekly-compiler-benchmarktest-labsjdk-latestDebug-darwin-aarch64": t("6:00:00"),
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": t("1:30:00"),
-    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": t("1:30:00"),
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
 
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": {},
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -502,9 +503,13 @@
   }],
 
   # Builds run on only on linux-amd64-jdk-latestDebug
-  local linux_amd64_jdk_latestDebug_builds = [self.make_build("LatestDebug", "linux-amd64", task).build
+  local jdk_latestDebug_builds = [self.make_build("LatestDebug", os_arch, task).build
     for task in [
-      "benchmarktest",
+      "benchmarktest"
+    ]
+    for os_arch in [
+      "linux-amd64",
+      "darwin-aarch64"
     ]
   ],
 
@@ -517,7 +522,7 @@
     style_builds +
     jdk_21_version_check_builds +
     linux_amd64_jdk_latest_builds +
-    linux_amd64_jdk_latestDebug_builds,
+    jdk_latestDebug_builds,
 
   local _builds = if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&
