@@ -294,8 +294,8 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
-    public long getStackTraceId(JfrEvent eventType, int skipCount) {
-        return getStackTraceId(eventType.getId(), skipCount);
+    public long getStackTraceId(JfrEvent eventType) {
+        return getStackTraceId(eventType.getId(), eventType.getSkipCount());
     }
 
     /**

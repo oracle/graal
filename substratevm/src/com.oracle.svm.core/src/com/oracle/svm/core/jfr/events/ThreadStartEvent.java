@@ -45,7 +45,7 @@ public class ThreadStartEvent {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadStart);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadStart, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadStart));
             JfrNativeEventWriter.putThread(data, thread);
             JfrNativeEventWriter.putThread(data, JavaThreads.getParentThreadId(thread));
             JfrNativeEventWriter.endSmallEvent(data);
