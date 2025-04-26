@@ -104,6 +104,7 @@ public class JfrTypeRepository implements JfrRepository {
 
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
         if (clazz != null && addClass(typeInfo, clazz)) {
+            visitClassLoader(typeInfo, clazz.getClassLoader());
             visitPackage(typeInfo, clazz.getPackage(), clazz.getModule());
             visitClass(typeInfo, clazz.getSuperclass());
         }
