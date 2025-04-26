@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.Objects;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -42,14 +43,14 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
  * corresponding system properties.
  * <p>
  * We {@link Substitute substitute} the whole class so that it is possible to use a custom static
- * constructor at run-time.
+ * constructor at run-time. If this class is used before the system properties are fully parsed and
+ * initialized, it can happen that we return or cache invalid values (see GR-64572).
  * <p>
  * Note for updating: use {@link Delete} for static fields that should be unreachable (e.g, because
  * we substituted an accessor and the field is therefore unused). Use {@link Alias} for static
  * fields that can be initialized in our custom static constructor. Use {@link Substitute} for
  * methods that access expensive lazily initialized system properties (see
- * {@link SystemPropertiesSupport} for a list of all lazily initialized properties). Use
- * {@link KeepOriginal} for methods that we don't want to substitute.
+ * {@link SystemPropertiesSupport} for a list of all lazily initialized properties).
  */
 @Substitute
 @TargetClass(jdk.internal.util.StaticProperty.class)
@@ -284,29 +285,53 @@ final class Target_jdk_internal_util_StaticProperty {
         return SystemPropertiesSupport.singleton().getInitialProperty("java.io.tmpdir");
     }
 
-    @KeepOriginal
-    public static native String sunBootLibraryPath();
+    @Substitute
+    public static String sunBootLibraryPath() {
+        assert Objects.equals(SUN_BOOT_LIBRARY_PATH, SystemPropertiesSupport.singleton().getInitialProperty("sun.boot.library.path", ""));
+        return SUN_BOOT_LIBRARY_PATH;
+    }
 
-    @KeepOriginal
-    public static native String jdkSerialFilter();
+    @Substitute
+    public static String jdkSerialFilter() {
+        assert Objects.equals(JDK_SERIAL_FILTER, SystemPropertiesSupport.singleton().getInitialProperty("jdk.serialFilter"));
+        return JDK_SERIAL_FILTER;
+    }
 
-    @KeepOriginal
-    public static native String jdkSerialFilterFactory();
+    @Substitute
+    public static String jdkSerialFilterFactory() {
+        assert Objects.equals(JDK_SERIAL_FILTER_FACTORY, SystemPropertiesSupport.singleton().getInitialProperty("jdk.serialFilterFactory"));
+        return JDK_SERIAL_FILTER_FACTORY;
+    }
 
-    @KeepOriginal
-    public static native String nativeEncoding();
+    @Substitute
+    public static String nativeEncoding() {
+        assert Objects.equals(NATIVE_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("native.encoding"));
+        return NATIVE_ENCODING;
+    }
 
-    @KeepOriginal
-    public static native String fileEncoding();
+    @Substitute
+    public static String fileEncoding() {
+        assert Objects.equals(FILE_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("file.encoding"));
+        return FILE_ENCODING;
+    }
 
-    @KeepOriginal
-    public static native String javaPropertiesDate();
+    @Substitute
+    public static String javaPropertiesDate() {
+        assert Objects.equals(JAVA_PROPERTIES_DATE, SystemPropertiesSupport.singleton().getInitialProperty("java.properties.date"));
+        return JAVA_PROPERTIES_DATE;
+    }
 
-    @KeepOriginal
-    public static native String jnuEncoding();
+    @Substitute
+    public static String jnuEncoding() {
+        assert Objects.equals(SUN_JNU_ENCODING, SystemPropertiesSupport.singleton().getInitialProperty("sun.jnu.encoding"));
+        return SUN_JNU_ENCODING;
+    }
 
-    @KeepOriginal
-    public static native String javaLocaleUseOldISOCodes();
+    @Substitute
+    public static String javaLocaleUseOldISOCodes() {
+        assert Objects.equals(JAVA_LOCALE_USE_OLD_ISO_CODES, SystemPropertiesSupport.singleton().getInitialProperty("java.locale.useOldISOCodes", ""));
+        return JAVA_LOCALE_USE_OLD_ISO_CODES;
+    }
 
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)//
@@ -314,9 +339,12 @@ final class Target_jdk_internal_util_StaticProperty {
         return SystemPropertiesSupport.singleton().getInitialProperty("os.name");
     }
 
-    @KeepOriginal
+    @Substitute
     @TargetElement(onlyWith = JDKLatest.class)//
-    public static native String osArch();
+    public static String osArch() {
+        assert Objects.equals(OS_ARCH, SystemPropertiesSupport.singleton().getInitialProperty("os.arch"));
+        return OS_ARCH;
+    }
 
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)//
