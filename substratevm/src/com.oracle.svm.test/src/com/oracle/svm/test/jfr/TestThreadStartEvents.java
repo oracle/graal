@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,10 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
@@ -38,27 +37,34 @@ import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedThread;
 
-public class TestSystemGCEvent extends JfrRecordingTest {
+public class TestThreadStartEvents extends JfrRecordingTest {
+    private static final String THREAD_NAME = "TestThreadStartEvents-worker";
+
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{JfrEvent.SystemGC.getName()};
+        String[] events = new String[]{JfrEvent.ThreadStart.getName()};
         Recording recording = startRecording(events);
 
-        System.gc();
+        Runnable work = () -> LockSupport.parkNanos(1);
+        Thread worker = new Thread(work, THREAD_NAME);
+        worker.start();
+        worker.join();
 
-        stopRecording(recording, TestSystemGCEvent::validateEvents);
+        stopRecording(recording, TestThreadStartEvents::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
+        boolean foundEvent = false;
         for (RecordedEvent event : events) {
-            assertNotNull(event.getStackTrace());
-            assertNotNull(event.getThread());
-            assertNotNull(event.getStartTime());
-            assertTrue(event.getStartTime().toEpochMilli() <= System.currentTimeMillis());
-            assertFalse(event.getBoolean("invokedConcurrent"));
+            RecordedThread eventThread = event.getThread("eventThread");
+            if (eventThread.getJavaName().equals(THREAD_NAME)) {
+                foundEvent = true;
+            }
 
-            checkTopStackFrame(event, "gc");
+            checkTopStackFrame(event, "beforeThreadStart");
         }
+        assertTrue(foundEvent);
     }
 }

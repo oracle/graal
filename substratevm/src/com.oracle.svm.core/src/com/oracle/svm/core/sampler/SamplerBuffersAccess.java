@@ -115,7 +115,8 @@ public final class SamplerBuffersAccess {
             int sampleSize = current.readInt(0);
             current = current.add(Integer.BYTES);
 
-            /* Padding. */
+            /* Number of vframes that should be skipped at the top of the stack trace. */
+            int skipCount = current.readInt(0);
             current = current.add(Integer.BYTES);
 
             /* Tick. */
@@ -132,7 +133,7 @@ public final class SamplerBuffersAccess {
 
             assert current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize());
 
-            current = serializeStackTrace(current, end, sampleSize, sampleHash, isTruncated, sampleTick, threadId, threadState);
+            current = serializeStackTrace(current, end, sampleSize, sampleHash, isTruncated, sampleTick, threadId, threadState, skipCount);
         }
 
         SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
@@ -140,8 +141,8 @@ public final class SamplerBuffersAccess {
 
     @Uninterruptible(reason = "Wraps the call to the possibly interruptible serializer.", calleeMustBe = false)
     private static Pointer serializeStackTrace(Pointer rawStackTrace, Pointer bufferEnd, int sampleSize, int sampleHash,
-                    boolean isTruncated, long sampleTick, long threadId, long threadState) {
+                    boolean isTruncated, long sampleTick, long threadId, long threadState, int skipCount) {
         return SamplerStackTraceSerializer.singleton().serializeStackTrace(rawStackTrace, bufferEnd, sampleSize,
-                        sampleHash, isTruncated, sampleTick, threadId, threadState);
+                        sampleHash, isTruncated, sampleTick, threadId, threadState, skipCount);
     }
 }
