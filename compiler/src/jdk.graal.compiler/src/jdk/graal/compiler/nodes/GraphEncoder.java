@@ -161,8 +161,8 @@ public class GraphEncoder {
      * graphs for Native Image runtime compilation must not use this map as it will contain
      * hosted-only types.
      */
-    @ObjectCopier.NotExternalValue(reason = "Needs to be persisted separately")
-    private static final NodeClassMap GLOBAL_NODE_CLASS_MAP = new NodeClassMap();
+    @ObjectCopier.NotExternalValue(reason = "Needs to be persisted separately") //
+    public static final NodeClassMap GLOBAL_NODE_CLASS_MAP = new NodeClassMap();
 
     private final InliningLogCodec inliningLogCodec;
 

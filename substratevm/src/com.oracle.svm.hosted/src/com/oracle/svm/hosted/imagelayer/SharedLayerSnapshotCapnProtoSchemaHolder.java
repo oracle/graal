@@ -4817,19 +4817,19 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Builder> initHostedMethods(int size) {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.listFactory, 11, size);
       }
-      public final boolean hasGlobalNodeClassMapLocation() {
+      public final boolean hasNodeClassMapLocation() {
         return !_pointerFieldIsNull(12);
       }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getGlobalNodeClassMapLocation() {
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getNodeClassMapLocation() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
       }
-      public final void setGlobalNodeClassMapLocation(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+      public final void setNodeClassMapLocation(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, value);
       }
-      public final void setGlobalNodeClassMapLocation(String value) {
+      public final void setNodeClassMapLocation(String value) {
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initGlobalNodeClassMapLocation(int size) {
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initNodeClassMapLocation(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, size);
       }
     }
@@ -4955,10 +4955,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.listFactory, 11, null, 0);
       }
 
-      public boolean hasGlobalNodeClassMapLocation() {
+      public boolean hasNodeClassMapLocation() {
         return !_pointerFieldIsNull(12);
       }
-      public com.oracle.svm.shaded.org.capnproto.Text.Reader getGlobalNodeClassMapLocation() {
+      public com.oracle.svm.shaded.org.capnproto.Text.Reader getNodeClassMapLocation() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
       }
 

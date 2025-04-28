@@ -36,6 +36,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -231,16 +232,19 @@ public class SVMImageLayerSnapshotUtil {
         return typeRelinkedFieldsSet.stream().map(metaAccess::lookupJavaField).map(AnalysisField::getPosition).collect(Collectors.toSet());
     }
 
-    public SVMGraphEncoder getGraphEncoder(boolean graph) {
-        return new SVMGraphEncoder(externalValues, graph);
+    public SVMGraphEncoder getGraphEncoder(NodeClassMap nodeClassMap) {
+        return new SVMGraphEncoder(externalValues, nodeClassMap);
     }
 
-    public AbstractSVMGraphDecoder getGraphHostedToAnalysisElementsDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
-        return new SVMGraphHostedToAnalysisElementsDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod, snippetReflectionProvider);
+    public AbstractSVMGraphDecoder getGraphHostedToAnalysisElementsDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
+                    NodeClassMap nodeClassMap) {
+
+        return new SVMGraphHostedToAnalysisElementsDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
     }
 
-    public AbstractSVMGraphDecoder getGraphDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, boolean graph, NodeClassMap globalNodeClassMap) {
-        return new SVMGraphDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod, snippetReflectionProvider, graph, globalNodeClassMap);
+    public AbstractSVMGraphDecoder getGraphDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod,
+                    SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+        return new SVMGraphDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
     }
 
     /**
@@ -345,10 +349,8 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     public static class SVMGraphEncoder extends ObjectCopier.Encoder {
-        public static final GlobalNodeClassMapBuiltin globalNodeClassMapBuiltin = new GlobalNodeClassMapBuiltin(null);
-
         @SuppressWarnings("this-escape")
-        public SVMGraphEncoder(Map<Object, Field> externalValues, boolean graph) {
+        public SVMGraphEncoder(Map<Object, Field> externalValues, NodeClassMap nodeClassMap) {
             super(externalValues);
             addBuiltin(new ImageHeapConstantBuiltIn(null));
             addBuiltin(new AnalysisTypeBuiltIn(null));
@@ -362,8 +364,8 @@ public class SVMImageLayerSnapshotUtil {
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
             addBuiltin(new FastThreadLocalLocationIdentityBuiltIn());
             addBuiltin(new VMThreadLocalInfoBuiltIn());
-            if (graph) {
-                addBuiltin(globalNodeClassMapBuiltin);
+            if (nodeClassMap != null) {
+                addBuiltin(new NodeClassMapBuiltin(nodeClassMap));
             }
         }
 
@@ -383,7 +385,8 @@ public class SVMImageLayerSnapshotUtil {
         private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
 
         @SuppressWarnings("this-escape")
-        public AbstractSVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, boolean graph, NodeClassMap globalMap) {
+        public AbstractSVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
+                        NodeClassMap nodeClassMap) {
             super(classLoader);
             this.imageLayerBuildingSupport = imageLayerLoader.getImageLayerBuildingSupport();
             addBuiltin(new ImageHeapConstantBuiltIn(imageLayerLoader));
@@ -396,9 +399,8 @@ public class SVMImageLayerSnapshotUtil {
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
             addBuiltin(new FastThreadLocalLocationIdentityBuiltIn());
             addBuiltin(new VMThreadLocalInfoBuiltIn());
-            // TODO: Read serialized NodeClassMap somehow and pass to constructor below
-            if (graph) {
-                addBuiltin(new GlobalNodeClassMapBuiltin(globalMap));
+            if (nodeClassMap != null) {
+                addBuiltin(new NodeClassMapBuiltin(nodeClassMap));
             }
         }
 
@@ -411,8 +413,8 @@ public class SVMImageLayerSnapshotUtil {
     public static class SVMGraphHostedToAnalysisElementsDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
         public SVMGraphHostedToAnalysisElementsDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
-                        SnippetReflectionProvider snippetReflectionProvider) {
-            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, true, null);
+                        SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
             addBuiltin(new HostedToAnalysisTypeDecoderBuiltIn(svmImageLayerLoader));
             addBuiltin(new HostedToAnalysisMethodDecoderBuiltIn(svmImageLayerLoader));
         }
@@ -420,44 +422,37 @@ public class SVMImageLayerSnapshotUtil {
 
     public static class SVMGraphDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, boolean graph, NodeClassMap globalMap) {
-            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, graph, globalMap);
+        public SVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
+                        SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
             addBuiltin(new HostedTypeBuiltIn(svmImageLayerLoader));
             addBuiltin(new HostedMethodBuiltIn(svmImageLayerLoader));
         }
     }
 
-    public static class GlobalNodeClassMapBuiltin extends ObjectCopier.Builtin {
-        private NodeClassMap globalMap;
+    /**
+     * Builtin to replace a {@link NodeClassMap} during encoding with a placeholder so that a single
+     * map will be shared by all {@link EncodedGraph}s processed by a
+     * {@link jdk.graal.compiler.util.ObjectCopier.Encoder}.
+     */
+    public static class NodeClassMapBuiltin extends ObjectCopier.Builtin {
+        private final NodeClassMap nodeClassMap;
 
-        protected GlobalNodeClassMapBuiltin(NodeClassMap map) {
+        protected NodeClassMapBuiltin(NodeClassMap nodeClassMap) {
             super(NodeClassMap.class);
-            this.globalMap = map;
+            this.nodeClassMap = Objects.requireNonNull(nodeClassMap);
         }
 
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
-            if (globalMap == null) {
-                globalMap = (NodeClassMap) obj;
-            } else if (globalMap != obj) {
-                throw AnalysisError.shouldNotReachHere("More than one NodeClassMap instance encountered");
+            if (nodeClassMap != obj) {
+                throw AnalysisError.shouldNotReachHere("Unexpected NodeClassMap instance encountered");
             }
         }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            if (globalMap == null) {
-                throw AnalysisError.shouldNotReachHere("Global NodeClassMap not set");
-            }
-            return globalMap;
-        }
-
-        public NodeClassMap getGlobalMap() {
-            return globalMap;
-        }
-
-        public void setGlobalMap(NodeClassMap globalMap) {
-            this.globalMap = globalMap;
+            return nodeClassMap;
         }
     }
 
