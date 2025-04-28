@@ -34,7 +34,7 @@ import java.io.Serial;
  * The purpose of this exception is to easily discover unregistered elements and to assure that all
  * serialization or deserialization operations have expected behavior.
  */
-public final class MissingSerializationRegistrationError extends Error {
+public final class MissingSerializationRegistrationError extends LinkageError {
     @Serial private static final long serialVersionUID = 2764341882856270641L;
     private final Class<?> culprit;
 
