@@ -89,21 +89,33 @@ public abstract class AbstractToolchainWrapper {
         }
         Path llvmPath = toolchainPath.resolve(RELATIVE_LLVM_PATH).normalize();
 
-        String binPathName = ProcessProperties.getArgumentVectorProgramName();
-        if (binPathName == null) {
+        String programName;
+        if (isWindows()) {
+            // set by the exe_link_template.cmd wrapper script
+            programName = System.getenv("GRAALVM_ARGUMENT_VECTOR_PROGRAM_NAME");
+        } else {
+            programName = ProcessProperties.getArgumentVectorProgramName();
+        }
+
+        String binPathName;
+        if (programName == null) {
             binPathName = getFile(executablePath);
         } else {
-            binPathName = getFile(Paths.get(binPathName));
+            binPathName = getFile(Paths.get(programName));
         }
+
         if (binPathName == null) {
             System.err.println("Error: Could not figure out process name");
             System.exit(1);
         }
-        if (isWindows()) {
-            binPathName = binPathName.replace(".exe", "");
-        }
 
         String toolName = binPathName;
+        if (isWindows()) {
+            if (toolName.endsWith(".cmd") || toolName.endsWith(".exe")) {
+                toolName = toolName.substring(0, toolName.length() - 4);
+            }
+        }
+
         for (String prefix : getStrippedPrefixes()) {
             if (toolName.startsWith(prefix)) {
                 toolName = toolName.substring(prefix.length());
