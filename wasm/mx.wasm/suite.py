@@ -87,6 +87,7 @@ suite = {
       ],
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
+        "jdk.incubator.vector", # Vector API
       ],
       "checkstyleVersion" : "10.21.0",
       "javaCompliance" : "17+",
