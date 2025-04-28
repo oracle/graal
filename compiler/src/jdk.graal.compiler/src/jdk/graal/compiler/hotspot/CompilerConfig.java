@@ -34,7 +34,6 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 
-import jdk.graal.compiler.nodes.GraphEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -81,11 +80,6 @@ public class CompilerConfig {
         List<ForeignCallSignature> foreignCallSignatures = getForeignCallSignatures(replacements, options);
         EncodedSnippets encodedSnippets = getEncodedSnippets(replacements, options);
         List<Field> externalValueFields = ObjectCopier.getExternalValueFields();
-
-        // The NodeClassMap value read from GraphEncoder.GLOBAL_NODE_CLASS_MAP
-        // must not be treated as an external value when being serialized
-        // across processes.
-        externalValueFields.remove(ObjectCopier.getField(GraphEncoder.class, "GLOBAL_NODE_CLASS_MAP"));
 
         EconomicMap<String, Object> encodedObjects = EconomicMap.create();
         encodedObjects.put("encodedSnippets", encodedSnippets);
