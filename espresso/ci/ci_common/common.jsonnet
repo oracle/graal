@@ -118,6 +118,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm + self.linux_amd64,
 
+  linux_amd64_latest:graal_common.labsjdkLatest                          + self.linux_amd64,
+
   // precise targets and capabilities
   jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
   jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
@@ -158,7 +160,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
   jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
-
+  jdkLatest_weekly_linux_amd64  : self.weekly        + self.linux_amd64_latest,
+  
   // shared snippets
   eclipse: graal_common.deps.eclipse,
 
