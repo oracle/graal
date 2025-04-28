@@ -37,11 +37,6 @@
      common["labsjdk-ee-latest"],
   ],
 
-  jdks_of_interest:: [
-     common["labsjdk-ee-21"],
-     common["labsjdk-ee-latest"],
-  ],
-
   compiler_benchmarks_notifications:: {
     notify_groups:: ["compiler_bench"],
   },
