@@ -647,7 +647,7 @@ class WebImageMacroBuildTask(mx.ArchivableBuildTask):
             lines: List[str] = [
                 "# This file is auto-generated",
                 "ExcludeFromAll = true",
-                "ProvidedHostedOptions = " + " ".join(self.subject.provided_hosted_options + ["Backend="]),
+                "ProvidedHostedOptions = " + " ".join(self.subject.provided_hosted_options),
             ]
 
             if builder_jars:
