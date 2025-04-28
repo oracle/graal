@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.util.EventCounter.EventCounterMarker;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -212,13 +213,16 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Signal the execution of the phase identified by {@code name} starts.
      */
-    public void enterPhase(CharSequence name) {
+    public void enterPhase(CharSequence name, StructuredGraph graph) {
         if (!isEnabled()) {
             return;
         }
         PhaseTreeNode node = new PhaseTreeNode(name);
         node.parent = currentNode;
         node.startTimeNS = System.nanoTime();
+        if (graph != null) {
+            node.graphSizeBefore = graph.getNodeCount();
+        }
         currentNode.addChild(node);
         currentNode = node;
     }
@@ -226,13 +230,16 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Signal the execution of the phase identified by {@code name} is over.
      */
-    public void exitPhase(CharSequence name) {
+    public void exitPhase(CharSequence name, StructuredGraph graph) {
         if (!isEnabled()) {
             return;
         }
         assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
         setCurrentNodeDuration(name);
         currentNode.closed = true;
+        if (graph != null) {
+            currentNode.graphSizeAfter = graph.getNodeCount();
+        }
         currentNode.parent.durationNS += currentNode.durationNS;
         currentNode = currentNode.parent;
     }
@@ -246,7 +253,7 @@ public final class CompilationAlarm implements AutoCloseable {
      * The phase tree root node during compilation. Special marker node to avoid null checking
      * logic.
      */
-    private PhaseTreeNode root = new PhaseTreeNode("Root");
+    private final PhaseTreeNode root = new PhaseTreeNode("Root");
 
     /**
      * The current tree node to add children to. That is, the phase that currently runs in the
@@ -258,8 +265,7 @@ public final class CompilationAlarm implements AutoCloseable {
      * Tree data structure representing phase nesting and the respective wall clock time of each
      * phase.
      */
-    private class PhaseTreeNode {
-
+    private static class PhaseTreeNode {
         /**
          * Link to the parent node.
          */
@@ -295,6 +301,16 @@ public final class CompilationAlarm implements AutoCloseable {
          */
         public boolean closed;
 
+        /**
+         * Node count of the associated graph before application of {@code  this} phase.
+         */
+        private int graphSizeBefore;
+
+        /**
+         * Node count of the associated graph after application this {@code this} phase.
+         */
+        private int graphSizeAfter;
+
         PhaseTreeNode(CharSequence name) {
             this.name = name;
         }
@@ -314,7 +330,8 @@ public final class CompilationAlarm implements AutoCloseable {
 
         @Override
         public String toString() {
-            return name + "->" + TimeUnit.NANOSECONDS.toMillis(durationNS) + "ms elapsed [startMS=" + TimeUnit.NANOSECONDS.toMillis(startTimeNS) + "]";
+            return name + "->" + TimeUnit.NANOSECONDS.toMillis(durationNS) + "ms elapsed [startMS=" + TimeUnit.NANOSECONDS.toMillis(startTimeNS) + "] graphSizeBefore->After=[" + graphSizeBefore +
+                            "->" + graphSizeAfter + "]";
         }
 
     }
@@ -328,6 +345,8 @@ public final class CompilationAlarm implements AutoCloseable {
         clone.durationNS = clonee.durationNS;
         clone.startTimeNS = clonee.startTimeNS;
         clone.closed = clonee.closed;
+        clone.graphSizeBefore = clonee.graphSizeBefore;
+        clone.graphSizeAfter = clonee.graphSizeAfter;
         if (clonee.children != null) {
             for (int i = 0; i < clonee.childIndex; i++) {
                 cloneTree(clonee.children[i], clone);

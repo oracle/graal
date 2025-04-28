@@ -440,7 +440,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         try (DebugContext.Scope s = debug.scope(getName(), this);
-                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName(), graph) : null;
                         DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
                         DebugCloseable a = timer.start(debug);
                         DebugCloseable c = memUseTracker.start(debug)) {

@@ -29,7 +29,6 @@ import jdk.graal.compiler.debug.DebugContext.CompilerPhaseScope;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.lir.phases.LIRPhase;
-
 import jdk.vm.ci.code.TargetDescription;
 
 abstract class LinearScanAllocationPhase {
@@ -51,7 +50,7 @@ abstract class LinearScanAllocationPhase {
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context, boolean dumpLIR) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
         CharSequence name = getName();
-        try (DebugContext.Scope s = debug.scope(name, this); CompilerPhaseScope cps = debug.enterCompilerPhase(name);) {
+        try (DebugContext.Scope s = debug.scope(name, this); CompilerPhaseScope cps = debug.enterCompilerPhase(name, null)) {
             run(target, lirGenRes, context);
             if (dumpLIR) {
                 if (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
