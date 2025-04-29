@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -486,7 +486,8 @@ public class RuntimeCompiledMethodSupport {
         @Override
         protected void run(StructuredGraph graph) {
             for (Node n : graph.getNodes().snapshot()) {
-                VMError.guarantee(!(n instanceof MacroNode), "DeoptTarget Methods do not support Macro Nodes: method %s, node %s", graph.method(), n);
+                VMError.guarantee(!(n instanceof MacroNode macro && macro.canDeoptimizeOrThrow()), "DeoptTarget Methods do not support Macro Nodes that may deopt or throw: method %s, node %s",
+                                graph.method(), n);
 
                 if (n instanceof MacroWithExceptionNode macro) {
                     macro.replaceWithInvoke();
