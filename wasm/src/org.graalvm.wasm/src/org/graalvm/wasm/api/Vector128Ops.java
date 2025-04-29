@@ -48,6 +48,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorOperators;
 import org.graalvm.wasm.constants.Bytecode;
@@ -413,26 +414,23 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        byte[] vecResult = new byte[BYTES];
-        for (int i = 0; i < INT_LENGTH; i++) {
-            int x = byteArraySupport.getInt(vecX, i * Integer.BYTES);
-            int y = byteArraySupport.getInt(vecY, i * Integer.BYTES);
-            int result = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_EQ -> x == y;
-                case Bytecode.VECTOR_I32X4_NE -> x != y;
-                case Bytecode.VECTOR_I32X4_LT_S -> x < y;
-                case Bytecode.VECTOR_I32X4_LT_U -> Integer.compareUnsigned(x, y) < 0;
-                case Bytecode.VECTOR_I32X4_GT_S -> x > y;
-                case Bytecode.VECTOR_I32X4_GT_U -> Integer.compareUnsigned(x, y) > 0;
-                case Bytecode.VECTOR_I32X4_LE_S -> x <= y;
-                case Bytecode.VECTOR_I32X4_LE_U -> Integer.compareUnsigned(x, y) <= 0;
-                case Bytecode.VECTOR_I32X4_GE_S -> x >= y;
-                case Bytecode.VECTOR_I32X4_GE_U -> Integer.compareUnsigned(x, y) >= 0;
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            } ? 0xffff_ffff : 0x0000_0000;
-            byteArraySupport.putInt(vecResult, i * Integer.BYTES, result);
-        }
-        return vecResult;
+        IntVector x = fromBytes(vecX).reinterpretAsInts();
+        IntVector y = fromBytes(vecY).reinterpretAsInts();
+        VectorOperators.Comparison comparison = switch (vectorOpcode) {
+            case Bytecode.VECTOR_I32X4_EQ -> VectorOperators.EQ;
+            case Bytecode.VECTOR_I32X4_NE -> VectorOperators.NE;
+            case Bytecode.VECTOR_I32X4_LT_S -> VectorOperators.LT;
+            case Bytecode.VECTOR_I32X4_LT_U -> VectorOperators.ULT;
+            case Bytecode.VECTOR_I32X4_GT_S -> VectorOperators.GT;
+            case Bytecode.VECTOR_I32X4_GT_U -> VectorOperators.UGT;
+            case Bytecode.VECTOR_I32X4_LE_S -> VectorOperators.LE;
+            case Bytecode.VECTOR_I32X4_LE_U -> VectorOperators.ULE;
+            case Bytecode.VECTOR_I32X4_GE_S -> VectorOperators.GE;
+            case Bytecode.VECTOR_I32X4_GE_U -> VectorOperators.UGE;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        Vector<Integer> result = x.compare(comparison, y).toVector();
+        return toBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -840,15 +838,8 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i32x4_all_true(byte[] vec) {
-        int result = 1;
-        for (int i = 0; i < INT_LENGTH; i++) {
-            int x = byteArraySupport.getInt(vec, i * Integer.BYTES);
-            if (x == 0) {
-                result = 0;
-                break;
-            }
-        }
-        return result;
+        IntVector ints = fromBytes(vec).reinterpretAsInts();
+        return ints.lanewise(VectorOperators.ZOMO).reduceLanes(VectorOperators.AND) == 0 ? 0 : 1;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -881,23 +872,19 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        byte[] vecResult = new byte[BYTES];
-        for (int i = 0; i < INT_LENGTH; i++) {
-            int x = byteArraySupport.getInt(vecX, i * Integer.BYTES);
-            int y = byteArraySupport.getInt(vecY, i * Integer.BYTES);
-            int result = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_ADD -> x + y;
-                case Bytecode.VECTOR_I32X4_SUB -> x - y;
-                case Bytecode.VECTOR_I32X4_MUL -> x * y;
-                case Bytecode.VECTOR_I32X4_MIN_S -> Math.min(x, y);
-                case Bytecode.VECTOR_I32X4_MIN_U -> Integer.compareUnsigned(x, y) <= 0 ? x : y;
-                case Bytecode.VECTOR_I32X4_MAX_S -> Math.max(x, y);
-                case Bytecode.VECTOR_I32X4_MAX_U -> Integer.compareUnsigned(x, y) >= 0 ? x : y;
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-            byteArraySupport.putInt(vecResult, i * Integer.BYTES, result);
-        }
-        return vecResult;
+        IntVector x = fromBytes(vecX).reinterpretAsInts();
+        IntVector y = fromBytes(vecY).reinterpretAsInts();
+        IntVector result = switch (vectorOpcode) {
+            case Bytecode.VECTOR_I32X4_ADD -> x.add(y);
+            case Bytecode.VECTOR_I32X4_SUB -> x.sub(y);
+            case Bytecode.VECTOR_I32X4_MUL -> x.mul(y);
+            case Bytecode.VECTOR_I32X4_MIN_S -> x.min(y);
+            case Bytecode.VECTOR_I32X4_MIN_U -> x.lanewise(VectorOperators.UMIN, y);
+            case Bytecode.VECTOR_I32X4_MAX_S -> x.max(y);
+            case Bytecode.VECTOR_I32X4_MAX_U -> x.lanewise(VectorOperators.UMAX, y);
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return toBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
