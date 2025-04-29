@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.VirtualObject;
@@ -105,7 +105,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         }
     }
 
-    public static class ValueInfo {
+    public static final class ValueInfo {
         protected ValueType type;
         protected JavaKind kind;
         protected boolean isCompressedReference; // for JavaKind.Object
@@ -158,6 +158,23 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
          */
         public JavaConstant getValue() {
             return value;
+        }
+
+        /**
+         * Copy {@code this} value info, with all fields unchanged except for the {@link #getKind()}
+         * replaced by the given {@code kind} and the {@link #getData()} adjusted (not replaced!) by
+         * the given {@code offset}. This is used to access element information for special compound
+         * objects like Vector API values.
+         */
+        public ValueInfo copyForElement(JavaKind javaKind, int offset) {
+            ValueInfo copy = new ValueInfo();
+            copy.type = type;
+            copy.kind = javaKind;
+            copy.isCompressedReference = isCompressedReference;
+            copy.isEliminatedMonitor = isEliminatedMonitor;
+            copy.data = data + offset;
+            copy.value = value;
+            return copy;
         }
     }
 
