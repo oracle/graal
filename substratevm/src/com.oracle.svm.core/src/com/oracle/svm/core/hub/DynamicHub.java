@@ -736,6 +736,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private void traceClassFlagQuery(int mask) {
         ConfigurationType type = MetadataTracer.singleton().traceReflectionType(getName());
+        if (type == null) {
+            return;
+        }
         // TODO (GR-64765): We over-approximate member accessibility here because we don't trace
         // accesses. Once we trace accesses, it will suffice to register the class for reflection.
         switch (mask) {
@@ -1325,7 +1328,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
                 // register declaring type and field
                 ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(field.getDeclaringClass().getName());
-                declaringType.addField(fieldName, declaration, false);
+                if (declaringType != null) {
+                    declaringType.addField(fieldName, declaration, false);
+                }
                 // register receiver type
                 MetadataTracer.singleton().traceReflectionType(getName());
             }
@@ -1400,7 +1405,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
                 // register declaring type and method
                 ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(method.getDeclaringClass().getName());
-                declaringType.addMethod(methodName, toInternalSignature(parameterTypes), declaration);
+                if (declaringType != null) {
+                    declaringType.addMethod(methodName, toInternalSignature(parameterTypes), declaration);
+                }
                 // register receiver type
                 MetadataTracer.singleton().traceReflectionType(getName());
             }
