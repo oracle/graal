@@ -914,61 +914,60 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
     public int writeAbbrevs(DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        // Write Abbrevs that are shared for AOT and Runtime compilation
+        /*
+         * Write all abbrevs for AOT and run-time debug info Abbrevs use the least space of all
+         * debug info sections, so there is no real benefit in reducing the amount of abbrevs for
+         * run-time debug info
+         */
+
+        // Top level DIEs
         pos = writeCompileUnitAbbrevs(context, buffer, pos);
         pos = writeTypeUnitAbbrev(context, buffer, pos);
+
+        // Level 1 DIEs
+        pos = writePrimitiveTypeAbbrev(context, buffer, pos);
+        pos = writeVoidTypeAbbrev(context, buffer, pos);
+        pos = writeObjectHeaderAbbrev(context, buffer, pos);
+        pos = writeClassConstantAbbrev(context, buffer, pos);
         pos = writeNamespaceAbbrev(context, buffer, pos);
         pos = writeClassLayoutAbbrevs(context, buffer, pos);
-        pos = writeDummyClassLayoutAbbrev(context, buffer, pos);
-        pos = writeClassReferenceAbbrevs(context, buffer, pos);
-        pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
+        pos = writePointerTypeAbbrevs(context, buffer, pos);
+        pos = writeForeignTypedefAbbrev(context, buffer, pos);
+        pos = writeForeignStructAbbrev(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
-        pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
-        pos = writeInlinedSubroutineAbbrev(buffer, pos);
+        pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
+        pos = writeArrayLayoutAbbrev(context, buffer, pos);
+        pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
+        /*
+         * if we address rebasing is required then we need to use compressed layout types supplied
+         * with a suitable data_location attribute and compressed pointer types to ensure that gdb
+         * converts offsets embedded in static or instance fields to raw pointers. Transformed
+         * addresses are typed using pointers to the underlying layout.
+         *
+         * if address rebasing is not required then a data_location attribute on the layout type
+         * will ensure that address tag bits are removed.
+         *
+         * The compressed layout is also used for representing the decode step for dynamic hubs.
+         * I.e. this is also required for builds without isolates
+         */
+        pos = writeCompressedLayoutAbbrev(context, buffer, pos);
 
+        /* Level 2 DIEs */
+        pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
+        pos = writeFieldDeclarationAbbrevs(context, buffer, pos);
+        pos = writeFieldAbbrevs(context, buffer, pos);
+        pos = writeArrayDataTypeAbbrevs(context, buffer, pos);
+        pos = writeArraySubrangeTypeAbbrev(context, buffer, pos);
+        pos = writeSuperReferenceAbbrev(context, buffer, pos);
+        pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
+
+        /* Level 2+ DIEs (used within functions and inlined functions) */
+        pos = writeInlinedSubroutineAbbrev(buffer, pos);
+        pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
         pos = writeLocalDeclarationAbbrevs(context, buffer, pos);
         pos = writeParameterLocationAbbrevs(context, buffer, pos);
         pos = writeLocalLocationAbbrevs(context, buffer, pos);
-
-        // Write Abbrevs that are only used for AOT debuginfo generation
-        if (!dwarfSections.isRuntimeCompilation() || true) {
-
-            pos = writePrimitiveTypeAbbrev(context, buffer, pos);
-            pos = writeVoidTypeAbbrev(context, buffer, pos);
-            pos = writeObjectHeaderAbbrev(context, buffer, pos);
-
-            pos = writeFieldDeclarationAbbrevs(context, buffer, pos);
-            pos = writeClassConstantAbbrev(context, buffer, pos);
-
-            pos = writeArrayLayoutAbbrev(context, buffer, pos);
-
-            pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
-
-            pos = writeForeignTypedefAbbrev(context, buffer, pos);
-            pos = writeForeignStructAbbrev(context, buffer, pos);
-
-            pos = writeFieldAbbrevs(context, buffer, pos);
-            pos = writeArrayDataTypeAbbrevs(context, buffer, pos);
-            pos = writeArraySubrangeTypeAbbrev(context, buffer, pos);
-            pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
-            pos = writeSuperReferenceAbbrev(context, buffer, pos);
-            pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
-
-            /*
-             * if we address rebasing is required then we need to use compressed layout types
-             * supplied with a suitable data_location attribute and compressed pointer types to
-             * ensure that gdb converts offsets embedded in static or instance fields to raw
-             * pointers. Transformed addresses are typed using pointers to the underlying layout.
-             *
-             * if address rebasing is not required then a data_location attribute on the layout type
-             * will ensure that address tag bits are removed.
-             *
-             * The compressed layout is also used for representing the decode step for dynamic hubs.
-             * I.e. this is also required for builds without isolates
-             */
-            pos = writeCompressedLayoutAbbrev(context, buffer, pos);
-        }
 
         /* write a null abbrev to terminate the sequence */
         pos = writeNullAbbrev(context, buffer, pos);
@@ -989,11 +988,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
     private int writeCompileUnitAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        if (!dwarfSections.isRuntimeCompilation() || true) {
-            pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_CONSTANT_UNIT, buffer, pos);
-            pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_1, buffer, pos);
-            pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_2, buffer, pos);
-        }
+        pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_CONSTANT_UNIT, buffer, pos);
+        pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_1, buffer, pos);
+        pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_2, buffer, pos);
         pos = writeCompileUnitAbbrev(context, AbbrevCode.CLASS_UNIT_3, buffer, pos);
         return pos;
     }
@@ -1121,6 +1118,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_TU, buffer, pos);
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_CU, buffer, pos);
         pos = writeClassLayoutAbbrev(context, AbbrevCode.CLASS_LAYOUT_ARRAY, buffer, pos);
+        pos = writeOpaqueClassLayoutAbbrev(context, buffer, pos);
         return pos;
     }
 
@@ -1159,10 +1157,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeDummyClassLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeOpaqueClassLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
 
-        pos = writeAbbrevCode(AbbrevCode.CLASS_LAYOUT_DUMMY, buffer, pos);
+        pos = writeAbbrevCode(AbbrevCode.CLASS_LAYOUT_OPAQUE, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_structure_type, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
@@ -1180,14 +1178,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeClassReferenceAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writePointerTypeAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
-        pos = writeClassReferenceAbbrev(context, AbbrevCode.TYPE_POINTER_SIG, buffer, pos);
-        pos = writeClassReferenceAbbrev(context, AbbrevCode.TYPE_POINTER, buffer, pos);
+        pos = writePointerTypeAbbrev(context, AbbrevCode.TYPE_POINTER_SIG, buffer, pos);
+        pos = writePointerTypeAbbrev(context, AbbrevCode.TYPE_POINTER, buffer, pos);
         return pos;
     }
 
-    private int writeClassReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
+    private int writePointerTypeAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
         int pos = p;
 
         /* A pointer to the class struct type. */
@@ -1213,9 +1211,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_INLINE, buffer, pos);
         pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_STATIC, buffer, pos);
         pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_INLINE_STATIC, buffer, pos);
-        if (!dwarfSections.isRuntimeCompilation() || true) {
-            pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_SKELETON, buffer, pos);
-        }
+        pos = writeMethodDeclarationAbbrev(context, AbbrevCode.METHOD_DECLARATION_SKELETON, buffer, pos);
         return pos;
     }
 
@@ -1277,8 +1273,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeFieldDeclarationAbbrev(context, AbbrevCode.FIELD_DECLARATION_3, buffer, pos);
         /* A static field with line and file. */
         pos = writeFieldDeclarationAbbrev(context, AbbrevCode.FIELD_DECLARATION_4, buffer, pos);
-
-        pos = writeFieldDeclarationRelTypeAbbrev(context, buffer, pos);
         return pos;
     }
 
@@ -1313,28 +1307,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
             pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
         }
-        /*
-         * Now terminate.
-         */
-        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
-        return pos;
-    }
-
-    private int writeFieldDeclarationRelTypeAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
-        int pos = p;
-        pos = writeAbbrevCode(AbbrevCode.FIELD_DECLARATION_REL_TYPE, buffer, pos);
-        pos = writeTag(DwarfTag.DW_TAG_member, buffer, pos);
-        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
-        /* Instance fields have a member offset relocated relative to the heap base register. */
-        pos = writeAttrType(DwarfAttribute.DW_AT_data_member_location, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_accessibility, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
         /*
          * Now terminate.
          */

@@ -37,8 +37,13 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import jdk.graal.compiler.api.replacements.Fold;
 
 public class SubstrateDebugTypeEntrySupport {
+    /**
+     * Stores type entries produced from {@code ElementInfo} after analysis for later use during
+     * debug info generation. We can't get ElementInfo at run-time, but we can reuse the type
+     * entries produced during the native image build for run-time debug info generation.
+     */
     @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
-    private Map<Long, TypeEntry> map = new HashMap<>();
+    private Map<Long, TypeEntry> typeEntryMap = new HashMap<>();
 
     @Fold
     public static SubstrateDebugTypeEntrySupport singleton() {
@@ -47,16 +52,17 @@ public class SubstrateDebugTypeEntrySupport {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     public void addTypeEntry(TypeEntry type) {
-        this.map.put(type.getTypeSignature(), type);
+        assert typeEntryMap instanceof HashMap<Long, TypeEntry>;
+        this.typeEntryMap.put(type.getTypeSignature(), type);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     public void trim() {
-        map = Map.copyOf(map);
+        typeEntryMap = Map.copyOf(typeEntryMap);
     }
 
     public TypeEntry getTypeEntry(Long typeSignature) {
-        return map.get(typeSignature);
+        return typeEntryMap.get(typeSignature);
     }
 
 }

@@ -131,52 +131,47 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     public int generateContent(DebugContext context, byte[] buffer) {
         int pos = 0;
+
+        /*
+         * Write TUs for primitive types and header struct and pointer to types. Required for AOT
+         * and run-time debug info.
+         */
+        pos = writePrimitives(context, buffer, pos);
+        pos = writeHeaderType(context, buffer, pos);
+        pos = writePointerToTypes(context, buffer, pos);
+
+        /*
+         * Write TUs (only AOT debug info) and CUs for all instance classes, which includes
+         * interfaces and enums.
+         */
+        pos = writeInstanceClasses(context, buffer, pos);
+
         if (dwarfSections.isRuntimeCompilation()) {
-            Cursor cursor = new Cursor(pos);
-            instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
-                setCUIndex(classEntry, cursor.get());
-                cursor.set(writeInstanceClassInfo(context, classEntry, buffer, cursor.get()));
-            });
-            typeStream().forEach(typeEntry -> {
-                switch (typeEntry) {
-                    case PrimitiveTypeEntry primitiveTypeEntry -> {
-                        if (primitiveTypeEntry.getBitCount() > 0) {
-                            cursor.set(writePrimitiveType(context, primitiveTypeEntry, buffer, cursor.get()));
-                        } else {
-                            cursor.set(writeVoidType(context, primitiveTypeEntry, buffer, cursor.get()));
-                        }
-                    }
-                    case PointerToTypeEntry pointerToTypeEntry -> {
-                        cursor.set(writePointerToType(context, pointerToTypeEntry, buffer, cursor.get()));
-                    }
-                    case HeaderTypeEntry headerTypeEntry -> {
-                        cursor.set(writeHeaderType(context, headerTypeEntry, buffer, cursor.get()));
-                    }
-                    case StructureTypeEntry structureTypeEntry -> {
-                        cursor.set(writeDummyTypeUnit(context, structureTypeEntry, buffer, cursor.get()));
-                    }
-                    default -> {
-                    }
-                }
-            });
-            pos = cursor.get();
+            /*
+             * All structured types are represented as opaque types. I.e. they refer to types
+             * produced for the AOT debug info. The referred type must be in the AOT debug info and
+             * GDB is able to resolve it by name.
+             */
+            pos = writeOpaqueTypes(context, buffer, pos);
         } else {
-            /* Write TUs for primitive types and header struct. */
-            pos = writeBuiltInTypes(context, buffer, pos);
+            /*
+             * This is the AOT debug info, we write all gathered information into the debug info
+             * object file. Most of this information is only produced at image build time.
+             */
 
             /*
-             * Write TUs and CUs for all instance classes, which includes interfaces and enums. That
-             * also incorporates interfaces that model foreign types.
+             * Write TUs for foreign structure types. No CUs, functions of foreign types are handled
+             * as special instance class.
              */
-            pos = writeInstanceClasses(context, buffer, pos);
-
+            pos = writeForeignStructTypes(context, buffer, pos);
             /* Write TUs and CUs for array types. */
             pos = writeArrays(context, buffer, pos);
-
-            /* Write CU for class constant objects. */
+            /*
+             * Write CU for class constant objects. This also contains class constant objects for
+             * foreign types.
+             */
             pos = writeClassConstantObjects(context, buffer, pos);
         }
-
         return pos;
     }
 
@@ -206,12 +201,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeBuiltInTypes(DebugContext context, byte[] buffer, int p) {
-        int pos = p;
+    private int writePrimitives(DebugContext context, byte[] buffer, int p) {
+        log(context, "  [0x%08x] primitive types", p);
 
-        log(context, "  [0x%08x] primitive types", pos);
-        Cursor cursor = new Cursor(pos);
-
+        Cursor cursor = new Cursor(p);
         // write primitives
         // i.e. all Java primitives and foreign primitive types.
         primitiveTypeStream().forEach(primitiveTypeEntry -> {
@@ -222,20 +215,31 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
         });
 
+        return cursor.get();
+    }
+
+    private int writePointerToTypes(DebugContext context, byte[] buffer, int p) {
+        log(context, "  [0x%08x] pointer to types", p);
+
+        Cursor cursor = new Cursor(p);
         // write foreign pointer types
         pointerTypeStream().forEach(pointerTypeEntry -> {
             cursor.set(writePointerToType(context, pointerTypeEntry, buffer, cursor.get()));
         });
 
+        return cursor.get();
+    }
+
+    private int writeForeignStructTypes(DebugContext context, byte[] buffer, int p) {
+        log(context, "  [0x%08x] foreign struct types", p);
+
+        Cursor cursor = new Cursor(p);
         // write foreign pointer types
         foreignStructTypeStream().forEach(foreignStructTypeEntry -> {
             cursor.set(writeTypeUnits(context, foreignStructTypeEntry, buffer, cursor.get()));
         });
 
-        pos = cursor.get();
-
-        log(context, "  [0x%08x] header type", pos);
-        return writeHeaderType(context, headerType(), buffer, pos);
+        return cursor.get();
     }
 
     private int writeClassConstantObjects(DebugContext context, byte[] buffer, int p) {
@@ -243,7 +247,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         // Write the single Java builtin unit header
         int lengthPos = pos;
-        log(context, "  [0x%08x] <0> Java Builtin Compile Unit", pos);
+        log(context, "  [0x%08x] <0> Class constants Compile Unit", pos);
         pos = writeCUHeader(buffer, pos);
         assert pos == lengthPos + CU_DIE_HEADER_SIZE;
         AbbrevCode abbrevCode = AbbrevCode.CLASS_CONSTANT_UNIT;
@@ -390,8 +394,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeHeaderType(DebugContext context, HeaderTypeEntry headerTypeEntry, byte[] buffer, int p) {
+    private int writeHeaderType(DebugContext context, byte[] buffer, int p) {
         int pos = p;
+
+        log(context, "  [0x%08x] header type", pos);
+        HeaderTypeEntry headerTypeEntry = headerType();
+
         long typeSignature = headerTypeEntry.getTypeSignature();
         FieldEntry hubField = headerTypeEntry.getHubField();
         ClassEntry hubType = (ClassEntry) hubField.getValueType();
@@ -578,7 +586,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] instance classes", pos);
         Cursor cursor = new Cursor(pos);
         instanceClassStream().forEach(classEntry -> {
-            if (dwarfSections.getForeignMethodListClassEntry() != classEntry) {
+            if (!dwarfSections.isRuntimeCompilation() && classEntry != dwarfSections.getForeignMethodListClassEntry()) {
                 cursor.set(writeTypeUnits(context, classEntry, buffer, cursor.get()));
             }
             setCUIndex(classEntry, cursor.get());
@@ -898,7 +906,21 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeDummyTypeUnit(DebugContext context, TypeEntry typeEntry, byte[] buffer, int p) {
+    private int writeOpaqueTypes(DebugContext context, byte[] buffer, int p) {
+        log(context, "  [0x%08x] opaque types", p);
+
+        Cursor cursor = new Cursor(p);
+        // all structured types as opaque types
+        // i.e. types are resolved by name in gdb (at run-time we know the types must already exist
+        // in the AOT debug info)
+        typeStream().filter(t -> t instanceof StructureTypeEntry).forEach(structureTypeEntry -> {
+            cursor.set(writeOpaqueType(context, structureTypeEntry, buffer, cursor.get()));
+        });
+
+        return cursor.get();
+    }
+
+    private int writeOpaqueType(DebugContext context, TypeEntry typeEntry, byte[] buffer, int p) {
         int pos = p;
         long typeSignature = typeEntry.getTypeSignature();
 
@@ -917,7 +939,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         int refTypeIdx = pos;
         log(context, "  [0x%08x] class layout", pos);
-        abbrevCode = AbbrevCode.CLASS_LAYOUT_DUMMY;
+        abbrevCode = AbbrevCode.CLASS_LAYOUT_OPAQUE;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name;

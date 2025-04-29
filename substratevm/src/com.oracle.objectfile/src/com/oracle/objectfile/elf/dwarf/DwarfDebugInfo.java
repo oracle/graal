@@ -69,7 +69,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         CLASS_LAYOUT_TU,
         CLASS_LAYOUT_CU,
         CLASS_LAYOUT_ARRAY,
-        CLASS_LAYOUT_DUMMY,
+        CLASS_LAYOUT_OPAQUE,
         TYPE_POINTER_SIG,
         TYPE_POINTER,
         FOREIGN_TYPEDEF,
@@ -89,7 +89,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
         FIELD_DECLARATION_2,
         FIELD_DECLARATION_3,
         FIELD_DECLARATION_4,
-        FIELD_DECLARATION_REL_TYPE,
         STRUCT_FIELD_SIG,
         STRUCT_FIELD,
         ARRAY_DATA_TYPE_1,
@@ -99,7 +98,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
         INTERFACE_IMPLEMENTOR,
         /* Level 2+K DIEs (where inline depth K >= 0) */
         INLINED_SUBROUTINE,
-        INLINED_SUBROUTINE_WITH_CHILDREN,
         ABSTRACT_INLINE_METHOD,
         /* Level 3 DIEs. */
         METHOD_PARAMETER_DECLARATION_1,

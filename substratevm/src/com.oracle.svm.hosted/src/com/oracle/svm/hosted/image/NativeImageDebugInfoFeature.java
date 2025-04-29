@@ -195,17 +195,22 @@ class NativeImageDebugInfoFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         var accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
 
+        /*
+         * Traverse all types and process native types into type entries. These type entries can
+         * also be reused for run-time debug info generation.
+         */
         for (AnalysisType t : accessImpl.getUniverse().getTypes()) {
             var metaAccess = accessImpl.getMetaAccess();
             if (nativeLibs.isWordBase(t)) {
                 TypeEntry typeEntry = NativeImageDebugInfoProvider.processElementInfo(nativeLibs, metaAccess, t);
-                // we will always create a type entry here
-                // e.g. if no element info is found or we can't find the pointed to type we create a
-                // pointerToVoid/primitive type
+                /*
+                 * We will always create a type entry here. If no element info is found, or we can't
+                 * find the pointed to type we create a pointer to void/primitive type.
+                 */
                 SubstrateDebugTypeEntrySupport.singleton().addTypeEntry(typeEntry);
             }
         }
-        // the map is complete now -> create a more efficient view of the map
+        // the map is complete now -> trim it for storing it more efficiently
         SubstrateDebugTypeEntrySupport.singleton().trim();
     }
 
