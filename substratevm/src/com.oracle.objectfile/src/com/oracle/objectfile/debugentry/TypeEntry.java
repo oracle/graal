@@ -47,7 +47,7 @@ public abstract class TypeEntry {
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
      * object exists.
      */
-    private final long classOffset;
+    private long classOffset;
 
     /**
      * The size of an occurrence of this type in bytes.
@@ -73,6 +73,10 @@ public abstract class TypeEntry {
 
     public long getClassOffset() {
         return classOffset;
+    }
+
+    public void setClassOffset(long classOffset) {
+        this.classOffset = classOffset;
     }
 
     public int getSize() {

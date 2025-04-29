@@ -243,15 +243,20 @@ class SVMUtil:
     def get_adr(self, obj: gdb.Value) -> int:
         # use null as fallback if we cannot find the address value or obj is null
         adr_val = 0
-        if obj.type.code == gdb.TYPE_CODE_PTR:
-            if int(obj) == 0 or (self.use_heap_base and int(obj) == int(self.get_heap_base())):
-                # obj is null
-                pass
-            else:
-                adr_val = int(obj.dereference().address)
-        elif obj.address is not None:
-            adr_val = int(obj.address)
-        return adr_val
+        try:
+            if obj.type.code == gdb.TYPE_CODE_PTR:
+                if int(obj) == 0 or (self.use_heap_base and int(obj) == int(self.get_heap_base())):
+                    # obj is null
+                    pass
+                else:
+                    adr_val = int(obj.dereference().address)
+            elif obj.address is not None:
+                adr_val = int(obj.address)
+            return adr_val
+        except Exception as ex:
+            trace(f'<SVMUtil> - get_adr(...) exception: {ex}')
+            # the format of the gdb.Value was unexpected, continue with null
+            return 0
 
     def is_null(self, obj: gdb.Value) -> bool:
         return self.get_adr(obj) == 0
@@ -378,12 +383,14 @@ class SVMUtil:
         return result
 
     def get_hub_field(self, obj: gdb.Value) -> gdb.Value:
-        try:
-            return self.cast_to(obj, self.object_header_type)[self.hub_field_name]
-        except gdb.error:
-            return self.null
+        return self.get_obj_field(self.cast_to(obj, self.object_header_type), self.hub_field_name)
         
     def get_obj_field(self, obj: gdb.Value, field_name: str, default: gdb.Value = None) -> gdb.Value:
+        # Make sure we never access fields of a null value
+        # This is necessary because 'null' is represented by a gdb.Value with a raw value of 0x0
+        if self.is_null(obj):
+            return self.null
+
         try:
             return obj[field_name]
         except gdb.error:
