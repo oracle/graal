@@ -167,7 +167,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                 case WasmType.F64_TYPE:
                     return popDouble(frame, localCount);
                 case WasmType.V128_TYPE:
-                    return popVector128(frame, localCount);
+                    return Vector128.fromVector(popVector128(frame, localCount));
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
                     return popReference(frame, localCount);
@@ -203,7 +203,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     primitiveMultiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
                     break;
                 case WasmType.V128_TYPE:
-                    objectMultiValueStack[i] = popVector128(frame, localCount + i);
+                    objectMultiValueStack[i] = Vector128.fromVector(popVector128(frame, localCount + i));
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
@@ -237,7 +237,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     pushDouble(frame, i, (double) arg);
                     break;
                 case WasmType.V128_TYPE:
-                    pushVector128(frame, i, (Vector128) arg);
+                    pushVector128(frame, i, ((Vector128) arg).getVector());
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
@@ -266,7 +266,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
                     pushDouble(frame, i, 0D);
                     break;
                 case WasmType.V128_TYPE:
-                    pushVector128(frame, i, Vector128.ZERO);
+                    pushVector128(frame, i, Vector128.ZERO.getVector());
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:

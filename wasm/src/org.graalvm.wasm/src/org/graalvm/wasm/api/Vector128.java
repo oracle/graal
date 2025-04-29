@@ -48,6 +48,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.Vector;
 
 import java.nio.ByteOrder;
 
@@ -78,6 +80,14 @@ public final class Vector128 implements TruffleObject {
 
     public byte[] getBytes() {
         return bytes;
+    }
+
+    public ByteVector getVector() {
+        return ByteVector.fromArray(ByteVector.SPECIES_128, bytes, 0);
+    }
+
+    public static Vector128 fromVector(Vector vec) {
+        return new Vector128(vec.reinterpretAsBytes().toArray());
     }
 
     public short[] toShorts() {
