@@ -736,6 +736,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private void traceClassFlagQuery(int mask) {
         ConfigurationType type = MetadataTracer.singleton().traceReflectionType(getName());
+        if (type == null) {
+            return;
+        }
         // TODO (GR-64765): We over-approximate member accessibility here because we don't trace
         // accesses. Once we trace accesses, it will suffice to register the class for reflection.
         switch (mask) {
@@ -1344,13 +1347,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (field != null) {
             // register declaring type and field
             ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(field.getDeclaringClass().getName());
-            declaringType.addField(fieldName, declaration, false);
+            if (declaringType != null) {
+                declaringType.addField(fieldName, declaration, false);
+            }
             // register receiver type
             MetadataTracer.singleton().traceReflectionType(getName());
         } else {
             // register receiver type and negative field query
             ConfigurationType receiverType = MetadataTracer.singleton().traceReflectionType(getName());
-            receiverType.addField(fieldName, declaration, false);
+            if (receiverType != null) {
+                receiverType.addField(fieldName, declaration, false);
+            }
         }
     }
 
@@ -1425,13 +1432,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (method != null) {
             // register declaring type and method
             ConfigurationType declaringType = MetadataTracer.singleton().traceReflectionType(method.getDeclaringClass().getName());
-            declaringType.addMethod(methodName, toInternalSignature(parameterTypes), declaration);
+            if (declaringType != null) {
+                declaringType.addMethod(methodName, toInternalSignature(parameterTypes), declaration);
+            }
             // register receiver type
             MetadataTracer.singleton().traceReflectionType(getName());
         } else {
             // register receiver type and negative method query
             ConfigurationType receiverType = MetadataTracer.singleton().traceReflectionType(getName());
-            receiverType.addMethod(methodName, toInternalSignature(parameterTypes), declaration, ConfigurationMemberAccessibility.QUERIED);
+            if (receiverType != null) {
+                receiverType.addMethod(methodName, toInternalSignature(parameterTypes), declaration, ConfigurationMemberAccessibility.QUERIED);
+            }
         }
     }
 

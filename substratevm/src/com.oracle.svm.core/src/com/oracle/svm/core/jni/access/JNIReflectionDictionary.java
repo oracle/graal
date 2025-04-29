@@ -282,7 +282,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
                 if (method != null) {
                     if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
                         ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
-                        clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+                        if (clazzType != null) {
+                            clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+                        }
                     }
                     return method;
                 }
@@ -341,7 +343,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
                 if (field != null && (field.isStatic() == isStatic || field.isNegative())) {
                     if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
                         ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
-                        clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
+                        if (clazzType != null) {
+                            clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
+                        }
                     }
                     return field;
                 }
