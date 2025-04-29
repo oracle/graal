@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,17 @@
  */
 package com.oracle.svm.core.deopt;
 
+import static com.oracle.svm.core.deopt.Deoptimizer.fatalDeoptimizationError;
+
+import java.lang.reflect.Array;
+
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -32,20 +43,12 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import jdk.internal.misc.Unsafe;
+
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.word.Word;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
-
-import java.lang.reflect.Array;
-
-import static com.oracle.svm.core.deopt.Deoptimizer.fatalDeoptimizationError;
 
 public class DeoptState {
 
@@ -161,6 +164,16 @@ public class DeoptState {
 
         materializedObjects[virtualObjectId] = obj;
         Deoptimizer.maybeTestGC();
+
+        if (ImageSingletons.contains(VectorAPIDeoptimizationSupport.class)) {
+            VectorAPIDeoptimizationSupport deoptSupport = ImageSingletons.lookup(VectorAPIDeoptimizationSupport.class);
+            Object payloadArray = deoptSupport.materializePayload(this, hub, encodings[curIdx], sourceFrame);
+            if (payloadArray != null) {
+                JavaConstant arrayConstant = SubstrateObjectConstant.forObject(payloadArray, ReferenceAccess.singleton().haveCompressedReferences());
+                Deoptimizer.writeValueInMaterializedObj(obj, curOffset, arrayConstant, sourceFrame);
+                return obj;
+            }
+        }
 
         while (curIdx < encodings.length) {
             FrameInfoQueryResult.ValueInfo value = encodings[curIdx];

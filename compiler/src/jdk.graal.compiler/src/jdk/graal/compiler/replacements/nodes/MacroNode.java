@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
-import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -47,8 +49,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -240,6 +240,15 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
 
     @Override
     public final boolean hasSideEffect() {
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if the lowered version of the macro, or the fallback invoke, can
+     * deoptimize in any way or throw any implicit or explicit exception. Such nodes should be
+     * represented as {@link MacroWithExceptionNode} in SVM runtime compilations.
+     */
+    public boolean canDeoptimizeOrThrow() {
         return true;
     }
 

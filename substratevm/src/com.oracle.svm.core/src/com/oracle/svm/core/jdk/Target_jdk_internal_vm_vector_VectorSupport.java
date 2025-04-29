@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,18 @@ final class Target_jdk_incubator_vector_VectorOperators {
          * implementation clearly expects them to be inlined. They are on the hot path, and both
          * their hot path callers and their callees are all @ForceInline.
          */
+
+        @AnnotateOriginal
+        @AlwaysInline("Vector API performance")
+        native char kind();
+
+        @AnnotateOriginal
+        @AlwaysInline("Vector API performance")
+        native Target_jdk_incubator_vector_LaneType domain();
+
+        @AnnotateOriginal
+        @AlwaysInline("Vector API performance")
+        native Target_jdk_incubator_vector_LaneType range();
 
         @AnnotateOriginal
         @AlwaysInline("Vector API performance")
