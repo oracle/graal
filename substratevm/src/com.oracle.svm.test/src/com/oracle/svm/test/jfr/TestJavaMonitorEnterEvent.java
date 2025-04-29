@@ -90,6 +90,8 @@ public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
                 found = true;
                 break;
             }
+
+            checkTopStackFrame(event, "monitorEnter");
         }
         assertTrue("Expected monitor blocked event not found", found);
     }

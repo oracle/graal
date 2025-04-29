@@ -38,8 +38,8 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.netbeans.html.json.tck.KOTest;
 
-import com.oracle.svm.webimage.jtt.javascriptbody.HeadlessTckTest;
 import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
+import com.oracle.svm.webimage.jtt.javascriptbody.HeadlessTckTest;
 
 /**
  * This test is currently broken (see GR-57165).

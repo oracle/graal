@@ -38,13 +38,13 @@ import java.util.stream.StreamSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
-import com.oracle.svm.webimage.NamingConvention;
-import com.oracle.svm.webimage.type.TypeControl;
-import com.oracle.svm.hosted.webimage.codegen.heap.ConstantMap;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.webimage.codegen.heap.ConstantMap;
+import com.oracle.svm.webimage.NamingConvention;
+import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;

@@ -208,7 +208,7 @@ public class MethodTypeFlowBuilder {
         this.graphKind = graphKind;
         if (bb.trackPrimitiveValues()) {
             this.alwaysEnabled = bb.usePredicates()
-                            ? TypeFlowBuilder.create(bb, method, null, PointsToAnalysis.syntheticSourcePosition(method), AlwaysEnabledPredicateFlow.class, AlwaysEnabledPredicateFlow::new)
+                            ? TypeFlowBuilder.create(bb, method, null, PointsToAnalysis.syntheticSourcePosition(method), AlwaysEnabledPredicateFlow.class, bb::getAlwaysEnabledPredicateFlow)
                             : null;
             this.anyPrimitiveSourceTypeFlowBuilder = TypeFlowBuilder.create(bb, method, alwaysEnabled, null, AnyPrimitiveSourceTypeFlow.class, bb::getAnyPrimitiveSourceTypeFlow);
         } else {

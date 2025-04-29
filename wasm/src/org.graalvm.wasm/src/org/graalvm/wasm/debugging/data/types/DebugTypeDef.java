@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,8 @@ import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+
 /**
  * Represents a debug type that represents a type definition.
  */
@@ -85,6 +87,23 @@ public class DebugTypeDef extends DebugType {
             return super.asValue(context, location);
         }
         return type.asValue(context, location);
+    }
+
+    @Override
+    public boolean isModifiableValue() {
+        if (type == null) {
+            return super.isModifiableValue();
+        }
+        return type.isModifiableValue();
+    }
+
+    @Override
+    public void setValue(DebugContext context, DebugLocation location, Object value, InteropLibrary lib) {
+        if (type == null) {
+            super.setValue(context, location, value, lib);
+        } else {
+            type.setValue(context, location, value, lib);
+        }
     }
 
     @Override

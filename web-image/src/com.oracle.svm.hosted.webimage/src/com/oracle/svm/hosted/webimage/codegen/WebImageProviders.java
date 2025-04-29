@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import java.io.PrintStream;
 
-import com.oracle.svm.webimage.Labeler;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.webimage.Labeler;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;

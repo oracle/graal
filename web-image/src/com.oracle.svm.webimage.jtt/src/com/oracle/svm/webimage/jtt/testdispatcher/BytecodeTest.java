@@ -27,6 +27,8 @@ package com.oracle.svm.webimage.jtt.testdispatcher;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.webimage.jtt.bytecode.BC_aaload;
 import com.oracle.svm.webimage.jtt.bytecode.BC_aaload_1;
 import com.oracle.svm.webimage.jtt.bytecode.BC_aastore;
@@ -229,8 +231,6 @@ import com.oracle.svm.webimage.jtt.bytecode.BC_tableswitch3;
 import com.oracle.svm.webimage.jtt.bytecode.BC_tableswitch4;
 import com.oracle.svm.webimage.jtt.bytecode.BC_wide01;
 import com.oracle.svm.webimage.jtt.bytecode.BC_wide02;
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 
 public class BytecodeTest extends JTTTestDispatcher {
 

@@ -27,7 +27,6 @@ package com.oracle.svm.webimage.heap;
 import java.lang.ref.Reference;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
@@ -44,6 +43,8 @@ import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * SVM requires a {@link Heap} to be in the {@link ImageSingletons}. This class acts as a dummy

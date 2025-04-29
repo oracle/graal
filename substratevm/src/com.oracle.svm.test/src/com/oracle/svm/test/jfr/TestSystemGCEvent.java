@@ -57,6 +57,8 @@ public class TestSystemGCEvent extends JfrRecordingTest {
             assertNotNull(event.getStartTime());
             assertTrue(event.getStartTime().toEpochMilli() <= System.currentTimeMillis());
             assertFalse(event.getBoolean("invokedConcurrent"));
+
+            checkTopStackFrame(event, "gc");
         }
     }
 }

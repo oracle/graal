@@ -122,6 +122,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry;
@@ -352,22 +353,41 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         polymorphicSignatureSealed = true;
 
-        List<AnalysisType> typesToPersist = aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList();
-        List<AnalysisMethod> methodsToPersist = aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList();
-        List<AnalysisField> fieldsToPersist = aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).toList();
+        AnalysisType[] typesToPersist = aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).sorted(Comparator.comparingInt(AnalysisType::getId))
+                        .toArray(AnalysisType[]::new);
+        initSortedArray(snapshotBuilder::initTypes, typesToPersist, this::persistType);
+        var dispatchTableSingleton = LayeredDispatchTableFeature.singleton();
+        initSortedArray(snapshotBuilder::initDynamicHubInfos, typesToPersist,
+                        (AnalysisType aType, Supplier<DynamicHubInfo.Builder> builderSupplier) -> dispatchTableSingleton
+                                        .persistDynamicHubInfo(hUniverse.lookup(aType), builderSupplier));
 
-        initSortedList(snapshotBuilder::initTypes, typesToPersist, Comparator.comparingInt(AnalysisType::getId), this::persistType);
-        initSortedList(snapshotBuilder::initMethods, methodsToPersist, Comparator.comparingInt(AnalysisMethod::getId), this::persistMethod);
-        initSortedList(snapshotBuilder::initFields, fieldsToPersist, Comparator.comparingInt(AnalysisField::getId), this::persistField);
+        AnalysisMethod[] methodsToPersist = aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).sorted(Comparator.comparingInt(AnalysisMethod::getId))
+                        .toArray(AnalysisMethod[]::new);
+        initSortedArray(snapshotBuilder::initMethods, methodsToPersist, this::persistMethod);
 
+        AnalysisField[] fieldsToPersist = aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).sorted(Comparator.comparingInt(AnalysisField::getId))
+                        .toArray(AnalysisField[]::new);
+        initSortedArray(snapshotBuilder::initFields, fieldsToPersist, this::persistField);
+
+        /*
+         * Note the set of elements within the hosted method array are created as a side effect of
+         * persisting methods and dynamic hubs, so it must persisted after these operations.
+         */
+        HostedMethod[] hMethodsToPersist = dispatchTableSingleton.acquireHostedMethodArray();
+        initSortedArray(snapshotBuilder::initHostedMethods, hMethodsToPersist, dispatchTableSingleton::persistHostedMethod);
+        dispatchTableSingleton.releaseHostedMethodArray();
+
+        @SuppressWarnings({"unchecked", "cast"})
+        Map.Entry<ImageHeapConstant, ConstantParent>[] constantsToPersist = (Map.Entry<ImageHeapConstant, ConstantParent>[]) constantsMap.entrySet().stream()
+                        .sorted(Comparator.comparingInt(a -> ImageHeapConstant.getConstantID(a.getKey())))
+                        .toArray(Map.Entry[]::new);
         Set<Integer> constantsToRelink = new HashSet<>();
-        initSortedList(snapshotBuilder::initConstants, constantsMap.entrySet(),
-                        Comparator.comparingInt(a -> ImageHeapConstant.getConstantID(a.getKey())),
+        initSortedArray(snapshotBuilder::initConstants, constantsToPersist,
                         (entry, bsupplier) -> persistConstant(entry.getKey(), entry.getValue(), bsupplier.get(), constantsToRelink));
         initInts(snapshotBuilder::initConstantsToRelink, constantsToRelink.stream().mapToInt(i -> i).sorted());
     }
 
-    private static void initInts(IntFunction<PrimitiveList.Int.Builder> builderSupplier, IntStream ids) {
+    public static void initInts(IntFunction<PrimitiveList.Int.Builder> builderSupplier, IntStream ids) {
         int[] values = ids.toArray();
         PrimitiveList.Int.Builder builder = builderSupplier.apply(values.length);
         for (int i = 0; i < values.length; i++) {
@@ -383,14 +403,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
     }
 
-    private static <S extends StructBuilder, T> void initSortedList(IntFunction<StructList.Builder<S>> init, Collection<T> objects, Comparator<T> comparator, BiConsumer<T, Supplier<S>> action) {
-        @SuppressWarnings("unchecked")
-        T[] array = (T[]) objects.toArray();
-        Arrays.sort(array, comparator);
-
-        StructList.Builder<S> builder = init.apply(objects.size());
+    public static <S extends StructBuilder, T> void initSortedArray(IntFunction<StructList.Builder<S>> init, T[] sortedArray, BiConsumer<T, Supplier<S>> action) {
+        StructList.Builder<S> builder = init.apply(sortedArray.length);
         Iterator<S> iterator = builder.iterator();
-        for (T t : array) {
+        for (T t : sortedArray) {
             action.accept(t, iterator::next);
         }
         AnalysisError.guarantee(!iterator.hasNext(), "all created struct builders must have been used");
@@ -564,9 +580,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsSynthetic(method.isSynthetic());
         byte[] code = method.getCode();
         if (code != null) {
-            builder.setCode(code);
+            builder.setBytecode(code);
         }
-        builder.setCodeSize(method.getCodeSize());
+        builder.setBytecodeSize(method.getCodeSize());
         IntrinsicMethod intrinsicMethod = aUniverse.getBigbang().getConstantReflectionProvider().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
         if (intrinsicMethod != null) {
             builder.setMethodHandleIntrinsicName(intrinsicMethod.name());
@@ -589,8 +605,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         delegatePersistMethod(method, builder);
 
-        // register this method as persisted for name resolution
-        HostedDynamicLayerInfo.singleton().recordPersistedMethod(hUniverse.lookup(method));
+        HostedMethod hMethod = hUniverse.lookup(method);
+        builder.setHostedMethodIndex(LayeredDispatchTableFeature.singleton().getPersistedHostedMethodIndex(hMethod));
     }
 
     protected void delegatePersistMethod(AnalysisMethod method, PersistedAnalysisMethod.Builder builder) {

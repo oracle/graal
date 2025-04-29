@@ -100,10 +100,14 @@ public final class OptionDescriptor {
         OptionsContainer oc = OptionsContainer.asContainer(container);
         Class<?> declaringClass = oc.declaringClass();
         assert option != null : declaringClass + "." + fieldName;
-        OptionDescriptor result = option.getDescriptor();
-        if (result == null) {
-            result = new OptionDescriptor(name, optionType, optionValueType, help, oc, fieldName, option, stability, deprecated, deprecationMessage);
-            option.setDescriptor(result);
+        OptionDescriptor result;
+        // Descriptors can be initialized by multiple threads
+        synchronized (option) {
+            result = option.getDescriptor();
+            if (result == null) {
+                result = new OptionDescriptor(name, optionType, optionValueType, help, oc, fieldName, option, stability, deprecated, deprecationMessage);
+                option.setDescriptor(result);
+            }
         }
         assert result.name.equals(name) : result.name + " != " + name;
         assert result.optionValueType == optionValueType : result.optionValueType + " != " + optionValueType;

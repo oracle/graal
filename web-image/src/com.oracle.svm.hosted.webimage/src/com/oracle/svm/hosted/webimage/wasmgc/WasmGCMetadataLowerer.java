@@ -30,11 +30,11 @@ import java.util.List;
 import java.util.Optional;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
-import com.oracle.svm.webimage.api.Nothing;
-import com.oracle.svm.webimage.wasmgc.WasmGCMetadata;
-import com.oracle.svm.hosted.webimage.codegen.type.ClassMetadataLowerer;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.codegen.type.ClassMetadataLowerer;
+import com.oracle.svm.webimage.api.Nothing;
+import com.oracle.svm.webimage.wasmgc.WasmGCMetadata;
 
 /**
  * In the WasmGC backend method metadata required by the JS interop is encoded in the name of the

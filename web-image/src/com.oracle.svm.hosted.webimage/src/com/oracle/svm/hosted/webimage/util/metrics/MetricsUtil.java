@@ -35,10 +35,11 @@ import java.util.List;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import jdk.graal.compiler.debug.MetricKey;
 
 import com.oracle.svm.hosted.webimage.logging.LoggableMetric;
 import com.oracle.svm.hosted.webimage.logging.LoggerScope;
+
+import jdk.graal.compiler.debug.MetricKey;
 
 /**
  * A utility class that contains methods that the metric collector classes and other classes can

@@ -25,9 +25,9 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
-import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippet;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
+import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
 
 /**
  * Generates the main entry function for users.

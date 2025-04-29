@@ -40,15 +40,15 @@ import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_management_HiddenWait;
 import jdk.graal.compiler.word.Word;
 
 public class JavaMonitorWaitEvent {
-    public static void emit(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
+    public static void emit(long startTicks, Object obj, long notifierTid, long timeout, boolean timedOut) {
         if (HasJfrSupport.get() && obj != null && !Target_jdk_jfr_internal_JVM_ChunkRotationMonitor.class.equals(obj.getClass()) &&
                         !Target_jdk_jfr_internal_management_HiddenWait.class.equals(obj.getClass())) {
-            emit0(startTicks, obj, notifier, timeout, timedOut);
+            emit0(startTicks, obj, notifierTid, timeout, timedOut);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
+    private static void emit0(long startTicks, Object obj, long notifierTid, long timeout, boolean timedOut) {
         long duration = JfrTicks.duration(startTicks);
         if (JfrEvent.JavaMonitorWait.shouldEmit(duration)) {
             JfrNativeEventWriterData data = org.graalvm.nativeimage.StackValue.get(JfrNativeEventWriterData.class);
@@ -58,9 +58,9 @@ public class JavaMonitorWaitEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorWait, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorWait));
             JfrNativeEventWriter.putClass(data, obj.getClass());
-            JfrNativeEventWriter.putLong(data, notifier);
+            JfrNativeEventWriter.putThread(data, notifierTid);
             JfrNativeEventWriter.putLong(data, timeout);
             JfrNativeEventWriter.putBoolean(data, timedOut);
             JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());

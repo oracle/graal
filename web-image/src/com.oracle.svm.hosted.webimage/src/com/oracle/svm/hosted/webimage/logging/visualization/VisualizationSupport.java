@@ -27,12 +27,13 @@ package com.oracle.svm.hosted.webimage.logging.visualization;
 
 import java.io.PrintStream;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+
+import jdk.graal.compiler.options.Option;
 
 public abstract class VisualizationSupport {
 

@@ -29,12 +29,10 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.wasm.ast.Function;
 import com.oracle.svm.hosted.webimage.wasm.ast.FunctionTypeDescriptor;
@@ -54,7 +52,9 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;

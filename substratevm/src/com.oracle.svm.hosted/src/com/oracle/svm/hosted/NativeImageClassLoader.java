@@ -729,10 +729,16 @@ public final class NativeImageClassLoader extends SecureClassLoader {
 
     /**
      * See {@code jdk.internal.loader.Loader#getPermissions}.
+     *
+     * The override was removed in JDK 24 by JDK-8343982.
      */
+    @SuppressWarnings("deprecation")
     @Override
     protected PermissionCollection getPermissions(CodeSource cs) {
         PermissionCollection perms = super.getPermissions(cs);
+        if (JavaVersionUtil.JAVA_SPEC > 21) {
+            return perms;
+        }
 
         URL url = cs.getLocation();
         if (url == null) {

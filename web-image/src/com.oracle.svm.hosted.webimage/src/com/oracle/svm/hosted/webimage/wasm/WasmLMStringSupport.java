@@ -29,9 +29,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.hosted.webimage.wasm.gc.WasmAllocation;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
-import com.oracle.svm.hosted.webimage.wasm.gc.WasmAllocation;
 
 import jdk.graal.compiler.word.Word;
 

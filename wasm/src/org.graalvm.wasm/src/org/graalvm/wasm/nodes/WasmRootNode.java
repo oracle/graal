@@ -142,4 +142,9 @@ public abstract class WasmRootNode extends RootNode {
     protected boolean isInstrumentable() {
         return false;
     }
+
+    @Override
+    public boolean isInternal() {
+        return true;
+    }
 }

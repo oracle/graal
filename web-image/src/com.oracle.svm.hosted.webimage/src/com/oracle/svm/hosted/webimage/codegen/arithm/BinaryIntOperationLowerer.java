@@ -26,9 +26,9 @@ package com.oracle.svm.hosted.webimage.codegen.arithm;
 
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MATH_IMUL;
 
-import com.oracle.svm.webimage.JSKeyword;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.wrappers.JSEmitter;
+import com.oracle.svm.webimage.JSKeyword;
 
 import jdk.graal.compiler.hightiercodegen.Emitter;
 import jdk.graal.compiler.nodes.ValueNode;

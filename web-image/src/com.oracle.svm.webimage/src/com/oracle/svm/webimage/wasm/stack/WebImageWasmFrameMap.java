@@ -25,12 +25,11 @@
 
 package com.oracle.svm.webimage.wasm.stack;
 
+import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.lir.framemap.FrameMap;
-
-import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.site.Infopoint;

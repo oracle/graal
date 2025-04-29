@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,24 +44,20 @@ package org.graalvm.wasm.debugging.representation;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugContext;
+import org.graalvm.wasm.debugging.data.DebugObject;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugContext;
-import org.graalvm.wasm.debugging.data.DebugObject;
-import org.graalvm.wasm.debugging.data.DebugFunction;
-import org.graalvm.wasm.nodes.WasmDataAccess;
 
 /**
  * Represents an object scope in the debug environment.
@@ -97,20 +93,6 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
         return new DebugObjectDisplayValue(context, location, object.toString(), members);
     }
 
-    @TruffleBoundary
-    public static Object fromDebugFunction(DebugFunction function, DebugContext context, MaterializedFrame frame, WasmDataAccess dataAccess, boolean testMode) {
-        final DebugLocation frameBase = function.frameBaseOrNull(frame, dataAccess);
-        if (frameBase == null) {
-            return DebugConstantDisplayValue.UNDEFINED;
-        }
-        if (function.hasGlobals() || testMode) {
-            final EconomicMap<String, DebugObject> members = EconomicMap.of("globals", function.globals(), "locals", function.locals());
-            return new DebugObjectDisplayValue(context, frameBase, "", members);
-        } else {
-            return fromDebugObject(function.locals(), context, frameBase);
-        }
-    }
-
     @ExportMessage
     boolean hasMembers() {
         return true;
@@ -139,10 +121,7 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
     @ExportMessage
     @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
-        if (members == null) {
-            return WasmType.VOID_TYPE;
-        }
-        if (!members.containsKey(member)) {
+        if (!isMemberReadable(member)) {
             throw UnknownIdentifierException.create(member);
         }
         final DebugObject memberObject = members.get(member);
@@ -152,51 +131,33 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new WasmVariableNamesObject(members.getKeys());
+        final List<String> names = new ArrayList<>(members.size());
+        for (String member : members.getKeys()) {
+            names.add(member);
+        }
+        return new WasmVariableNamesObject(names);
     }
 
     @ExportMessage
+    @ExportMessage(name = "isMemberModifiable")
     @TruffleBoundary
     boolean isMemberReadable(String member) {
         return members.containsKey(member);
     }
 
-    @SuppressWarnings("static-method")
-    @ExportLibrary(InteropLibrary.class)
-    static final class WasmVariableNamesObject implements TruffleObject {
-        final List<String> names;
-
-        WasmVariableNamesObject(Iterable<String> names) {
-            this.names = new ArrayList<>(0);
-            for (String name : names) {
-                this.names.add(name);
-            }
+    @ExportMessage(limit = "5")
+    @TruffleBoundary
+    void writeMember(String member, Object value, @CachedLibrary("value") InteropLibrary lib) throws UnknownIdentifierException {
+        if (!isMemberReadable(member)) {
+            throw UnknownIdentifierException.create(member);
         }
+        final DebugObject memberObject = members.get(member);
+        writeDebugObject(memberObject, context, location, value, lib);
+    }
 
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        long getArraySize() {
-            return names.size();
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (!isArrayElementReadable(index)) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            return names.get((int) index);
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < names.size();
-        }
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        return false;
     }
 }

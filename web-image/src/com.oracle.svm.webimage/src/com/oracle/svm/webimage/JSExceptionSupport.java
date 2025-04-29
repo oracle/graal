@@ -33,12 +33,12 @@ import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSValue;
 
-import com.oracle.svm.webimage.functionintrinsics.JSConversion;
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
-import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.webimage.functionintrinsics.JSConversion;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 
 import jdk.graal.compiler.options.Option;
 

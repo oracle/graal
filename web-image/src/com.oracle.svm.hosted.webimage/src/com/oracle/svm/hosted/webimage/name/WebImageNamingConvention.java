@@ -27,10 +27,10 @@ package com.oracle.svm.hosted.webimage.name;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.webimage.JSNameGenerator;
-import com.oracle.svm.webimage.NamingConvention;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.webimage.JSNameGenerator;
+import com.oracle.svm.webimage.NamingConvention;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.common.JVMCIError;

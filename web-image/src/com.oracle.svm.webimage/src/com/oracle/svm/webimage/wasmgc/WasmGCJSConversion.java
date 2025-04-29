@@ -25,16 +25,16 @@
 
 package com.oracle.svm.webimage.wasmgc;
 
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JSError;
 import org.graalvm.webimage.api.JSValue;
-import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;

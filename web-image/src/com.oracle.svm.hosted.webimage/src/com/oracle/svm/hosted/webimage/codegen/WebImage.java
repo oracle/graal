@@ -43,13 +43,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.webimage.WebImageCodeCache;
-import com.oracle.svm.hosted.webimage.WebImageGenerator;
-import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
-import com.oracle.svm.hosted.webimage.logging.LoggerContext;
-import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
-import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -57,6 +50,13 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.webimage.WebImageCodeCache;
+import com.oracle.svm.hosted.webimage.WebImageGenerator;
+import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
+import com.oracle.svm.hosted.webimage.logging.LoggerContext;
+import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 
 import jdk.graal.compiler.debug.DebugContext;
 

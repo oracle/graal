@@ -25,11 +25,11 @@
 
 package com.oracle.svm.hosted.webimage.phases;
 
+import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
+
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
-
-import com.oracle.svm.hosted.webimage.codegen.node.InterceptJSInvokeNode;
 
 public class RemoveInterceptJSInvokePhase extends BasePhase<CoreProviders> {
     @Override

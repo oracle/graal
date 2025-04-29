@@ -4108,7 +4108,7 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, boolean usePreciseCodeRange);
 
-        @Specialization(guards = "codePointSet == cachedCodePointSet", limit = "1")
+        @Specialization(guards = "codePointSet == cachedCodePointSet", limit = "1", excludeForUncached = true)
         static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, boolean usePreciseCodeRange,
                         @Bind Node node,
                         @Cached @Exclusive InlinedConditionProfile managedProfileA,

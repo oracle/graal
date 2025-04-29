@@ -136,6 +136,7 @@ meth public static <%0 extends java.lang.Object> org.graalvm.collections.Economi
 meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.Equivalence,int)
 meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.Equivalence,org.graalvm.collections.UnmodifiableEconomicSet<{%%0}>)
 meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.UnmodifiableEconomicSet<{%%0}>)
+meth public static org.graalvm.collections.EconomicSet emptySet()
 meth public void addAll(java.lang.Iterable<{org.graalvm.collections.EconomicSet%0}>)
 meth public void addAll(java.util.Iterator<{org.graalvm.collections.EconomicSet%0}>)
 meth public void addAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)

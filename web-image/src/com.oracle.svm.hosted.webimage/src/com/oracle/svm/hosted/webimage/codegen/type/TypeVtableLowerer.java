@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.type;
 
-import com.oracle.svm.webimage.JSKeyword;
-import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.webimage.JSKeyword;
 
 import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.hightiercodegen.Emitter;

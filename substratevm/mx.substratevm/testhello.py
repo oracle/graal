@@ -88,7 +88,7 @@ def test():
     execute("set print symbol off")
 
     exec_string = execute("ptype _objhdr")
-    fixed_idhash_field = "int idHash;" in exec_string
+    has_reserved_field = "reserved;" in exec_string
 
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
@@ -223,7 +223,7 @@ def test():
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}idHash = {address_pattern}" if fixed_idhash_field else None,
+            fr"{spaces_pattern}reserved = {address_pattern}" if has_reserved_field else None,
             fr"{spaces_pattern}}}, <No data fields>}}, ",
             fr"{spaces_pattern}members of java\.lang\.String\[\]:",
             fr"{spaces_pattern}len = 0x0,",
@@ -241,7 +241,7 @@ def test():
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}idHash = {address_pattern}" if fixed_idhash_field else None,
+            fr"{spaces_pattern}reserved = {address_pattern}" if has_reserved_field else None,
             fr"{spaces_pattern}}}, <No data fields>}},",
             fr"{spaces_pattern}members of java\.lang\.Class:",
             fr"{spaces_pattern}name = {address_pattern},",
@@ -278,7 +278,7 @@ def test():
             fr"{spaces_pattern}<java.lang.Object> = {{",
             fr"{spaces_pattern}<_objhdr> = {{",
             fr"{spaces_pattern}hub = {address_pattern}",
-            fr"{spaces_pattern}idHash = {address_pattern}" if fixed_idhash_field else None,
+            fr"{spaces_pattern}reserved = {address_pattern}" if has_reserved_field else None,
             fr"{spaces_pattern}}}, <No data fields>}},",
             fr"{spaces_pattern}members of java\.lang\.Class:",
             fr"{spaces_pattern}name = {address_pattern},",
@@ -382,7 +382,7 @@ def test():
     exec_string = execute("ptype _objhdr")
     rexp = [r"type = struct _objhdr {",
             fr"{spaces_pattern}Encoded\$Dynamic\$Hub \*hub;",
-            fr"{spaces_pattern}int idHash;" if fixed_idhash_field else None,
+            fr"{spaces_pattern}(int|long) reserved;" if has_reserved_field else None,
             r"}"]
 
     checker = Checker('ptype _objhdr', rexp)

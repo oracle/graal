@@ -29,10 +29,10 @@ import java.lang.reflect.Method;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.webimage.longemulation.Long64;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.js.JSStaticFieldDefinition;
 import com.oracle.svm.hosted.webimage.js.JSStaticMethodDefinition;
+import com.oracle.svm.webimage.longemulation.Long64;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;

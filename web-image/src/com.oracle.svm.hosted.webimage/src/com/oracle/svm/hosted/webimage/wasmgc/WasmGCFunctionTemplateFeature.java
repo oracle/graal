@@ -34,13 +34,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.wasm.ast.Function;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instructions;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
@@ -51,9 +52,8 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmBackend;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmCompilationResult;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmVariableAllocation;
-import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.code.CompilationResult;

@@ -35,9 +35,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.LoggerOptions;
-import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.MetricKey;

@@ -32,18 +32,18 @@ import java.util.function.Consumer;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.webimage.object.ConstantIdentityMapping;
-import com.oracle.svm.webimage.object.ObjectInspector;
-import com.oracle.svm.webimage.type.TypeControl;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
-import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
+import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
+import com.oracle.svm.webimage.object.ConstantIdentityMapping;
+import com.oracle.svm.webimage.object.ObjectInspector;
+import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;

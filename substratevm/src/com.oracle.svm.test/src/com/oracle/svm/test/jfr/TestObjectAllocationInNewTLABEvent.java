@@ -95,10 +95,13 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
                 } else if (className.equals(byte[].class.getName())) {
                     foundBigByteArray = true;
                 }
+                checkTopStackFrame(event, "slowPathNewArrayLikeObject0");
             } else if (allocationSize >= K && tlabSize == alignedHeapChunkSize && className.equals(byte[].class.getName())) {
                 foundSmallByteArray = true;
+                checkTopStackFrame(event, "slowPathNewArrayLikeObject0");
             } else if (tlabSize == alignedHeapChunkSize && className.equals(Helper.class.getName())) {
                 foundInstance = true;
+                checkTopStackFrame(event, "slowPathNewInstanceWithoutAllocating");
             }
         }
 

@@ -165,7 +165,8 @@ public final class TypeCheckBuilder {
             int startingTypeID = OpenTypeWorldFeature.loadTypeInfo(builder.heightOrderedTypes);
             builder.buildTypeInformation(hUniverse, startingTypeID);
             builder.calculateOpenTypeWorldTypeMetadata();
-            OpenTypeWorldFeature.persistTypeInfo(builder.heightOrderedTypes);
+            // GR-64324 re-enable once type duplicates get assigned the same typecheckID
+            // assert OpenTypeWorldFeature.validateTypeInfo(builder.heightOrderedTypes);
             return UNINITIALIZED_TYPECHECK_SLOTS;
         }
     }

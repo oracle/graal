@@ -34,8 +34,6 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
-import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
@@ -48,6 +46,8 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
 import com.oracle.svm.hosted.webimage.wasm.phases.StackPointerVerificationPhase;
+import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
+import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
 
 public class WasmDebug {
     public static final SubstrateForeignCallDescriptor LOG_OBJECT = SnippetRuntime.findForeignCall(WasmDebug.class, "logObject", HAS_SIDE_EFFECT);

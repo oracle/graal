@@ -63,7 +63,7 @@ import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
@@ -425,7 +425,7 @@ public final class NativeImageHeapWriter {
                 instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isIgnoredField(field));
 
                 if (imageLayer) {
-                    LayeredDispatchTableSupport.singleton().registerWrittenDynamicHub((DynamicHub) info.getObject(), heap.aUniverse, heap.hUniverse, vTable);
+                    LayeredDispatchTableFeature.singleton().registerWrittenDynamicHub((DynamicHub) info.getObject(), heap.aUniverse, heap.hUniverse, vTable);
                 }
 
             } else if (heap.getHybridLayout(clazz) != null) {

@@ -28,14 +28,15 @@ package com.oracle.svm.hosted.webimage.wasm.nodes;
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.WEB_IMAGE_CYCLES_RATIONALE;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
 /**
  * Print characters stored in raw memory.

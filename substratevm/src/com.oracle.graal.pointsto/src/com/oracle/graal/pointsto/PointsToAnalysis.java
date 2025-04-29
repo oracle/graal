@@ -45,6 +45,7 @@ import java.util.stream.StreamSupport;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.flow.AlwaysEnabledPredicateFlow;
 import com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -103,9 +104,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      */
     private final boolean trackPrimitiveValues;
     private final AnalysisType longType;
-    private final AnalysisType voidType;
     private final boolean usePredicates;
     private AnyPrimitiveSourceTypeFlow anyPrimitiveSourceTypeFlow;
+    private AlwaysEnabledPredicateFlow alwaysEnabledPredicateFlow;
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
@@ -127,12 +128,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
         this.longType = metaAccess.lookupJavaType(long.class);
-        this.voidType = metaAccess.lookupJavaType(void.class);
 
         this.trackPrimitiveValues = PointstoOptions.TrackPrimitiveValues.getValue(options);
         this.usePredicates = PointstoOptions.UsePredicates.getValue(options);
         this.anyPrimitiveSourceTypeFlow = new AnyPrimitiveSourceTypeFlow(null, longType);
         this.anyPrimitiveSourceTypeFlow.enableFlow(null);
+        this.alwaysEnabledPredicateFlow = new AlwaysEnabledPredicateFlow();
+
         /*
          * Make sure the all-instantiated type flow is created early. We do not have any
          * instantiated types yet, so the state is empty at first.
@@ -292,6 +294,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         anyPrimitiveSourceTypeFlow = null;
+        alwaysEnabledPredicateFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
 
@@ -310,10 +313,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return longType;
     }
 
-    public AnalysisType getVoidType() {
-        return voidType;
-    }
-
     public AnalysisType getObjectArrayType() {
         return metaAccess.lookupJavaType(Object[].class);
     }
@@ -329,6 +328,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnyPrimitiveSourceTypeFlow getAnyPrimitiveSourceTypeFlow() {
         return anyPrimitiveSourceTypeFlow;
+    }
+
+    public AlwaysEnabledPredicateFlow getAlwaysEnabledPredicateFlow() {
+        return alwaysEnabledPredicateFlow;
     }
 
     @Override

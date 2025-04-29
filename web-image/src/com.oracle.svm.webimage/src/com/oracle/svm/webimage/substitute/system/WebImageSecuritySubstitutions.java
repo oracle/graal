@@ -32,11 +32,11 @@ import java.security.PrivilegedAction;
 import java.security.PrivilegedExceptionAction;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.webimage.substitute.WebImageUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.webimage.substitute.WebImageUtil;
 
 import sun.security.provider.NativePRNG;
 

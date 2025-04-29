@@ -11,25 +11,6 @@ suite = {
                 "name": "substratevm",
                 "subdir": "true",
             },
-            # Dynamic imports
-            {
-                "name": "graal-nodejs",
-                "subdir": True,
-                "dynamic": True,
-                "version": "cffe4d4e341425200ec28f079eb6dca0c098d04b",
-                "urls": [
-                    {"url": "https://github.com/graalvm/graaljs.git", "kind": "git"},
-                ],
-            },
-            {
-                "name": "graal-js",
-                "subdir": True,
-                "dynamic": True,
-                "version": "cffe4d4e341425200ec28f079eb6dca0c098d04b",
-                "urls": [
-                    {"url": "https://github.com/graalvm/graaljs.git", "kind": "git"},
-                ],
-            },
         ]
     },
     "libraries": {
@@ -209,7 +190,6 @@ suite = {
                 "com.oracle.svm.webimage",
                 "substratevm:SVM",
                 "substratevm:POINTSTO",
-                "WEBIMAGE_GOOGLE_CLOSURE",
             ],
             "requires": [
                 "jdk.internal.vm.ci",
@@ -220,6 +200,26 @@ suite = {
                 "java.base": ["sun.nio.ch", "sun.security.provider", "jdk.internal.reflect"],
                 "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
             },
+            "javaCompliance": "21+",
+            "spotbugs": "true",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "substratevm:SVM_PROCESSOR",
+            ],
+            "workingSets": "web-image",
+            "checkstyle": "com.oracle.svm.hosted",
+            "spotbugsIgnoresGenerated": True,
+        },
+        "com.oracle.svm.hosted.webimage.closurecompiler": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "SVM_WASM",
+                "WEBIMAGE_GOOGLE_CLOSURE",
+            ],
+            "requires": [
+                "java.logging",
+            ],
             "javaCompliance": "21+",
             "spotbugs": "true",
             "annotationProcessors": [
@@ -283,7 +283,6 @@ suite = {
                 "substratevm:SVM",
                 "SVM_WASM_API",
                 "SVM_WASM_JIMFS",
-                "WEBIMAGE_GOOGLE_CLOSURE",
             ],
             "moduleInfo": {
                 "name": "org.graalvm.extraimage.builder",
@@ -292,7 +291,6 @@ suite = {
                     "org.graalvm.nativeimage.builder",
                     "org.graalvm.webimage.api",
                     "org.graalvm.collections",
-                    "static org.graalvm.wrapped.google.closure",
                 ],
                 "opens": [
                     "com.oracle.svm.webimage.substitute.system to org.graalvm.nativeimage.builder",
@@ -302,7 +300,9 @@ suite = {
                             com.oracle.svm.extraimage_enterprise,
                             org.graalvm.nativeimage.builder,
                             jdk.graal.compiler,
-                            org.graalvm.extraimage.librarysupport""",
+                            org.graalvm.extraimage.librarysupport,
+                            org.graalvm.extraimage.closurecompiler,
+                            com.oracle.svm.extraimage_enterprise.closurecompiler""",
                 ],
             },
             "maven": False,
@@ -465,12 +465,37 @@ suite = {
                     "java.sql",
                 ],
                 "exports": [
-                    "com.google.javascript.* to org.graalvm.extraimage.builder, com.oracle.svm.extraimage_enterprise"
+                    """com.google.javascript.* to org.graalvm.extraimage.builder,
+                                                  com.oracle.svm.extraimage_enterprise,
+                                                  org.graalvm.extraimage.closurecompiler,
+                                                  com.oracle.svm.extraimage_enterprise.closurecompiler"""
                 ],
             },
             "javaCompliance": "17+",
             "dependencies": [
                 "GOOGLE_CLOSURE",
+            ],
+            "maven": False,
+        },
+        "WEBIMAGE_CLOSURE_SUPPORT": {
+            "moduleInfo": {
+                "name": "org.graalvm.extraimage.closurecompiler",
+                "requires": [
+                    "jdk.graal.compiler",
+                ],
+                "exports": [
+                    """com.oracle.svm.hosted.webimage.closurecompiler to org.graalvm.extraimage.builder,
+                                                                         com.oracle.svm.extraimage_enterprise,
+                                                                         com.oracle.svm.extraimage_enterprise.closurecompiler"""
+                ],
+            },
+            "javaCompliance": "21+",
+            "dependencies": [
+                "com.oracle.svm.hosted.webimage.closurecompiler",
+            ],
+            "distDependencies": [
+                "SVM_WASM",
+                "WEBIMAGE_GOOGLE_CLOSURE",
             ],
             "maven": False,
         },

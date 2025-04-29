@@ -28,7 +28,6 @@ package com.oracle.svm.hosted.webimage.snippets;
 import java.util.List;
 
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.hightiercodegen.Emitter;
 

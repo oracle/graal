@@ -25,17 +25,17 @@
 
 package com.oracle.svm.hosted.webimage.codegen.phase;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.BasePhase;
 import org.graalvm.nativeimage.AnnotationAccess;
 
+import com.oracle.svm.webimage.annotation.StackifierVerification;
+
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.ScheduleWithReconstructionResult;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
-import com.oracle.svm.webimage.annotation.StackifierVerification;
-
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ReconstructionVerificationPhase extends BasePhase<CoreProviders> {

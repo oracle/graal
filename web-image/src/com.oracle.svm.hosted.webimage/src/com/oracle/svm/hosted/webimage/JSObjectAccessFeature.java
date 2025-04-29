@@ -32,13 +32,13 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.webimage.api.JSObjectAccess;
-import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.webimage.api.JSObjectAccess;
+import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
 import jdk.vm.ci.meta.JavaKind;
 

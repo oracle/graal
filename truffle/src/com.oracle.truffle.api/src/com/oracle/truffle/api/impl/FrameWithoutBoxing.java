@@ -215,7 +215,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public Object[] getArguments() {
-        return unsafeCast(arguments, Object[].class, true, true, true);
+        return unsafeCast(this.arguments, Object[].class, true, true, true);
     }
 
     @Override
@@ -236,7 +236,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public FrameDescriptor getFrameDescriptor() {
-        return unsafeCast(descriptor, FrameDescriptor.class, true, true, false);
+        return unsafeCast(this.descriptor, FrameDescriptor.class, true, true, false);
     }
 
     private static FrameSlotTypeException frameSlotTypeException(int slot, byte expectedTag, byte actualTag) throws FrameSlotTypeException {
@@ -267,6 +267,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeGetIndexedTag(slotIndex);
     }
 
+    /**
+     * Intrinsifiable compiler directive to tighten the type information for {@code value}. This
+     * method is intrinsified for host and guest compilation. If used in the form
+     * unsafeCast(this.field, ...) and the field is a final field, then the field will get
+     * transformed into an immutable field read.
+     *
+     * @param type the type the compiler should assume for {@code value}
+     * @param condition the condition that guards the assumptions expressed by this directive
+     * @param nonNull the nullness info the compiler should assume for {@code value}
+     * @param exact if {@code true}, the compiler should assume exact type info
+     */
     @SuppressWarnings({"unchecked", "unused"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
@@ -368,7 +379,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private Object[] getIndexedLocals() {
-        return unsafeCast(indexedLocals, Object[].class, true, true, true);
+        return unsafeCast(this.indexedLocals, Object[].class, true, true, true);
     }
 
     private long[] getIndexedPrimitiveLocals() {
@@ -376,7 +387,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private byte[] getIndexedTags() {
-        return unsafeCast(indexedTags, byte[].class, true, true, true);
+        return unsafeCast(this.indexedTags, byte[].class, true, true, true);
     }
 
     @Override
@@ -659,7 +670,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void verifyIndexedSet(int slot, byte tag) {
-        assert (indexedTags[slot] & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_WRITE;
+        assert (getIndexedTags()[slot] & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_WRITE;
         // this may raise an AIOOBE
         getIndexedTags()[slot] = tag;
     }

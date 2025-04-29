@@ -55,7 +55,7 @@ public class SystemGCEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.SystemGC, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.SystemGC));
             JfrNativeEventWriter.putBoolean(data, invokedConcurrent);
             JfrNativeEventWriter.endSmallEvent(data);
         }

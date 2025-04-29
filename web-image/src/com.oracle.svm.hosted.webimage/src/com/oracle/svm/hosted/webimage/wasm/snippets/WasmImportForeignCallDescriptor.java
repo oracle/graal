@@ -29,12 +29,12 @@ import java.util.Arrays;
 
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.webimage.wasm.types.WasmValType;
-import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.hosted.webimage.wasm.ast.ImportDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
+import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.vm.ci.meta.JavaType;

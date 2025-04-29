@@ -32,11 +32,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

@@ -27,12 +27,12 @@ package com.oracle.svm.hosted.webimage.codegen.wrappers;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import com.oracle.svm.webimage.object.ConstantIdentityMapping;
-import com.oracle.svm.webimage.object.ObjectInspector;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSNodeLowerer;
 import com.oracle.svm.hosted.webimage.codegen.long64.Long64Lowerer;
 import com.oracle.svm.hosted.webimage.js.JSStaticMethodDefinition;
+import com.oracle.svm.webimage.object.ConstantIdentityMapping;
+import com.oracle.svm.webimage.object.ObjectInspector;
 
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.hightiercodegen.IEmitter;

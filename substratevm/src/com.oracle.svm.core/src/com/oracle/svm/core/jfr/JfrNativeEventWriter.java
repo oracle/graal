@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -34,6 +33,8 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A JFR event writer that does not allocate any objects in the Java heap. Can only be used from

@@ -33,12 +33,12 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.webimage.api.JS;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.webimage.api.JS;
 
-import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.webimage.annotation.JSRawCall;
 
 /**
  * Handle HTTP and HTTPS URLs using XMLHttpRequest (instead of TCP sockets). The handlers are used

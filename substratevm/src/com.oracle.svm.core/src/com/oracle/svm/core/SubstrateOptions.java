@@ -934,12 +934,8 @@ public class SubstrateOptions {
         return "lir".equals(CompilerBackend.getValue());
     }
 
-    /*
-     * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
-     * segfaults when the -dead_strip option is used.
-     */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
-    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
+    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(true);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +

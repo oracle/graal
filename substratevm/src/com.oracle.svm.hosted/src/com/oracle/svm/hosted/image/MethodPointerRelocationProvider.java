@@ -31,7 +31,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 public class MethodPointerRelocationProvider {
@@ -46,7 +46,7 @@ public class MethodPointerRelocationProvider {
                     long addend, MethodPointer methodPointer, boolean isInjectedNotCompiled) {
         String symbolName;
         if (imageLayer) {
-            symbolName = LayeredDispatchTableSupport.singleton().getSymbolName(methodPointer, target, isInjectedNotCompiled);
+            symbolName = LayeredDispatchTableFeature.singleton().getSymbolName(methodPointer, target, isInjectedNotCompiled);
         } else {
             symbolName = NativeImage.localSymbolNameForMethod(target);
         }

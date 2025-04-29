@@ -494,7 +494,7 @@ public final class GraalServices {
      * Dumps the heap to {@code outputFile} in hprof format.
      *
      * @param live if true, performs a full GC first so that only live objects are dumped
-     * @throws IOException if an IO error occurred dyring dumping
+     * @throws IOException if an IO error occurred during dumping
      * @throws UnsupportedOperationException if this operation is not supported.
      */
     public static void dumpHeap(String outputFile, boolean live) throws IOException, UnsupportedOperationException {

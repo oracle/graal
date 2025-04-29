@@ -57,6 +57,7 @@ import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -65,6 +66,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -76,6 +78,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.code.CodeInfoEncoder;
@@ -85,6 +88,11 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
@@ -95,6 +103,9 @@ import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -173,10 +184,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         this.encoders = encoders;
         this.accessors = new ReflectionDataAccessors();
         this.dataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
+
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+            ImageSingletons.add(LayeredRuntimeMetadataSingleton.class, new LayeredRuntimeMetadataSingleton());
+        }
     }
 
     private void addType(HostedType type) {
-        if (type.getWrapped().isReachable() && !type.getWrapped().isInBaseLayer() && sortedTypes.add(type)) {
+        if (type.getWrapped().isReachable() && sortedTypes.add(type)) {
             encoders.classes.addObject(type.getJavaClass());
         }
     }
@@ -187,6 +202,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerField(HostedType declaringType, Object field, FieldMetadata metadata) {
+        if (ImageLayerBuildingSupport.buildingImageLayer() &&
+                        !LayeredRuntimeMetadataSingleton.singleton().registerField(field, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess())) {
+            return;
+        }
         addType(declaringType);
         FieldMetadata oldData = fieldData.computeIfAbsent(declaringType, t -> new HashMap<>()).put(field, metadata);
         assert oldData == null;
@@ -199,6 +218,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerMethod(HostedType declaringType, Object method, MethodMetadata metadata) {
+        if (ImageLayerBuildingSupport.buildingImageLayer() &&
+                        !LayeredRuntimeMetadataSingleton.singleton().registerMethod(method, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess())) {
+            return;
+        }
         addType(declaringType);
         MethodMetadata oldData = methodData.computeIfAbsent(declaringType, t -> new HashMap<>()).put(method, metadata);
         assert oldData == null;
@@ -211,6 +234,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerConstructor(HostedType declaringType, Object constructor, ConstructorMetadata metadata) {
+        if (ImageLayerBuildingSupport.buildingImageLayer() &&
+                        !LayeredRuntimeMetadataSingleton.singleton().registerMethod(constructor, declaringType.getWrapped().getUniverse().getBigbang().getMetaAccess())) {
+            return;
+        }
         addType(declaringType);
         ConstructorMetadata oldData = constructorData.computeIfAbsent(declaringType, t -> new HashMap<>()).put(constructor, metadata);
         assert oldData == null;
@@ -776,17 +803,28 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             DynamicHub hub = declaringType.getHub();
             ClassMetadata classMetadata = classData.get(declaringType);
 
-            int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
-                            ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
-                            : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
-            int annotationsIndex = addEncodedElement(buf, encodeAnnotations(classMetadata.annotations));
-            int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
-            int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, classLookupErrors.get(declaringType), this::encodeType, false);
-            int permittedSubclassesIndex = encodeAndAddCollection(buf, classMetadata.permittedSubclasses, this::encodeType, true);
-            int nestMembersEncodingIndex = encodeAndAddCollection(buf, classMetadata.nestMembers, this::encodeType, true);
-            int signersEncodingIndex = encodeAndAddCollection(buf, classMetadata.signers, this::encodeObject, true);
-            if (anySet(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex)) {
-                hub.setHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex);
+            if (declaringType.getWrapped().getWrapped() instanceof BaseLayerType) {
+                /*
+                 * No need to register reflection metadata for BaseLayerTypes. If an element from a
+                 * BaseLayerType is registered for reflection, the original type will exist too and
+                 * the reflection metadata will be properly written.
+                 */
+                continue;
+            }
+            if (!declaringType.getWrapped().isInBaseLayer()) {
+                int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
+                                ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
+                                : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
+                int annotationsIndex = addEncodedElement(buf, encodeAnnotations(classMetadata.annotations));
+                int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
+                int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, classLookupErrors.get(declaringType), this::encodeType, false);
+                int permittedSubclassesIndex = encodeAndAddCollection(buf, classMetadata.permittedSubclasses, this::encodeType, true);
+                int nestMembersEncodingIndex = encodeAndAddCollection(buf, classMetadata.nestMembers, this::encodeType, true);
+                int signersEncodingIndex = encodeAndAddCollection(buf, classMetadata.signers, this::encodeObject, true);
+                if (anySet(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex)) {
+                    hub.setHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex,
+                                    signersEncodingIndex);
+                }
             }
 
             int fieldsIndex = encodeAndAddCollection(buf, getFields(declaringType), fieldLookupErrors.get(declaringType), this::encodeField, false);
@@ -1156,6 +1194,80 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 /* Don't enforce an order if querying fails */
                 return new Constructor<?>[0];
             }
+        }
+    }
+
+    /**
+     * This singleton keeps track of the methods and fields registered for reflection across layers
+     * and ensure they are only registered once. To identify the elements, the information in the
+     * {@link AccessibleObjectMetadata} is hashed and stored in sets.
+     */
+    private static final class LayeredRuntimeMetadataSingleton implements LayeredImageSingleton {
+        private final Set<Integer> registeredMethods;
+        private final Set<Integer> registeredFields;
+
+        private LayeredRuntimeMetadataSingleton() {
+            this.registeredMethods = new HashSet<>();
+            this.registeredFields = new HashSet<>();
+        }
+
+        private LayeredRuntimeMetadataSingleton(Set<Integer> registeredMethods, Set<Integer> registeredFields) {
+            this.registeredMethods = registeredMethods;
+            this.registeredFields = registeredFields;
+        }
+
+        private static LayeredRuntimeMetadataSingleton singleton() {
+            return ImageSingletons.lookup(LayeredRuntimeMetadataSingleton.class);
+        }
+
+        public boolean registerMethod(Object method, AnalysisMetaAccess metaAccess) {
+            if (method instanceof AnalysisMethod analysisMethod) {
+                return registeredMethods.add(analysisMethod.getId());
+            } else if (method instanceof HostedMethod hostedMethod) {
+                return registeredMethods.add(hostedMethod.getWrapped().getId());
+            } else if (method instanceof Method m) {
+                return registeredMethods.add(metaAccess.lookupJavaMethod(m).getId());
+            } else if (method instanceof Constructor<?> c) {
+                return registeredMethods.add(metaAccess.lookupJavaMethod(c).getId());
+            }
+            return true;
+        }
+
+        public boolean registerField(Object field, AnalysisMetaAccess metaAccess) {
+            if (field instanceof AnalysisField analysisField) {
+                return registeredFields.add(analysisField.getId());
+            } else if (field instanceof HostedField hostedField) {
+                return registeredFields.add(hostedField.getWrapped().getId());
+            } else if (field instanceof Field f) {
+                return registeredFields.add(metaAccess.lookupJavaField(f).getId());
+            }
+            return true;
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+        }
+
+        @Override
+        public PersistFlags preparePersist(ImageSingletonWriter writer) {
+            SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
+            var builder = writerImpl.getSnapshotBuilder().getLayeredRuntimeMetadataSingleton();
+
+            SVMImageLayerWriter.initInts(builder::initMethods, registeredMethods.stream().mapToInt(i -> i));
+            SVMImageLayerWriter.initInts(builder::initFields, registeredFields.stream().mapToInt(i -> i));
+
+            return PersistFlags.CREATE;
+        }
+
+        @SuppressWarnings("unused")
+        public static Object createFromLoader(ImageSingletonLoader loader) {
+            SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
+            var reader = loaderImpl.getSnapshotReader().getLayeredRuntimeMetadataSingleton();
+
+            Set<Integer> registeredMethods = SVMImageLayerLoader.streamInts(reader.getMethods()).boxed().collect(Collectors.toCollection(HashSet::new));
+            Set<Integer> registeredFields = SVMImageLayerLoader.streamInts(reader.getFields()).boxed().collect(Collectors.toCollection(HashSet::new));
+            return new LayeredRuntimeMetadataSingleton(registeredMethods, registeredFields);
         }
     }
 }

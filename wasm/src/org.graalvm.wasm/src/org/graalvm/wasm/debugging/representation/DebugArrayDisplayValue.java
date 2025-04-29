@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,18 @@
 
 package org.graalvm.wasm.debugging.representation;
 
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -84,6 +87,16 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     }
 
     @ExportMessage
+    public boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    public Class<? extends TruffleLanguage<?>> getLanguage() {
+        return WasmLanguage.class;
+    }
+
+    @ExportMessage
     public boolean hasArrayElements() {
         return true;
     }
@@ -95,9 +108,11 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     }
 
     @ExportMessage
+    @ExportMessage(name = "isArrayElementModifiable")
     @TruffleBoundary
     public boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < getArraySize();
+        // TODO Limit the number of displayed values to 255 until GR-62691 is implemented
+        return index >= 0 && index < Math.max(getArraySize(), 255);
     }
 
     @ExportMessage
@@ -113,6 +128,23 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
         }
         final DebugObject object = array.readArrayElement(context, location, offset);
         return resolveDebugObject(object, context, location);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
+        return false;
+    }
+
+    @ExportMessage(limit = "5")
+    @TruffleBoundary
+    public void writeArrayElement(long index, Object value, @CachedLibrary("value") InteropLibrary lib) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        final int offset = indexOffset + (int) index;
+        final DebugObject object = array.readArrayElement(context, location, offset);
+        writeDebugObject(object, context, location, value, lib);
     }
 
     @ExportMessage

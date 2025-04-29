@@ -28,10 +28,10 @@ package com.oracle.svm.webimage.memory;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
 
-import com.oracle.svm.webimage.platform.WebImagePlatform;
-import com.oracle.svm.webimage.substitute.WebImageUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.webimage.platform.WebImagePlatform;
+import com.oracle.svm.webimage.substitute.WebImageUtil;
 
 @AutomaticallyRegisteredImageSingleton(UnsafeMemorySupport.class)
 @Platforms(WebImagePlatform.class)

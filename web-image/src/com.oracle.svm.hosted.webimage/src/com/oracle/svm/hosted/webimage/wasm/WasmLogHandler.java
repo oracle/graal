@@ -29,11 +29,11 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
-import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPrintNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
+import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
+import com.oracle.svm.webimage.print.WebImagePrintingProvider;
 
 public class WasmLogHandler implements LogHandler {
     @Override

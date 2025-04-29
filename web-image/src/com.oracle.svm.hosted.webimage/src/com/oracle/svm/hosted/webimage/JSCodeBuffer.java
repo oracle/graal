@@ -32,12 +32,12 @@ import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.oracle.svm.webimage.JSKeyword;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSNodeLowerer;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.webimage.JSKeyword;
 
 import jdk.graal.compiler.hightiercodegen.CodeBuffer;
 import jdk.graal.compiler.nodes.ParameterNode;

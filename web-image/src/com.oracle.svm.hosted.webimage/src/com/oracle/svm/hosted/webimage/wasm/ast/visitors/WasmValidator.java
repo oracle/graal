@@ -40,8 +40,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
-import com.oracle.svm.webimage.wasm.types.WasmValType;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.Function;
 import com.oracle.svm.hosted.webimage.wasm.ast.Global;
@@ -55,6 +53,8 @@ import com.oracle.svm.hosted.webimage.wasm.ast.Tag;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasm.ast.WasmModule;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
+import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
+import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.debug.GraalError;
 

@@ -96,6 +96,8 @@ public final class SpecializationData extends TemplateMethod {
     private final boolean reportPolymorphism;
     private final boolean reportMegamorphism;
 
+    private boolean excludeForUncached;
+
     private Double localActivationProbability;
 
     private boolean aotReachable;
@@ -156,6 +158,14 @@ public final class SpecializationData extends TemplateMethod {
         copy.unroll = unroll;
         copy.uncachedSpecialization = uncachedSpecialization;
         return copy;
+    }
+
+    public void setExcludeForUncached(Boolean value) {
+        this.excludeForUncached = value;
+    }
+
+    public boolean isExcludeForUncached() {
+        return excludeForUncached;
     }
 
     public List<TypeGuard> getImplicitTypeGuards() {

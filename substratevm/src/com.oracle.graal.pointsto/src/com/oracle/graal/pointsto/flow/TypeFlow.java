@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -296,12 +296,12 @@ public abstract class TypeFlow<T> {
         }
     }
 
-    private void removePredicated(TypeFlow<?> predicatedFlow) {
-        ConcurrentLightHashSet.removeElement(this, PREDICATED_FLOWS_UPDATER, predicatedFlow);
-    }
-
     public Collection<TypeFlow<?>> getPredicatedFlows() {
         return ConcurrentLightHashSet.getElements(this, PREDICATED_FLOWS_UPDATER);
+    }
+
+    public void clearPredicatedFlows() {
+        ConcurrentLightHashSet.clear(this, PREDICATED_FLOWS_UPDATER);
     }
 
     public boolean predicateAlreadyTriggered() {
@@ -945,31 +945,34 @@ public abstract class TypeFlow<T> {
     private void notifySaturated(PointsToAnalysis bb) {
         for (TypeFlow<?> use : getUses()) {
             notifyUseOfSaturation(bb, use);
-            removeUse(use);
         }
+        clearUses();
         for (TypeFlow<?> observer : getObservers()) {
             notifyObserverOfSaturation(bb, observer);
-            removeObserver(observer);
         }
+        clearObservers();
     }
 
     /** This flow will swap itself out at all uses and observers. */
     protected void swapOut(PointsToAnalysis bb, TypeFlow<?> newFlow) {
         assert isSaturated() : "This operation should only be called on saturated flows:" + this;
         for (TypeFlow<?> use : getUses()) {
-            swapAtUse(bb, newFlow, use);
+            newFlow.addUse(bb, use);
         }
+        clearUses();
         for (TypeFlow<?> observer : getObservers()) {
-            swapAtObserver(bb, newFlow, observer);
+            observer.replacedObservedWith(bb, newFlow);
         }
+        clearObservers();
         /*
          * Before performing the swap, make sure addPredicated will immediately enable any newly
          * added predicated flows.
          */
         AtomicUtils.atomicMark(this, PREDICATE_TRIGGERED_UPDATER);
         for (TypeFlow<?> predicatedFlow : getPredicatedFlows()) {
-            swapAtPredicated(bb, newFlow, predicatedFlow);
+            newFlow.addPredicated(bb, predicatedFlow);
         }
+        clearPredicatedFlows();
     }
 
     protected void swapAtUse(PointsToAnalysis bb, TypeFlow<?> newFlow, TypeFlow<?> use) {
@@ -981,11 +984,6 @@ public abstract class TypeFlow<T> {
         removeObserver(observer);
         /* Notify the observer that its observed flow has changed. */
         observer.replacedObservedWith(bb, newFlow);
-    }
-
-    private void swapAtPredicated(PointsToAnalysis bb, TypeFlow<?> newFlow, TypeFlow<?> predicatedFlow) {
-        removePredicated(predicatedFlow);
-        newFlow.addPredicated(bb, predicatedFlow);
     }
 
     /**

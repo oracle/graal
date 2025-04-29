@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,10 @@
 
 package org.graalvm.wasm.test.suites.debugging;
 
-import com.oracle.truffle.api.source.Source;
+import java.nio.file.Path;
+import java.util.ArrayList;
+
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.debugging.DebugLineMap;
 import org.graalvm.wasm.debugging.data.DebugFunction;
@@ -59,9 +60,6 @@ import org.graalvm.wasm.debugging.parser.DebugParserContext;
 import org.graalvm.wasm.debugging.parser.DebugParserScope;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.nio.file.Path;
-import java.util.ArrayList;
 
 /**
  * Test suite for debug entries based on the specification in the
@@ -118,7 +116,7 @@ public class DebugObjectFactorySuite {
         return parseCompilationUnit(factory, null, null, children);
     }
 
-    private static DebugParserContext parseCompilationUnit(TestObjectFactory factory, DebugLineMap lineMap, Source source, DebugData... children) {
+    private static DebugParserContext parseCompilationUnit(TestObjectFactory factory, DebugLineMap lineMap, Path path, DebugData... children) {
         final byte[] data = {};
         final DebugData compUnit = getCompilationUnit(children);
         final DebugLineMap[] lineMaps;
@@ -127,13 +125,13 @@ public class DebugObjectFactorySuite {
         } else {
             lineMaps = null;
         }
-        final Source[] sources;
-        if (source != null) {
-            sources = new Source[]{source};
+        final Path[] paths;
+        if (path != null) {
+            paths = new Path[]{path};
         } else {
-            sources = null;
+            paths = null;
         }
-        final DebugParserContext context = new DebugParserContext(data, 0, getEntryData(compUnit), lineMaps, sources);
+        final DebugParserContext context = new DebugParserContext(data, 0, getEntryData(compUnit), lineMaps, paths, "wasm", factory);
         final DebugParserScope scope = DebugParserScope.createGlobalScope();
         for (DebugData d : compUnit.children()) {
             factory.parse(context, scope, d);
@@ -1073,29 +1071,29 @@ public class DebugObjectFactorySuite {
 
     @Test
     public void testFunction() {
-        final DebugLineMap lineMap = new DebugLineMap(Path.of(""));
+        final Path p = Path.of("");
+        final DebugLineMap lineMap = new DebugLineMap(p);
         lineMap.add(0, 1);
         lineMap.add(10, 2);
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
         final AttributeBuilder funcAttr = AttributeBuilder.create().add(Attributes.DECL_FILE, 0x0F, 0).add(Attributes.NAME, 0x08, "func").add(Attributes.LOW_PC, 0x0F, 0).add(Attributes.HIGH_PC, 0x0F,
                         10).add(Attributes.FRAME_BASE, 0x09, new byte[]{});
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 1, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[0]);
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, lineMap, s, func);
+        final DebugParserContext context = parseCompilationUnit(factory, lineMap, p, func);
 
         Assert.assertEquals(1, context.functions().size());
     }
 
     @Test
     public void testFunctionMissingLineMap() {
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
+        final Path p = Path.of("");
         final AttributeBuilder funcAttr = AttributeBuilder.create().add(Attributes.DECL_FILE, 0x0F, 0).add(Attributes.NAME, 0x08, "func").add(Attributes.LOW_PC, 0x0F, 0).add(Attributes.HIGH_PC, 0x0F,
                         10).add(Attributes.FRAME_BASE, 0x09, new byte[]{});
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 1, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[0]);
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, null, s, func);
+        final DebugParserContext context = parseCompilationUnit(factory, null, p, func);
 
         Assert.assertEquals(0, context.functions().size());
     }
@@ -1117,42 +1115,42 @@ public class DebugObjectFactorySuite {
 
     @Test
     public void testInlinedFunction() {
-        final DebugLineMap lineMap = new DebugLineMap(Path.of(""));
+        final Path p = Path.of("");
+        final DebugLineMap lineMap = new DebugLineMap(p);
         lineMap.add(0, 1);
         lineMap.add(10, 2);
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
         final AttributeBuilder funcAttr = AttributeBuilder.create().add(Attributes.DECL_FILE, 0x0F, 0).add(Attributes.NAME, 0x08, "func").add(Attributes.LOW_PC, 0x0F, 0).add(Attributes.HIGH_PC, 0x0F,
                         10).add(Attributes.FRAME_BASE, 0x09, new byte[]{}).add(Attributes.INLINE, 0x0F, 1);
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 1, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[0]);
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, lineMap, s, func);
+        final DebugParserContext context = parseCompilationUnit(factory, lineMap, p, func);
 
         Assert.assertEquals(0, context.functions().size());
     }
 
     @Test
     public void testFunctionMissingFrameBase() {
-        final DebugLineMap lineMap = new DebugLineMap(Path.of(""));
+        final Path p = Path.of("");
+        final DebugLineMap lineMap = new DebugLineMap(p);
         lineMap.add(0, 1);
         lineMap.add(10, 2);
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
         final AttributeBuilder funcAttr = AttributeBuilder.create().add(Attributes.DECL_FILE, 0x0F, 0).add(Attributes.NAME, 0x08, "func").add(Attributes.LOW_PC, 0x0F, 0).add(Attributes.HIGH_PC, 0x0F,
                         10);
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 1, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[0]);
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, lineMap, s, func);
+        final DebugParserContext context = parseCompilationUnit(factory, lineMap, p, func);
 
         Assert.assertEquals(0, context.functions().size());
     }
 
     @Test
     public void testFunctionWithVariables() {
-        final DebugLineMap lineMap = new DebugLineMap(Path.of(""));
+        final Path p = Path.of("");
+        final DebugLineMap lineMap = new DebugLineMap(p);
         lineMap.add(0, 1);
         lineMap.add(10, 2);
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
 
         final AttributeBuilder baseAttr = AttributeBuilder.create().add(Attributes.NAME, 0x08, "int").add(Attributes.ENCODING, 0x0F, AttributeEncodings.SIGNED).add(Attributes.BYTE_SIZE, 0x0F, 4);
         final DebugData baseType = new DebugData(Tags.BASE_TYPE, 1, baseAttr.attributeInfo(), baseAttr.attributeValues(), new DebugData[0]);
@@ -1172,7 +1170,7 @@ public class DebugObjectFactorySuite {
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 3, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[]{var1, var2, var3});
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, lineMap, s, baseType, func);
+        final DebugParserContext context = parseCompilationUnit(factory, lineMap, p, baseType, func);
 
         Assert.assertEquals(1, context.functions().size());
         final DebugFunction function = context.functions().get(0);
@@ -1181,10 +1179,10 @@ public class DebugObjectFactorySuite {
 
     @Test
     public void testFunctionWithVariableMissingTypeAttribute() {
-        final DebugLineMap lineMap = new DebugLineMap(Path.of(""));
+        final Path p = Path.of("");
+        final DebugLineMap lineMap = new DebugLineMap(p);
         lineMap.add(0, 1);
         lineMap.add(10, 2);
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
 
         final AttributeBuilder baseAttr = AttributeBuilder.create().add(Attributes.NAME, 0x08, "int").add(Attributes.ENCODING, 0x0F, AttributeEncodings.SIGNED).add(Attributes.BYTE_SIZE, 0x0F, 4);
         final DebugData baseType = new DebugData(Tags.BASE_TYPE, 1, baseAttr.attributeInfo(), baseAttr.attributeValues(), new DebugData[0]);
@@ -1198,7 +1196,7 @@ public class DebugObjectFactorySuite {
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 3, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[]{var});
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, lineMap, s, baseType, func);
+        final DebugParserContext context = parseCompilationUnit(factory, lineMap, p, baseType, func);
 
         Assert.assertEquals(1, context.functions().size());
         final DebugFunction function = context.functions().get(0);
@@ -1207,10 +1205,10 @@ public class DebugObjectFactorySuite {
 
     @Test
     public void testFunctionWithVariableMissingType() {
-        final DebugLineMap lineMap = new DebugLineMap(Path.of(""));
+        final Path p = Path.of("");
+        final DebugLineMap lineMap = new DebugLineMap(p);
         lineMap.add(0, 1);
         lineMap.add(10, 2);
-        final Source s = Source.newBuilder(WasmLanguage.ID, "", "test").internal(true).build();
 
         final AttributeBuilder varAttr = AttributeBuilder.create().add(Attributes.NAME, 0x08, "c").add(Attributes.TYPE, 0x0F, 1).add(Attributes.LOCATION, 0x09, new byte[0]).add(Attributes.DECL_FILE,
                         0x0F, 0).add(Attributes.DECL_LINE, 0x0F, 1);
@@ -1221,7 +1219,7 @@ public class DebugObjectFactorySuite {
         final DebugData func = new DebugData(Tags.SUBPROGRAM, 3, funcAttr.attributeInfo(), funcAttr.attributeValues(), new DebugData[]{var});
 
         final TestObjectFactory factory = new TestObjectFactory();
-        final DebugParserContext context = parseCompilationUnit(factory, lineMap, s, func);
+        final DebugParserContext context = parseCompilationUnit(factory, lineMap, p, func);
 
         Assert.assertEquals(1, context.functions().size());
         final DebugFunction function = context.functions().get(0);

@@ -40,8 +40,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
-import com.oracle.svm.webimage.wasm.code.WasmSimpleCodeInfoQueryResult;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
@@ -75,6 +73,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.stack.WebImageWasmStackFrameVisitor;
 import com.oracle.svm.hosted.webimage.wasm.stack.WebImageWasmStackWalker;
+import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
+import com.oracle.svm.webimage.wasm.code.WasmSimpleCodeInfoQueryResult;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;

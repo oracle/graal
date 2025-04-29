@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.webimage.logging.visualization;
 
 import static com.oracle.svm.hosted.webimage.logging.visualization.Widget.center;
 import static com.oracle.svm.hosted.webimage.logging.visualization.Widget.pad;
-import static com.oracle.svm.hosted.webimage.logging.visualization.Widget.trunc;
 import static com.oracle.svm.hosted.webimage.logging.visualization.Widget.repeat;
+import static com.oracle.svm.hosted.webimage.logging.visualization.Widget.trunc;
 
 import java.util.Comparator;
 import java.util.HashMap;

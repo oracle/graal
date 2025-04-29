@@ -108,6 +108,7 @@ class SVMUtil:
     string_type = gdb.lookup_type("java.lang.String")
     enum_type = gdb.lookup_type("java.lang.Enum")
     object_type = gdb.lookup_type("java.lang.Object")
+    object_header_type = gdb.lookup_type("_objhdr")
     hub_type = gdb.lookup_type("Encoded$Dynamic$Hub")
     null = gdb.Value(0).cast(object_type.pointer())
     classloader_type = gdb.lookup_type("java.lang.ClassLoader")
@@ -670,7 +671,8 @@ class SVMPPClass:
         trace('<SVMPPClass> - children (class field iterator)')
         if self.__skip_children:
             return
-        fields = [str(f.name) for f in SVMUtil.get_all_fields(self.__obj.type, svm_print_static_fields.value) if f.name != SVMUtil.hub_field_name]
+        # hide fields from the object header
+        fields = [str(f.name) for f in SVMUtil.get_all_fields(self.__obj.type, svm_print_static_fields.value) if f.parent_type != SVMUtil.object_header_type]
         for index, f in enumerate(fields):
             trace(f'<SVMPPClass> - children: field "{f}"')
             # apply custom limit only for java objects

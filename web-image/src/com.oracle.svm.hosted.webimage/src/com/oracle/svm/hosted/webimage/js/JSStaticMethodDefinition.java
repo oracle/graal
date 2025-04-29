@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.webimage.js;
 
-import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.IEmitter;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;
 
+import jdk.graal.compiler.hightiercodegen.CodeGenTool;
+import jdk.graal.compiler.hightiercodegen.IEmitter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class JSStaticMethodDefinition implements JSFunctionDefinition {

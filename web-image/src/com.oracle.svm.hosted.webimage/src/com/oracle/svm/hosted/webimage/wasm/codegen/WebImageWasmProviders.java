@@ -28,14 +28,14 @@ package com.oracle.svm.hosted.webimage.wasm.codegen;
 import java.io.PrintStream;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.wasm.WasmJSCounterparts;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
-import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.webimage.wasm.types.WasmLMUtil;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;

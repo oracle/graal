@@ -4741,7 +4741,7 @@ public class FlatNodeGenFactory {
             }
             builder.end(innerIfCount.blockCount);
             builder.end(ifCount.blockCount);
-            hasFallthrough |= ifCount.ifCount > 0 || innerIfCount.ifCount > 0;
+            hasFallthrough |= ifCount.ifCount > 0 || innerIfCount.ifCount > 0 || (specialization != null && !specialization.getExceptions().isEmpty());
         } else {
             throw new AssertionError("unexpected path");
         }
@@ -5976,8 +5976,12 @@ public class FlatNodeGenFactory {
             exceptionTypes[i] = type;
         }
         builder.end().startCatchBlock(exceptionTypes, "ex");
-        builder.tree(plugs.createTransferToInterpreterAndInvalidate());
-        builder.tree(createExcludeThis(builder, frameState, forType, specialization));
+
+        // fallthrough uncached
+        if (!frameState.getMode().isUncached()) {
+            builder.tree(plugs.createTransferToInterpreterAndInvalidate());
+            builder.tree(createExcludeThis(builder, frameState, forType, specialization));
+        }
 
         builder.end();
         return builder.build();

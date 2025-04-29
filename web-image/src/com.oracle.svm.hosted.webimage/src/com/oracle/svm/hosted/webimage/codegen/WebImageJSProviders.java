@@ -27,11 +27,11 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import java.io.PrintStream;
 
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.webimage.codegen.heap.ConstantMap;
 import com.oracle.svm.hosted.webimage.codegen.heap.WebImageObjectInspector;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
