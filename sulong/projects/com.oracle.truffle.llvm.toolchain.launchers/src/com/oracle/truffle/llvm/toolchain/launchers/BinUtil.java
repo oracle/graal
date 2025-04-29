@@ -31,9 +31,12 @@ package com.oracle.truffle.llvm.toolchain.launchers;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
+
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.truffle.llvm.toolchain.launchers.AbstractToolchainWrapper.ToolchainWrapperConfig;
 import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
@@ -47,8 +50,18 @@ public final class BinUtil {
         if (config != null) {
             toolName = config.toolName();
         } else {
-            // this is the boostrap toolchain
+            // this is the boostrap toolchain...
             toolName = System.getProperty("org.graalvm.launcher.executablename");
+
+            // ... or a legacy GraalVM
+            if (toolName == null) {
+                toolName = ProcessProperties.getArgumentVectorProgramName();
+            }
+
+            Path toolPath = Paths.get(toolName).getFileName();
+            if (toolPath != null) {
+                toolName = toolPath.toString();
+            }
         }
 
         if (!toolName.startsWith("llvm-")) {

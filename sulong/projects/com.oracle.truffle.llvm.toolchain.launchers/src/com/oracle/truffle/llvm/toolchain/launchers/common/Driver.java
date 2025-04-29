@@ -135,7 +135,8 @@ public class Driver {
             return toolchainHome.resolve("bin");
         }
 
-        return null;
+        // TODO: Set only for old-style monolithic GraalVM builds
+        return HomeFinder.getInstance().getHomeFolder().resolve("lib").resolve("llvm").resolve("bin");
     }
 
     public static Path getSulongHome() {
