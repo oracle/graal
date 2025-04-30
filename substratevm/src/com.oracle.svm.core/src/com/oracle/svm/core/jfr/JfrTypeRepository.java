@@ -148,8 +148,10 @@ public class JfrTypeRepository implements JfrRepository {
 
     private void visitClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
         // The null class-loader is serialized as the "bootstrap" class-loader.
-        if (classLoader != null && addClassLoader(typeInfo, classLoader)) {
-            visitClass(typeInfo, classLoader.getClass());
+        if (addClassLoader(typeInfo, classLoader)) {
+            if (classLoader != null) {
+                visitClass(typeInfo, classLoader.getClass());
+            }
         }
     }
 
@@ -281,13 +283,8 @@ public class JfrTypeRepository implements JfrRepository {
 
     private static void writeClassLoader(JfrChunkWriter writer, ClassLoaderInfoRaw classLoaderInfoRaw, boolean flushpoint) {
         writer.writeCompressedLong(classLoaderInfoRaw.getId());
-        if (classLoaderInfoRaw.getName() == null) { // TODO is this branch reachable now? I don't think it was reachable before my changes either. weird!!
-            writer.writeCompressedLong(0);
-            writer.writeCompressedLong(getSymbolId(writer, "bootstrap", flushpoint, false));
-        } else {
-            writer.writeCompressedLong(classLoaderInfoRaw.getClassTraceId());
-            writer.writeCompressedLong(getSymbolId(writer, classLoaderInfoRaw.getName(), flushpoint, false));
-        }
+        writer.writeCompressedLong(classLoaderInfoRaw.getClassTraceId());
+        writer.writeCompressedLong(getSymbolId(writer, classLoaderInfoRaw.getName(), flushpoint, false));
     }
 
     private boolean addClass(TypeInfo typeInfo, Class<?> clazz) {
@@ -405,13 +402,24 @@ public class JfrTypeRepository implements JfrRepository {
 
     private boolean addClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
         ClassLoaderInfoRaw classLoaderInfoRaw =  StackValue.get(ClassLoaderInfoRaw.class);
-        classLoaderInfoRaw.setName(classLoader.getName());
-        classLoaderInfoRaw.setHash(getHash(classLoader.getName()));
+        if (classLoader == null) {
+            // Bootstrap loader has reserved ID of 0 (getClassLoaderId returns 0)
+            classLoaderInfoRaw.setName("bootstrap");
+            classLoaderInfoRaw.setHash(0);
+            classLoaderInfoRaw.setId(0);
+            classLoaderInfoRaw.setClassTraceId(0);
+        } else {
+            classLoaderInfoRaw.setName(classLoader.getName());
+            classLoaderInfoRaw.setHash(getHash(classLoader.getName()));
+        }
+
         if (isClassLoaderVisited(typeInfo, classLoaderInfoRaw)) {
             return false;
         }
-        classLoaderInfoRaw.setId(++currentClassLoaderId);
-        classLoaderInfoRaw.setClassTraceId(JfrTraceId.getTraceId(classLoader.getClass()));
+        if (classLoader != null) {
+            classLoaderInfoRaw.setId(++currentClassLoaderId);
+            classLoaderInfoRaw.setClassTraceId(JfrTraceId.getTraceId(classLoader.getClass()));
+        }
         typeInfo.classLoaders.putNew(classLoaderInfoRaw);
         return true;
     }
