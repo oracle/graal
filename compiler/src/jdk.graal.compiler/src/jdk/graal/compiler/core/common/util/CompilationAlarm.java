@@ -37,7 +37,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /**
@@ -217,7 +216,21 @@ public final class CompilationAlarm implements AutoCloseable {
         if (!isEnabled()) {
             return;
         }
-        PhaseTreeNode node = new PhaseTreeNode(name);
+        if (root == null) {
+            root = new PhaseTreeNode(String.format("Root -> %s", graph.method().format("%H.%n(%p)")), graph);
+            currentNode = root;
+        } else if (currentNode instanceof PhaseTreeIntermediateRoot && !currentNode.graph.equals(graph)) {
+            // Switching to a new graph, possibly a parent or sibling. Drop the current subgraph.
+            currentNode = currentNode.parent;
+        } else if (currentNode != null && !currentNode.graph.equals(graph)) {
+            // Insert a new root node to distinguish the separate graph.
+            PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", graph.method().format("%H.%n(%p)")), graph);
+            newRoot.parent = currentNode;
+            currentNode.addChild(newRoot);
+            currentNode = newRoot;
+        }
+
+        PhaseTreeNode node = new PhaseTreeNode(name, graph);
         node.parent = currentNode;
         node.startTimeNS = System.nanoTime();
         if (graph != null) {
@@ -253,13 +266,13 @@ public final class CompilationAlarm implements AutoCloseable {
      * The phase tree root node during compilation. Special marker node to avoid null checking
      * logic.
      */
-    private final PhaseTreeNode root = new PhaseTreeNode("Root");
+    private PhaseTreeNode root = null;
 
     /**
      * The current tree node to add children to. That is, the phase that currently runs in the
      * compiler.
      */
-    private PhaseTreeNode currentNode = root;
+    private PhaseTreeNode currentNode = null;
 
     /**
      * Tree data structure representing phase nesting and the respective wall clock time of each
@@ -282,7 +295,7 @@ public final class CompilationAlarm implements AutoCloseable {
         private int childIndex = 0;
 
         /**
-         * The name of this node, normally the {@link BasePhase#contractorName()}.
+         * The name of this node.
          */
         private final CharSequence name;
 
@@ -311,8 +324,15 @@ public final class CompilationAlarm implements AutoCloseable {
          */
         private int graphSizeAfter;
 
-        PhaseTreeNode(CharSequence name) {
+        /**
+         * The graph associated with this phase when calling
+         * {@link #enterPhase(CharSequence, StructuredGraph)}.
+         */
+        private final StructuredGraph graph;
+
+        PhaseTreeNode(CharSequence name, StructuredGraph graph) {
             this.name = name;
+            this.graph = graph;
         }
 
         private void addChild(PhaseTreeNode child) {
@@ -336,8 +356,15 @@ public final class CompilationAlarm implements AutoCloseable {
 
     }
 
+    private static class PhaseTreeIntermediateRoot extends PhaseTreeNode {
+
+        PhaseTreeIntermediateRoot(CharSequence name, StructuredGraph graph) {
+            super(name, graph);
+        }
+    }
+
     private PhaseTreeNode cloneTree(PhaseTreeNode clonee, PhaseTreeNode parent) {
-        PhaseTreeNode clone = new PhaseTreeNode(clonee.name);
+        PhaseTreeNode clone = new PhaseTreeNode(clonee.name, clonee.graph);
         clone.parent = parent;
         if (clone.parent != null) {
             clone.parent.addChild(clone);

@@ -107,4 +107,48 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
         }
         return result;
     }
+
+    public static int convolutedWork(int limit) {
+        int result = 0;
+        for (int i = 0; i < limit; i++) {
+            result += convolutedWork(1);
+        }
+        return result;
+    }
+
+    public static int bar(int limit) {
+        int result = 0;
+        for (int i = 0; i < limit; i++) {
+            result += convolutedWork(i);
+        }
+        return result;
+    }
+
+    @Test
+    public void testTimeOutRetryToStringWithInlining() {
+        final double secondsToWait = 1D;
+        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, secondsToWait);
+        try {
+            test(opt, "bar", 10000);
+        } catch (Throwable t) {
+            if (!t.getMessage().contains("Compilation exceeded")) {
+                throw new AssertionError("Unexpected exception: " + t, t);
+            }
+            StructuredGraph g = lastCompiledGraph;
+            assert g != null;
+            String message = t.getMessage();
+            final String phaseName = "CompilationAlarmPhaseTimesTest$1";
+            int index = message.indexOf(phaseName);
+            // skip the "->"
+            index += phaseName.length() + 2;
+            String duration = "";
+            char c;
+            while (Character.isDigit((c = message.charAt(index)))) {
+                duration += c;
+                index++;
+            }
+            assert Integer.parseInt(duration) > 0 : String.format("Must at least wait some positive amount of time but waited %s error was %s", duration, message);
+        }
+    }
+
 }
