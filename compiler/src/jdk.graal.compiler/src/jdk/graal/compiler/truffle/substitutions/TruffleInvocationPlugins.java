@@ -70,6 +70,8 @@ import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins.Options;
 import jdk.vm.ci.aarch64.AArch64;
@@ -615,6 +617,27 @@ public class TruffleInvocationPlugins {
                 }
             }
         });
+
+        if (arch instanceof AMD64) {
+            r.register(new InlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF8Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_8, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+            r.register(new InlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF16Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
+                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static boolean applyArrayCopy(GraphBuilderContext b, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {

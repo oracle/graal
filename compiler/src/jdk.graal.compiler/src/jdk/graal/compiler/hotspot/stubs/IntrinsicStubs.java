@@ -50,6 +50,7 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
@@ -65,6 +66,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 CalcStringAttributesNode.class,
                 StringUTF16CompressNode.class,
                 StringLatin1InflateNode.class,
+                StringCodepointIndexToByteIndexNode.class,
                 CountPositivesNode.class,
                 EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
