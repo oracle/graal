@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -459,17 +460,46 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
                 }
             }
-            trampolineCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
-            trampolineCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
+            emitExceptionHandler(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
+            emitDeoptHandler(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
             if (config.supportsMethodHandleDeoptimizationEntry() && crb.needsMHDeoptHandler()) {
-                trampolineCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
+                emitDeoptHandler(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
             }
         }
     }
 
-    private static void trampolineCall(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId exceptionHandlerEntry) {
+    private static void emitExceptionHandler(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId exceptionHandlerEntry) {
         crb.recordMark(AMD64Call.directCall(crb, asm, callTarget, null, false, null), exceptionHandlerEntry);
         // Ensure the return location is a unique pc and that control flow doesn't return here
+        asm.halt();
+    }
+
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/74a2c831a2af55c66317ca8aead53fde2a2a6900/src/hotspot/cpu/x86/x86.ad#L1261-L1288",
+              sha1 = "1326c5aa33296807cd6fb271150c3fcc0bfb9388")
+    // @formatter:on
+    private static void emitDeoptHandler(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId deoptHandlerEntry) {
+        /* Line comments preserved from JDK code. */
+        crb.recordMark(asm.position(), deoptHandlerEntry);
+        int position = asm.position();
+        Label next = new Label();
+        // push a "the_pc" on the stack without destroying any registers
+        // as they all may be live.
+
+        // push address of "next"
+        asm.call(next);
+        asm.bind(next);
+        // adjust it so it matches "the_pc"
+        asm.subq(new AMD64Address(rsp, 0), asm.position() - position);
+
+        int jmpSize = 1 + 4;  // 1 byte opcode + 4 bytes displacement
+        crb.recordDirectCall(asm.position(), asm.position() + jmpSize, callTarget, null);
+        asm.rawJmpNoJCCErratumMitigation();
+
+        /*
+         * Ensure that control flow doesn't return here. The synthetic return location PC is the
+         * address of the call instruction above.
+         */
         asm.halt();
     }
 
