@@ -1153,6 +1153,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeTypeElement createLoopCounter() {
         addField(loopCounter, Set.of(PRIVATE, STATIC, FINAL), int.class, "REPORT_LOOP_STRIDE", "1 << 8");
+        addField(loopCounter, Set.of(PRIVATE, STATIC, FINAL), double.class, "REPORT_LOOP_PROBABILITY", "(double)1 / (double)REPORT_LOOP_STRIDE");
         addField(loopCounter, Set.of(PRIVATE), int.class, "value");
 
         return loopCounter;
@@ -12173,7 +12174,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         this.add(compFinal(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), types.Assumption, "stableTagsAssumption_")));
                     }
                 }
-
                 this.add(createLoadConstantCompiled());
                 this.add(createAdoptNodesAfterUpdate());
                 this.addAll(createBranchProfileMembers());
@@ -13507,7 +13507,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
-
             if (tier.isCached()) {
                 b.declaration(arrayOf(types.Node), "cachedNodes", "this.cachedNodes_");
                 b.declaration(arrayOf(type(int.class)), "branchProfiles", "this.branchProfiles_");
@@ -13522,7 +13521,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("int sp = ", decodeSp("startState"));
 
             if (tier.isCached()) {
-                b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
+                b.declaration(type(int.class), "counter", "0");
+                b.declaration(loopCounter.asType(), "loopCounter", "null");
+                b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end().string("&& !").startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+                b.lineComment("Using a class for the loop counter is a workaround to prevent PE from merging it at the end of the loop.");
+                b.lineComment("We need to use a class with PE, in the interpreter we can use a regular counter.");
+                b.startAssign("loopCounter").startNew(loopCounter.asType()).end().end();
+                b.end();
             }
             if (model.needsBciSlot() && !model.storeBciInFrame && !tier.isUncached()) {
                 // If a bci slot is allocated but not used for non-uncached interpreters, set it to
@@ -13542,7 +13547,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             List<List<InstructionModel>> instructionPartitions = partitionInstructions(instructions);
 
             CodeTree op;
-            if (model.bytecodeDebugListener) {
+            if (model.bytecodeDebugListener || instructionPartitions.size() > 1) {
                 b.declaration(type(int.class), "op", readInstruction("bc", "bci"));
                 op = CodeTreeBuilder.singleString("op");
             } else {
@@ -13630,7 +13635,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (model.overridesBytecodeDebugListenerMethod("afterInstructionExecute")) {
                 b.startStatement();
                 b.startCall("$root.afterInstructionExecute");
-                emitParseInstruction(b, "this", "bci", CodeTreeBuilder.singleString("op"));
+                emitParseInstruction(b, "this", "bci", op);
                 b.string("null");
                 b.end().end();
             }
@@ -13929,6 +13934,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.statement("break");
                     break;
                 case BRANCH_BACKWARD:
+                    b.startStatement().startStaticCall(types.TruffleSafepoint, "poll").string("this").end().end();
+
                     if (tier.isUncached()) {
                         b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
 
@@ -13946,20 +13953,57 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.statement("uncachedExecuteCount_--");
                         b.end();
                     } else {
-                        emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
+                        b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end().end().startBlock();
+                        b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                        b.statement("counter = ++loopCounter.value");
+                        b.end().startElseBlock();
+                        b.statement("counter++");
+                        b.end();
 
-                        b.startDeclaration(type(long.class), "temp");
-                        b.startCall(lookupBranchBackward(instr).getSimpleName().toString());
+                        b.startIf();
+                        b.startStaticCall(types.CompilerDirectives, "injectBranchProbability");
+                        b.staticReference(loopCounter.asType(), "REPORT_LOOP_PROBABILITY");
+                        b.startGroup();
+                        b.string("counter >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE");
+                        b.end();
+                        b.end(); // static call
+                        b.end().startBlock();
+
+                        b.startDeclaration(type(Object.class), "osrResult");
+                        b.startCall(lookupReportLoopCount(instr).getSimpleName().toString());
                         b.string("frame");
                         if (model.enableYield) {
                             b.string("localFrame");
                         }
                         b.string("bc").string("bci").string("sp");
+                        b.string("counter");
                         b.end();
                         b.end();
 
-                        b.startIf().string("temp != -1").end().startBlock();
-                        b.statement("return temp");
+                        b.startIf().string("osrResult != null").end().startBlock();
+                        /**
+                         * executeOSR invokes BytecodeNode#continueAt, which returns a long encoding
+                         * the sp and bci when it returns/when the bytecode is rewritten. Returning
+                         * this value is correct in either case: If it's a return, we'll read the
+                         * result out of the frame (the OSR code copies the OSR frame contents back
+                         * into our frame first); if it's a rewrite, we'll transition and continue
+                         * executing.
+                         */
+                        b.startReturn().cast(type(long.class)).string("osrResult").end();
+                        b.end(); // osrResult != null
+
+                        b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                        b.statement("loopCounter.value = 0");
+                        b.end().startElseBlock();
+                        b.statement("counter = 0");
+                        b.end();
+
+                        b.end(); // if counter >= REPORT_LOOP_STRIDE
+
+                        b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                        b.statement("counter = 0");
+                        b.end();
+
                         b.end();
                         b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                     }
@@ -15058,14 +15102,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         }
 
-        private CodeExecutableElement lookupBranchBackward(InstructionModel instr) {
+        private CodeExecutableElement lookupReportLoopCount(InstructionModel instr) {
             CodeExecutableElement method = doInstructionMethods.get(instr);
             if (method != null) {
                 return method;
             }
             method = new CodeExecutableElement(
                             Set.of(PRIVATE),
-                            type(long.class), instructionMethodName(instr));
+                            type(Object.class), "reportLoopCount");
 
             method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
@@ -15074,12 +15118,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
             method.addParameter(new CodeVariableElement(type(int.class), "sp"));
+            method.addParameter(new CodeVariableElement(type(int.class), "counter"));
 
             CodeTreeBuilder b = method.createBuilder();
 
-            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
-                            .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
+            b.startStatement().startStaticCall(types.LoopNode, "reportLoopCount");
+            b.string("this");
+            b.string("counter");
+            b.end().end(); // statement
 
+            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().string("&&").startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").string(
+                            "counter").end().end().startBlock();
             /**
              * When a while loop is compiled by OSR, its "false" branch profile may be zero, in
              * which case the compiler will stop at loop exits. To coerce the compiler to compile
@@ -15090,7 +15139,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(type(int.class), "branchProfileIndex", readImmediate("bc", "bci", branchProfile));
             b.startStatement().startCall("ensureFalseProfile").string("branchProfiles_").string("branchProfileIndex").end(2);
 
-            b.startAssign("Object osrResult");
+            b.startReturn();
             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
             b.string("this");
             String bci = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)).toString();
@@ -15098,22 +15147,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string("null"); // interpreterState
             b.string("null"); // beforeTransfer
             b.string("frame"); // parentFrame
-            b.end(2);
+            b.end(); // static call
+            b.end(); // return
 
-            b.startIf().string("osrResult != null").end().startBlock();
-            /**
-             * executeOSR invokes BytecodeNode#continueAt, which returns a long encoding the sp and
-             * bci when it returns/when the bytecode is rewritten. Returning this value is correct
-             * in either case: If it's a return, we'll read the result out of the frame (the OSR
-             * code copies the OSR frame contents back into our frame first); if it's a rewrite,
-             * we'll transition and continue executing.
-             */
-            b.startReturn().cast(type(long.class)).string("osrResult").end();
-            b.end();
+            b.end(); // if pollOSRBackEdge
 
-            b.end();
-
-            b.statement("return -1");
+            b.statement("return null");
 
             doInstructionMethods.put(instr, method);
             return method;
@@ -16630,19 +16669,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ensureFalseProfile;
         }
 
-        private void emitReportLoopCount(CodeTreeBuilder b, CodeTree condition, boolean clear) {
-            b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end() //
-                            .string(" && ").tree(condition).end().startBlock();
-            b.startStatement().startStaticCall(types.LoopNode, "reportLoopCount");
-            b.string("this");
-            b.string("loopCounter.value");
-            b.end(2);
-            if (clear) {
-                b.statement("loopCounter.value = 0");
-            }
-            b.end();
-        }
-
         // Generate a helper method that implements the custom instruction. Also emits a call to the
         // helper inside continueAt.
         private void buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr) {
@@ -16894,7 +16920,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private void emitBeforeReturnProfiling(CodeTreeBuilder b) {
             if (tier.isCached()) {
-                emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
+                b.startIf().startStaticCall(types.CompilerDirectives, "hasNextTier").end().end().startBlock();
+                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                b.statement("counter = loopCounter.value");
+                b.end();
+
+                b.startIf().string("counter > 0").end().startBlock();
+                b.startStatement().startStaticCall(types.LoopNode, "reportLoopCount");
+                b.string("this");
+                b.string("counter");
+                b.end().end();  // statement
+                b.end();  // if counter > 0
+
+                b.end(); // if hasNextTier
             }
         }
 
