@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
@@ -303,6 +305,13 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
         public abstract String messageString(CharSequence receiver);
 
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testReplacementMessageReflection() {
+        assertEquals(String.class, Message.resolve(ReplacementsLibrary.class, "readMember").getParameterType(1));
+        assertTrue(Message.resolve(ReplacementsLibrary.class, "readMember").isDeprecated());
     }
 
     @GenerateLibrary

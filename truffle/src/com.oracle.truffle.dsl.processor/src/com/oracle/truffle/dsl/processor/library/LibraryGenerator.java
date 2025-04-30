@@ -228,11 +228,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             if (message.model.getName().equals(ACCEPTS)) {
                 continue;
             }
-            String baseName = message.model.getName();
-
-            if (message.model.getDeprecatedReplacement() != null) {
-                baseName += "_deprecated_" + message.model.getDeprecatedReplacement().getDeprecatedOverloads().indexOf(message.model);
-            }
+            String baseName = message.model.getName() + "_" + message.messageIndex;
 
             message.messageField = genClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), types.Message, createConstantName(baseName)));
             builder = message.messageField.createInitBuilder();

@@ -288,36 +288,63 @@ public abstract class Message {
     }
 
     /**
-     * Resolves a message globally for a given library class and message name. The message name
-     * corresponds to the method name of the library message. The returned message always returns
-     * the same instance for a combination of library class and message. The provided library class
-     * and message name must not be <code>null</code>. If the library or message is invalid or not
-     * found an {@link IllegalArgumentException} is thrown.
+     * @since 19.0
+     * @deprecated since 25.1, use {@link #resolveExact(Class, String, Class...)} instead. Since
+     *             library messages can now be deprecated and replaced, they need to be resolved
+     *             with argument types.
+     */
+    @TruffleBoundary
+    @Deprecated(since = "25.1")
+    public static Message resolve(Class<? extends Library> libraryClass, String messageName) {
+        return LibraryFactory.resolveMessage(libraryClass, messageName, null, true);
+    }
+
+    /**
+     * @since 19.0
+     * @deprecated since 25.1, use {@link #resolveExact(Class, String, boolean, Class...)} instead.
+     *             Since library messages can now be deprecated and replaced, they need to be
+     *             resolved with argument types.
+     */
+    @TruffleBoundary
+    @Deprecated(since = "25.1")
+    public static Message resolve(Class<? extends Library> libraryClass, String messageName, boolean fail) {
+        return LibraryFactory.resolveMessage(libraryClass, messageName, null, fail);
+    }
+
+    /**
+     * Resolves a message globally for a given library class, message name and argument types. The
+     * message name corresponds to the method name of the library message. The returned message
+     * always returns the same instance for a combination of library class, message and argument
+     * types. The provided library class and message name must not be <code>null</code>. If the
+     * library or message is invalid or not found an {@link IllegalArgumentException} is thrown.
      *
      * @param libraryClass the class of the library this message is contained in.
      * @param messageName the simple name of this message.
-     * @since 19.0
+     * @since 25.1
      */
     @TruffleBoundary
-    public static Message resolve(Class<? extends Library> libraryClass, String messageName) {
-        return LibraryFactory.resolveMessage(libraryClass, messageName, true);
+    public static Message resolveExact(Class<? extends Library> libraryClass, String messageName, Class<?>... argumentTypes) {
+        Objects.requireNonNull(argumentTypes);
+        return LibraryFactory.resolveMessage(libraryClass, messageName, argumentTypes, true);
     }
 
     /**
      * Resolves a message globally for a given library class and message name. The message name
      * corresponds to the method name of the library message. The returned message always returns
-     * the same instance for a combination of library class and message. The provided library class
-     * and message name must not be <code>null</code>.
+     * the same instance for a combination of library class, message and argument types. The
+     * provided library class and message name must not be <code>null</code>.
      *
      * @param libraryClass the class of the library this message is contained in.
      * @param messageName the simple name of this message.
+     * @param argumentTypes the parameter types of the message
      * @param fail whether to fail with an {@link IllegalArgumentException} or return
      *            <code>null</code> if the message was not found.
-     * @since 19.0
+     * @since 25.1
      */
     @TruffleBoundary
-    public static Message resolve(Class<? extends Library> libraryClass, String messageName, boolean fail) {
-        return LibraryFactory.resolveMessage(libraryClass, messageName, fail);
+    public static Message resolveExact(Class<? extends Library> libraryClass, String messageName, boolean fail, Class<?>... argumentTypes) {
+        Objects.requireNonNull(argumentTypes);
+        return LibraryFactory.resolveMessage(libraryClass, messageName, argumentTypes, fail);
     }
 
 }
