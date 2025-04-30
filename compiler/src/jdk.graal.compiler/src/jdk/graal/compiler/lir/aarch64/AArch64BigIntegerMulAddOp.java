@@ -48,9 +48,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/a55ccd267cdfbb7a52c0647fa3b2f93b36b1805f/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7353-L7373",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7347-L7367",
           sha1 = "4b7c56d39d91df3d900d50ca260ff8ad04815574")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L4234-L4270",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L4231-L4267",
           sha1 = "33649be9177daf5f0b4817d807458a5ff8c00365")
 // @formatter:on
 public final class AArch64BigIntegerMulAddOp extends AArch64LIRInstruction {
