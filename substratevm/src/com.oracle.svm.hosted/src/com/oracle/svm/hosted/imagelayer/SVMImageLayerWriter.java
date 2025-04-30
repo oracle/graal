@@ -67,6 +67,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -169,6 +171,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.meta.JavaConstant;
@@ -200,6 +203,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private HostedUniverse hUniverse;
 
     private boolean polymorphicSignatureSealed = false;
+
+    /**
+     * Used to encode {@link NodeClass} ids in {@link #persistGraph}.
+     */
+    private final NodeClassMap nodeClassMap = GraphEncoder.GLOBAL_NODE_CLASS_MAP;
 
     private record ConstantParent(int constantId, int index) {
         static ConstantParent NONE = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
@@ -297,6 +305,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     public void dumpFiles() {
+        SVMImageLayerSnapshotUtil.SVMGraphEncoder graphEncoder = imageLayerSnapshotUtil.getGraphEncoder(null);
+        byte[] encodedNodeClassMap = ObjectCopier.encode(graphEncoder, nodeClassMap);
+        String location = graphsOutput.add(encodedNodeClassMap);
+        snapshotBuilder.setNodeClassMapLocation(location);
+
         graphsOutput.finish();
 
         FileDumpingUtil.dumpFile(fileInfo.layerFilePath, fileInfo.fileName, fileInfo.suffix, outputStream -> {
@@ -1062,7 +1075,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
              */
             return null;
         }
-        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(), analyzedGraph);
+        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(nodeClassMap), analyzedGraph);
         if (contains(encodedGraph, LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.getBytes(StandardCharsets.UTF_8))) {
             throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }

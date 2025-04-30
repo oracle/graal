@@ -32,6 +32,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -42,7 +43,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.SymbolicJVMCIReference;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -170,11 +170,11 @@ public class EncodedSnippets {
 
     private final byte[] snippetEncoding;
     private final Object[] snippetObjects;
-    private final NodeClass<?>[] snippetNodeClasses;
+    private final NodeClassMap snippetNodeClasses;
     private final UnmodifiableEconomicMap<String, GraphData> graphDatas;
     private final UnmodifiableEconomicMap<Class<?>, SnippetResolvedJavaType> snippetTypes;
 
-    EncodedSnippets(byte[] snippetEncoding, Object[] snippetObjects, NodeClass<?>[] snippetNodeClasses, UnmodifiableEconomicMap<String, GraphData> graphDatas,
+    EncodedSnippets(byte[] snippetEncoding, Object[] snippetObjects, NodeClassMap snippetNodeClasses, UnmodifiableEconomicMap<String, GraphData> graphDatas,
                     UnmodifiableEconomicMap<Class<?>, SnippetResolvedJavaType> snippetTypes) {
         this.snippetEncoding = snippetEncoding;
         this.snippetObjects = snippetObjects;
@@ -183,7 +183,7 @@ public class EncodedSnippets {
         this.snippetTypes = snippetTypes;
     }
 
-    public NodeClass<?>[] getSnippetNodeClasses() {
+    public NodeClassMap getSnippetNodeClasses() {
         return snippetNodeClasses;
     }
 
@@ -398,8 +398,8 @@ public class EncodedSnippets {
         private final ResolvedJavaType[] accessingClasses;
         private final String originalMethod;
 
-        SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, String originalMethod, ResolvedJavaType... accessingClasses) {
-            super(encoding, startOffset, objects, types, null, null, false, false);
+        SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClassMap nodeClasses, String originalMethod, ResolvedJavaType... accessingClasses) {
+            super(encoding, startOffset, objects, nodeClasses, null, null, false, false);
             this.accessingClasses = accessingClasses;
             this.originalMethod = originalMethod;
         }

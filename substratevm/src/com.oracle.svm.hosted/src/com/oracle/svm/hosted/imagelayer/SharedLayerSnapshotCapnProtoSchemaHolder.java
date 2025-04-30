@@ -4596,7 +4596,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)12);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)13);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4817,6 +4817,21 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Builder> initHostedMethods(int size) {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.listFactory, 11, size);
       }
+      public final boolean hasNodeClassMapLocation() {
+        return !_pointerFieldIsNull(12);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getNodeClassMapLocation() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
+      }
+      public final void setNodeClassMapLocation(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, value);
+      }
+      public final void setNodeClassMapLocation(String value) {
+        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+      }
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initNodeClassMapLocation(int size) {
+        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, size);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -4938,6 +4953,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.Reader> getHostedMethods() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedHostedMethod.listFactory, 11, null, 0);
+      }
+
+      public boolean hasNodeClassMapLocation() {
+        return !_pointerFieldIsNull(12);
+      }
+      public com.oracle.svm.shaded.org.capnproto.Text.Reader getNodeClassMapLocation() {
+        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
       }
 
     }

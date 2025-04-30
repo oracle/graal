@@ -797,7 +797,7 @@ public class GraphDecoder {
 
             methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
             int typeId = methodScope.reader.getUVInt();
-            assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId] : Assertions.errorMessage(node, methodScope.encodedGraph.getNodeClasses()[typeId]);
+            assert node.getNodeClass() == methodScope.encodedGraph.getNodeClass(typeId) : Assertions.errorMessage(node, methodScope.encodedGraph.getNodeClass(typeId));
             makeFixedNodeInputs(methodScope, loopScope, node);
             readProperties(methodScope, node);
 
@@ -1597,7 +1597,7 @@ public class GraphDecoder {
         long readerByteIndex = methodScope.reader.getByteIndex();
 
         methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
-        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClass(methodScope.reader.getUVInt());
         Node node = allocateFloatingNode(nodeClass);
         if (node instanceof FixedNode) {
             /*
@@ -1715,7 +1715,7 @@ public class GraphDecoder {
 
         long readerByteIndex = methodScope.reader.getByteIndex();
         methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
-        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClass(methodScope.reader.getUVInt());
         methodScope.reader.setByteIndex(readerByteIndex);
         return nodeClass;
     }
@@ -1731,7 +1731,7 @@ public class GraphDecoder {
 
         long readerByteIndex = methodScope.reader.getByteIndex();
         methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
-        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClass(methodScope.reader.getUVInt());
         Node stubNode = nodeClass.allocateInstance();
         if (graph.trackNodeSourcePosition()) {
             stubNode.setNodeSourcePosition(NodeSourcePosition.placeholder(graph.method()));
