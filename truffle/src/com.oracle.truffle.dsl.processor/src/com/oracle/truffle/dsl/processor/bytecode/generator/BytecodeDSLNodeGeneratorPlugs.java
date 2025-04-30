@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.readConstFastPath;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.readImmediate;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.readInstruction;
 
@@ -137,7 +136,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(specializationIndex).type();
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(specializationIndex);
-            b.tree(readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
+            b.tree(rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 
@@ -211,7 +210,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(constantOperandAfterIndex).type();
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + constantOperandAfterIndex);
-            b.tree(readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
+            b.tree(rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 

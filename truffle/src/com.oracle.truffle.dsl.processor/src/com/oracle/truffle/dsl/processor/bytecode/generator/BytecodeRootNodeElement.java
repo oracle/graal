@@ -66,6 +66,7 @@ import java.io.DataOutputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.invoke.VarHandle;
+import java.lang.ref.Reference;
 import java.nio.ByteBuffer;
 import java.util.AbstractList;
 import java.util.ArrayDeque;
@@ -2270,33 +2271,29 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return String.format("BYTES.putByte(%s, %s, %s)", array, index, value);
     }
 
-    static CodeTree readConstFastPath(CodeTree index, String constants) {
-        return readConst(index, constants, null);
+    private CodeTree readConstFastPath(CodeTree index, String constants) {
+        return readConstFastPath(index, constants, null);
     }
 
-    static CodeTree readConstFastPath(CodeTree index, String constants, TypeMirror knownType) {
-        return readConst(index, constants, knownType);
+    CodeTree readConstFastPath(CodeTree index, String constants, TypeMirror knownType) {
+        return readConst(index, uncheckedCast(type(Object[].class), constants), knownType);
     }
 
-    static CodeTree readConst(String index, String constants) {
-        return readConst(CodeTreeBuilder.singleString(index), constants, null);
+    private static CodeTree readConst(String index, String constants) {
+        return readConst(CodeTreeBuilder.singleString(index), CodeTreeBuilder.singleString(constants), null);
     }
 
-    static CodeTree readConst(CodeTree index, String constants, TypeMirror knownType) {
+    static CodeTree readConst(CodeTree index, CodeTree constants, TypeMirror knownType) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        boolean needsCast = knownType != null && !ElementUtils.isObject(knownType);
-        if (needsCast) {
-            b.startCall("ACCESS.uncheckedCast");
-        }
         b.startCall("ACCESS.readObject");
-        b.string(constants);
+        b.tree(constants);
         b.tree(index);
         b.end();
-        if (needsCast) {
-            b.typeLiteral(ElementUtils.boxType(knownType));
-            b.end();
+        CodeTree tree = b.build();
+        if (knownType != null && !ElementUtils.isObject(knownType)) {
+            tree = uncheckedCast(ElementUtils.boxType(knownType), tree);
         }
-        return b.build();
+        return tree;
     }
 
     private static CodeTree readIntArray(String array, String index) {
@@ -2322,17 +2319,26 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return readTagNode(expectedType, "tagRoot.tagNodes", index);
     }
 
-    private static CodeTree readTagNode(TypeMirror expectedType, String tagNodes, CodeTree index) {
+    private static CodeTree uncheckedCast(TypeMirror type, String value) {
+        return uncheckedCast(type, CodeTreeBuilder.singleString(value));
+    }
+
+    private static CodeTree uncheckedCast(TypeMirror type, CodeTree value) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.uncheckedCast");
+        b.tree(value);
+        b.typeLiteral(type);
+        b.end();
+        return b.build();
+    }
+
+    private static CodeTree readTagNode(TypeMirror expectedType, String tagNodes, CodeTree index) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.readObject");
         b.string(tagNodes);
         b.tree(index);
         b.end();
-
-        b.typeLiteral(expectedType);
-        b.end();
-        return b.build();
+        return uncheckedCast(expectedType, b.build());
     }
 
     private static CodeTree readTagNodeSafe(CodeTree index) {
@@ -2342,11 +2348,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return b.build();
     }
 
-    private static CodeTree readNodeProfile(TypeMirror expectedType, CodeTree index) {
+    private CodeTree readNodeProfile(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.uncheckedCast");
         b.startCall("ACCESS.readObject");
-        b.string("cachedNodes");
+        b.tree(uncheckedCast(arrayOf(types.Node), "this.cachedNodes_"));
         b.tree(index);
         b.end();
         b.typeLiteral(expectedType);
@@ -12162,7 +12168,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "uncachedExecuteCount_"));
             } else if (tier.isCached()) {
                 this.add(createCachedConstructor());
-                this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes_")));
+                this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(types.Node), "cachedNodes_")));
                 this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(boolean.class)), "exceptionProfiles_")));
                 if (model.epilogExceptional != null) {
                     this.add(child(new CodeVariableElement(Set.of(PRIVATE), getCachedDataClassType(model.epilogExceptional.operation.instruction), "epilogExceptionalNode_")));
@@ -12389,7 +12395,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 if (model.enableBlockScoping) {
                     b.declaration(type(int.class), "localIndex", "localOffsetToLocalIndex(bci, localOffset)");
-                    b.startAssign("tag").string("getCachedLocalTagInternal(this.localTags_, localIndex)").end();
+                    b.startAssign("tag").startCall("getCachedLocalTagInternal");
+                    b.tree(readLocalTagsFastPath());
+                    b.string("localIndex");
+                    b.end().end();
                 } else {
                     b.startAssign("tag").string("getCachedLocalTag(localOffset)").end();
                 }
@@ -12430,6 +12439,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.end(); // switch block
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startReturn().string("ex.getResult()").end();
                 b.end(); // catch
             } else {
@@ -12607,7 +12617,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall("setCachedLocalTagInternal");
-                b.string("this.localTags_");
+                b.tree(readLocalTagsFastPath());
                 b.string("localIndex");
                 b.string("newTag");
                 b.end(2);
@@ -12685,6 +12695,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     b.end(); // switch block
                     b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                     b.startReturn().string("ex.getResult()").end();
                     b.end(); // catch
                 } else {
@@ -12718,7 +12729,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.addParameter(new CodeVariableElement(type(byte.class), "tag"));
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(byte.class)), "localTags", "this.localTags_");
+            b.declaration(arrayOf(type(byte.class)), "localTags", readLocalTagsFastPath());
             b.startIf().string("localIndex < 0 || localIndex >= localTags.length").end().startBlock();
             emitThrowIllegalArgumentException(b, "Invalid local offset");
             b.end();
@@ -12741,7 +12752,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(byte.class)), "localTags", "this.localTags_");
+            b.declaration(arrayOf(type(byte.class)), "localTags", readLocalTagsFastPath());
             b.startIf().string("localIndex < 0 || localIndex >= localTags.length").end().startBlock();
             emitThrowIllegalArgumentException(b, "Invalid local offset");
             b.end();
@@ -13506,16 +13517,18 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
+            b.declaration(arrayOf(type(byte.class)), "bc", uncheckedCast(type(byte[].class), "this.bytecodes"));
             if (tier.isCached()) {
-                b.declaration(arrayOf(types.Node), "cachedNodes", "this.cachedNodes_");
-                b.declaration(arrayOf(type(int.class)), "branchProfiles", "this.branchProfiles_");
                 ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
-
-                if (model.usesBoxingElimination()) {
-                    b.declaration(arrayOf(type(byte.class)), "localTags", "this.localTags_");
-                }
             }
+
+            b.startIf().startStaticCall(types.HostCompilerDirectives, "inInterpreterFastPath").end().end().startBlock();
+            b.lineComment("Force constants and cached nodes being read outside of the loop with fences.");
+            b.startStatement().startStaticCall(type(Reference.class), "reachabilityFence").tree(uncheckedCast(arrayOf(type(Object.class)), "this.constants")).end().end();
+            if (tier.isCached()) {
+                b.startStatement().startStaticCall(type(Reference.class), "reachabilityFence").tree(uncheckedCast(arrayOf(types.Node), "this.cachedNodes_")).end().end();
+            }
+            b.end();
 
             b.statement("int bci = ", decodeBci("startState"));
             b.statement("int sp = ", decodeSp("startState"));
@@ -13767,6 +13780,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                         if (!ElementUtils.isObject(targetType)) {
                             b.end().startCatchBlock(types.UnexpectedResultException, "e");
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                             b.startStatement();
                             startSetFrame(b, type(Object.class)).string("frame").string("targetSp").string("e.getResult()").end();
                             b.end(); // statement
@@ -13830,7 +13844,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
             b.statement("sp = targetSp");
             b.statement("continue loop");
-
             b.end(); // while
 
             /**
@@ -13878,9 +13891,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             List<CodeVariableElement> extraParams = createExtraParameters();
-            if (tier.isCached()) {
-                continueAtMethod.getParameters().add(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
-            }
             continueAtMethod.getParameters().addAll(extraParams);
             continueAtMethod.addParameter(new CodeVariableElement(type(int.class), "op"));
 
@@ -14017,7 +14027,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         // no need to clear in uncached
                     } else {
                         b.startCall("profileBranch");
-                        b.string("branchProfiles");
                         b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
                         if (model.isBoxingEliminated(type(boolean.class))) {
                             if (instr.isQuickening()) {
@@ -14032,7 +14041,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                 if (model.bytecodeDebugListener) {
                                     b.string("this");
                                 }
-                                b.string("frame").string("bc").string("bci").string("sp");
+                                b.string("bc").string("bci").string("sp");
+
+                                b.startGroup().string("(boolean) ");
+                                startRequireFrame(b, type(Object.class));
+                                b.string("frame").string("sp - 1");
+                                b.end(); // require frame
+                                b.end(); // group
+
                                 b.end();
                             }
                         } else {
@@ -14057,7 +14073,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     if (tier.isCached()) {
                         b.startCall("profileBranch");
-                        b.string("branchProfiles");
                         b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
                         b.startGroup();
                     }
@@ -14275,9 +14290,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.string("localFrame");
                         }
                         b.string("bc").string("bci").string("sp");
-                        if (localAccessNeedsLocalTags(instr)) {
-                            b.string("localTags");
-                        }
                         b.end();
                         b.end();
                     } else {
@@ -14292,9 +14304,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.string("localFrame");
                         }
                         b.string("bc").string("bci").string("sp");
-                        if (localAccessNeedsLocalTags(instr)) {
-                            b.string("localTags");
-                        }
                         b.end();
                         b.end();
                     }
@@ -14332,13 +14341,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.string("localFrame");
                         }
                         b.string("bc").string("bci").string("sp");
-                        if (localAccessNeedsLocalTags(instr)) {
-                            b.string("localTags");
-                        }
                         b.end();
                         b.end();
                     } else {
-                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
                         b.string("frame");
@@ -14347,9 +14352,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         }
                         b.string("bc").string("bci").string("sp");
                         startRequireFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
-                        if (localAccessNeedsLocalTags(instr)) {
-                            b.string("localTags");
-                        }
                         b.end();
                         b.end();
                     }
@@ -14390,7 +14392,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.end();
                         b.end();
                     } else {
-                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.startStatement();
                         b.startCall(lookupDoSpecializeMergeConditional(instr).getSimpleName().toString());
                         if (model.bytecodeDebugListener) {
@@ -15137,7 +15138,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
              */
             InstructionImmediate branchProfile = model.branchBackwardInstruction.findImmediate(ImmediateKind.BRANCH_PROFILE, "loop_header_branch_profile");
             b.declaration(type(int.class), "branchProfileIndex", readImmediate("bc", "bci", branchProfile));
-            b.startStatement().startCall("ensureFalseProfile").string("branchProfiles_").string("branchProfileIndex").end(2);
+            b.startStatement().startCall("ensureFalseProfile").tree(uncheckedCast(arrayOf(type(int.class)), "this.branchProfiles_")).string("branchProfileIndex").end(2);
 
             b.startReturn();
             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
@@ -15343,7 +15344,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (isSpecialized) {
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startReturn().startCall(lookupSpecializeTagLeave(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.bytecodeDebugListener) {
                     b.string("$this");
@@ -15472,7 +15473,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else {
                 b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameTagsElement.get(inputType)).end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.startStatement().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
+                b.startStatement().startCall(lookupDoSpecializePop(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.bytecodeDebugListener) {
                     b.string("$this");
                 }
@@ -15608,12 +15609,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn().string("result").end();
 
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.startReturn().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
             if (model.bytecodeDebugListener) {
                 b.string("$this");
             }
-            b.string("frame").string("bc").string("bci").string("sp");
+            b.string("bc").string("bci").string("sp");
+            b.string("(boolean) ex.getResult()");
+
             b.end().end();
 
             b.end();
@@ -15632,10 +15635,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             method = new CodeExecutableElement(
                             Set.of(PRIVATE, STATIC),
                             type(boolean.class), instructionMethodName(instr),
-                            new CodeVariableElement(types.Frame, "frame"),
                             new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(type(int.class), "sp"));
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(type(boolean.class), "value"));
 
             if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
@@ -15663,12 +15666,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeTreeBuilder b = method.createBuilder();
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-            b.startStatement().string("boolean value = (boolean)");
-            startRequireFrame(b, type(Object.class));
-            b.string("frame").string("sp - 1");
-            b.end();
-            b.end(); // statement
 
             b.declaration(type(short.class), "newInstruction");
             b.declaration(type(short.class), "newOperand");
@@ -15728,11 +15725,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                method.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "localTags"));
-            }
-
             if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
@@ -15741,6 +15733,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
 
             CodeTreeBuilder b = method.createBuilder();
+
+            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
+            if (needsLocalTags) {
+                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
+            }
 
             CodeTree readSlot = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
             if (materialized) {
@@ -15780,6 +15777,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
 
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall(lookupDoSpecializeLoadLocal(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.bytecodeDebugListener) {
                     b.string("$this");
@@ -15788,9 +15786,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.string("stackFrame");
                 }
                 b.string("frame").string("bc").string("bci").string("sp");
-                if (needsLocalTags) {
-                    b.string("localTags");
-                }
                 b.end().end();
                 b.end();
             }
@@ -15798,6 +15793,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             doInstructionMethods.put(instr, method);
             return method;
 
+        }
+
+        private CodeTree readLocalTagsFastPath() {
+            return uncheckedCast(type(byte[].class), "this.localTags_");
         }
 
         private CodeExecutableElement lookupDoSpecializeLoadLocal(InstructionModel instr) {
@@ -15820,16 +15819,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                method.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "localTags"));
-            }
-
             if (model.bytecodeDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
             CodeTreeBuilder b = method.createBuilder();
+
+            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
+            if (needsLocalTags) {
+                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
+            }
 
             String stackFrame = needsStackFrame ? "stackFrame" : "frame";
             b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)));
@@ -15903,6 +15902,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // switch
 
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
             // If a FrameSlotException occurs, specialize to the generic version.
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
@@ -15958,6 +15958,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 startExpectFrameUnsafe(b, "frame", inputType).string("sp - 1").end();
                 b.end();
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall(lookupDoSpecializeMergeConditional(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.bytecodeDebugListener) {
                     b.string("$this");
@@ -16011,6 +16012,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             CodeTreeBuilder b = method.createBuilder();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
             InstructionImmediate operand0 = instr.getImmediates(ImmediateKind.BYTECODE_INDEX).get(0);
             InstructionImmediate operand1 = instr.getImmediates(ImmediateKind.BYTECODE_INDEX).get(1);
@@ -16119,15 +16121,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                method.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "localTags"));
-            }
-
             final TypeMirror inputType = instr.signature.getSpecializedType(0);
             final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
 
             CodeTreeBuilder b = method.createBuilder();
+
+            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
+            if (needsLocalTags) {
+                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
+            }
 
             String stackFrame = needsStackFrame ? "stackFrame" : "frame";
             if (tier.isCached() && model.usesBoxingElimination()) {
@@ -16138,14 +16140,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
 
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.startStatement().startCall(lookupDoSpecializeStoreLocal(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (needsStackFrame) {
                     b.string("stackFrame");
                 }
                 b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
-                if (needsLocalTags) {
-                    b.string("localTags");
-                }
                 b.end().end();
 
                 b.returnDefault();
@@ -16272,6 +16272,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 if (needsCast) {
                     b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                     b.statement("local = ex.getResult()");
                     b.lineComment("fall through to slow-path");
                     b.end();  // catch block
@@ -16284,9 +16285,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.string("stackFrame");
                 }
                 b.string("frame").string("bc").string("bci").string("sp").string("local");
-                if (needsLocalTags) {
-                    b.string("localTags");
-                }
 
                 b.end().end();
             }
@@ -16316,14 +16314,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                method.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "localTags"));
-            }
-
             String stackFrame = needsStackFrame ? "stackFrame" : "frame";
 
             CodeTreeBuilder b = method.createBuilder();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+
+            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
+            if (needsLocalTags) {
+                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
+            }
 
             b.declaration(type(short.class), "newInstruction");
             b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)));
@@ -16577,18 +16576,18 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
          * This code implements the same logic as the CountingConditionProfile.
          */
         private CodeExecutableElement createProfileBranch(TypeMirror branchProfilesType) {
-            CodeExecutableElement allocateBranchProfiles = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(boolean.class), "profileBranch",
-                            new CodeVariableElement(branchProfilesType, "branchProfiles"),
+            CodeExecutableElement allocateBranchProfiles = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "profileBranch",
                             new CodeVariableElement(type(int.class), "profileIndex"),
                             new CodeVariableElement(type(boolean.class), "condition"));
 
-            emitNewBranchProfile(allocateBranchProfiles);
+            emitNewBranchProfile(allocateBranchProfiles, branchProfilesType);
 
             return allocateBranchProfiles;
         }
 
-        private void emitNewBranchProfile(CodeExecutableElement allocateBranchProfiles) {
+        private void emitNewBranchProfile(CodeExecutableElement allocateBranchProfiles, TypeMirror branchProfilesType) {
             CodeTreeBuilder b = allocateBranchProfiles.createBuilder();
+            b.declaration(branchProfilesType, "branchProfiles", uncheckedCast(branchProfilesType, "this.branchProfiles_"));
             b.declaration("int", "t", (CodeTree) null);
             b.declaration("int", "f", (CodeTree) null);
 
@@ -16691,10 +16690,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
              * which are handled specially). They should be kept in sync.
              */
             List<CodeVariableElement> extraParams = createExtraParameters();
-
-            if (tier.isCached()) {
-                helper.getParameters().add(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
-            }
             helper.getParameters().addAll(extraParams);
 
             CodeTreeBuilder b = helper.createBuilder();
