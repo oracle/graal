@@ -41,9 +41,4 @@ public class HeaderTypeEntry extends StructureTypeEntry {
     public FieldEntry getHubField() {
         return hubField;
     }
-
-    @Override
-    public boolean isHeader() {
-        return true;
-    }
 }

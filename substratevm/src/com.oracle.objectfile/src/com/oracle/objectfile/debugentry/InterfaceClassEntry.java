@@ -40,16 +40,6 @@ public class InterfaceClassEntry extends ClassEntry {
         this.implementors = new ConcurrentSkipListSet<>(Comparator.comparingLong(ClassEntry::getTypeSignature));
     }
 
-    @Override
-    public boolean isInterface() {
-        return true;
-    }
-
-    @Override
-    public boolean isInstance() {
-        return false;
-    }
-
     public void addImplementor(ClassEntry classEntry) {
         implementors.add(classEntry);
     }
