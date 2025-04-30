@@ -134,11 +134,6 @@ public class ClassEntry extends StructureTypeEntry {
         compiledMethods.add(compiledMethodEntry);
     }
 
-    @Override
-    public boolean isInstance() {
-        return true;
-    }
-
     public String getFileName() {
         if (fileEntry != null) {
             return fileEntry.fileName();

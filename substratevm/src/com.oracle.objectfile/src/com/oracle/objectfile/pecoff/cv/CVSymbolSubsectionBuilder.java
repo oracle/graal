@@ -68,8 +68,8 @@ final class CVSymbolSubsectionBuilder {
         /* Loop over all classes defined in this module. */
         for (TypeEntry typeEntry : cvDebugInfo.getTypes()) {
             /* Add type record for this entry. */
-            if (typeEntry.isClass()) {
-                buildClass((ClassEntry) typeEntry);
+            if (typeEntry instanceof ClassEntry classEntry) {
+                buildClass(classEntry);
             } else {
                 addTypeRecords(typeEntry);
             }

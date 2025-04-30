@@ -27,19 +27,18 @@
 package com.oracle.objectfile.debugentry;
 
 public class EnumClassEntry extends ClassEntry {
+
+    // The typedef name if this is a representation of a c enum type
+    private final String typedefName;
+
     public EnumClassEntry(String typeName, int size, long classOffset, long typeSignature,
                     long compressedTypeSignature, long layoutTypeSignature,
-                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader, String typedefName) {
         super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+        this.typedefName = typedefName;
     }
 
-    @Override
-    public boolean isEnum() {
-        return true;
-    }
-
-    @Override
-    public boolean isInstance() {
-        return false;
+    public String getTypedefName() {
+        return typedefName;
     }
 }

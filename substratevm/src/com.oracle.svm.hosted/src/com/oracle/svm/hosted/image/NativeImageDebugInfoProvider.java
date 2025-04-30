@@ -76,6 +76,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.PropertyInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
@@ -689,8 +690,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
                     return foreignTypeEntry;
                 } else if (hostedType.isEnum()) {
+                    // Fetch typedef name for c enum types and skip the generic 'int' typedef name.
+                    String typedefName = "";
+                    ElementInfo elementInfo = nativeLibs.findElementInfo(hostedType);
+                    if (elementInfo instanceof EnumInfo enumInfo && !enumInfo.getName().equals("int")) {
+                        typedefName = enumInfo.getName();
+                    }
                     return new EnumClassEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
-                                    layoutTypeSignature, superClass, fileEntry, loaderEntry);
+                                    layoutTypeSignature, superClass, fileEntry, loaderEntry, typedefName);
                 } else if (hostedType.isInstanceClass()) {
                     return new ClassEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
                                     layoutTypeSignature, superClass, fileEntry, loaderEntry);
@@ -784,7 +791,10 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 return new ForeignStructTypeEntry(typeName, size, -1, typeSignature, layoutTypeSignature, typedefName, parentEntry);
             }
             case null, default -> {
-                // elementInfo is either EnumInfo or null
+                /*
+                 * EnumInfo should not reach here because it is no word base type. Create a pointer
+                 * to a generic word type or void.
+                 */
                 size = ConfigurationValues.getTarget().wordSize;
                 TypeEntry pointerToEntry = null;
 

@@ -77,9 +77,12 @@ import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
+import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.MemberEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 
@@ -115,15 +118,15 @@ class CVTypeSectionBuilder {
             log("buildType() type %s(%s) is known %s", typeEntry.getTypeName(), "typeEntry.typeKind().name()", typeRecord);
         } else {
             log("buildType() %s %s size=%d - begin", "typeEntry.typeKind().name()", typeEntry.getTypeName(), typeEntry.getSize());
-            if (typeEntry.isPrimitive()) {
+            if (typeEntry instanceof PrimitiveTypeEntry) {
                 typeRecord = types.getExistingType(typeEntry);
-            } else if (typeEntry.isHeader()) {
+            } else if (typeEntry instanceof HeaderTypeEntry headerTypeEntry) {
                 /*
                  * The bits at the beginning of an Object: contains pointer to DynamicHub.
                  */
                 assert typeEntry.getTypeName().equals(OBJ_HEADER_NAME);
-                typeRecord = buildStructureTypeEntry((HeaderTypeEntry) typeEntry);
-            } else if (typeEntry.isClass() || typeEntry.isArray()) {
+                typeRecord = buildStructureTypeEntry(headerTypeEntry);
+            } else if (typeEntry instanceof ClassEntry || typeEntry instanceof ArrayTypeEntry || typeEntry instanceof ForeignStructTypeEntry) {
                 // TODO continue treat foreign types as interfaces/classes but fix this later
                 typeRecord = buildStructureTypeEntry((StructureTypeEntry) typeEntry);
             }
@@ -210,22 +213,27 @@ class CVTypeSectionBuilder {
 
         log("buildStructureTypeEntry size=%d kind=%s %s", typeEntry.getSize(), "typeEntry.typeKind().name()", typeEntry.getTypeName());
 
-        ClassEntry superType = typeEntry.isClass() ? ((ClassEntry) typeEntry).getSuperClass() : null;
+        StructureTypeEntry superType = null;
+        if (typeEntry instanceof ClassEntry classEntry) {
+            superType = classEntry.getSuperClass();
+        } else if (typeEntry instanceof ForeignStructTypeEntry foreignStructTypeEntry) {
+            superType = foreignStructTypeEntry.getParent();
+        }
         int superTypeIndex = superType != null ? types.getIndexForForwardRef(superType) : 0;
 
         /* Arrays are implemented as classes, but the inheritance from Object() is implicit. */
-        if (superTypeIndex == 0 && typeEntry.isArray()) {
+        if (superTypeIndex == 0 && typeEntry instanceof ArrayTypeEntry) {
             superTypeIndex = types.getIndexForForwardRef(JAVA_LANG_OBJECT_NAME);
         }
 
         /* Both java.lang.Object and __objhdr have null superclass. */
         /* Force java.lang.Object to have __objhdr as a superclass. */
         /* Force interfaces to have __objhdr as a superclass. */
-        if (superTypeIndex == 0 && (typeEntry.getTypeName().equals(JAVA_LANG_OBJECT_NAME) || typeEntry.isInterface())) {
+        if (superTypeIndex == 0 && (typeEntry.getTypeName().equals(JAVA_LANG_OBJECT_NAME) || typeEntry instanceof InterfaceClassEntry)) {
             superTypeIndex = objectHeaderRecordIndex;
         }
 
-        final List<MethodEntry> methods = typeEntry.isClass() ? ((ClassEntry) typeEntry).getMethods() : Collections.emptyList();
+        final List<MethodEntry> methods = typeEntry instanceof ClassEntry classEntry ? classEntry.getMethods() : Collections.emptyList();
 
         /* Build fieldlist record */
         FieldListBuilder fieldListBuilder = new FieldListBuilder();
@@ -245,13 +253,11 @@ class CVTypeSectionBuilder {
             fieldListBuilder.addField(fieldRecord);
         });
 
-        if (typeEntry.isArray()) {
+        if (typeEntry instanceof ArrayTypeEntry arrayEntry) {
             /*
              * Model an array as a struct with a pointer, length and then array of length 0.
              * String[] becomes struct String[] : Object { int length; String*[0]; }
              */
-            assert typeEntry instanceof ArrayTypeEntry;
-            ArrayTypeEntry arrayEntry = (ArrayTypeEntry) typeEntry;
 
             /* Build 0 length array - this index could be cached. */
             final TypeEntry elementType = arrayEntry.getElementType();
@@ -324,9 +330,8 @@ class CVTypeSectionBuilder {
         CVTypeRecord typeRecord = new CVTypeRecord.CVClassRecord(LF_CLASS, (short) fieldCount, attrs, fieldListIdx, 0, 0, typeEntry.getSize(), typeEntry.getTypeName(), null);
         typeRecord = addTypeRecord(typeRecord);
 
-        if (typeEntry.isClass()) {
+        if (typeEntry instanceof ClassEntry classEntry) {
             /* Add a UDT record (if we have the information) */
-            ClassEntry classEntry = (ClassEntry) typeEntry;
             /*
              * Try to find a line number for the first function - if none, don't bother to create
              * the record.
@@ -481,7 +486,7 @@ class CVTypeSectionBuilder {
          *         type, the index returned is for the type, not a pointer to the type.
          */
         int getIndexForPointerOrPrimitive(TypeEntry entry) {
-            if (entry.isPrimitive()) {
+            if (entry instanceof PrimitiveTypeEntry) {
                 CVTypeRecord record = getExistingType(entry);
                 assert record != null;
                 return record.getSequenceNumber();
@@ -500,7 +505,7 @@ class CVTypeSectionBuilder {
             return ptrRecord.getSequenceNumber();
         }
 
-        private int getIndexForForwardRef(ClassEntry entry) {
+        private int getIndexForForwardRef(StructureTypeEntry entry) {
             return getIndexForForwardRef(entry.getTypeName());
         }
 

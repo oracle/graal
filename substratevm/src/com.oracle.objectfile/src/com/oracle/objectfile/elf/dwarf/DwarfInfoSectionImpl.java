@@ -33,6 +33,7 @@ import java.util.List;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.EnumClassEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.ForeignStructTypeEntry;
@@ -586,6 +587,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] instance classes", pos);
         Cursor cursor = new Cursor(pos);
         instanceClassStream().forEach(classEntry -> {
+            // For run-time debug info, we create a type unit with the opaque type, so no need to
+            // create a full type unit here
+            // The foreign method list is no actual instance class, but just needs a compilation
+            // unit to reference the compilation
             if (!dwarfSections.isRuntimeCompilation() && classEntry != dwarfSections.getForeignMethodListClassEntry()) {
                 cursor.set(writeTypeUnits(context, classEntry, buffer, cursor.get()));
             }
@@ -657,7 +662,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeTUPreamble(context, typeSignature, loaderId, buffer, p);
 
         /* Define a pointer type referring to the underlying layout. */
-        log(context, "  [0x%08x] %s pointer type", pos, typeEntry.isInterface() ? "interface" : "class");
+        log(context, "  [0x%08x] %s pointer type", pos, typeEntry instanceof InterfaceClassEntry ? "interface" : "class");
         AbbrevCode abbrevCode = AbbrevCode.TYPE_POINTER_SIG;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -720,7 +725,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         writeInt(pos - lengthPos, buffer, typeOffsetPos);
 
         /* Define a pointer type referring to the underlying layout. */
-        log(context, "  [0x%08x] %s compressed pointer type", pos, typeEntry.isInterface() ? "interface" : "class");
+        log(context, "  [0x%08x] %s compressed pointer type", pos, typeEntry instanceof InterfaceClassEntry ? "interface" : "class");
         abbrevCode = AbbrevCode.TYPE_POINTER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -749,7 +754,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * Write a wrapper type with a data_location attribute that can act as a target for
          * compressed oops.
          */
-        log(context, "  [0x%08x] compressed %s layout", pos, typeEntry.isInterface() ? "interface" : "class");
+        log(context, "  [0x%08x] compressed %s layout", pos, typeEntry instanceof InterfaceClassEntry ? "interface" : "class");
         AbbrevCode abbrevCode = AbbrevCode.COMPRESSED_LAYOUT;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -813,6 +818,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int lengthPos = pos;
         pos = writeTUPreamble(context, classEntry.getLayoutTypeSignature(), loaderId, buffer, pos);
 
+        int refTypeIdx = pos;
         log(context, "  [0x%08x] type layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_TU;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
@@ -840,6 +846,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!loaderId.isEmpty()) {
             /* Write a terminating null attribute for the namespace. */
             pos = writeAttrNull(buffer, pos);
+        }
+
+        if (classEntry instanceof EnumClassEntry enumClassEntry && !enumClassEntry.getTypedefName().isEmpty()) {
+            /* Define a typedef c enum type. */
+            log(context, "  [0x%08x] c enum typedef", pos);
+            abbrevCode = AbbrevCode.FOREIGN_TYPEDEF;
+            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
+            pos = writeAbbrevCode(abbrevCode, buffer, pos);
+            name = uniqueDebugString(enumClassEntry.getTypedefName());
+            log(context, "  [0x%08x]     name %s", pos, name);
+            pos = writeStrSectionOffset(name, buffer, pos);
+            log(context, "  [0x%08x]     type 0x%x", pos, refTypeIdx);
+            pos = writeAttrRef4(refTypeIdx, buffer, pos);
         }
 
         /* Write a terminating null attribute for the top level TU DIE. */
@@ -959,7 +978,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         writeInt(pos - lengthPos, buffer, typeOffsetPos);
 
         /* Define a pointer type referring to the underlying layout. */
-        log(context, "  [0x%08x] %s dummy pointer type", pos, typeEntry.isInterface() ? "interface" : "class");
+        log(context, "  [0x%08x] %s dummy pointer type", pos, typeEntry instanceof InterfaceClassEntry ? "interface" : "class");
         abbrevCode = AbbrevCode.TYPE_POINTER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -1612,7 +1631,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrRef4(fieldDefinitionOffset, buffer, pos);
         /* Field offset needs to be relocated relative to static primitive or static object base. */
         int offset = fieldEntry.getOffset();
-        log(context, "  [0x%08x]     location  heapbase + 0x%x (%s)", pos, offset, (fieldEntry.getValueType().isPrimitive() ? "primitive" : "object"));
+        log(context, "  [0x%08x]     location  heapbase + 0x%x (%s)", pos, offset, (fieldEntry.getValueType() instanceof PrimitiveTypeEntry ? "primitive" : "object"));
         pos = writeHeapLocationExprLoc(offset, buffer, pos);
         return pos;
     }

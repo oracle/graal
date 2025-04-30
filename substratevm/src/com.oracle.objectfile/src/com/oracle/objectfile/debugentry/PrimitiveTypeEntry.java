@@ -47,11 +47,6 @@ public class PrimitiveTypeEntry extends TypeEntry {
         this.isUnsigned = isUnsigned;
     }
 
-    @Override
-    public boolean isPrimitive() {
-        return true;
-    }
-
     public int getBitCount() {
         return bitCount;
     }

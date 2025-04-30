@@ -38,11 +38,6 @@ public class ArrayTypeEntry extends StructureTypeEntry {
         this.loader = loader;
     }
 
-    @Override
-    public boolean isArray() {
-        return true;
-    }
-
     public TypeEntry getElementType() {
         return elementType;
     }

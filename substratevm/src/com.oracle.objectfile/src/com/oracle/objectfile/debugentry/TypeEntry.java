@@ -87,55 +87,6 @@ public abstract class TypeEntry {
         return typeName;
     }
 
-    public boolean isPrimitive() {
-        return false;
-    }
-
-    public boolean isHeader() {
-        return false;
-    }
-
-    public boolean isArray() {
-        return false;
-    }
-
-    public boolean isInstance() {
-        return false;
-    }
-
-    public boolean isInterface() {
-        return false;
-    }
-
-    public boolean isEnum() {
-        return false;
-    }
-
-    public boolean isForeign() {
-        return false;
-    }
-
-    /**
-     * Test whether this entry is a class type, either an instance class, an interface type, an enum
-     * type or a foreign type. The test excludes primitive and array types and the header type.
-     *
-     * n.b. Foreign types are considered to be class types because they appear like interfaces or
-     * classes in the Java source and hence need to be modeled by a ClassEntry which can track
-     * properties of the java type. This also allows them to be decorated with properties that
-     * record details of the generated debug info. When it comes to encoding the model type as DWARF
-     * or PECOFF method {@link #isForeign()} may need to be called in order to allow foreign types
-     * ot be special cased.
-     *
-     * @return true if this entry is a class type otherwise false.
-     */
-    public boolean isClass() {
-        return isInstance() || isInterface() || isEnum() || isForeign();
-    }
-
-    public boolean isStructure() {
-        return isClass() || isHeader();
-    }
-
     @Override
     public String toString() {
         String kind = switch (this) {

@@ -33,11 +33,6 @@ public class PointerToTypeEntry extends TypeEntry {
         this.pointerTo = pointerTo;
     }
 
-    @Override
-    public boolean isForeign() {
-        return true;
-    }
-
     public TypeEntry getPointerTo() {
         return pointerTo;
     }
