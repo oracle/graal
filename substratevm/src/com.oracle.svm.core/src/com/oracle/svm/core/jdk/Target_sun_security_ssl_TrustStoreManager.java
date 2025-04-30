@@ -180,7 +180,7 @@ final class TrustStoreManagerSupport {
                 temporaryTime = f.lastModified();
             } else {
                 // The file is inaccessible.
-                if (SSLLogger.isOn && SSLLogger.isOn("trustmanager")) {
+                if (SSLLogger.logging && SSLLogger.isOn(SSLLogger.Opt.TRUSTMANAGER)) {
                     SSLLogger.fine("Inaccessible trust store: " + storePropName);
                 }
 
