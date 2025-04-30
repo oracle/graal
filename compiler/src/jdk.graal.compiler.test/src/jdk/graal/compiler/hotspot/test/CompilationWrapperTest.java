@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.test;
 
 import static jdk.graal.compiler.debug.StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT;
 import static jdk.graal.compiler.debug.StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP;
+import static jdk.graal.compiler.test.SubprocessUtil.getProcessCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -232,7 +233,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         SLCompileASTTestSuite.class.getName(), "test");
     }
 
-    private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose");
+    private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose") || String.valueOf(getProcessCommandLine()).contains("-JUnitVerbose");
 
     public static void testHelper(List<Probe> initialProbes,
                     List<String> extraVmArgs,
