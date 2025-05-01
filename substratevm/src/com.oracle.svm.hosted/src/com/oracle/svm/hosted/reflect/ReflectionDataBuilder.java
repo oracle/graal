@@ -965,7 +965,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         registerTypesForAnnotation(annotation);
                     }
                 }
-                filteredAnnotations.put(annotatedElement, includedAnnotations.toArray(new AnnotationValue[0]));
+                filteredAnnotations.put(annotatedElement, includedAnnotations.toArray(NO_ANNOTATIONS));
             }
         }
     }
@@ -974,7 +974,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (method != null) {
             if (!filteredParameterAnnotations.containsKey(method)) {
                 AnnotationValue[][] parameterAnnotations = annotationExtractor.getParameterAnnotationData(method);
-                AnnotationValue[][] includedParameterAnnotations = new AnnotationValue[parameterAnnotations.length][];
+                AnnotationValue[][] includedParameterAnnotations = parameterAnnotations.length == 0 ? NO_PARAMETER_ANNOTATIONS : new AnnotationValue[parameterAnnotations.length][];
                 for (int i = 0; i < includedParameterAnnotations.length; ++i) {
                     AnnotationValue[] annotations = parameterAnnotations[i];
                     List<AnnotationValue> includedAnnotations = new ArrayList<>();
@@ -984,7 +984,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             registerTypesForAnnotation(annotation);
                         }
                     }
-                    includedParameterAnnotations[i] = includedAnnotations.toArray(new AnnotationValue[0]);
+                    includedParameterAnnotations[i] = includedAnnotations.toArray(NO_ANNOTATIONS);
                 }
                 filteredParameterAnnotations.put(method, includedParameterAnnotations);
             }
@@ -1001,7 +1001,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         registerTypesForAnnotation(typeAnnotation.getAnnotationData());
                     }
                 }
-                filteredTypeAnnotations.put(annotatedElement, includedTypeAnnotations.toArray(new TypeAnnotationValue[0]));
+                filteredTypeAnnotations.put(annotatedElement, includedTypeAnnotations.toArray(NO_TYPE_ANNOTATIONS));
             }
         }
     }
