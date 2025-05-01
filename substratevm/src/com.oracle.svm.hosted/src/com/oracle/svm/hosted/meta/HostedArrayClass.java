@@ -81,7 +81,7 @@ public class HostedArrayClass extends HostedClass {
 
     @Override
     public HostedField[] getInstanceFields(boolean includeSuperclasses) {
-        return new HostedField[0];
+        return HostedField.EMPTY_ARRAY;
     }
 
     @Override

@@ -641,7 +641,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             return;
         }
         l().printLineSeparator();
-        Map<String, Long> codeBreakdown = CodeBreakdownProvider.get();
+        Map<String, Long> codeBreakdown = CodeBreakdownProvider.getAndClear();
         Iterator<Entry<String, Long>> packagesBySize = codeBreakdown.entrySet().stream()
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
 

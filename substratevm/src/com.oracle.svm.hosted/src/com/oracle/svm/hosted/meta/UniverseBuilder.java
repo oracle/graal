@@ -45,6 +45,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -119,6 +121,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class UniverseBuilder {
 
+    @Platforms(Platform.HOSTED_ONLY.class) private static final CFunctionPointer[] EMPTY_ARRAY = new CFunctionPointer[0];
     private final AnalysisUniverse aUniverse;
     private final AnalysisMetaAccess aMetaAccess;
     private final HostedUniverse hUniverse;
@@ -227,7 +230,7 @@ public class UniverseBuilder {
         assert !typeName.contains("/hosted/meta/") : "Hosted meta object in image " + typeName;
 
         AnalysisType[] aInterfaces = aType.getInterfaces();
-        HostedInterface[] sInterfaces = new HostedInterface[aInterfaces.length];
+        HostedInterface[] sInterfaces = aInterfaces.length == 0 ? HostedInterface.EMPTY_ARRAY : new HostedInterface[aInterfaces.length];
         for (int i = 0; i < aInterfaces.length; i++) {
             sInterfaces[i] = (HostedInterface) makeType(aInterfaces[i]);
         }
@@ -469,7 +472,7 @@ public class UniverseBuilder {
     private void layoutInstanceFields(int numTypeCheckSlots) {
         BitSet usedBytes = new BitSet();
         usedBytes.set(0, ConfigurationValues.getObjectLayout().getFirstFieldOffset());
-        layoutInstanceFields(hUniverse.getObjectClass(), new HostedField[0], usedBytes, numTypeCheckSlots);
+        layoutInstanceFields(hUniverse.getObjectClass(), HostedField.EMPTY_ARRAY, usedBytes, numTypeCheckSlots);
     }
 
     private static boolean mustReserveArrayFields(HostedInstanceClass clazz) {
@@ -640,7 +643,7 @@ public class UniverseBuilder {
             clazz.setIdentityHashOffset(offset);
         }
 
-        clazz.instanceFieldsWithoutSuper = allFields.toArray(new HostedField[0]);
+        clazz.instanceFieldsWithoutSuper = allFields.toArray(HostedField.EMPTY_ARRAY);
         clazz.firstInstanceFieldOffset = firstInstanceFieldOffset;
         clazz.afterFieldsOffset = afterFieldsOffset;
         clazz.instanceSize = layout.alignUp(afterFieldsOffset);
@@ -840,13 +843,12 @@ public class UniverseBuilder {
             fieldsOfTypes[typeId].add(field);
         }
 
-        HostedField[] noFields = new HostedField[0];
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedField> fieldsOfType = fieldsOfTypes[type.getTypeID()];
             if (fieldsOfType != null) {
                 type.staticFields = fieldsOfType.toArray(new HostedField[fieldsOfType.size()]);
             } else {
-                type.staticFields = noFields;
+                type.staticFields = HostedField.EMPTY_ARRAY;
             }
         }
 
@@ -886,7 +888,7 @@ public class UniverseBuilder {
         for (HostedMethod method : hUniverse.methods.values()) {
 
             // Reuse the implementations from the analysis method.
-            method.implementations = hUniverse.lookup(method.wrapped.collectMethodImplementations(false).toArray(new AnalysisMethod[0]));
+            method.implementations = hUniverse.lookup(method.wrapped.collectMethodImplementations(false).toArray(AnalysisMethod.EMPTY_ARRAY));
             Arrays.sort(method.implementations, HostedUniverse.METHOD_COMPARATOR);
         }
     }
@@ -955,7 +957,7 @@ public class UniverseBuilder {
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
             if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];
+                CFunctionPointer[] vtable = type.closedTypeWorldVTable.length == 0 ? EMPTY_ARRAY : new CFunctionPointer[type.closedTypeWorldVTable.length];
                 for (int idx = 0; idx < type.closedTypeWorldVTable.length; idx++) {
                     /*
                      * We install a CodePointer in the vtable; when generating relocation info, we
@@ -994,7 +996,7 @@ public class UniverseBuilder {
                     typeSlotIdx += 2;
                 }
 
-                CFunctionPointer[] vtable = new CFunctionPointer[type.openTypeWorldDispatchTables.length];
+                CFunctionPointer[] vtable = type.openTypeWorldDispatchTables.length == 0 ? EMPTY_ARRAY : new CFunctionPointer[type.openTypeWorldDispatchTables.length];
                 for (int idx = 0; idx < type.openTypeWorldDispatchTables.length; idx++) {
                     /*
                      * We install a CodePointer in the open world vtable; when generating relocation
