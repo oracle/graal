@@ -521,7 +521,7 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, std::vec
 
     if (!relaunch) {
         /* handle CLI arguments */
-        for (int i = 0; i < argc; i++) {
+        for (int i = 1; i < argc; i++) {
             parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(argv[i]));
         }
 
