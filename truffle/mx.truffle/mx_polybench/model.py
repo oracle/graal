@@ -39,10 +39,12 @@
 # SOFTWARE.
 #
 import contextlib
+import hashlib
+import json
 import os
 import re
 import shutil
-from typing import NamedTuple, List, Optional, Callable, Set, Dict, Iterable, Union, Tuple
+from typing import Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple, Union
 
 import mx
 import mx_benchmark
@@ -50,7 +52,7 @@ import mx_pomdistribution
 import mx_sdk_benchmark
 import mx_truffle
 from mx import AbstractDistribution
-from mx_benchmark import DataPoint
+from mx_benchmark import DataPoint, DataPoints
 from mx_jardistribution import JARDistribution
 
 _polybench_language_registry: Dict[str, "PolybenchLanguageEntry"] = {}
@@ -207,6 +209,32 @@ def _check_dist(dist_name: str, require_built: bool = True) -> Optional[str]:
         mx.abort(f"Unsupported distribution kind {type(dist)}")
 
 
+class PolybenchImageCacheEntry(NamedTuple):
+    """
+    Represents the parameters of a cached image build. When possible, PolybenchBenchmarkSuite will
+    reuse an image across benchmark runs.
+    """
+
+    languages: FrozenSet[str]
+    build_args: Tuple[str, ...]
+
+    @classmethod
+    def create(cls, languages: List[str], build_args: List[str]) -> "PolybenchImageCacheEntry":
+        return cls(frozenset(languages), tuple(build_args))
+
+    def executable_name(self):
+        """The friendly name used to identify the image in the NI benchmarking infrastructure."""
+        return "-".join(sorted(self.languages))
+
+    def full_executable_name(self):
+        """The name used to identify the image in the NI benchmarking infrastructure."""
+        return f"{self.executable_name()}-{self._hash_build_args()}"
+
+    def _hash_build_args(self) -> str:
+        build_args_string = json.dumps(self.build_args)
+        return hashlib.sha256(build_args_string.encode("utf-8")).hexdigest()[:8]
+
+
 class PolybenchBenchmarkSuite(
     mx_benchmark.JavaBenchmarkSuite, mx_benchmark.TemporaryWorkdirMixin, mx_sdk_benchmark.NativeImageBenchmarkMixin
 ):
@@ -223,6 +251,11 @@ class PolybenchBenchmarkSuite(
         "application-memory-metric": "application-memory",
         "none": None,
     }
+
+    def __init__(self):
+        super(PolybenchBenchmarkSuite, self).__init__()
+        self._image_cache: Set[PolybenchImageCacheEntry] = set()
+        self._current_image: Optional[PolybenchImageCacheEntry] = None
 
     def group(self):
         return "Graal"
@@ -260,7 +293,7 @@ class PolybenchBenchmarkSuite(
         # Sampling does not support images that use runtime compilation.
         return False
 
-    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         # name used by NativeImageBenchmarkMixin
         self.benchmark_name = benchmarks[0]
 
@@ -273,7 +306,10 @@ class PolybenchBenchmarkSuite(
 
         env_vars = PolybenchBenchmarkSuite._prepare_distributions(working_directory, resolved_benchmark)
         with _extend_env(env_vars):
-            return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+            if self._can_use_image_cache(bmSuiteArgs):
+                return self._run_with_image_cache(resolved_benchmark, benchmarks, bmSuiteArgs)
+            else:
+                return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def _resolve_current_benchmark(self, benchmarks) -> ResolvedPolybenchBenchmark:
         if benchmarks is None or len(benchmarks) != 1:
@@ -308,6 +344,60 @@ class PolybenchBenchmarkSuite(
 
         return env_vars
 
+    def _can_use_image_cache(self, bm_suite_args) -> bool:
+        return self.is_native_mode(bm_suite_args) and "pgo" not in self.jvmConfig(bm_suite_args)
+
+    def _run_with_image_cache(
+            self, resolved_benchmark: ResolvedPolybenchBenchmark, benchmarks: List[str], bm_suite_args: List[str]
+    ) -> DataPoints:
+        with self._set_image_context(resolved_benchmark, bm_suite_args):
+            image_build_datapoints = self._build_cached_image(benchmarks, bm_suite_args)
+            image_run_datapoints = self._run_cached_image(benchmarks, bm_suite_args)
+            return list(image_build_datapoints) + list(image_run_datapoints)
+
+    @contextlib.contextmanager
+    def _set_image_context(self, resolved_benchmark: ResolvedPolybenchBenchmark, bm_suite_args: List[str]):
+        """
+        Defines a context for the "current" image. This field determines the executable name, which
+        is used by NI benchmarking infra to resolve the name/location of the built image.
+        """
+        entry = PolybenchImageCacheEntry.create(resolved_benchmark.suite.languages, self.vmArgs(bm_suite_args))
+        assert (
+            not self._current_image
+        ), f"Tried to set current image to {entry.executable_name()}, but there is already a current image ({self._current_image.executable_name()})."
+        self._current_image = entry
+        yield
+        self._current_image = None
+
+    def executable_name(self) -> Optional[str]:
+        """Overrides the image name used to build/run the image."""
+        if self._current_image:
+            return self._current_image.full_executable_name()
+        return None
+
+    def _build_cached_image(self, benchmarks: List[str], bm_suite_args: List[str]) -> DataPoints:
+        if self._current_image in self._image_cache:
+            # already built
+            return []
+
+        image_build_datapoints = self.intercept_run(
+            super(), benchmarks, self._extend_vm_args(bm_suite_args, ["-Dnative-image.benchmark.stages=image"])
+        )
+        self._image_cache.add(self._current_image)
+        for datapoint in image_build_datapoints:
+            # associate any image build datapoints with the name of the image (rather than the benchmark)
+            datapoint["benchmark"] = self._current_image.executable_name()
+        return image_build_datapoints
+
+    def _run_cached_image(self, benchmarks: List[str], bm_suite_args: List[str]) -> DataPoints:
+        return self.intercept_run(
+            super(), benchmarks, self._extend_vm_args(bm_suite_args, ["-Dnative-image.benchmark.stages=run"])
+        )
+
+    def _extend_vm_args(self, bm_suite_args: List[str], new_vm_args: List[str]) -> List[str]:
+        vmArgs, runArgs = self.vmAndRunArgs(bm_suite_args)
+        return vmArgs + new_vm_args + ["--"] + runArgs
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
 
@@ -317,10 +407,12 @@ class PolybenchBenchmarkSuite(
         return vm_args + [PolybenchBenchmarkSuite.POLYBENCH_MAIN] + polybench_args
 
     def rules(self, output, benchmarks, bmSuiteArgs):
-        benchmark_name = benchmarks[0]
         metric_name = PolybenchBenchmarkSuite._get_metric_name(output)
-        mode = self._get_mode(bmSuiteArgs)
+        if metric_name is None:
+            return []
         rules = []
+        benchmark_name = benchmarks[0]
+        mode = self._get_mode(bmSuiteArgs)
         if metric_name == "time":
             # For metric "time", two metrics are reported:
             # - "warmup" (per-iteration data for "warmup" and "run" iterations)
@@ -427,8 +519,10 @@ class PolybenchBenchmarkSuite(
         return rules
 
     @staticmethod
-    def _get_metric_name(bench_output):
+    def _get_metric_name(bench_output) -> Optional[str]:
         match = re.search(r"metric:\s*(?P<metric_name>(\w|-| )+) \(", bench_output)
+        if not match:
+            return None
         metric_name = match.group("metric_name")
 
         if metric_name in PolybenchBenchmarkSuite.POLYBENCH_METRIC_MAPPING:
