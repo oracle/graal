@@ -55,13 +55,8 @@ public abstract class FixpointIteratorBase<
     }
 
     @Override
-    public Domain getPreCondition(Node node) {
-        return abstractStateMap.getPreCondition(node);
-    }
-
-    @Override
-    public Domain getPostCondition(Node node) {
-        return abstractStateMap.getPostCondition(node);
+    public ControlFlowGraph getControlFlowGraph() {
+        return cfgGraph;
     }
 
     @Override
