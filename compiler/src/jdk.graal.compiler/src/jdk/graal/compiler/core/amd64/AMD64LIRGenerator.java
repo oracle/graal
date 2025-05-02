@@ -92,6 +92,7 @@ import jdk.graal.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.amd64.AMD64CipherBlockChainingAESDecryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64CipherBlockChainingAESEncryptOp;
+import jdk.graal.compiler.lir.amd64.AMD64CodepointIndexToByteIndexOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
@@ -140,6 +141,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -1128,6 +1130,15 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable res = newVariable(reskind);
         emitMove(res, rres);
         return res;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitCodepointIndexToByteIndex(StringCodepointIndexToByteIndexNode.InputEncoding inputEncoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length,
+                    Value index) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64CodepointIndexToByteIndexOp.movParamsAndCreate(this, inputEncoding, (EnumSet<AMD64.CPUFeature>) runtimeCheckedCPUFeatures, array, offset, length, index, result));
+        return result;
     }
 
     protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {

@@ -28,6 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -50,10 +54,12 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
 import org.graalvm.collections.Equivalence;
@@ -179,6 +185,32 @@ public class ObjectCopier {
                 case "void" -> void.class;
                 default -> decoder.loadClass(encoded);
             };
+        }
+    }
+
+    /**
+     * Builtin for handling boxed primitives.
+     */
+    static final class BoxBuiltin extends Builtin {
+
+        private static final Map<Class<?>, JavaKind> CONCRETE_CLASSES = //
+                        Stream.of(JavaKind.values())//
+                                        .filter(k -> k.isPrimitive() && k != JavaKind.Void)//
+                                        .collect(Collectors.toMap(JavaKind::toBoxedJavaClass, Function.identity()));
+
+        BoxBuiltin() {
+            super(Number.class, CONCRETE_CLASSES.keySet().toArray(Class<?>[]::new));
+        }
+
+        @Override
+        protected void encode(Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            stream.writeUntypedValue(obj);
+        }
+
+        @Override
+        protected Object decode(Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            char typeCh = CONCRETE_CLASSES.get(concreteType).getTypeChar();
+            return stream.readUntypedValue(typeCh);
         }
     }
 
@@ -428,6 +460,7 @@ public class ObjectCopier {
 
     public ObjectCopier() {
         addBuiltin(new ClassBuiltin());
+        addBuiltin(new BoxBuiltin());
         addBuiltin(new EconomicMapBuiltin());
         addBuiltin(new EnumBuiltin());
 
@@ -1007,6 +1040,23 @@ public class ObjectCopier {
         }
     }
 
+    /**
+     * Denotes a field that should not be treated as an external value.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.FIELD)
+    public @interface NotExternalValue {
+        /**
+         * Documents the reason why the annotated field is not an external value.
+         */
+        String reason();
+    }
+
+    /**
+     * Gets the set of static, final fields whose values are not serialized.
+     *
+     * @see NotExternalValue
+     */
     public static List<Field> getExternalValueFields() throws IOException {
         List<Field> externalValues = new ArrayList<>();
         addImmutableCollectionsFields(externalValues);
@@ -1051,10 +1101,14 @@ public class ObjectCopier {
         for (Field field : declaringClass.getDeclaredFields()) {
             int fieldModifiers = field.getModifiers();
             int fieldMask = Modifier.STATIC | Modifier.FINAL;
-            if ((fieldModifiers & fieldMask) != fieldMask) {
+            boolean isStaticAndFinal = (fieldModifiers & fieldMask) == fieldMask;
+            if (!isStaticAndFinal) {
                 continue;
             }
             if (field.getType().isPrimitive()) {
+                continue;
+            }
+            if (field.getAnnotation(NotExternalValue.class) != null) {
                 continue;
             }
             field.setAccessible(true);

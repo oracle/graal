@@ -279,6 +279,9 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             ByteBuffer buf = ByteBuffer.wrap(rawParameterAnnotations);
             try {
                 int numParameters = buf.get() & 0xFF;
+                if (numParameters == 0) {
+                    return NO_PARAMETER_ANNOTATIONS;
+                }
                 AnnotationValue[][] parameterAnnotations = new AnnotationValue[numParameters][];
                 for (int i = 0; i < numParameters; i++) {
                     List<AnnotationValue> parameterAnnotationList = new ArrayList<>();

@@ -31,7 +31,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -199,7 +198,7 @@ public final class LibGraalFeature implements Feature {
         // (see jdk.graal.compiler.graph.NodeClass.allocateInstance).
         access.registerObjectReachabilityHandler(nodeClass -> {
             Class<?> clazz = nodeClass.getClazz();
-            if (!Modifier.isAbstract(clazz.getModifiers())) {
+            if (!nodeClass.isAbstract()) {
                 /* Support for NodeClass.allocateInstance. */
                 beforeAnalysisAccess.registerAsUnsafeAllocated(clazz);
             }
@@ -375,9 +374,12 @@ public final class LibGraalFeature implements Feature {
         EncodedSnippets encodedSnippets = (EncodedSnippets) libgraalObjects.get("encodedSnippets");
         checkNodeClasses(encodedSnippets, (String) libgraalObjects.get("snippetNodeClasses"));
 
-        // Mark all the Node classes as allocated so they are available during graph decoding.
+        // Mark all non-abstract Node classes as allocated so they
+        // are available during graph decoding.
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            access.registerAsInHeap(nodeClass.getClazz());
+            if (!nodeClass.isAbstract()) {
+                access.registerAsInHeap(nodeClass.getClazz());
+            }
         }
         HotSpotReplacementsImpl.setEncodedSnippets(encodedSnippets);
 
@@ -389,7 +391,7 @@ public final class LibGraalFeature implements Feature {
 
     private static void checkNodeClasses(EncodedSnippets encodedSnippets, String actual) {
         String expect = CompilerConfig.snippetNodeClassesToJSON(encodedSnippets);
-        GraalError.guarantee(actual.equals(expect), "%s != %s", actual, expect);
+        GraalError.guarantee(actual.equals(expect), "%n%s%n !=%n%s", actual, expect);
     }
 
     /**

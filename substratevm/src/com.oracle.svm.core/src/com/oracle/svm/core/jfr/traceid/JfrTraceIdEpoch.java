@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -43,7 +44,12 @@ public class JfrTraceIdEpoch {
     private static final long EPOCH_0_BIT = 0b01;
     private static final long EPOCH_1_BIT = 0b10;
 
-    private long epochId;
+    /**
+     * Start the epoch id at 1, so that we can inject fields into JDK classes that store the epoch
+     * id (see for example {@link Target_java_lang_VirtualThread#jfrEpochId}). This avoids problems
+     * with uninitialized injected fields that have the value 0 by default.
+     */
+    private long epochId = 1;
 
     @Fold
     public static JfrTraceIdEpoch getInstance() {

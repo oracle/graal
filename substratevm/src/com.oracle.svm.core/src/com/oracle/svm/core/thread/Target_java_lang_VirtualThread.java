@@ -123,8 +123,8 @@ public final class Target_java_lang_VirtualThread {
     // Checkstyle: resume
 
     @Inject //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ResetToMinusOneTransformer.class) //
-    public long jfrEpochId = -1;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    public long jfrEpochId;
 
     @Alias
     private static native ForkJoinPool createDefaultScheduler();
@@ -600,12 +600,5 @@ final class VirtualThreadHelper {
     }
 
     private VirtualThreadHelper() {
-    }
-}
-
-final class ResetToMinusOneTransformer implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        return -1L;
     }
 }

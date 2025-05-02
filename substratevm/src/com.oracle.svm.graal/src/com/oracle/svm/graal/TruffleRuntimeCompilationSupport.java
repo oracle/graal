@@ -30,6 +30,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,7 +56,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.GlobalMetrics;
-import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphDecoder;
@@ -84,13 +85,14 @@ public class TruffleRuntimeCompilationSupport {
 
     /*
      * The following four fields are set late in the image build process. To ensure their values are
-     * not prematurely constant folded we must mark them as unknown object fields.
+     * not prematurely constant folded we must mark them as unknown fields.
      */
 
     @UnknownObjectField private SubstrateMethod[] methodsToCompile;
     @UnknownObjectField private byte[] graphEncoding;
     @UnknownObjectField private Object[] graphObjects;
-    @UnknownObjectField private NodeClass<?>[] graphNodeTypes;
+    @UnknownObjectField private NodeClassMap graphNodeTypes;
+    @UnknownPrimitiveField private int graphNodeTypesSize;
 
     protected Function<Providers, SubstrateBackend> runtimeBackendProvider;
 
@@ -184,11 +186,10 @@ public class TruffleRuntimeCompilationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean setGraphEncoding(FeatureAccess a, byte[] graphEncoding, Object[] graphObjects, NodeClass<?>[] graphNodeTypes) {
+    public static boolean setGraphEncoding(FeatureAccess a, byte[] graphEncoding, Object[] graphObjects, NodeClassMap graphNodeTypes) {
         TruffleRuntimeCompilationSupport support = get();
         if (support.graphObjects == null && graphObjects.length == 0) {
             assert graphEncoding.length == 0;
-            assert graphNodeTypes.length == 0;
             return false;
         }
         boolean result = false;
@@ -201,7 +202,8 @@ public class TruffleRuntimeCompilationSupport {
             TruffleRuntimeCompilationSupport.rescan(a, graphObjects);
             result = true;
         }
-        if (!Arrays.equals(support.graphNodeTypes, graphNodeTypes)) {
+        if (support.graphNodeTypesSize != graphNodeTypes.size() || support.graphNodeTypes != graphNodeTypes) {
+            support.graphNodeTypesSize = graphNodeTypes.size();
             support.graphNodeTypes = graphNodeTypes;
             TruffleRuntimeCompilationSupport.rescan(a, graphNodeTypes);
             result = true;

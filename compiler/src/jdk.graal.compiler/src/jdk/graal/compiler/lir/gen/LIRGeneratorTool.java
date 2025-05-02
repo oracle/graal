@@ -44,6 +44,7 @@ import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
@@ -512,6 +513,12 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     @SuppressWarnings("unused")
     default Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitCodepointIndexToByteIndex(StringCodepointIndexToByteIndexNode.InputEncoding inputEncoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length,
+                    Value index) {
+        throw GraalError.unimplemented("CodepointIndexToByteIndex substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     enum CharsetName {

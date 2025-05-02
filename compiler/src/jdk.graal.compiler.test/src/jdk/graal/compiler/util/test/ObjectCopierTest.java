@@ -89,6 +89,11 @@ public class ObjectCopierTest extends SubprocessTest {
         int intField3 = Integer.MIN_VALUE;
         int intField4 = Integer.MAX_VALUE;
         int intField5 = -1;
+        long longField1 = 0;
+        long longField2 = 42L;
+        long longField3 = Long.MIN_VALUE;
+        long longField4 = Long.MAX_VALUE;
+        long longField5 = -1L;
         float floatField1 = -1.4F;
         float floatField2 = Float.MIN_NORMAL;
         float floatField3 = Float.MIN_VALUE;
@@ -120,13 +125,18 @@ public class ObjectCopierTest extends SubprocessTest {
             }
         };
 
-        private static List<Object> fieldValues(Object obj) {
-            List<Object> values = new ArrayList<>();
+        @ObjectCopier.NotExternalValue(reason = "testing NotExternalValue annotation") //
+        static final String[] TEST_OBJECT_COPIABLE = {
+                        "this", "value", "should", "be", "copied"
+        };
+
+        private static Map<Field, Object> fieldValues(Object obj) {
+            Map<Field, Object> values = new HashMap<>();
             Class<?> c = obj.getClass();
             while (c != Object.class) {
                 for (Field f : c.getDeclaredFields()) {
                     try {
-                        values.add(f.get(obj));
+                        values.put(f, f.get(obj));
                     } catch (IllegalAccessException e) {
                         throw new AssertionError(e);
                     }
@@ -138,7 +148,7 @@ public class ObjectCopierTest extends SubprocessTest {
 
         @Override
         public String toString() {
-            return fieldValues(this).stream().map(String::valueOf).collect(Collectors.joining(", "));
+            return fieldValues(this).values().stream().map(String::valueOf).collect(Collectors.joining(", "));
         }
     }
 
@@ -150,10 +160,16 @@ public class ObjectCopierTest extends SubprocessTest {
         ClassLoader loader = getClass().getClassLoader();
         TestObject testObject = new TestObject();
 
+        EconomicMap<String, Object> fieldMap = EconomicMap.create();
+        for (var e : TestObject.fieldValues(testObject).entrySet()) {
+            fieldMap.put(e.getKey().getName(), e.getValue());
+        }
+
         List<TimeUnit> timeUnits = List.of(TimeUnit.MICROSECONDS, TimeUnit.DAYS, TimeUnit.SECONDS);
         EconomicMap<Integer, Object> emap = EconomicMap.create();
         emap.put(42, Map.of("1", 1, "2", 2));
         emap.put(-12345, testObject);
+        emap.put(-6789, fieldMap);
 
         Map<String, String> hmap = new HashMap<>(Map.of("1000", "one thousand"));
         Map<Object, String> idMap = new IdentityHashMap<>(Map.of(new Object(), "some obj"));
@@ -172,9 +188,13 @@ public class ObjectCopierTest extends SubprocessTest {
         root.put("6", new ArrayList<>(timeUnits));
         root.put("singleton2", TestObject.TEST_OBJECT_SINGLETON);
         root.put("singleton2_2", TestObject.TEST_OBJECT_SINGLETON);
+        root.put("copiable", TestObject.TEST_OBJECT_COPIABLE);
 
-        List<Field> externalValueFields = List.of(ObjectCopier.getField(BaseClass.class, "BASE_SINGLETON"),
-                        ObjectCopier.getField(TestObject.class, "TEST_OBJECT_SINGLETON"));
+        List<Field> externalValueFields = new ArrayList<>();
+        externalValueFields.addAll(ObjectCopier.getStaticFinalObjectFields(BaseClass.class));
+        externalValueFields.addAll(ObjectCopier.getStaticFinalObjectFields(TestObject.class));
+
+        Assert.assertFalse(externalValueFields.contains(ObjectCopier.getField(TestObject.class, "TEST_OBJECT_COPIABLE")));
 
         byte[] encoded = encode(externalValueFields, root, "encoded");
         Object decoded = ObjectCopier.decode(encoded, loader);
@@ -187,13 +207,18 @@ public class ObjectCopierTest extends SubprocessTest {
 
         Map<String, Object> root2 = (Map<String, Object>) ObjectCopier.decode(reencoded, loader);
 
+        Assert.assertSame(BaseClass.BASE_SINGLETON, root2.get("singleton1"));
         Assert.assertSame(root.get("singleton1"), root2.get("singleton1"));
         Assert.assertSame(root.get("singleton1_2"), root2.get("singleton1_2"));
         Assert.assertSame(root2.get("singleton1"), root2.get("singleton1_2"));
 
+        Assert.assertSame(TestObject.TEST_OBJECT_SINGLETON, root.get("singleton2"));
         Assert.assertSame(root.get("singleton2"), root2.get("singleton2"));
         Assert.assertSame(root.get("singleton2_2"), root2.get("singleton2_2"));
         Assert.assertSame(root2.get("singleton2"), root2.get("singleton2_2"));
+
+        Assert.assertNotSame(TestObject.TEST_OBJECT_COPIABLE, root2.get("copiable"));
+        Assert.assertNotSame(root.get("copiable"), root2.get("copiable"));
     }
 
     private static byte[] encode(List<Field> externalValueFields, Object root, String debugLabel) {

@@ -44,6 +44,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -483,7 +484,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         graphEncoder.finishPrepare();
         AnalysisMetaAccess metaAccess = config.getMetaAccess();
-        NodeClass<?>[] nodeClasses = graphEncoder.getNodeClasses();
+        NodeClassMap nodeClasses = graphEncoder.getNodeClasses();
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
