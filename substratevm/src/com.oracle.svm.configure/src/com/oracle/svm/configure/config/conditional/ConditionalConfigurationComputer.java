@@ -32,10 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
 

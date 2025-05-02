@@ -35,9 +35,8 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 

@@ -34,13 +34,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.SerializationConfigurationParser;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
 import jdk.graal.compiler.java.LambdaUtils;

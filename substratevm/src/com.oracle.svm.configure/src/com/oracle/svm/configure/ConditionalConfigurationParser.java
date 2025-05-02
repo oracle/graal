@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.configure;
 
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
+import static com.oracle.svm.configure.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
+import static com.oracle.svm.configure.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
 import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 public abstract class ConditionalConfigurationParser extends ConfigurationParser {
     public static final String CONDITIONAL_KEY = "condition";

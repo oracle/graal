@@ -35,13 +35,13 @@ import java.util.List;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ResourceConfigurationParser;
 import com.oracle.svm.configure.ResourcesRegistry;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
