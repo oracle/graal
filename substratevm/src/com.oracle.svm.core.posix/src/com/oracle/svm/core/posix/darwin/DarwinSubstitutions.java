@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -115,6 +116,32 @@ final class DarwinTimeUtil {
          */
         return (prev == obsv) ? now : obsv;
     }
+}
+
+/**
+ * Native functions don't exist on Darwin because this whole class is used, and should exist, only
+ * on Linux. See <code>java.util.prefs.Preferences#factory</code>.
+ */
+@TargetClass(className = "java.util.prefs.FileSystemPreferences")
+final class Target_java_util_prefs_FileSystemPreferences {
+    @Delete
+    private static native int[] lockFile0(String fileName, int permission, boolean shared);
+
+    @Delete
+    private static native int unlockFile0(int lockHandle);
+
+    @Delete
+    private static native int chmod(String fileName, int permission);
+}
+
+/**
+ * Not used in native image and has linker errors with XCode 13. Can be removed in the future when
+ * XCode 14 becomes omnipresent.
+ */
+@TargetClass(className = "sun.util.locale.provider.HostLocaleProviderAdapterImpl")
+final class Target_sun_util_locale_provider_HostLocaleProviderAdapterImpl {
+    @Delete
+    private static native String getDefaultLocale(int cat);
 }
 
 /** Dummy class to have a class with the file's name. */
