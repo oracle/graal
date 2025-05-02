@@ -2,13 +2,14 @@ package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.List;
 
 /**
  * Interface for checkers that can be used to check the results of the abstract interpretation.
  */
-public interface Checker {
+public interface Checker<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Get a simple description of the checker.
@@ -19,19 +20,21 @@ public interface Checker {
     String getDescription();
 
     /**
-     * Check the given node with the given abstract state map.
-     * This map will be created during fixpoint iteration of a analysisMethod's body
+     * Check the given abstract state map for errors or inconsistencies.
      *
-     * @param abstractStateMap the abstract state map after the fixpoint iteration
-     * @return the result of the check
+     * @param abstractStateMap the abstract state map to check
+     * @return a list of {@link CheckerResult} for this check
      */
+    List<CheckerResult> check(AbstractStateMap<Domain> abstractStateMap, StructuredGraph graph);
 
     /**
-     * NOTE:
-     * Abstract interpretation sometimes produces a lot of caught warnings/errors ( sometimes even false positives )
-     * this can be discouraging for the person trying to analyze their program. We need to think of a way to restrict this amount.
-     * There are few possibilities here: we can either sort the warnings according to how severe they are and limit this amount,
-     * or we won't show the  errors propagated from caller to callees
+     * Check if the checker is compatible with the given abstract state map.
+     * The domain of the {@code  abstractStateMap} should be the same
+     * ( or convertable ) to the {@link Domain} used in the checker.
+     * This is used to avoid ClassCastExceptions when checking the results.
+     *
+     * @param abstractStateMap the abstract state map to check compatibility with
+     * @return true if the checker is compatible, false otherwise
      */
-    List<CheckerResult> check(AbstractStateMap<? extends AbstractDomain<?>> abstractStateMap);
+    boolean isCompatibleWith(AbstractStateMap<?> abstractStateMap);
 }

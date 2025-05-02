@@ -6,6 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.checker.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
 import jdk.graal.compiler.nodes.calc.RemNode;
@@ -17,7 +18,7 @@ import java.util.List;
  * Represents a simple example of how a checker can be implemented.
  * This DivisionByZeroChecker works on IntInterval domain.
  */
-public final class DivisionByZeroChecker implements Checker {
+public final class DivisionByZeroChecker implements Checker<IntInterval> {
 
     @Override
     public String getDescription() {
@@ -25,7 +26,7 @@ public final class DivisionByZeroChecker implements Checker {
     }
 
     @Override
-    public List<CheckerResult> check(AbstractStateMap<?> abstractStateMap) {
+    public List<CheckerResult> check(AbstractStateMap<IntInterval> abstractStateMap, StructuredGraph graph) {
         List<CheckerResult> checkerResults = new ArrayList<>();
 
         var stateMap = abstractStateMap.getStateMap();
@@ -36,7 +37,7 @@ public final class DivisionByZeroChecker implements Checker {
 
             if (node instanceof FloatDivNode || node instanceof RemNode) {
                 var divisorNode = ((BinaryArithmeticNode<?>) node).getY();
-                IntInterval divisorInterval = (IntInterval) abstractStateMap.getPostCondition(divisorNode);
+                IntInterval divisorInterval = abstractStateMap.getPostCondition(divisorNode);
                 if (divisorInterval.containsValue(0)) {
                     // NOTE: getNodeSourcePosition is very vague, we probably should print more information like where the 0 was assigned last etc.
                     checkerResults.add(new CheckerResult(CheckerStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString()));
@@ -45,5 +46,10 @@ public final class DivisionByZeroChecker implements Checker {
         }
 
         return checkerResults;
+    }
+
+    @Override
+    public boolean isCompatibleWith(AbstractStateMap<?> abstractStateMap) {
+        return abstractStateMap.getInitialDomain() instanceof IntInterval;
     }
 }

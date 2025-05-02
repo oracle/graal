@@ -9,11 +9,11 @@ import java.util.List;
  */
 public final class CheckerSummary {
 
-    private final Checker checker;
+    private final Checker<?> checker;
     private final List<CheckerResult> warnings;
     private final List<CheckerResult> errors;
 
-    public CheckerSummary(Checker checker, List<CheckerResult> checkerResults) {
+    public CheckerSummary(Checker<?> checker, List<CheckerResult> checkerResults) {
         this.checker = checker;
         this.warnings = new LinkedList<>();
         this.errors = new LinkedList<>();
@@ -22,13 +22,7 @@ public final class CheckerSummary {
         }
     }
 
-    public CheckerSummary(Checker checker) {
-        this.checker = checker;
-        this.warnings = new LinkedList<>();
-        this.errors = new LinkedList<>();
-    }
-
-    public Checker getChecker() {
+    public Checker<?> getChecker() {
         return checker;
     }
 
