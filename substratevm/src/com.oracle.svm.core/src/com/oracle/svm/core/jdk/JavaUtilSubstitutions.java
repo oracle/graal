@@ -36,6 +36,7 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -44,6 +45,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.util.SystemProps;
 
 /*
  * Lazily initialized cache fields of collection classes need to be reset. They are not needed in
@@ -359,6 +362,19 @@ final class LinkedTransferQueueDualNodeIsUniprocessorAccessor {
         cachedIsUniprocessor = Runtime.getRuntime().availableProcessors() == 1;
         return cachedIsUniprocessor;
     }
+}
+
+/**
+ * Currently unsupported in Native Image because our system-property support works completely
+ * differently than the one in HotSpot.
+ */
+@TargetClass(value = SystemProps.Raw.class)
+final class Target_jdk_internal_util_SystemProps_Raw {
+    @Delete
+    private static native String[] vmProperties();
+
+    @Delete
+    private static native String[] platformProperties();
 }
 
 /** Dummy class to have a class with the file's name. */
