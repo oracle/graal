@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 /**
  * Interface for a fixpoint iterator in abstract interpretation.
@@ -30,23 +30,14 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
     AbstractStateMap<Domain> iterateUntilFixpoint();
 
     /**
-     * Returns the post condition of the given {@link Node}.
+     * Gets the {@link ControlFlowGraph} on which the fixpoint iteration is performed.
      *
-     * @param node to the post condition of
-     * @return the post condition of the node
+     * @return the control flow graph of the method
      */
-    Domain getPreCondition(Node node);
+    ControlFlowGraph getControlFlowGraph();
 
     /**
-     * Returns the precondition of the given {@link Node}.
-     *
-     * @param node to the precondition of
-     * @return the precondition of the node
-     */
-    Domain getPostCondition(Node node);
-
-    /**
-     * Returns the abstract state map of the iterator.
+     * Gets the abstract state map of the iterator.
      *
      * @return the abstract state map of the iterator
      */
