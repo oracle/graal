@@ -26,10 +26,9 @@ package com.oracle.svm.configure.config.conditional;
 
 import java.util.List;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationPredefinedClass;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;

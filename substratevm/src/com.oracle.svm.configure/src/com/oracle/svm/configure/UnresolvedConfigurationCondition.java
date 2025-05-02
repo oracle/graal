@@ -38,9 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.impl;
+package com.oracle.svm.configure;
 
 import java.util.Objects;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 /**
  * Represents a {@link ConfigurationCondition} during parsing before it is resolved in a context of

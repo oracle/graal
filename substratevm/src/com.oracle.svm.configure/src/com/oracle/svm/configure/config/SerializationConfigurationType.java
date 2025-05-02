@@ -30,7 +30,7 @@ import static com.oracle.svm.configure.ConfigurationParser.TYPE_KEY;
 import java.io.IOException;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
