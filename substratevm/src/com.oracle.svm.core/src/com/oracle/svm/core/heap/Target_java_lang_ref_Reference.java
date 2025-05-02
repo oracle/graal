@@ -29,6 +29,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.util.function.BooleanSupplier;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -119,7 +120,8 @@ public final class Target_java_lang_ref_Reference<T> {
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
     Target_java_lang_ref_Reference(T referent, Target_java_lang_ref_ReferenceQueue<? super T> queue) {
         this.referent = referent;
-        this.queue = (queue == null) ? Target_java_lang_ref_ReferenceQueue.NULL_QUEUE : queue;
+        this.queue = (queue == null) ? (JavaVersionUtil.JAVA_SPEC > 21 ? Target_java_lang_ref_ReferenceQueue.NULL_QUEUE
+                        : Target_java_lang_ref_ReferenceQueue.NULL) : queue;
     }
 
     @KeepOriginal

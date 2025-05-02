@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
@@ -161,7 +162,8 @@ public final class ReferenceInternals {
     }
 
     public static boolean hasQueue(Reference<?> instance) {
-        return cast(instance).queue != Target_java_lang_ref_ReferenceQueue.NULL_QUEUE;
+        return cast(instance).queue != (JavaVersionUtil.JAVA_SPEC > 21 ? Target_java_lang_ref_ReferenceQueue.NULL_QUEUE
+                        : Target_java_lang_ref_ReferenceQueue.NULL);
     }
 
     /*
@@ -229,7 +231,8 @@ public final class ReferenceInternals {
                 } else {
                     @SuppressWarnings("unchecked")
                     Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
-                    if (queue != Target_java_lang_ref_ReferenceQueue.NULL_QUEUE) {
+                    if (queue != (JavaVersionUtil.JAVA_SPEC > 21 ? Target_java_lang_ref_ReferenceQueue.NULL_QUEUE
+                                    : Target_java_lang_ref_ReferenceQueue.NULL)) {
                         // Enqueues, avoiding the potentially overridden Reference.enqueue().
                         queue.enqueue(ref);
                     }
