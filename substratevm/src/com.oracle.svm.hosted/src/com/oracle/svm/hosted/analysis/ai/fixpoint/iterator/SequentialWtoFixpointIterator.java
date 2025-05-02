@@ -55,7 +55,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
         }
 
         logger.log("Finished WTO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
+        GraphUtil.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
 

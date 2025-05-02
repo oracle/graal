@@ -62,7 +62,7 @@ public final class ConcurrentWpoFixpointIterator<
         buildWorkNodes();
         runAnalysis();
         logger.log("Finished concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
+        GraphUtil.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
 
@@ -97,6 +97,7 @@ public final class ConcurrentWpoFixpointIterator<
         logger.log(weakPartialOrdering.toString(), LoggerVerbosity.DEBUG);
     }
 
+    // TODO: make this parallel
     private void runAnalysis() {
         Queue<WorkNode> workQueue = new ConcurrentLinkedQueue<>();
         workQueue.add(nodeToWork.get(entry));

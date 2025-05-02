@@ -75,7 +75,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
         }
 
         logger.log("Finished WorkList fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
+        GraphUtil.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
         return abstractStateMap;
     }
 }
