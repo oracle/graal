@@ -2693,7 +2693,8 @@ _baristaConfig = {
         "ktor-hello-world": {},
         "play-scala-hello-world": {},
     },
-    "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 99.9, 99.99, 99.999, 100.0],
+    # Should currently only contain round numbers due to the field incorrectly being indexed as integer in the DB (GR-57487)
+    "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
     "disable_trackers": [mx_benchmark.RssTracker, mx_benchmark.PsrecordTracker, mx_benchmark.PsrecordMaxrssTracker, mx_benchmark.RssPercentilesTracker, mx_benchmark.RssPercentilesAndMaxTracker],
 }
@@ -2825,43 +2826,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "load-tester.id": ("<startup.id>", str),
             "load-tester.method-type": "requests"
         }, ["startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
-        # copy the response_time with iteration 0 into time-to-first-response
-        class DeriveTimeToFirstResponseRule(mx_benchmark.JsonArrayStdOutFileRule):
-            def parse(self, text) -> Iterable[DataPoint]:
-                datapoints = super().parse(text)
-                iteration_0_datapoints = [datapoint for datapoint in datapoints if datapoint["metric.iteration"] == 0]
-                for datapoint in iteration_0_datapoints:
-                    del datapoint["metric.iteration"]
-                return iteration_0_datapoints
-        all_rules.append(DeriveTimeToFirstResponseRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
-            "metric.name": "time-to-first-response",
-            "metric.type": "numeric",
-            "metric.unit": "ms",
-            "metric.value": ("<startup.measurements.response_time>", float),
-            "metric.better": "lower",
-            "metric.iteration": ("<startup.measurements.iteration>", int),
-            "load-tester.id": ("<startup.id>", str),
-            "load-tester.method-type": "requests"
-        }, ["startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
-        # copy the worst response_time into max-time
-        class DeriveMaxTimeRule(mx_benchmark.JsonArrayStdOutFileRule):
-            def parse(self, text) -> Iterable[DataPoint]:
-                datapoints = super().parse(text)
-                if len(datapoints) == 0:
-                    return []
-                max_value_datapoints = [max(datapoints, key=lambda x: x["metric.value"])]
-                return max_value_datapoints
-        all_rules.append(DeriveMaxTimeRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
-            "metric.name": "max-time",
-            "metric.type": "numeric",
-            "metric.unit": "ms",
-            "metric.value": ("<startup.measurements.response_time>", float),
-            "metric.better": "lower",
-            "load-tester.id": ("<startup.id>", str),
-            "load-tester.method-type": "requests"
-        }, ["startup.id", "startup.measurements.response_time"]))
 
         # Warmup
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
@@ -2920,21 +2884,66 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         }, [
             f"resource_usage__rss__p{float(percentile)}"
         ], indexer_str="__") for percentile in _baristaConfig["rss_percentiles"]]
-        # Ensure we are reporting the analogous numbers across suites (p99 at the time of writing this comment)
-        percentile_to_copy_into_max_rss = float(mx_benchmark.RssPercentilesTracker.MaxRssCopyRule.percentile_to_copy_into_max_rss)
-        all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {
-            "benchmark": self.context.benchmark,
-            "metric.name": "max-rss",
-            "metric.type": "numeric",
-            "metric.unit": "MB",
-            "metric.value": (f"<resource_usage__rss__p{percentile_to_copy_into_max_rss}>", float),
-            "metric.better": "lower",
-        }, [f"resource_usage__rss__p{percentile_to_copy_into_max_rss}"], indexer_str="__"))
 
         return all_rules
 
     def validateStdoutWithDimensions(self, out, benchmarks, bmSuiteArgs, retcode=None, dims=None, extraRules=None) -> DataPoints:
         datapoints = super().validateStdoutWithDimensions(out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims, extraRules=extraRules)
+        datapoints = self.computeDerivedDatapoints(datapoints)
+        datapoints = self.extendDatapoints(datapoints)
+        return datapoints
+
+    def computeDerivedDatapoints(self, datapoints: DataPoints) -> DataPoints:
+        """Adds derived datapoints to the list of datapoints captured from the benchmark stdout or generated files.
+        Adds datapoints such as:
+        * max-rss: copied from specific rss percentile values
+        * time-to-first-response: copied from response_time with iteration 0
+        * max-time: copied from response_time with the highest value
+        * ops-per-GB-second: computed as throughput divided by max-rss
+        """
+        # max-rss
+        percentile_to_copy_into_max_rss = float(mx_benchmark.RssPercentilesTracker.MaxRssCopyRule.percentile_to_copy_into_max_rss)
+        rss_dp_to_copy_from = next(filter(lambda dp: dp["metric.name"] == "rss" and dp["metric.percentile"] == percentile_to_copy_into_max_rss, datapoints), None)
+        if rss_dp_to_copy_from is not None:
+            max_rss_dp = rss_dp_to_copy_from.copy()
+            max_rss_dp["metric.name"] = "max-rss"
+            del max_rss_dp["metric.percentile"]
+            datapoints.append(max_rss_dp)
+
+        # time-to-first-response
+        first_request_time_dp = next(filter(lambda dp: dp["metric.name"] == "request-time" and dp["metric.iteration"] == 0, datapoints), None)
+        if first_request_time_dp is not None:
+            time_to_first_response_dp = first_request_time_dp.copy()
+            time_to_first_response_dp["metric.name"] = "time-to-first-response"
+            del time_to_first_response_dp["metric.iteration"]
+            datapoints.append(time_to_first_response_dp)
+
+        # max-time
+        request_time_dps = filter(lambda dp: dp["metric.name"] == "request-time", datapoints)
+        worst_request_time_dp = max(request_time_dps, key=lambda dp: dp["metric.value"], default=None)
+        if worst_request_time_dp is not None:
+            max_time_dp = worst_request_time_dp.copy()
+            max_time_dp["metric.name"] = "max-time"
+            del max_time_dp["metric.iteration"]
+            datapoints.append(max_time_dp)
+
+        # ops-per-GB-second
+        throughput_dp = next(filter(lambda dp: dp["metric.name"] == "throughput", datapoints), None)
+        if rss_dp_to_copy_from is not None and throughput_dp is not None:
+            ops_per_gb_sec = throughput_dp["metric.value"] / (max_rss_dp["metric.value"] / 1024)
+            ops_per_gb_sec_dp = throughput_dp.copy()
+            ops_per_gb_sec_dp["metric.name"] = "ops-per-GB-second"
+            ops_per_gb_sec_dp["metric.unit"] = "op/GB*s"
+            ops_per_gb_sec_dp["metric.value"] = ops_per_gb_sec
+            datapoints.append(ops_per_gb_sec_dp)
+
+        return datapoints
+
+    def extendDatapoints(self, datapoints: DataPoints) -> DataPoints:
+        """
+        Extends the datapoints with 'load-tester' fields.
+        Relies on the intermediate 'load-tester.command' field being set up beforehand.
+        """
         for datapoint in datapoints:
             # Expand the 'load-tester' field group
             if "load-tester.command" in datapoint:
