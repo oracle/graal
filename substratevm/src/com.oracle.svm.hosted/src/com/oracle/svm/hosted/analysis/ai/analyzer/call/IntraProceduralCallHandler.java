@@ -11,7 +11,6 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
@@ -44,7 +43,6 @@ public final class IntraProceduralCallHandler<Domain extends AbstractDomain<Doma
     public void handleRootCall(AnalysisMethod root, DebugContext debug) {
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, debug, initialDomain, transferFunction, iteratorPayload);
         AbstractStateMap<Domain> abstractStateMap = fixpointIterator.iterateUntilFixpoint();
-        checkerManager.runCheckers(root.wrapped, abstractStateMap);
-        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(root).graph, root, abstractStateMap);
+        checkerManager.runCheckers(fixpointIterator.getControlFlowGraph().graph, abstractStateMap);
     }
 }

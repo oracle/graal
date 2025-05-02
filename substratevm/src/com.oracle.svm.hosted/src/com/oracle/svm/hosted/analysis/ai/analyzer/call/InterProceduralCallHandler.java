@@ -106,7 +106,6 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         /* Run the fixpoint iteration on the invoked method */
         callStack.push(analysisMethod);
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(analysisMethod, debug, summary.getPreCondition(), transferFunction, iteratorPayload);
-        logger.log("Running fixpoint iteration on: " + analysisMethod.getQualifiedName(), LoggerVerbosity.INFO);
         logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
         AbstractStateMap<Domain> invokeAbstractStateMap = fixpointIterator.iterateUntilFixpoint();
         Domain returnDomain = invokeAbstractStateMap.getReturnDomain();
@@ -115,12 +114,7 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         callStack.pop();
 
         /* Here we are finished with the fixpoint iteration and updated the summary cache */
-        logger.log("Computed summary for " + calleeMethod.getName(), LoggerVerbosity.SUMMARY);
-        logger.log("The summary pre-condition", LoggerVerbosity.SUMMARY);
-        logger.log(summary.getPreCondition().toString(), LoggerVerbosity.SUMMARY);
-        logger.log("The summary post-condition", LoggerVerbosity.SUMMARY);
-        logger.log(summary.getPostCondition().toString(), LoggerVerbosity.SUMMARY);
-        checkerManager.runCheckers(calleeMethod, callerStateMap);
+        checkerManager.runCheckers(fixpointIterator.getControlFlowGraph().graph, callerStateMap);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }
 
@@ -132,8 +126,7 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         AbstractStateMap<Domain> abstractStateMap = fixpointIterator.iterateUntilFixpoint();
         callStack.pop();
 
-        checkerManager.runCheckers(root.wrapped, abstractStateMap);
-        GraphUtil.printInferredGraph(iteratorPayload.getMethodGraph().get(root).graph, root, abstractStateMap);
+        checkerManager.runCheckers(fixpointIterator.getControlFlowGraph().graph, abstractStateMap);
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.logSummariesStats(summaryManager);
     }
