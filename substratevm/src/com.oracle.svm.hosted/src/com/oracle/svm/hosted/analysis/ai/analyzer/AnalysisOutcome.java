@@ -5,7 +5,6 @@ import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 
 /**
  * Represents the outcome of an analysis, consisting of a result and an optional summary.
- * The class utilizes a generic parameter for the domain used in abstract interpretation.
  *
  * @param result   the result of the analysis, represented as an instance of {@link AnalysisResult}
  * @param summary  the summary produced by the analysis, represented as an instance of {@link Summary}

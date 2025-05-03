@@ -1,11 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.IntraProceduralCallHandler;
+import com.oracle.svm.hosted.analysis.ai.analyzer.call.IntraProceduralInvokeHandler;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
-import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * An intra-procedural analyzer that performs an intra-procedural analysis on the given method.
@@ -18,11 +17,16 @@ public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>
         super(builder);
     }
 
+    /**
+     * The {@code runAnalysis} method is responsible for executing the analysis on the given method.
+     *
+     * @param method the method to be analyzed.
+     */
     @Override
-    public void analyzeMethod(AnalysisMethod method, DebugContext debug) {
+    public void runAnalysis(AnalysisMethod method) {
         IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
-        IntraProceduralCallHandler<Domain> callHandler = new IntraProceduralCallHandler<>(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload);
-        callHandler.handleRootCall(method, debug);
+        IntraProceduralInvokeHandler<Domain> callHandler = new IntraProceduralInvokeHandler<>(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload);
+        callHandler.handleRootInvoke(method);
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {

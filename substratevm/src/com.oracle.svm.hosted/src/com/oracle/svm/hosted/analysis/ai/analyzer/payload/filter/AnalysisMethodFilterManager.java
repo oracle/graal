@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Manages a collection of {@link AnalysisMethodFilter} instances.
+ * A wrapper around a list of {@link AnalysisMethodFilter}s.
  */
 public final class AnalysisMethodFilterManager {
 

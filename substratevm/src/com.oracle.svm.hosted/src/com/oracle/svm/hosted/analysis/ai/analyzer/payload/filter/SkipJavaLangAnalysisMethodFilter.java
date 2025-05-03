@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisMethodUtil;
 
 /**
  * Skip methods that are part of the java.lang package.
@@ -10,6 +9,6 @@ public final class SkipJavaLangAnalysisMethodFilter implements AnalysisMethodFil
 
     @Override
     public boolean shouldSkipMethod(AnalysisMethod method) {
-        return AnalysisMethodUtil.isJavaLangMethod(method);
+        return method.getQualifiedName().startsWith("java") || method.getQualifiedName().startsWith("jdk");
     }
 }

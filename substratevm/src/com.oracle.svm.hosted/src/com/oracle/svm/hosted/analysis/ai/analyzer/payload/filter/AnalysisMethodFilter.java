@@ -9,5 +9,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
  */
 public interface AnalysisMethodFilter {
 
+    /**
+     * Checks if the given analysisMethod should be analyzed or skipped.
+     *
+     * @param method the analysisMethod to check
+     * @return true if the analysisMethod should be analyzed, false otherwise
+     */
     boolean shouldSkipMethod(AnalysisMethod method);
 }

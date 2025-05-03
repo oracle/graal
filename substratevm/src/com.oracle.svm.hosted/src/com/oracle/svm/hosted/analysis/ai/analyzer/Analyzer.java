@@ -10,7 +10,6 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
-import jdk.graal.compiler.debug.DebugContext;
 
 import java.io.IOException;
 
@@ -20,9 +19,9 @@ import java.io.IOException;
  * It encapsulates logic for creating analysis payloads and facilitates method-specific analysis.
  * To create an intra-procedural analyzer, it is sufficient to provide the initial domain, and the node interpreter.
  * To create an inter-procedural analyzer, we need to also add an implementation of {@link Summary}, as well as logic
- * for creating the summary from an abstract context -> handled by {@link SummaryFactory}.
+ * for creating the summary from an abstract context, which is handled by {@link SummaryFactory}.
  * We can also add additional parameters, like list of checkers to be used during the analysis, or method filters,
- * to restrict the analysis of specific methods.
+ * to restrict the analysis of specific methods, extrapolation limits such as join/widen limits, etc.
  *
  * @param <Domain> the type of the abstract domain used for the analysis.
  */
@@ -42,7 +41,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
         this.methodFilterManager = builder.methodFilterManager;
     }
 
-    public abstract void analyzeMethod(AnalysisMethod method, DebugContext debug) throws IOException;
+    public abstract void runAnalysis(AnalysisMethod method) throws IOException;
 
     public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {
         protected final Domain initialDomain;
@@ -61,7 +60,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
             return self();
         }
 
-        public T registerChecker(Checker checker) {
+        public T registerChecker(Checker<?> checker) {
             checkerManager.registerChecker(checker);
             return self();
         }
