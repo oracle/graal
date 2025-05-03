@@ -172,6 +172,18 @@ public final class AccessPath {
         return new AccessPath(base);
     }
 
+    public AccessPath copyOf() {
+        List<AccessPathElement> copiedElements = new ArrayList<>(elements.size());
+        for (AccessPathElement element : elements) {
+            if (element instanceof FieldAccess fieldAccess) {
+                copiedElements.add(new FieldAccess(fieldAccess.getName(), fieldAccess.getModifiers()));
+            } else if (element instanceof ArrayAccess arrayAccess) {
+                copiedElements.add(new ArrayAccess(arrayAccess.getName()));
+            }
+        }
+        return new AccessPath(base, copiedElements);
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(base.toString());
@@ -192,4 +204,5 @@ public final class AccessPath {
     public int hashCode() {
         return Objects.hash(base, elements);
     }
+
 }

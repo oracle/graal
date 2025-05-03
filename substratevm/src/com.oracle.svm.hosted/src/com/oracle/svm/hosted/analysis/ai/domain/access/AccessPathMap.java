@@ -53,9 +53,12 @@ public final class AccessPathMap<Domain extends AbstractDomain<Domain>>
     }
 
     /**
-     * Get the value of a certain node in the map.
+     * Some maps will contain access paths of Nodes, we can use this method to retrieve the value
+     *
+     * @param node         the node we want to retrieve the value for
+     * @param defaultValue the default value to return if the node is not found in the map
+     * @return the value of the node or the default value
      */
-    // TODO handle parameters
     public Domain getNodeDataValue(Node node, Domain defaultValue) {
         Map<AccessPath, Domain> map = getValue().getMap();
         for (AccessPath path : map.keySet()) {
@@ -145,6 +148,6 @@ public final class AccessPathMap<Domain extends AbstractDomain<Domain>>
         if (isTop()) {
             return "AccessPathMap: ⊤";
         }
-        return "AccessPathMap: " + getValue().toString();
+        return getValue().toString();
     }
 }

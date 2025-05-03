@@ -23,5 +23,11 @@ public final class SignDomain extends FiniteDomain<Sign> {
         return new SignDomain(this);
     }
 
-    // TODO: add arithmetical operations
+    public SignDomain plus(SignDomain other) {
+        return new SignDomain(this.getState().plus(other.getState()));
+    }
+
+    public SignDomain minus(SignDomain other) {
+        return new SignDomain(this.getState().minus(other.getState()));
+    }
 }

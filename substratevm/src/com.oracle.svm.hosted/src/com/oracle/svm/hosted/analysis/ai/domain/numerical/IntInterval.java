@@ -218,7 +218,9 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public void divWith(IntInterval other) {
-        if (isDivisionByZeroInterval(other)) return;
+        if (isDivisionByZeroInterval(other)) {
+            return;
+        }
 
         long a = getLowerBound() / other.getLowerBound();
         long b = getLowerBound() / other.getUpperBound();
@@ -254,8 +256,9 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public void remWith(IntInterval other) {
-        if (isDivisionByZeroInterval(other)) return;
-
+        if (isDivisionByZeroInterval(other)) {
+            return;
+        }
         long a = getLowerBound() % other.getLowerBound();
         long b = getLowerBound() % other.getUpperBound();
         long c = getUpperBound() % other.getLowerBound();

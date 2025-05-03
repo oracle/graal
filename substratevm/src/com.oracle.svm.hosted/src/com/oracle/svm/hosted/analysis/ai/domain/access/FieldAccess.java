@@ -1,7 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
-import java.lang.reflect.Modifier;
-
 /**
  * Represents a field access in an access path (e.g., .name, .address)
  */
@@ -15,6 +13,10 @@ public final class FieldAccess implements AccessPathElement {
         this.modifiers = modifiers;
     }
 
+    public int getModifiers() {
+        return modifiers;
+    }
+
     @Override
     public Kind getKind() {
         return Kind.FIELD;
@@ -23,50 +25,6 @@ public final class FieldAccess implements AccessPathElement {
     @Override
     public String getName() {
         return fieldName;
-    }
-
-    public boolean isStatic() {
-        return Modifier.isStatic(modifiers);
-    }
-
-    public boolean isPrivate() {
-        return Modifier.isPrivate(modifiers);
-    }
-
-    public boolean isPublic() {
-        return Modifier.isPublic(modifiers);
-    }
-
-    public boolean isProtected() {
-        return Modifier.isProtected(modifiers);
-    }
-
-    public boolean isSynchronized() {
-        return Modifier.isSynchronized(modifiers);
-    }
-
-    public boolean isVolatile() {
-        return Modifier.isVolatile(modifiers);
-    }
-
-    public boolean isTransient() {
-        return Modifier.isVolatile(modifiers);
-    }
-
-    public boolean isNative() {
-        return Modifier.isNative(modifiers);
-    }
-
-    public boolean isInterface() {
-        return Modifier.isInterface(modifiers);
-    }
-
-    public boolean isAbstract() {
-        return Modifier.isAbstract(modifiers);
-    }
-
-    public boolean isStrict() {
-        return Modifier.isStrict(modifiers);
     }
 
     @Override
