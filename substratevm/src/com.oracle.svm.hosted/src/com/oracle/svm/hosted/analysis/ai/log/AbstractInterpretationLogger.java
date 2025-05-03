@@ -1,10 +1,17 @@
 package com.oracle.svm.hosted.analysis.ai.log;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,51 +25,48 @@ import java.util.Date;
 public final class AbstractInterpretationLogger {
 
     private static AbstractInterpretationLogger instance;
-    private final String fileName;
     private final PrintWriter fileWriter;
     private final DebugContext debugContext;
     private final LoggerVerbosity loggerVerbosity;
+    private final String logFilePath;
 
-    private AbstractInterpretationLogger(AnalysisMethod method,
-                                         DebugContext debugContext,
+    private AbstractInterpretationLogger(DebugContext debugContext,
                                          String customFileName,
                                          LoggerVerbosity loggerVerbosity) throws IOException {
+        String fileName;
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         if (customFileName != null && !customFileName.isEmpty()) {
-            this.fileName = customFileName + ".log";
+            fileName = customFileName + "_" + timeStamp + ".log";
         } else {
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-            this.fileName = method.getName() + "_" + timeStamp + ".log";
+            fileName = "absint_" + timeStamp + ".log";
         }
-        this.fileWriter = new PrintWriter(new FileWriter(fileName, true));
+        this.logFilePath = new java.io.File(fileName).getAbsolutePath(); // Store the absolute path
+        this.fileWriter = new PrintWriter(new FileWriter(logFilePath, true));
         this.debugContext = debugContext;
         this.loggerVerbosity = loggerVerbosity;
     }
 
-    public static synchronized AbstractInterpretationLogger getInstance(AnalysisMethod method,
-                                                                        DebugContext debugContext,
-                                                                        String customFileName,
-                                                                        LoggerVerbosity loggerVerbosity) throws IOException {
+    public static AbstractInterpretationLogger getInstance(DebugContext debugContext,
+                                                           String customFileName,
+                                                           LoggerVerbosity loggerVerbosity) throws IOException {
         if (instance == null) {
-            instance = new AbstractInterpretationLogger(method, debugContext, customFileName, loggerVerbosity);
+            instance = new AbstractInterpretationLogger(debugContext, customFileName, loggerVerbosity);
         }
         return instance;
     }
 
-    public static AbstractInterpretationLogger getInstance(AnalysisMethod method,
-                                                           DebugContext debugContext,
+    public static AbstractInterpretationLogger getInstance(DebugContext debugContext,
                                                            String customFileName) throws IOException {
-        return getInstance(method, debugContext, customFileName, LoggerVerbosity.INFO);
+        return getInstance(debugContext, customFileName, LoggerVerbosity.INFO);
     }
 
-    public static AbstractInterpretationLogger getInstance(AnalysisMethod method,
-                                                           DebugContext debugContext,
+    public static AbstractInterpretationLogger getInstance(DebugContext debugContext,
                                                            LoggerVerbosity loggerVerbosity) throws IOException {
-        return getInstance(method, debugContext, null, loggerVerbosity);
+        return getInstance(debugContext, null, loggerVerbosity);
     }
 
-    public static AbstractInterpretationLogger getInstance(AnalysisMethod method,
-                                                           DebugContext debugContext) throws IOException {
-        return getInstance(method, debugContext, null, LoggerVerbosity.INFO);
+    public static AbstractInterpretationLogger getInstance(DebugContext debugContext) throws IOException {
+        return getInstance(debugContext, null, LoggerVerbosity.INFO);
     }
 
     public static AbstractInterpretationLogger getInstance() {
@@ -72,32 +76,8 @@ public final class AbstractInterpretationLogger {
         return instance;
     }
 
-    private void logChecker(String message) {
-        debugContext.log("[CHECKER] " + message);
-    }
-
-    private void logCheckerErr(String message) {
-        debugContext.log(ANSI.RED + "[CHECKER_ERR] " + ANSI.RESET + message);
-    }
-
-    private void logCheckerWarn(String message) {
-        debugContext.log(ANSI.YELLOW + "[CHECKER_WARN] " + ANSI.RESET + message);
-    }
-
-    private void logSummary(String message) {
-        debugContext.log(ANSI.BLUE + "[SUMMARY] " + ANSI.RESET + message);
-    }
-
-    private void logInfo(String message) {
-        debugContext.log(ANSI.GREEN + "[INFO] " + ANSI.RESET + message);
-    }
-
-    private void logDebug(String message) {
-        debugContext.log("[DEBUG] " + message);
-    }
-
-    public boolean isDebugEnabled() {
-        return loggerVerbosity.compareTo(LoggerVerbosity.DEBUG) >= 0;
+    public DebugContext getDebugContext() {
+        return debugContext;
     }
 
     public void log(String message, LoggerVerbosity verbosity) {
@@ -135,11 +115,82 @@ public final class AbstractInterpretationLogger {
         log("Summary cache contents: ", LoggerVerbosity.SUMMARY);
         for (Summary<Domain> summary : summaryManager.summaryCache().getAllSummaries()) {
             log("Summary for method: " + summary.getInvoke(), LoggerVerbosity.SUMMARY);
-            log("Summary precondition: " + summary.getPreCondition(), LoggerVerbosity.SUMMARY);
-            log("Summary postcondition: " + summary.getPostCondition(), LoggerVerbosity.SUMMARY);
+            log("Summary pre-condition: " + summary.getPreCondition(), LoggerVerbosity.SUMMARY);
+            log("Summary post-condition: " + summary.getPostCondition(), LoggerVerbosity.SUMMARY);
         }
 
         log(summaryManager.getCacheStats(), LoggerVerbosity.SUMMARY);
+    }
+
+    public void printGraph(AnalysisMethod root, ControlFlowGraph graph) {
+        if (graph == null) {
+            throw new IllegalArgumentException("ControlFlowGraph is null");
+        }
+
+        log("Graph of AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
+        for (HIRBlock block : graph.getBlocks()) {
+            log(block.toString(), LoggerVerbosity.DEBUG);
+
+            for (Node node : block.getNodes()) {
+                log(node.toString(), LoggerVerbosity.DEBUG);
+                log("\tSuccessors: ", LoggerVerbosity.DEBUG);
+                for (Node successor : node.successors()) {
+                    log("\t\t" + successor.toString(), LoggerVerbosity.DEBUG);
+                }
+                log("\tInputs: ", LoggerVerbosity.DEBUG);
+                for (Node input : node.inputs()) {
+                    log("\t\t" + input.toString(), LoggerVerbosity.DEBUG);
+                }
+            }
+        }
+
+        log("The Invokes of the AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
+        for (InvokeInfo invoke : root.getInvokes()) {
+            log("\tInvoke: " + invoke, LoggerVerbosity.DEBUG);
+            for (AnalysisMethod callee : invoke.getOriginalCallees()) {
+                log("\t\tCallee: " + callee, LoggerVerbosity.DEBUG);
+            }
+        }
+    }
+
+    public void printLabelledGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractState<?> abstractState) {
+        log("Computed post-conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
+        for (Node node : graph.getNodes()) {
+            NodeState<?> nodeState = abstractState.getState(node);
+            log(node + " -> " + nodeState.getPostCondition(), LoggerVerbosity.INFO);
+        }
+    }
+
+    private void logChecker(String message) {
+        debugContext.log(ANSI.PURPLE + "[CHECKER] " + ANSI.RESET + message);
+    }
+
+    private void logCheckerErr(String message) {
+        debugContext.log(ANSI.RED + "[CHECKER_ERR] " + ANSI.RESET + message);
+    }
+
+    private void logCheckerWarn(String message) {
+        debugContext.log(ANSI.YELLOW + "[CHECKER_WARN] " + ANSI.RESET + message);
+    }
+
+    private void logSummary(String message) {
+        debugContext.log(ANSI.BLUE + "[SUMMARY] " + ANSI.RESET + message);
+    }
+
+    private void logInfo(String message) {
+        debugContext.log(ANSI.GREEN + "[INFO] " + ANSI.RESET + message);
+    }
+
+    private void logDebug(String message) {
+        debugContext.log("[DEBUG] " + message);
+    }
+
+    public boolean isDebugEnabled() {
+        return loggerVerbosity.compareTo(LoggerVerbosity.DEBUG) >= 0;
+    }
+
+    public String getLogFilePath() {
+        return logFilePath;
     }
 
     private static class ANSI {
@@ -149,7 +200,6 @@ public final class AbstractInterpretationLogger {
         public static final String YELLOW = "\033[0;33m";
         public static final String BLUE = "\033[0;34m";
         public static final String PURPLE = "\033[0;35m";
-        public static final String CYAN = "\033[0;36m";
-        public static final String WHITE = "\033[0;37m";
     }
 }
+
