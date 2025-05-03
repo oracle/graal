@@ -1,32 +1,27 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks;
 
-import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
+import com.oracle.svm.hosted.analysis.ai.util.BigBangUtil;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InvokeUtil {
 
+    /* Checks if invoke is a constructor of a class that implements AutoCloseable */
     public static boolean opensResource(Invoke invoke) {
-        String declaringClass = invoke.getTargetMethod().getDeclaringClass().toJavaName();
-        if (!(declaringClass.equals("java.io.FileInputStream"))) {
-            return false;
-        }
-        return invoke.getTargetMethod().getName().equals("<init>");
+        return isResourceMethod(invoke, "<init>");
     }
 
     public static boolean closesResource(Invoke invoke) {
-        String declaringClass = invoke.getTargetMethod().getDeclaringClass().toJavaName();
-        if (!(declaringClass.equals("java.io.FileInputStream"))) {
+        return isResourceMethod(invoke, "close");
+    }
+
+    private static boolean isResourceMethod(Invoke invoke, String methodName) {
+        ResolvedJavaType classType = invoke.getTargetMethod().getDeclaringClass();
+        ResolvedJavaType autoCloseableType = BigBangUtil.getInstance().lookUpType(AutoCloseable.class);
+
+        if (!autoCloseableType.isAssignableFrom(classType)) {
             return false;
         }
-        return invoke.getTargetMethod().getName().equals("close");
-    }
-
-    public static ResourceId getInitResourceId(Invoke invoke) {
-        return new ResourceId(invoke.callTarget().getNodeSourcePosition());
-    }
-
-    public static ResourceId getAllocatedObjResourceId(AllocatedObjectNode allocatedObjectNode) {
-        return new ResourceId(allocatedObjectNode.getVirtualObject().getNodeSourcePosition());
+        return invoke.getTargetMethod().getName().equals(methodName);
     }
 }

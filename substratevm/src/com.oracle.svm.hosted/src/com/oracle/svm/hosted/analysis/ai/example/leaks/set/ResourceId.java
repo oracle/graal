@@ -10,6 +10,7 @@ import java.util.Objects;
 public class ResourceId {
 
     private final String id;
+    public static final ResourceId emptyId = new ResourceId("");
 
     public ResourceId(String id) {
         this.id = id;
@@ -28,8 +29,12 @@ public class ResourceId {
         return new ResourceId(prefix + id);
     }
 
-    public ResourceId removePrefix(String regex) {
-        return new ResourceId(id.replaceAll(regex, ""));
+    public ResourceId getWithRemovedParamPrefix() {
+        return removePrefix("param" + "\\d+");
+    }
+
+    public ResourceId getWithRemovedReturnPrefix() {
+        return removePrefix("return#");
     }
 
     @Override
@@ -47,5 +52,9 @@ public class ResourceId {
     @Override
     public String toString() {
         return id;
+    }
+
+    private ResourceId removePrefix(String regex) {
+        return new ResourceId(id.replaceAll(regex, ""));
     }
 }

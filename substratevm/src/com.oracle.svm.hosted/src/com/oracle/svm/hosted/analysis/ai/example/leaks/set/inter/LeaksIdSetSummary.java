@@ -9,7 +9,7 @@ public class LeaksIdSetSummary implements Summary<SetDomain<ResourceId>> {
 
     private final Invoke invoke;
     private final SetDomain<ResourceId> preCondition;
-    private final SetDomain<ResourceId> postCondition = new SetDomain<>();
+    private SetDomain<ResourceId> postCondition = new SetDomain<>();
 
     public LeaksIdSetSummary(Invoke invoke, SetDomain<ResourceId> preCondition) {
         this.invoke = invoke;
@@ -37,24 +37,44 @@ public class LeaksIdSetSummary implements Summary<SetDomain<ResourceId>> {
             return false;
         }
 
-        return ((LeaksIdSetSummary) other).invoke.equals(invoke);
+        if (!(invoke.getTargetMethod().equals(other.getInvoke().getTargetMethod()))) {
+            return false;
+        }
+
+        return preCondition.leq(other.getPreCondition());
     }
 
     @Override
     public void finalizeSummary(SetDomain<ResourceId> calleePostCondition) {
         for (ResourceId id : calleePostCondition.getSet()) {
-            postCondition.add(id);
+            if (id.toString().startsWith("return#")) {
+                ResourceId newResourceId = id.getWithRemovedReturnPrefix();
+                postCondition.add(newResourceId);
+            } else {
+                postCondition.add(id);
+            }
         }
     }
 
     @Override
     public SetDomain<ResourceId> applySummary(SetDomain<ResourceId> domain) {
-        SetDomain<ResourceId> res = new SetDomain<>();
-        for (ResourceId id : domain.getSet()) {
-            ResourceId newId = id.removePrefix("param\\d+").removePrefix("return#");
-            res.add(newId);
+        SetDomain<ResourceId> result = new SetDomain<>();
+        result.joinWith(domain);
+
+        /* We need to remove prefix "param" from the resource id */
+        for (ResourceId id : postCondition.getSet()) {
+            ResourceId newResourceId = id.getWithRemovedParamPrefix();
+            result.add(newResourceId);
         }
 
-        return res;
+        /* Remove resources that were in the summary pre-condition but not in the summary post-condition */
+        for (ResourceId id : preCondition.getSet()) {
+            ResourceId newResourceId = id.getWithRemovedParamPrefix();
+            if (!postCondition.getSet().contains(id)) {
+                result.remove(newResourceId);
+            }
+        }
+
+        return result;
     }
 }

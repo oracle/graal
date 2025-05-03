@@ -4,51 +4,50 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 
 public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<ResourceId>> {
 
     @Override
-    public SetDomain<ResourceId> execEdge(Node source, Node destination, AbstractStateMap<SetDomain<ResourceId>> abstractStateMap) {
-        abstractStateMap.getPreCondition(destination).joinWith(abstractStateMap.getPostCondition(source));
-        return abstractStateMap.getPreCondition(destination);
+    public SetDomain<ResourceId> execEdge(Node source,
+                                          Node destination,
+                                          AbstractState<SetDomain<ResourceId>> abstractState) {
+        abstractState.getPreCondition(destination).joinWith(abstractState.getPostCondition(source));
+        return abstractState.getPreCondition(destination);
     }
 
     @Override
-    public SetDomain<ResourceId> execNode(Node node, AbstractStateMap<SetDomain<ResourceId>> abstractStateMap, InvokeCallBack<SetDomain<ResourceId>> invokeCallBack) {
-        SetDomain<ResourceId> preCondition = abstractStateMap.getPreCondition(node);
+    public SetDomain<ResourceId> execNode(Node node,
+                                          AbstractState<SetDomain<ResourceId>> abstractState,
+                                          InvokeCallBack<SetDomain<ResourceId>> invokeCallBack) {
+
+        var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Analyzing node: " + node, LoggerVerbosity.DEBUG);
+        SetDomain<ResourceId> preCondition = abstractState.getPreCondition(node).copyOf();
         SetDomain<ResourceId> computedPost = preCondition.copyOf();
 
         switch (node) {
             case Invoke invoke -> {
                 if (InvokeUtil.opensResource(invoke)) {
-                    computedPost.add(InvokeUtil.getInitResourceId(invoke));
+                    computedPost.add(getInitResourceId(invoke));
                 } else if (InvokeUtil.closesResource(invoke)) {
-                    ResourceId id;
-                    ValueNode receiver = invoke.getReceiver();
-                    System.out.println(invoke.getReceiver());
-                    /* if we have receiver, then we simply can get its creation position */
-                    if (receiver instanceof AllocatedObjectNode allocatedObject) {
-                        id = InvokeUtil.getAllocatedObjResourceId(allocatedObject);
-                    } else {
-                        /* this resource must have been created somewhere else -> check the domain of the input */
-                        execNode(receiver, abstractStateMap, invokeCallBack);
-                        SetDomain<ResourceId> state = abstractStateMap.getPostCondition(receiver);
-                        id = state.getSet().iterator().next();
+                    SetDomain<ResourceId> deletedIds = new SetDomain<>();
+                    getResourceIdsFromReceiver(invoke.getReceiver(), deletedIds, abstractState);
+                    for (ResourceId id : deletedIds.getSet()) {
+                        computedPost.remove(id);
                     }
-                    computedPost.remove(id);
-
                 } else {
-                    AnalysisOutcome<SetDomain<ResourceId>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                    AnalysisOutcome<SetDomain<ResourceId>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                     if (outcome.isError()) {
                         throw new RuntimeException(outcome.toString());
                     }
@@ -57,41 +56,18 @@ public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<Reso
                 }
             }
 
-            case PiNode piNode -> {
-                /* This is a dirty hack, but the logic is as follows:
-                 * Essentially what we want to do in PiNode is to get the id of the resource that really is being passed
-                 * To do this, we can abuse the fact that we will join with our predecessor, possibly getting new resources
-                 * then performing difference with postCondition to have only the new resources in the new post condition.
-                 * Also we need to reset the precondition, which is something that should not be generally done but hey, it works
-                 */
-
-                for (Node input : piNode.inputs()) {
-                    abstractStateMap.getPreCondition(piNode).joinWith(abstractStateMap.getPostCondition(input));
-                }
-
-                SetDomain<ResourceId> piPre = abstractStateMap.getPreCondition(piNode);
-                SetDomain<ResourceId> piPost = abstractStateMap.getPostCondition(piNode);
-                for (ResourceId id : piPost.getSet()) {
-                    if (piPre.getSet().contains(id)) {
-                        continue;
-                    }
-                    computedPost.add(id);
-                }
-                piPre.clear();
-            }
-
             case AllocatedObjectNode allocatedObject -> {
-                ResourceId id = InvokeUtil.getAllocatedObjResourceId(allocatedObject);
+                ResourceId id = getAllocatedObjResourceId(allocatedObject);
                 computedPost.add(id);
             }
             case ParameterNode parameterNode -> {
                 int idx = parameterNode.index();
-                for (ResourceId id : preCondition.getSet()) {
-                    if (id.getId().startsWith("param" + idx)) {
-                        computedPost.add(id);
-                    }
+                ResourceId paramResourceId = getParameterResourceId(idx, abstractState);
+                if (paramResourceId != null) {
+                    computedPost.add(paramResourceId);
                 }
             }
+
             case ReturnNode returnNode -> {
                 if (returnNode.result() == null) {
                     break;
@@ -117,10 +93,46 @@ public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<Reso
             default -> {
                 /* Leave the abstract context as-is */
             }
+        }
+        logger.log("Computed post: " + computedPost, LoggerVerbosity.DEBUG);
+        abstractState.getState(node).setPostCondition(computedPost);
+        return computedPost;
+    }
 
+    private void getResourceIdsFromReceiver(Node receiver,
+                                            SetDomain<ResourceId> preCondition,
+                                            AbstractState<SetDomain<ResourceId>> abstractState) {
+        if (receiver instanceof AllocatedObjectNode allocatedObject) {
+            preCondition.add(getAllocatedObjResourceId(allocatedObject));
+        } else if (receiver instanceof ParameterNode parameterNode) {
+            preCondition.add(getParameterResourceId(parameterNode.index(), abstractState));
+        } else if (receiver instanceof PiNode piNode) {
+            for (Node input : piNode.inputs()) {
+                getResourceIdsFromReceiver(input, preCondition, abstractState);
+            }
+        } else {
+            preCondition.joinWith(abstractState.getPostCondition(receiver));
+        }
+    }
+
+    private ResourceId getInitResourceId(Invoke invoke) {
+        return new ResourceId(invoke.callTarget().getNodeSourcePosition());
+    }
+
+    private ResourceId getAllocatedObjResourceId(AllocatedObjectNode allocatedObjectNode) {
+        return new ResourceId(allocatedObjectNode.getVirtualObject().getNodeSourcePosition());
+    }
+
+    private ResourceId getParameterResourceId(int idx, AbstractState<SetDomain<ResourceId>> abstractState) {
+        String resultId = "";
+        var startPre = abstractState.getStartNodeState().getPreCondition();
+        for (ResourceId id : startPre.getSet()) {
+            if (id.getId().startsWith("param" + idx)) {
+                resultId = id.toString();
+                break;
+            }
         }
 
-        abstractStateMap.getState(node).setPostCondition(computedPost);
-        return computedPost;
+        return new ResourceId(resultId);
     }
 }
