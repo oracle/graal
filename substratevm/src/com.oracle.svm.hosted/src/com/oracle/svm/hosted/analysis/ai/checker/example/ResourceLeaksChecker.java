@@ -1,15 +1,14 @@
 package com.oracle.svm.hosted.analysis.ai.checker.example;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerResult;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ReturnNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,14 +21,13 @@ public class ResourceLeaksChecker implements Checker<SetDomain<ResourceId>> {
     }
 
     @Override
-    public List<CheckerResult> check(AbstractStateMap<SetDomain<ResourceId>> abstractStateMap, StructuredGraph graph) {
-        ResolvedJavaMethod method = graph.method();
+    public List<CheckerResult> check(AnalysisMethod method, AbstractState<SetDomain<ResourceId>> abstractState) {
         List<CheckerResult> results = new ArrayList<>();
-        for (Node node : abstractStateMap.getStateMap().keySet()) {
+        for (Node node : abstractState.getStateMap().keySet()) {
             if (!(node instanceof ReturnNode returnNode)) {
                 continue;
             }
-            var returnPost = abstractStateMap.getPostCondition(returnNode);
+            var returnPost = abstractState.getPostCondition(returnNode);
             if (returnPost.empty()) {
                 continue;
             }
@@ -38,7 +36,10 @@ public class ResourceLeaksChecker implements Checker<SetDomain<ResourceId>> {
                 var checkerRes = new CheckerResult(CheckerStatus.ERROR, "Unclosed resource(s) at program exit point: " + returnPost);
                 results.add(checkerRes);
             }
-            /* Resources escaping from other methods are not considered leaks, but rather a potential problem */
+
+            /* We can for example define that whenever a resource escapes to a caller it is considered a warning,
+             * Even though this is probably too harsh in real world usage.
+             */
             else {
                 var checkerRes = new CheckerResult(CheckerStatus.WARNING, "Resource(s) escaping from method: " + returnPost);
                 results.add(checkerRes);
@@ -48,7 +49,7 @@ public class ResourceLeaksChecker implements Checker<SetDomain<ResourceId>> {
         return results;
     }
 
-    private boolean isMain(ResolvedJavaMethod method) {
+    private boolean isMain(AnalysisMethod method) {
         if (!method.isStatic() || !method.isPublic()) {
             return false;
         }
@@ -59,7 +60,7 @@ public class ResourceLeaksChecker implements Checker<SetDomain<ResourceId>> {
     }
 
     @Override
-    public boolean isCompatibleWith(AbstractStateMap<?> abstractStateMap) {
-        return abstractStateMap.getInitialDomain() instanceof SetDomain<?>;
+    public boolean isCompatibleWith(AbstractState<?> abstractState) {
+        return abstractState.getInitialDomain() instanceof SetDomain<?>;
     }
 }

@@ -1,11 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,22 +21,17 @@ public final class CheckerManager {
         checkers.add(checker);
     }
 
-    public <Domain extends AbstractDomain<Domain>> void runCheckers(
-            StructuredGraph graph,
-            AbstractStateMap<Domain> abstractStateMap) {
-
-        ResolvedJavaMethod method = graph.method();
+    public <Domain extends AbstractDomain<Domain>> void runCheckers(AnalysisMethod method, AbstractState<Domain> abstractState) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        String methodName = method.getName();
         List<CheckerSummary> checkerSummaries = new ArrayList<>();
-        logger.log("Running provided checkers on method: " + methodName, LoggerVerbosity.CHECKER);
+        logger.log("Running provided checkers on analysisMethod: " + method, LoggerVerbosity.CHECKER);
 
         for (Checker<?> checker : checkers) {
-            if (checker.isCompatibleWith(abstractStateMap)) {
+            if (checker.isCompatibleWith(abstractState)) {
                 try {
                     @SuppressWarnings("unchecked")
                     Checker<Domain> typedChecker = (Checker<Domain>) checker;
-                    List<CheckerResult> checkerResults = typedChecker.check(abstractStateMap, graph);
+                    List<CheckerResult> checkerResults = typedChecker.check(method, abstractState);
                     CheckerSummary summary = new CheckerSummary(checker, checkerResults);
                     checkerSummaries.add(summary);
                 } catch (ClassCastException e) {

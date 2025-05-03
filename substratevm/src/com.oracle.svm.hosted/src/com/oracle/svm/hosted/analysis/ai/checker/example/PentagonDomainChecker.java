@@ -1,10 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.checker.example;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerResult;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerStatus;
-import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.util.IgvDumper;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -16,47 +19,50 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PentagonDomainChecker implements Checker {
+public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>> {
 
-    /* NOTE: This is for demonstration purposes, the checkers should generally not modify the actual graphs of methods
-     *        In the future, a specialized component can be done to handle the optimization logic based on the information
-     *        inferred from the abstract interpretation.
-     * */
-    private final StructuredGraph graph;
-
-    public PentagonDomainChecker(StructuredGraph graph) {
-        this.graph = graph;
-    }
-
-
+    /**
+     * NOTE: This checker performs optimizations of a graph by deleting parts of the GraalIR that are unreachable at runtime
+     * This is done for demonstration purposes, the checkers should generally not modify the actual graphs of methods
+     * In the future, a specialized component can be done to handle the optimization logic based on the information
+     * inferred from the abstract interpretation.
+     */
     @Override
     public String getDescription() {
-        return "Simple pentagon domain checker";
+        return "Pentagon domain checker";
     }
 
     @Override
-    public List<CheckerResult> check(AbstractStateMap<? extends AbstractDomain<?>> abstractStateMap) {
+    public List<CheckerResult> check(AnalysisMethod method, AbstractState<PentagonDomain<AccessPath>> abstractState) {
         List<CheckerResult> checkerResults = new ArrayList<>();
-        for (Node node : abstractStateMap.getStateMap().keySet()) {
+        StructuredGraph graph = abstractState.getCfgGraph().graph;
+
+        for (Node node : abstractState.getStateMap().keySet()) {
             if (!(node instanceof IfNode ifNode)) {
                 continue;
             }
 
-            if (abstractStateMap.getPreCondition(node).isBot()) {
+            if (abstractState.getPreCondition(node).isBot()) {
                 CheckerResult res = new CheckerResult(CheckerStatus.WARNING, "Unreachable node: " + ifNode.trueSuccessor().toString());
                 checkerResults.add(res);
-                makeIfBranchUnreachable(ifNode, true);
-            } else if (abstractStateMap.getPreCondition(node).isTop()) {
+                makeIfBranchUnreachable(ifNode, true, graph);
+            } else if (abstractState.getPreCondition(node).isTop()) {
                 CheckerResult res = new CheckerResult(CheckerStatus.WARNING, "Unreachable node: " + ifNode.falseSuccessor().toString());
                 checkerResults.add(res);
-                makeIfBranchUnreachable(ifNode, false);
+                makeIfBranchUnreachable(ifNode, false, graph);
             }
         }
+
+        IgvDumper.dumpPhase(method, graph, "After phase Abstract Interpretation Pentagon Analysis");
         return checkerResults;
     }
 
+    @Override
+    public boolean isCompatibleWith(AbstractState<?> abstractState) {
+        return abstractState.getInitialDomain() instanceof PentagonDomain;
+    }
 
-    private void makeIfBranchUnreachable(IfNode node, boolean trueUnreachable) {
+    private void makeIfBranchUnreachable(IfNode node, boolean trueUnreachable, StructuredGraph graph) {
         AbstractBeginNode killedBegin = node.successor(trueUnreachable);
         AbstractBeginNode survivingBegin = node.successor(!trueUnreachable);
 
