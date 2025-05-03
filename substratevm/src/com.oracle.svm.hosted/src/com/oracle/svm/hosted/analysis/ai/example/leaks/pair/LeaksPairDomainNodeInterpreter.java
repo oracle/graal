@@ -7,7 +7,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.graph.Node;
@@ -19,16 +19,16 @@ public class LeaksPairDomainNodeInterpreter implements NodeInterpreter<PairDomai
     @Override
     public PairDomain<CountDomain, BooleanOrDomain> execEdge(Node source,
                                                              Node target,
-                                                             AbstractStateMap<PairDomain<CountDomain, BooleanOrDomain>> abstractStateMap) {
-        abstractStateMap.getPreCondition(target).joinWith(abstractStateMap.getPostCondition(source));
-        return abstractStateMap.getPreCondition(target);
+                                                             AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState) {
+        abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
+        return abstractState.getPreCondition(target);
     }
 
     @Override
     public PairDomain<CountDomain, BooleanOrDomain> execNode(Node node,
-                                                             AbstractStateMap<PairDomain<CountDomain, BooleanOrDomain>> abstractStateMap,
+                                                             AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState,
                                                              InvokeCallBack<PairDomain<CountDomain, BooleanOrDomain>> invokeCallBack) {
-        PairDomain<CountDomain, BooleanOrDomain> preCondition = abstractStateMap.getPreCondition(node);
+        PairDomain<CountDomain, BooleanOrDomain> preCondition = abstractState.getPreCondition(node);
         PairDomain<CountDomain, BooleanOrDomain> computedPost = preCondition.copyOf();
         int preCount = preCondition.getFirst().getValue();
 
@@ -39,7 +39,7 @@ public class LeaksPairDomainNodeInterpreter implements NodeInterpreter<PairDomai
                 } else if (InvokeUtil.closesResource(invoke)) {
                     computedPost.getFirst().decrement();
                 } else {
-                    AnalysisOutcome<PairDomain<CountDomain, BooleanOrDomain>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                    AnalysisOutcome<PairDomain<CountDomain, BooleanOrDomain>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                     if (outcome.isError()) {
                         throw AnalysisError.interruptAnalysis(outcome.toString());
                     }
@@ -61,7 +61,7 @@ public class LeaksPairDomainNodeInterpreter implements NodeInterpreter<PairDomai
             }
         }
 
-        abstractStateMap.getState(node).setPostCondition(computedPost);
+        abstractState.getState(node).setPostCondition(computedPost);
         return computedPost;
     }
 }

@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.graph.Node;
@@ -17,14 +17,14 @@ public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<Count
     @Override
     public CountDomain execEdge(Node source,
                                 Node target,
-                                AbstractStateMap<CountDomain> abstractStateMap) {
-        abstractStateMap.getPreCondition(target).joinWith(abstractStateMap.getPostCondition(source));
-        return abstractStateMap.getPreCondition(target);
+                                AbstractState<CountDomain> abstractState) {
+        abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
+        return abstractState.getPreCondition(target);
     }
 
     @Override
-    public CountDomain execNode(Node node, AbstractStateMap<CountDomain> abstractStateMap, InvokeCallBack<CountDomain> invokeCallBack) {
-        AbstractState<CountDomain> state = abstractStateMap.getState(node);
+    public CountDomain execNode(Node node, AbstractState<CountDomain> abstractState, InvokeCallBack<CountDomain> invokeCallBack) {
+        NodeState<CountDomain> state = abstractState.getState(node);
         CountDomain preCondition = state.getPreCondition();
         CountDomain computedPost = preCondition.copyOf();
 
@@ -36,7 +36,7 @@ public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<Count
                     computedPost.decrement();
                 } else {
                     /* We can use analyzeDependencyCallback to analyze calls to other methods */
-                    AnalysisOutcome<CountDomain> result = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                    AnalysisOutcome<CountDomain> result = invokeCallBack.handleInvoke(invoke, node, abstractState);
                     if (result.isError()) {
                         throw AnalysisError.interruptAnalysis(result.toString());
                     }
@@ -46,7 +46,7 @@ public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<Count
             }
 
             default -> {
-                // TODO: handle default case in the framework
+                /* Leave the post-condition as-is */
             }
         }
 

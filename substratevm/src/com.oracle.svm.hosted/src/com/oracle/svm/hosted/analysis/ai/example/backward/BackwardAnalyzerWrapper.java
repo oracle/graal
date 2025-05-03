@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.backward;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.EmptyDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 
@@ -18,6 +19,7 @@ public class BackwardAnalyzerWrapper {
                 new EmptyDomain(),
                 new EmptyDomainInterpreter())
                 .iteratorPolicy(IteratorPolicy.DEFAULT_BACKWARD_WORKLIST)
+                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
     }
 

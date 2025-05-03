@@ -9,7 +9,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathConstants;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.access.PlaceHolderAccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
@@ -30,9 +30,7 @@ import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -43,66 +41,66 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
     @Override
     public AccessPathMap<IntInterval> execEdge(Node source,
                                                Node target,
-                                               AbstractStateMap<AccessPathMap<IntInterval>> abstractStateMap) {
+                                               AbstractState<AccessPathMap<IntInterval>> abstractState) {
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing edge: " + source + " -> " + target, LoggerVerbosity.DEBUG);
 
         if (!(source instanceof IfNode ifNode)) {
-            abstractStateMap.getPreCondition(target).joinWith(abstractStateMap.getPostCondition(source));
-            return abstractStateMap.getPreCondition(target);
+            abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
+            return abstractState.getPreCondition(target);
         }
 
-        AccessPathMap<IntInterval> ifPost = abstractStateMap.getPostCondition(ifNode);
-
+        AccessPathMap<IntInterval> ifPost = abstractState.getPostCondition(ifNode);
         /* Following a branch that won't get taken in real execution, because the condition is false and we are the true successor */
         if (ifPost.isBot() && target.equals(ifNode.trueSuccessor())) {
-            abstractStateMap.getState(target).markRestrictedFromExecution();
-            return abstractStateMap.getPreCondition(target);
+            abstractState.getState(target).markRestrictedFromExecution();
+            return abstractState.getPreCondition(target);
         }
 
         /* Vice versa, just that we are the false successor and the condition is true */
         if (!ifPost.isBot() && target.equals(ifNode.falseSuccessor())) {
-            abstractStateMap.getState(target).markRestrictedFromExecution();
-            return abstractStateMap.getPreCondition(target);
+            abstractState.getState(target).markRestrictedFromExecution();
+            return abstractState.getPreCondition(target);
         }
 
         /* In the future support other relational conditions, for now this gets the job done */
         if (!(ifNode.condition() instanceof IntegerLessThanNode integerLessThanNode)) {
-            return abstractStateMap.getPreCondition(target);
+            return abstractState.getPreCondition(target);
         }
 
-        /* We are restricting ourselves to conditions in the form ( field/param/some_identifier_path < value ),
+        /*
+          We are restricting ourselves to conditions in the form ( field/param/some_identifier_path < value ),
            so we need to get the post-condition value of the field and join it with the post-condition value of the
            condition. This is done to get the value of the field in the pre-condition of the target node.
          */
         IntInterval condInterval = ifPost.get(new AccessPath(ifNode));
-        AccessPath relevantFieldPath = abstractStateMap.getPostCondition(integerLessThanNode.getX()).getOnlyAccessPath();
-        IntInterval relevantFieldInterval = abstractStateMap.getPostCondition(integerLessThanNode.getX()).get(relevantFieldPath);
+        AccessPath relevantFieldPath = abstractState.getPostCondition(integerLessThanNode.getX()).getOnlyAccessPath();
+        IntInterval relevantFieldInterval = abstractState.getPostCondition(integerLessThanNode.getX()).get(relevantFieldPath);
 
         /* Join with the post-condition value of the access path */
         AccessPathMap<IntInterval> tmpMap = new AccessPathMap<>(new IntInterval());
         tmpMap.put(relevantFieldPath, relevantFieldInterval);
-        abstractStateMap.getPreCondition(target).joinWith(tmpMap);
+        abstractState.getPreCondition(target).joinWith(tmpMap);
 
         /* Then use interval intersection to refine result */
         if (target.equals(ifNode.trueSuccessor())) {
-            abstractStateMap.getPreCondition(target).get(relevantFieldPath).meetWith(condInterval);
+            abstractState.getPreCondition(target).get(relevantFieldPath).meetWith(condInterval);
         } else {
             condInterval = IntInterval.getHigherInterval(condInterval);
-            abstractStateMap.getPreCondition(target).get(relevantFieldPath).meetWith(condInterval);
+            abstractState.getPreCondition(target).get(relevantFieldPath).meetWith(condInterval);
         }
 
-        return abstractStateMap.getPreCondition(target);
+        return abstractState.getPreCondition(target);
     }
 
     @Override
     public AccessPathMap<IntInterval> execNode(Node node,
-                                               AbstractStateMap<AccessPathMap<IntInterval>> abstractStateMap,
+                                               AbstractState<AccessPathMap<IntInterval>> abstractState,
                                                InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack) {
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        AccessPathMap<IntInterval> preCondition = abstractStateMap.getPreCondition(node);
+        AccessPathMap<IntInterval> preCondition = abstractState.getPreCondition(node);
         logger.log("Analyzing node: " + node, LoggerVerbosity.DEBUG);
         AccessPathMap<IntInterval> computedPostCondition = preCondition.copyOf();
 
@@ -119,23 +117,15 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
             }
 
             case StoreFieldNode storeFieldNode -> {
-                AccessPath key = getAccessPathFromAccessFieldNode(storeFieldNode, abstractStateMap);
-                AccessPathMap<IntInterval> storeFieldEnv = execNode(storeFieldNode.value(), abstractStateMap, invokeCallBack);
+                AccessPath key = getAccessPathFromAccessFieldNode(storeFieldNode, abstractState);
+                AccessPathMap<IntInterval> storeFieldEnv = execNode(storeFieldNode.value(), abstractState, invokeCallBack);
                 computedPostCondition.put(key, storeFieldEnv.get(new AccessPath(storeFieldNode.value())));
             }
 
             case LoadFieldNode loadFieldNode -> {
-                AccessPath key = getAccessPathFromAccessFieldNode(loadFieldNode, abstractStateMap);
+                AccessPath key = getAccessPathFromAccessFieldNode(loadFieldNode, abstractState);
                 IntInterval keyInterval = preCondition.get(key);
                 computedPostCondition.put(new AccessPath(loadFieldNode), keyInterval);
-            }
-
-            case StoreIndexedNode storeIndexedNode -> {
-                // TODO
-            }
-
-            case LoadIndexedNode loadIndexedNode -> {
-                // TODO
             }
 
             case IfNode ifNode -> {
@@ -143,10 +133,10 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
                     return computedPostCondition;
                 }
 
-                AccessPathMap<IntInterval> condition = execNode(ifNode.condition(), abstractStateMap, invokeCallBack);
+                AccessPathMap<IntInterval> condition = execNode(ifNode.condition(), abstractState, invokeCallBack);
                 if (condition.isBot()) {
-                    abstractStateMap.getPostCondition(ifNode).setToBot();
-                    return abstractStateMap.getPostCondition(ifNode);
+                    abstractState.getPostCondition(ifNode).setToBot();
+                    return abstractState.getPostCondition(ifNode);
                 }
 
                 IntInterval condInterval = condition.getNodeDataValue(ifNode.condition(), new IntInterval());
@@ -159,14 +149,14 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
                 /* Evaluate the condition, if it holds, set the postCondition to the data-flow value satisfying the condition */
                 /* If we have a condition like Constant(4) < Param(5), this is true and set post to [ -inf, 4 ], because this satisfies it */
                 /* If we have a condition like Constant(4) < Param(3), this is false and set post to bot, because this is unsatisfiable */
-                AccessPathMap<IntInterval> firstEnv = execNode(nodeX, abstractStateMap, invokeCallBack);
-                AccessPathMap<IntInterval> secondEnv = execNode(nodeY, abstractStateMap, invokeCallBack);
+                AccessPathMap<IntInterval> firstEnv = execNode(nodeX, abstractState, invokeCallBack);
+                AccessPathMap<IntInterval> secondEnv = execNode(nodeY, abstractState, invokeCallBack);
                 AccessPath nodeAccessPath = new AccessPath(integerLessThanNode);
                 IntInterval defaultInterval = new IntInterval();
 
                 if (!(firstEnv.getNodeDataValue(nodeX, defaultInterval).isLessThan(secondEnv.getNodeDataValue(nodeY, defaultInterval)))) {
-                    abstractStateMap.getPostCondition(integerLessThanNode).setToBot();
-                    return abstractStateMap.getPostCondition(integerLessThanNode);
+                    abstractState.getPostCondition(integerLessThanNode).setToBot();
+                    return abstractState.getPostCondition(integerLessThanNode);
                 }
                 IntInterval secondInterval = secondEnv.get(new AccessPath(integerLessThanNode.getY()));
                 computedPostCondition.put(nodeAccessPath, IntInterval.getLowerInterval(secondInterval));
@@ -186,9 +176,9 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
                     }
 
                     if (isCyclicEdge) {
-                        phiResult.joinWith(abstractStateMap.getPostCondition(input).getNodeDataValue(input, new IntInterval()));
+                        phiResult.joinWith(abstractState.getPostCondition(input).getNodeDataValue(input, new IntInterval()));
                     } else {
-                        AccessPathMap<IntInterval> inputEnv = execNode(input, abstractStateMap, invokeCallBack);
+                        AccessPathMap<IntInterval> inputEnv = execNode(input, abstractState, invokeCallBack);
                         phiResult.joinWith(inputEnv.getNodeDataValue(input, new IntInterval()));
                     }
 
@@ -199,8 +189,8 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
             case PiNode piNode -> {
                 computedPostCondition = new AccessPathMap<>(new IntInterval());
                 Node originalNode = piNode.getOriginalNode();
-                AccessPathMap<IntInterval> originalPre = abstractStateMap.getPreCondition(originalNode);
-                AccessPathMap<IntInterval> originalPost = abstractStateMap.getPostCondition(originalNode);
+                AccessPathMap<IntInterval> originalPre = abstractState.getPreCondition(originalNode);
+                AccessPathMap<IntInterval> originalPost = abstractState.getPostCondition(originalNode);
 
                 for (AccessPath accessPath : originalPost.getAccessPaths()) {
                     if (originalPre.getValue().getMap().containsKey(accessPath)) {
@@ -215,8 +205,8 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
             case BinaryArithmeticNode<?> binaryArithmeticNode -> {
                 Node nodeX = binaryArithmeticNode.getX();
                 Node nodeY = binaryArithmeticNode.getY();
-                AccessPathMap<IntInterval> mapX = execNode(nodeX, abstractStateMap, invokeCallBack);
-                AccessPathMap<IntInterval> mapY = execNode(nodeY, abstractStateMap, invokeCallBack);
+                AccessPathMap<IntInterval> mapX = execNode(nodeX, abstractState, invokeCallBack);
+                AccessPathMap<IntInterval> mapY = execNode(nodeY, abstractState, invokeCallBack);
                 IntInterval firstInterval = mapX.getNodeDataValue(nodeX, new IntInterval());
                 IntInterval secondInterval = mapY.getNodeDataValue(nodeY, new IntInterval());
                 IntInterval result;
@@ -248,13 +238,22 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
                 computedPostCondition.put(AccessPath.fromAllocatedObject(allocatedObject), new IntInterval());
             }
 
+            case ParameterNode parameterNode -> {
+                AccessPath path = getParamAccessPath(abstractState, parameterNode.index());
+                if (path == null) {
+                    throw AnalysisError.interruptAnalysis("Base variable not found");
+                }
+                IntInterval paramInterval = getStartNodeIntervalFromPath(abstractState, path);
+                computedPostCondition.put(path, paramInterval);
+            }
+
             case ReturnNode returnNode -> {
                 if (returnNode.result() == null) {
                     break;
                 }
 
                 if (returnNode.result().getStackKind().isPrimitive()) {
-                    AccessPathMap<IntInterval> resultMap = execNode(returnNode.result(), abstractStateMap, invokeCallBack);
+                    AccessPathMap<IntInterval> resultMap = execNode(returnNode.result(), abstractState, invokeCallBack);
                     IntInterval resultInterval = resultMap.getOnlyDataValue();
                     computedPostCondition.put(new AccessPath(new PlaceHolderAccessPathBase(AccessPathConstants.RETURN_PREFIX)), resultInterval);
                 }
@@ -278,7 +277,7 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
 
             case Invoke invoke -> {
                 /* We can use analyzeDependencyCallback to analyze calls to other methods */
-                AnalysisOutcome<AccessPathMap<IntInterval>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                AnalysisOutcome<AccessPathMap<IntInterval>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                 if (outcome.isError()) {
                     logger.log("Error in handling call: " + outcome.result().toString(), LoggerVerbosity.INFO);
                     computedPostCondition.setToTop();
@@ -286,9 +285,8 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
                     Summary<AccessPathMap<IntInterval>> summary = outcome.summary();
                     computedPostCondition = summary.applySummary(preCondition);
                     /* Sometimes, when the method returns only an integer, we prefix it with return# in the summary, but
-                       when applying it back to the caller, we remove the prefix, therefore it is empty, and we need to
-                       assign this value to this node. */
-
+                       when applying it back to the caller, we remove the prefix, therefore its access path is empty,
+                       and we need to assign its value to this node. */
                     AccessPath emptyAccessPath = null;
                     for (AccessPath path : computedPostCondition.getAccessPaths()) {
                         if (path.toString().isEmpty()) {
@@ -311,12 +309,12 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
         }
 
         logger.log("Finished analyzing node: " + node + " -> post: " + computedPostCondition, LoggerVerbosity.DEBUG);
-        abstractStateMap.setPostCondition(node, computedPostCondition);
+        abstractState.setPostCondition(node, computedPostCondition);
         return computedPostCondition;
     }
 
     private AccessPath getAccessPathFromAccessFieldNode(AccessFieldNode accessFieldNode,
-                                                        AbstractStateMap<AccessPathMap<IntInterval>> abstractStateMap) {
+                                                        AbstractState<AccessPathMap<IntInterval>> abstractState) {
 
         AccessPath fieldPath = AccessPath.getAccessPathFromAccessFieldNode(accessFieldNode);
         if (fieldPath != null) {
@@ -327,8 +325,7 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
         ResolvedJavaField field = accessFieldNode.field();
         ParameterNode param = (ParameterNode) accessFieldNode.object();
         int idx = param.index();
-        AccessPathMap<IntInterval> env = abstractStateMap.getInitialDomain();
-        AccessPath base = getAccessPathBaseFromPrefix(env, AccessPathConstants.PARAM_PREFIX + idx);
+        AccessPath base = getParamAccessPath(abstractState, idx);
         if (base == null) {
             throw AnalysisError.interruptAnalysis("Base variable not found");
         }
@@ -336,12 +333,18 @@ public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<Access
         return base.appendField(field.getName(), field.getModifiers());
     }
 
-    private AccessPath getAccessPathBaseFromPrefix(AccessPathMap<IntInterval> env, String prefix) {
-        for (AccessPath path : env.getValue().getMap().keySet()) {
-            if (path.getBase().toString().startsWith(prefix)) {
-                return new AccessPath(path.getBase());
+    private AccessPath getParamAccessPath(AbstractState<AccessPathMap<IntInterval>> abstractState, int idx) {
+        var startState = abstractState.getStartNodeState();
+        for (AccessPath path : startState.getPreCondition().getAccessPaths()) {
+            if (path.getBase().toString().startsWith(AccessPathConstants.PARAM_PREFIX + idx)) {
+                return path.copyOf();
             }
         }
         return null;
+    }
+
+    private IntInterval getStartNodeIntervalFromPath(AbstractState<AccessPathMap<IntInterval>> abstractState, AccessPath accessPath) {
+        var startState = abstractState.getStartNodeState();
+        return startState.getPreCondition().get(accessPath).copyOf();
     }
 }

@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.leaks.count.intra;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.count.LeaksCountingDomainNodeInterpreter;
 
@@ -17,6 +18,7 @@ public class CountingDomainIntraAnalyzerWrapper {
         analyzer = new IntraProceduralAnalyzer.Builder<>(
                 new CountDomain(1024),
                 new LeaksCountingDomainNodeInterpreter())
+                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
     }
 

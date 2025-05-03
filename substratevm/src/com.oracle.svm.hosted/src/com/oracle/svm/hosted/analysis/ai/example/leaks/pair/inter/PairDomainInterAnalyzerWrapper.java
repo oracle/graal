@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
@@ -21,6 +22,7 @@ public class PairDomainInterAnalyzerWrapper {
                 new PairDomain<>(new CountDomain(1024), new BooleanOrDomain(false)),
                 new LeaksPairDomainNodeInterpreter(),
                 new LeakPairSummaryFactory())
+                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
     }
 
