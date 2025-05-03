@@ -5,18 +5,17 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
-import jdk.graal.compiler.debug.DebugContext;
+import com.oracle.svm.hosted.analysis.ai.util.BigBangUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 /**
  * Provides a base implementation for methods used both by
- * {@link ConcurrentWpoFixpointIterator} and {@link SequentialWtoFixpointIterator}.
+ * {@link WpoFixpointIterator} and {@link WtoFixpointIterator}.
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
@@ -28,13 +27,12 @@ public abstract class FixpointIteratorBase<
     protected final TransferFunction<Domain> transferFunction;
     protected final IteratorPayload iteratorPayload;
     protected final ControlFlowGraph cfgGraph;
-    protected final AbstractStateMap<Domain> abstractStateMap;
+    protected final AbstractState<Domain> abstractState;
     protected final AbstractInterpretationLogger logger;
     protected final AnalysisMethod analysisMethod;
     protected final GraphTraversalHelper graphTraversalHelper;
 
     protected FixpointIteratorBase(AnalysisMethod method,
-                                   DebugContext debug,
                                    Domain initialDomain,
                                    TransferFunction<Domain> transferFunction,
                                    IteratorPayload iteratorPayload) {
@@ -44,13 +42,14 @@ public abstract class FixpointIteratorBase<
         this.initialDomain = initialDomain;
         this.transferFunction = transferFunction;
         this.iteratorPayload = iteratorPayload;
-        this.abstractStateMap = new AbstractStateMap<>(initialDomain);
         if (iteratorPayload.containsMethodGraph(method)) {
             this.cfgGraph = iteratorPayload.getMethodGraph().get(method);
         } else {
-            this.cfgGraph = GraphUtil.getGraph(method, debug);
+            var bbUtil = BigBangUtil.getInstance();
+            this.cfgGraph = bbUtil.getGraph(method);
             iteratorPayload.addToMethodGraphMap(method, cfgGraph);
         }
+        this.abstractState = new AbstractState<>(initialDomain, cfgGraph);
         graphTraversalHelper = new GraphTraversalHelper(cfgGraph, iteratorPayload.getIteratorPolicy().direction());
     }
 
@@ -60,15 +59,15 @@ public abstract class FixpointIteratorBase<
     }
 
     @Override
-    public AbstractStateMap<Domain> getAbstractStateMap() {
-        return abstractStateMap;
+    public AbstractState<Domain> getAbstractState() {
+        return abstractState;
     }
 
     @Override
     public void clear() {
-        logger.log("Clearing abstract state map", LoggerVerbosity.DEBUG);
-        if (abstractStateMap != null) {
-            abstractStateMap.clear();
+        logger.log("Clearing the abstract state", LoggerVerbosity.DEBUG);
+        if (abstractState != null) {
+            abstractState.clear();
         }
     }
 
@@ -80,15 +79,15 @@ public abstract class FixpointIteratorBase<
      * @param node to extrapolate
      */
     protected void extrapolate(Node node) {
-        var state = abstractStateMap.getState(node);
-        int visitedAmount = abstractStateMap.getState(node).getVisitedCount();
+        var state = abstractState.getState(node);
+        int visitedAmount = abstractState.getState(node).getVisitedCount();
         if (visitedAmount < iteratorPayload.getMaxJoinIterations()) {
-            abstractStateMap.setPreCondition(node, abstractStateMap.getPostCondition(node).join(abstractStateMap.getPreCondition(node)));
+            abstractState.setPreCondition(node, abstractState.getPostCondition(node).join(abstractState.getPreCondition(node)));
         } else {
-            abstractStateMap.setPreCondition(node, abstractStateMap.getPostCondition(node).widen(abstractStateMap.getPreCondition(node)));
+            abstractState.setPreCondition(node, abstractState.getPostCondition(node).widen(abstractState.getPreCondition(node)));
         }
 
-        abstractStateMap.getState(node).incrementVisitedCount();
+        abstractState.getState(node).incrementVisitedCount();
         if (state.getVisitedCount() > iteratorPayload.getMaxWidenIterations() + iteratorPayload.getMaxJoinIterations()) {
             throw AnalysisError.shouldNotReachHere("Exceeded maximum amount of extrapolating iterations." +
                     " Consider increasing the limit, or refactor your widening/join operator");

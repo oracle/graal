@@ -3,13 +3,11 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
@@ -31,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
-public final class ConcurrentWpoFixpointIterator<
+public final class WpoFixpointIterator<
         Domain extends AbstractDomain<Domain>>
         extends FixpointIteratorBase<Domain> {
 
@@ -39,13 +37,11 @@ public final class ConcurrentWpoFixpointIterator<
     private final HIRBlock entry;
     private final Map<HIRBlock, WorkNode> nodeToWork = new ConcurrentHashMap<>();
 
-    public ConcurrentWpoFixpointIterator(AnalysisMethod method,
-                                         DebugContext debug,
-                                         Domain initialDomain,
-                                         TransferFunction<Domain> transferFunction,
-                                         IteratorPayload iteratorPayload) {
-
-        super(method, debug, initialDomain, transferFunction, iteratorPayload);
+    public WpoFixpointIterator(AnalysisMethod method,
+                               Domain initialDomain,
+                               TransferFunction<Domain> transferFunction,
+                               IteratorPayload iteratorPayload) {
+        super(method, initialDomain, transferFunction, iteratorPayload);
         if (iteratorPayload.containsMethodWpo(method)) {
             this.weakPartialOrdering = iteratorPayload.getMethodWpoMap().get(method);
         } else {
@@ -57,13 +53,13 @@ public final class ConcurrentWpoFixpointIterator<
     }
 
     @Override
-    public AbstractStateMap<Domain> iterateUntilFixpoint() {
+    public AbstractState<Domain> iterateUntilFixpoint() {
         logger.log("Starting concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         buildWorkNodes();
         runAnalysis();
         logger.log("Finished concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        GraphUtil.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractStateMap);
-        return abstractStateMap;
+        logger.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
+        return abstractState;
     }
 
     private void buildWorkNodes() {
@@ -71,7 +67,6 @@ public final class ConcurrentWpoFixpointIterator<
         for (int idx = 0; idx < weakPartialOrdering.size(); idx++) {
             WpoVertex.Kind kind = weakPartialOrdering.getKind(idx);
             HIRBlock node = weakPartialOrdering.getNode(idx);
-
             WorkNode workNode = new WorkNode(kind, node, idx);
             nodeToWork.put(node, workNode);
         }
@@ -97,7 +92,6 @@ public final class ConcurrentWpoFixpointIterator<
         logger.log(weakPartialOrdering.toString(), LoggerVerbosity.DEBUG);
     }
 
-    // TODO: make this parallel
     private void runAnalysis() {
         Queue<WorkNode> workQueue = new ConcurrentLinkedQueue<>();
         workQueue.add(nodeToWork.get(entry));
@@ -117,8 +111,8 @@ public final class ConcurrentWpoFixpointIterator<
     @Override
     public void clear() {
         nodeToWork.clear();
-        if (abstractStateMap != null) {
-            abstractStateMap.clear();
+        if (abstractState != null) {
+            abstractState.clear();
         }
     }
 
@@ -160,7 +154,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            transferFunction.analyzeBlock(node, abstractStateMap, graphTraversalHelper);
+            transferFunction.analyzeBlock(node, abstractState, graphTraversalHelper);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
@@ -169,12 +163,12 @@ public final class ConcurrentWpoFixpointIterator<
             if (refCount.get() == weakPartialOrdering.getNumPredecessors(index)) {
                 for (WorkNode pred : predecessors) {
                     if (!weakPartialOrdering.isBackEdge(node, pred.node)) {
-                        transferFunction.analyzeEdge(pred.node, node, abstractStateMap);
+                        transferFunction.analyzeEdge(pred.node, node, abstractState);
                     }
                 }
             }
 
-            transferFunction.analyzeBlock(node, abstractStateMap, graphTraversalHelper);
+            transferFunction.analyzeBlock(node, abstractState, graphTraversalHelper);
             return successors;
         }
 
@@ -190,12 +184,12 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         boolean updateHeadBackEdge() {
-            Domain oldPre = abstractStateMap.getPreCondition(node.getBeginNode()).copyOf();
-            transferFunction.collectInvariantsFromCfgPredecessors(node, abstractStateMap, graphTraversalHelper);
+            Domain oldPre = abstractState.getPreCondition(node.getBeginNode()).copyOf();
+            transferFunction.collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper);
             extrapolate(node.getBeginNode());
 
-            if (oldPre.leq(abstractStateMap.getPreCondition(node.getBeginNode()))) {
-                abstractStateMap.resetCount(node.getBeginNode());
+            if (oldPre.leq(abstractState.getPreCondition(node.getBeginNode()))) {
+                abstractState.resetCount(node.getBeginNode());
                 return true;
             }
 
