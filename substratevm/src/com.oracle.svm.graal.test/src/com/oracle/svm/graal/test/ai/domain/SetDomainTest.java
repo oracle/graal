@@ -12,6 +12,8 @@ public class SetDomainTest {
         SetDomain<String> setDomain = new SetDomain<>();
         Assert.assertTrue(setDomain.empty());
         Assert.assertEquals(AbstractValueKind.BOT, setDomain.getKind());
+        SetDomain<String> setDomain2 = new SetDomain<>(setDomain);
+        Assert.assertTrue(setDomain.leq(setDomain2));
     }
 
     @Test
