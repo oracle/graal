@@ -63,6 +63,7 @@ public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>
     }
 
     private void makeIfBranchUnreachable(IfNode node, boolean trueUnreachable, StructuredGraph graph) {
+        // FIXME: this doesn't get propagated to other phases...
         AbstractBeginNode killedBegin = node.successor(trueUnreachable);
         AbstractBeginNode survivingBegin = node.successor(!trueUnreachable);
 

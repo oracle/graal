@@ -5,7 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
@@ -38,33 +38,33 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
     @Override
     public PentagonDomain<AccessPath> execEdge(Node source,
                                                Node target,
-                                               AbstractStateMap<PentagonDomain<AccessPath>> abstractStateMap) {
+                                               AbstractState<PentagonDomain<AccessPath>> abstractState) {
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing edge: " + source + " -> " + target, LoggerVerbosity.DEBUG);
 
         // If not an if-node, simply propagate post-condition to target's pre-condition
         if (!(source instanceof IfNode ifNode)) {
-            abstractStateMap.getPreCondition(target).joinWith(abstractStateMap.getPostCondition(source));
-            return abstractStateMap.getPreCondition(target);
+            abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
+            return abstractState.getPreCondition(target);
         }
 
-        PentagonDomain<AccessPath> ifPost = abstractStateMap.getPostCondition(ifNode);
+        PentagonDomain<AccessPath> ifPost = abstractState.getPostCondition(ifNode);
 
         // Check for unreachable branches
         if (ifPost.isBot() && target.equals(ifNode.trueSuccessor())) {
-            abstractStateMap.getState(target).markRestrictedFromExecution();
-            return abstractStateMap.getPreCondition(target);
+            abstractState.getState(target).markRestrictedFromExecution();
+            return abstractState.getPreCondition(target);
         }
 
         if (!ifPost.isBot() && target.equals(ifNode.falseSuccessor())) {
-            abstractStateMap.getState(target).markRestrictedFromExecution();
-            return abstractStateMap.getPreCondition(target);
+            abstractState.getState(target).markRestrictedFromExecution();
+            return abstractState.getPreCondition(target);
         }
 
         // Only handle integer less than conditions for now
         if (!(ifNode.condition() instanceof IntegerLessThanNode lessThanNode)) {
-            return abstractStateMap.getPreCondition(target);
+            return abstractState.getPreCondition(target);
         }
 
         // Get the variables involved in the comparison
@@ -72,8 +72,8 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
         AccessPath rightVar = new AccessPath(lessThanNode.getY());
 
         // Get the current intervals
-        PentagonDomain<AccessPath> targetPre = abstractStateMap.getPreCondition(target);
-        targetPre.joinWith(abstractStateMap.getPostCondition(source));
+        PentagonDomain<AccessPath> targetPre = abstractState.getPreCondition(target);
+        targetPre.joinWith(abstractState.getPostCondition(source));
 
         // Refine based on which branch we're taking
         if (target.equals(ifNode.trueSuccessor())) {
@@ -128,10 +128,10 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
 
     @Override
     public PentagonDomain<AccessPath> execNode(Node node,
-                                               AbstractStateMap<PentagonDomain<AccessPath>> abstractStateMap,
+                                               AbstractState<PentagonDomain<AccessPath>> abstractState,
                                                InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack) {
 
-        PentagonDomain<AccessPath> preCondition = abstractStateMap.getPreCondition(node);
+        PentagonDomain<AccessPath> preCondition = abstractState.getPreCondition(node);
         PentagonDomain<AccessPath> computedPost = preCondition.copyOf();
 
         switch (node) {
@@ -148,8 +148,8 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
                 AccessPath resultVar = new AccessPath(binaryNode);
                 AccessPath leftVar = new AccessPath(binaryNode.getX());
                 AccessPath rightVar = new AccessPath(binaryNode.getY());
-                PentagonDomain<AccessPath> xPentagon = execNode(binaryNode.getX(), abstractStateMap, invokeCallBack);
-                PentagonDomain<AccessPath> yPentagon = execNode(binaryNode.getY(), abstractStateMap, invokeCallBack);
+                PentagonDomain<AccessPath> xPentagon = execNode(binaryNode.getX(), abstractState, invokeCallBack);
+                PentagonDomain<AccessPath> yPentagon = execNode(binaryNode.getY(), abstractState, invokeCallBack);
                 IntInterval leftInterval = xPentagon.getInterval(leftVar);
                 IntInterval rightInterval = yPentagon.getInterval(rightVar);
                 IntInterval result;
@@ -185,7 +185,7 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
             case StoreFieldNode storeFieldNode -> {
                 /* Same potential problem as in LoadFieldNode case */
                 AccessPath fieldVar = AccessPath.getAccessPathFromAccessFieldNode(storeFieldNode);
-                PentagonDomain<AccessPath> storeFieldEnv = execNode(storeFieldNode.value(), abstractStateMap, invokeCallBack);
+                PentagonDomain<AccessPath> storeFieldEnv = execNode(storeFieldNode.value(), abstractState, invokeCallBack);
                 computedPost.setInterval(fieldVar, storeFieldEnv.getInterval(new AccessPath(storeFieldNode.value())));
 
                 // Transfer inequality relations to the field
@@ -213,9 +213,9 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
                     }
 
                     if (isCyclicEdge) {
-                        phiResult.joinWith(abstractStateMap.getPostCondition(input).getInterval(variableName));
+                        phiResult.joinWith(abstractState.getPostCondition(input).getInterval(variableName));
                     } else {
-                        PentagonDomain<AccessPath> inputEnv = execNode(input, abstractStateMap, invokeCallBack);
+                        PentagonDomain<AccessPath> inputEnv = execNode(input, abstractState, invokeCallBack);
                         phiResult.joinWith(inputEnv.getInterval(variableName));
                     }
 
@@ -226,8 +226,8 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
             case IntegerLessThanNode lessThanNode -> {
 
                 AccessPath nodeVar = new AccessPath(node);
-                PentagonDomain<AccessPath> xPentagon = execNode(lessThanNode.getX(), abstractStateMap, invokeCallBack);
-                PentagonDomain<AccessPath> yPentagon = execNode(lessThanNode.getY(), abstractStateMap, invokeCallBack);
+                PentagonDomain<AccessPath> xPentagon = execNode(lessThanNode.getX(), abstractState, invokeCallBack);
+                PentagonDomain<AccessPath> yPentagon = execNode(lessThanNode.getY(), abstractState, invokeCallBack);
                 AccessPath leftVar = new AccessPath(lessThanNode.getX());
                 AccessPath rightVar = new AccessPath(lessThanNode.getY());
                 IntInterval leftInterval = xPentagon.getInterval(leftVar);
@@ -249,10 +249,10 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
                     return computedPost;
                 }
 
-                PentagonDomain<AccessPath> condition = execNode(ifNode.condition(), abstractStateMap, invokeCallBack);
+                PentagonDomain<AccessPath> condition = execNode(ifNode.condition(), abstractState, invokeCallBack);
                 if (condition.isBot()) {
-                    abstractStateMap.getPostCondition(ifNode).setToBot();
-                    return abstractStateMap.getPostCondition(ifNode);
+                    abstractState.getPostCondition(ifNode).setToBot();
+                    return abstractState.getPostCondition(ifNode);
                 }
 
                 IntInterval condInterval = condition.getInterval(new AccessPath(ifNode.condition()));
@@ -275,7 +275,7 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
                aren't our concern.
              */
             case Invoke invoke -> {
-                AnalysisOutcome<PentagonDomain<AccessPath>> outcome = invokeCallBack.handleCall(invoke, node, abstractStateMap);
+                AnalysisOutcome<PentagonDomain<AccessPath>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                 if (outcome.isError()) {
                     logger.log("Error in invoke: " + outcome.result(), LoggerVerbosity.INFO);
                     computedPost.setToTop();
@@ -287,7 +287,7 @@ public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<A
             }
         }
 
-        abstractStateMap.setPostCondition(node, computedPost);
+        abstractState.setPostCondition(node, computedPost);
         logger.log("Completed node: " + node + " -> " + computedPost, LoggerVerbosity.DEBUG);
         return computedPost;
     }

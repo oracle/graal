@@ -1,6 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.call;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.CallStack;
@@ -17,7 +19,6 @@ import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -60,7 +61,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
         AnalysisMethod targetAnalysisMethod;
 
         try {
-            targetAnalysisMethod = GraphUtil.getInvokeTargetAnalysisMethod(callStack.getCurrentAnalysisMethod(), invoke);
+            targetAnalysisMethod = getInvokeTargetAnalysisMethod(callStack.getCurrentAnalysisMethod(), invoke);
         } catch (Exception e) {
             /* For some reason we are not able to get the AnalysisMethod of the Invoke */
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
@@ -135,5 +136,14 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             result.add(transferFunction.analyzeNode(argument, callerState));
         }
         return result;
+    }
+
+    private AnalysisMethod getInvokeTargetAnalysisMethod(AnalysisMethod root, Invoke invoke) {
+        for (InvokeInfo invokeInfo : root.getInvokes()) {
+            if (invoke.getTargetMethod().equals(invokeInfo.getTargetMethod())) {
+                return invokeInfo.getTargetMethod();
+            }
+        }
+        throw AnalysisError.interruptAnalysis(invoke + " not found in: " + root);
     }
 }
