@@ -8,11 +8,11 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 
 /**
- * Base class for call handlers.
+ * Base class for invoke handlers.
  *
- * @param <Domain> the type of the abstract domain used for the analysis.
+ * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis.
  */
-public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>> implements CallHandler<Domain> {
+public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> implements InvokeHandler<Domain> {
 
     protected final Domain initialDomain;
     protected final TransferFunction<Domain> transferFunction;
@@ -21,31 +21,15 @@ public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>> imp
     protected final IteratorPayload iteratorPayload;
 
     @SuppressWarnings("this-escape")
-    public BaseCallHandler(Domain initialDomain,
-                           NodeInterpreter<Domain> nodeInterpreter,
-                           CheckerManager checkerManager,
-                           AnalysisMethodFilterManager methodFilterManager,
-                           IteratorPayload iteratorPayload) {
+    public BaseInvokeHandler(Domain initialDomain,
+                             NodeInterpreter<Domain> nodeInterpreter,
+                             CheckerManager checkerManager,
+                             AnalysisMethodFilterManager methodFilterManager,
+                             IteratorPayload iteratorPayload) {
         this.initialDomain = initialDomain;
-        this.transferFunction = new TransferFunction<>(nodeInterpreter, this::handleCall);
+        this.transferFunction = new TransferFunction<>(nodeInterpreter, this::handleInvoke);
         this.checkerManager = checkerManager;
         this.methodFilterManager = methodFilterManager;
         this.iteratorPayload = iteratorPayload;
-    }
-
-    public Domain getInitialDomain() {
-        return initialDomain;
-    }
-
-    public CheckerManager getCheckerManager() {
-        return checkerManager;
-    }
-
-    public AnalysisMethodFilterManager getMethodFilterManager() {
-        return methodFilterManager;
-    }
-
-    public IteratorPayload getIteratorPayload() {
-        return iteratorPayload;
     }
 }
