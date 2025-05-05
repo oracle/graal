@@ -153,8 +153,9 @@ class StandaloneLicenses(mx.Project):
         self.community_license_file = _require(kw_args, 'community_license_file', suite, name)
         self.community_3rd_party_license_file = _require(kw_args, 'community_3rd_party_license_file', suite, name)
 
+        self.uses_enterprise_sources = uses_enterprise_sources()
         self.enterprise = is_enterprise()
-        if self.enterprise:
+        if self.uses_enterprise_sources:
             deps.append('lium:LICENSE_INFORMATION_USER_MANUAL')
         super().__init__(suite, name, subDir=None, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kw_args)
 
@@ -166,12 +167,19 @@ class StandaloneLicenses(mx.Project):
             raise ValueError('single not supported')
 
         if self.enterprise:
-            lium_suite = mx.suite('lium', fatalIfMissing=True, context=self)
-            vm_enterprise_dir = join(dirname(lium_suite.dir), 'vm-enterprise')
-            yield join(vm_enterprise_dir, 'GraalVM_GFTC_License.txt'), 'LICENSE.txt'
-            yield from mx.distribution('lium:LICENSE_INFORMATION_USER_MANUAL').getArchivableResults(use_relpath, single=True)
-            if not mx.suite('sdk').is_release():
-                yield join(vm_enterprise_dir, 'DISCLAIMER_FOR_SNAPSHOT_ARTIFACTS.txt'), 'DISCLAIMER.txt'
+            if self.uses_enterprise_sources:
+                lium_suite = mx.suite('lium', fatalIfMissing=True, context=self)
+                vm_enterprise_dir = join(dirname(lium_suite.dir), 'vm-enterprise')
+                yield join(vm_enterprise_dir, 'GraalVM_GFTC_License.txt'), 'LICENSE.txt'
+                yield from mx.distribution('lium:LICENSE_INFORMATION_USER_MANUAL').getArchivableResults(use_relpath, single=True)
+                if not mx.suite('sdk').is_release():
+                    yield join(vm_enterprise_dir, 'DISCLAIMER_FOR_SNAPSHOT_ARTIFACTS.txt'), 'DISCLAIMER.txt'
+            else:
+                # If the only enterprise input is a bootstrap Oracle GraalVM then copy the license from there
+                yield join(_external_bootstrap_graalvm, 'LICENSE.txt'), 'LICENSE.txt'
+                yield join(_external_bootstrap_graalvm, 'license-information-user-manual.zip'), 'license-information-user-manual.zip'
+                if not mx.suite('sdk').is_release():
+                    mx.warn('Cannot find DISCLAIMER_FOR_SNAPSHOT_ARTIFACTS.txt, you should copy it yourself in the result')
         else:
             yield join(self.suite.dir, self.community_license_file), 'LICENSE.txt'
             yield join(self.suite.dir, self.community_3rd_party_license_file), '3rd_party_licenses.txt'
@@ -192,14 +200,19 @@ class StandaloneLicensesBuildTask(mx.BuildTask):
         else:
             contents = None
         if contents != self.witness_contents():
-            return True, 'CE<=>EE'
+            return True, f"{contents} => {self.witness_contents()}"
         return False, 'Files are already on disk'
 
     def witness_file(self):
         return join(self.subject.get_output_root(), 'witness')
 
     def witness_contents(self):
-        return 'ee' if self.subject.enterprise else 'ce'
+        if self.subject.uses_enterprise_sources:
+            return 'ee sources'
+        elif self.subject.enterprise:
+            return _external_bootstrap_graalvm
+        else:
+            return 'ce'
 
     def build(self):
         witness_file = self.witness_file()
