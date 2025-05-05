@@ -37,40 +37,43 @@ import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 
+import jdk.graal.compiler.word.Word;
+
 /**
  * Updates each reference after marking and before compaction to point to the referenced object's
  * future location.
  */
 public final class ObjectRefFixupVisitor implements ObjectReferenceVisitor {
     @Override
-    public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
-    }
-
-    @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        assert innerOffset == 0;
+    public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        Pointer pos = firstObjRef;
+        Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+        while (pos.belowThan(end)) {
+            visitObjectReference(pos, compressed, holderObject);
+            pos = pos.add(referenceSize);
+        }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
         if (p.isNull() || HeapImpl.getHeapImpl().isInImageHeap(p)) {
-            return true;
+            return;
         }
 
-        Object obj;
-        Object original = p.toObject();
+        Object original = p.toObjectNonNull();
         if (ObjectHeaderImpl.isAlignedObject(original)) {
             Pointer newLocation = ObjectMoveInfo.getNewObjectAddress(p);
             assert newLocation.isNonNull() //
                             || holderObject == null // references from CodeInfo, invalidated or weak
                             || holderObject instanceof Reference<?>; // cleared referent
 
-            obj = newLocation.toObject();
+            Object obj = newLocation.toObjectNonNull();
             ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
-        } else {
-            obj = original;
         }
         // Note that image heap cards have already been cleaned and re-marked during the scan
-        return true;
     }
 }

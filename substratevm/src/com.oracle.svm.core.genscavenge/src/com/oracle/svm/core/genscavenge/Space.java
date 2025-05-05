@@ -159,33 +159,25 @@ public final class Space {
         return isToSpace;
     }
 
-    public boolean walkObjects(ObjectVisitor visitor) {
+    public void walkObjects(ObjectVisitor visitor) {
         AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
-            if (!AlignedHeapChunk.walkObjects(aChunk, visitor)) {
-                return false;
-            }
+            AlignedHeapChunk.walkObjects(aChunk, visitor);
             aChunk = HeapChunk.getNext(aChunk);
         }
         UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
-            if (!UnalignedHeapChunk.walkObjects(uChunk, visitor)) {
-                return false;
-            }
+            UnalignedHeapChunk.walkObjects(uChunk, visitor);
             uChunk = HeapChunk.getNext(uChunk);
         }
-        return true;
     }
 
-    boolean walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
+    void walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
         AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            if (!visitor.visitChunk(chunk)) {
-                return false;
-            }
+            visitor.visitChunk(chunk);
             chunk = HeapChunk.getNext(chunk);
         }
-        return true;
     }
 
     public void logUsage(Log log, boolean logIfEmpty) {
@@ -439,7 +431,7 @@ public final class Space {
         Pointer originalMemory = Word.objectToUntrackedPointer(originalObj);
         UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, originalSize);
 
-        Object copy = copyMemory.toObject();
+        Object copy = copyMemory.toObjectNonNull();
         if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
             // Must do first: ensures correct object size below and in other places
             int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);

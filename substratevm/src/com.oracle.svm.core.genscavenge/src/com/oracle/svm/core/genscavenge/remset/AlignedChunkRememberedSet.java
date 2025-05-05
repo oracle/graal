@@ -116,7 +116,7 @@ public final class AlignedChunkRememberedSet {
         Pointer offset = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer top = HeapChunk.getTopPointer(chunk);
         while (offset.belowThan(top)) {
-            Object obj = offset.toObject();
+            Object obj = offset.toObjectNonNull();
             UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInGC(obj);
             enableRememberedSetForObject(chunk, obj, objSize);
             offset = offset.add(objSize);
@@ -206,8 +206,8 @@ public final class AlignedChunkRememberedSet {
         UnsignedWord index = CardTable.memoryOffsetToIndex(start.subtract(objectsStart));
         Pointer ptr = FirstObjectTable.getFirstObjectImprecise(fotStart, objectsStart, index);
         while (ptr.belowThan(end)) {
-            Object obj = ptr.toObject();
-            visitor.visitObjectInline(obj);
+            Object obj = ptr.toObjectNonNull();
+            visitor.visitObject(obj);
             ptr = LayoutEncoding.getObjectEndInlineInGC(obj);
         }
     }

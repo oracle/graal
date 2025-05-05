@@ -78,7 +78,7 @@ public class VMThreadLocalSupport implements InitialLayerOnlyImageSingleton {
     public void walk(IsolateThread isolateThread, ObjectReferenceVisitor referenceVisitor) {
         NonmovableArray<Byte> threadRefMapEncoding = NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding);
         InstanceReferenceMap referenceMap = InstanceReferenceMapDecoder.getReferenceMap(threadRefMapEncoding, vmThreadReferenceMapIndex);
-        InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) isolateThread, referenceMap, referenceVisitor, null);
+        InstanceReferenceMapDecoder.walkReferences((Pointer) isolateThread, referenceMap, referenceVisitor, null);
     }
 
     @Override

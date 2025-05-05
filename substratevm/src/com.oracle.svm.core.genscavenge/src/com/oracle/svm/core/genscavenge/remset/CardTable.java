@@ -158,7 +158,7 @@ final class CardTable {
             while (curPtr.belowThan(objectsLimit)) {
                 // As we only use imprecise card marking at the moment, only the card at the address
                 // of the object may be dirty.
-                Object obj = curPtr.toObject();
+                Object obj = curPtr.toObjectNonNull();
                 UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
                 if (isClean(cardTableStart, cardTableIndex)) {
                     CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart);
@@ -243,11 +243,19 @@ final class CardTable {
         }
 
         @Override
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed);
+                pos = pos.add(referenceSize);
+            }
+        }
+
         @SuppressFBWarnings(value = {"NS_DANGEROUS_NON_SHORT_CIRCUIT"}, justification = "Non-short circuit logic is used on purpose here.")
-        public boolean visitObjectReference(Pointer reference, boolean compressed, Object holderObject) {
+        private void visitObjectReference(Pointer reference, boolean compressed) {
             Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
             success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject);
-            return true;
         }
     }
 }

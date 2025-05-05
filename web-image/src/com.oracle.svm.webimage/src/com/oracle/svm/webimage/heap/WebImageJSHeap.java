@@ -94,18 +94,15 @@ public class WebImageJSHeap extends Heap {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return false;
+    public void walkObjects(ObjectVisitor visitor) {
     }
 
     @Override
-    public boolean walkImageHeapObjects(ObjectVisitor visitor) {
-        return false;
+    public void walkImageHeapObjects(ObjectVisitor visitor) {
     }
 
     @Override
-    public boolean walkCollectedHeapObjects(ObjectVisitor visitor) {
-        return false;
+    public void walkCollectedHeapObjects(ObjectVisitor visitor) {
     }
 
     @Override

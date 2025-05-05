@@ -33,7 +33,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;
@@ -60,31 +59,32 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
-    }
-
-    @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        assert innerOffset >= 0;
+    public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        Pointer pos = firstObjRef;
+        Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+        while (pos.belowThan(end)) {
+            visitObjectReference(pos, compressed, holderObject);
+            pos = pos.add(referenceSize);
+        }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         assert !objRef.isNull();
         counters.noteObjRef();
 
-        Pointer offsetP = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        assert offsetP.isNonNull() || innerOffset == 0;
-
-        Pointer p = offsetP.subtract(innerOffset);
+        Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
         if (p.isNull()) {
             counters.noteNullReferent();
-            return true;
+            return;
         }
 
         if (HeapImpl.getHeapImpl().isInImageHeap(p)) {
             counters.noteNonHeapReferent();
-            return true;
+            return;
         }
 
         // This is the most expensive check as it accesses the heap fairly randomly, which results
@@ -97,26 +97,23 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
-                Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
-                ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
+                ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
-                return true;
+                return;
             }
 
-            Object obj = p.toObject();
+            Object obj = p.toObjectNonNull();
             if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
-                return true;
+                return;
             }
 
             // Promote the Object if necessary, making it at least grey, and ...
-            assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
-                Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-                ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+                ReferenceAccess.singleton().writeObjectAt(objRef, copy, compressed);
             } else {
                 counters.noteUnmodifiedReference();
             }
@@ -125,7 +122,6 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             // might have to dirty the card.
             RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
         }
-        return true;
     }
 
     public Counters openCounters() {
