@@ -764,7 +764,7 @@ public class NativeImageGenerator {
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.ARCHIVE_LAYER)) {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     ImageSingletonsSupportImpl.HostedManagement.persist();
-                    HostedImageLayerBuildingSupport.singleton().archiveLayer(imageName);
+                    HostedImageLayerBuildingSupport.singleton().archiveLayer();
                 }
             }
             reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize(),

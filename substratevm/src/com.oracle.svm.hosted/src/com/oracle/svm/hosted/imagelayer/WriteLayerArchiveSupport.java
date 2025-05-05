@@ -41,8 +41,8 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
     /** The original location of the layer output file. */
     private final Path outputLayerLocation;
 
-    public WriteLayerArchiveSupport(ArchiveSupport archiveSupport, Path layerFile) {
-        super(archiveSupport);
+    public WriteLayerArchiveSupport(String layerName, ArchiveSupport archiveSupport, Path layerFile) {
+        super(layerName, archiveSupport);
         this.outputLayerLocation = validateLayerFile(layerFile);
     }
 
@@ -68,8 +68,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         return layerFile;
     }
 
-    public void write(String imageName) {
-        layerProperties.writeLayerName(String.valueOf(imageName));
+    public void write() {
         layerProperties.write();
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(outputLayerLocation), archiveSupport.createManifest())) {
             Path imageBuilderOutputDir = NativeImageGenerator.getOutputDirectory();

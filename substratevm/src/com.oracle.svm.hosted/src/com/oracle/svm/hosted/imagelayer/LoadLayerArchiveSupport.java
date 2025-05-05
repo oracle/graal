@@ -38,8 +38,8 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 
     private final AtomicBoolean deleteLayerRoot = new AtomicBoolean();
 
-    public LoadLayerArchiveSupport(Path layerFile, ArchiveSupport archiveSupport) {
-        super(archiveSupport);
+    public LoadLayerArchiveSupport(String layerName, Path layerFile, ArchiveSupport archiveSupport) {
+        super(layerName, archiveSupport);
         Path inputLayerLocation = validateLayerFile(layerFile);
         expandedInputLayerDir = this.archiveSupport.createTempDir(LAYER_TEMP_DIR_PREFIX, deleteLayerRoot);
         this.archiveSupport.expandJarToDir(inputLayerLocation, expandedInputLayerDir, deleteLayerRoot);
