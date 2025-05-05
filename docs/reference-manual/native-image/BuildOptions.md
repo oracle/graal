@@ -90,7 +90,7 @@ Run `native-image --help` for help on build options.
 
 Run `native-image --help-extra` for help on additional options.
 
-* `--exclude-config`: exclude configuration for a comma-separated pair of class path/module path pattern and resource pattern. For example: `--exclude-config foo.jar,META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JAR files named _foo.jar_.
+* `--exclude-config`: exclude configuration for a space-separated pair of class path/module path pattern and resource pattern. For example: `--exclude-config foo.jar META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JAR files named _foo.jar_.
 * `--expert-options`: list image build options for experts
 * `--expert-options-all`: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it.
