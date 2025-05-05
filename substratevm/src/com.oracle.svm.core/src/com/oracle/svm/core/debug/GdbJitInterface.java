@@ -50,6 +50,12 @@ import com.oracle.svm.core.c.ProjectHeaderFile;
 
 import jdk.graal.compiler.word.Word;
 
+/**
+ * This interface is based on the <a href=
+ * "https://sourceware.org/gdb/current/onlinedocs/gdb.html/Declarations.html#Declarations">GDB JIT
+ * compilation interface</a> and contains implementations for registering and unregistering run-time
+ * compilations in GDB.
+ */
 @CContext(GdbJitInterface.GdbJitInterfaceDirectives.class)
 public class GdbJitInterface {
 
