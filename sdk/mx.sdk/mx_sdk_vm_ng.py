@@ -753,6 +753,10 @@ class JavaHomeDependency(mx.BaseLibrary):
     def isJDKDependent(self):
         return False
 
+    # Needed when somesuite._output_root_includes_config() == False
+    def get_output_root(self):
+        return join(self.get_output_base(), self.name)
+
 
 class JavaHomeBuildTask(mx.BuildTask):
     subject: JavaHomeDependency
