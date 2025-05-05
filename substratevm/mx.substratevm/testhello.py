@@ -191,7 +191,7 @@ def test():
     exec_string = execute("backtrace")
     stacktrace_regex = [
         fr"#0{spaces_pattern}hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_start:d}",
-        fr"#1{spaces_pattern}({address_pattern} in )?java\.lang\.invoke\.LambdaForm\$DMH/s{hex_digits_pattern}::invokeStatic(Init)?{param_types_pattern} {arg_values_pattern}( at java/lang/invoke/{package_file_pattern}:[0-9]+)?",
+        fr"#1{spaces_pattern}({address_pattern} in )?java\.lang\.invoke\.DirectMethodHandle\$Holder::invokeStatic(Init)?{param_types_pattern} {arg_values_pattern}( at java/lang/invoke/DirectMethodHandle.java:[0-9]+)?",
         fr"#2{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain{param_types_pattern} {arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#3{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0{no_param_types_pattern} {no_arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#4{spaces_pattern}{address_pattern} in com\.oracle\.svm\.core\.JavaMainWrapper::runCore{no_param_types_pattern} {no_arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
@@ -402,7 +402,7 @@ def test():
     stacktrace_regex = [
         fr"#0{spaces_pattern}hello\.Hello\$Greeter::greeter{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:38",
         fr"#1{spaces_pattern}{address_pattern} in hello\.Hello::main{param_types_pattern} {arg_values_pattern} at hello/Hello\.java:{main_start:d}",
-        fr"#2{spaces_pattern}({address_pattern} in )?java\.lang\.invoke\.LambdaForm\$DMH/s{hex_digits_pattern}::invokeStatic(Init)?{param_types_pattern} {arg_values_pattern}( at java/lang/invoke/{package_file_pattern}:[0-9]+)?",
+        fr"#2{spaces_pattern}({address_pattern} in )?java\.lang\.invoke\.DirectMethodHandle\$Holder::invokeStatic(Init)?{param_types_pattern} {arg_values_pattern}( at java/lang/invoke/DirectMethodHandle.java:[0-9]+)?",
         fr"#3{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain{param_types_pattern} {arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#4{spaces_pattern}({address_pattern} in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0{no_param_types_pattern} {no_arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
         fr"#5{spaces_pattern}{address_pattern} in com\.oracle\.svm\.core\.JavaMainWrapper::runCore{no_param_types_pattern} {no_arg_values_pattern} at {package_pattern}JavaMainWrapper\.java:[0-9]+",
