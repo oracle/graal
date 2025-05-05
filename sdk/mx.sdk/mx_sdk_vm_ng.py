@@ -126,10 +126,16 @@ def _get_dyn_attribute(dep, attr_name, default):
         raise mx.abort(f"Could not resolve {attr_name} '{attr}' in {suite.extensions.__file__}", context=dep)
     return func(), attr
 
-def _is_enterprise():
-    return mx.suite('graal-enterprise', fatalIfMissing=False) or mx.suite('truffle-enterprise', fatalIfMissing=False) or mx.suite('substratevm-enterprise', fatalIfMissing=False)
 
-def _is_nativeimage_ee():
+def _has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+# Whether any of truffle-enterprise, graal-enterprise or substratevm-enterprise are imported.
+def uses_enterprise_sources():
+    # Technically testing for truffle-enterprise might be enough currently, but unclear if graal-enterprise will always depend on truffle-enterprise.
+    return _has_suite('truffle-enterprise') or _has_suite('graal-enterprise') or _has_suite('substratevm-enterprise')
+
+def is_nativeimage_ee():
     global _is_nativeimage_ee_cache
     if _is_nativeimage_ee_cache is None:
         if not _external_bootstrap_graalvm:
@@ -138,12 +144,16 @@ def _is_nativeimage_ee():
             _is_nativeimage_ee_cache = exists(join(_external_bootstrap_graalvm, 'lib', 'svm', 'builder', 'svm-enterprise.jar'))
     return _is_nativeimage_ee_cache
 
+# Whether the produced standalone uses anything enterprise, either from source or prebuilt (i.e., a boostrap Oracle GraalVM)
+def is_enterprise():
+    return uses_enterprise_sources() or is_nativeimage_ee()
+
 class StandaloneLicenses(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense=None, **kw_args):
         self.community_license_file = _require(kw_args, 'community_license_file', suite, name)
         self.community_3rd_party_license_file = _require(kw_args, 'community_3rd_party_license_file', suite, name)
 
-        self.enterprise = _is_enterprise()
+        self.enterprise = is_enterprise()
         if self.enterprise:
             deps.append('lium:LICENSE_INFORMATION_USER_MANUAL')
         super().__init__(suite, name, subDir=None, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kw_args)
@@ -156,8 +166,8 @@ class StandaloneLicenses(mx.Project):
             raise ValueError('single not supported')
 
         if self.enterprise:
-            truffle_enterprise = mx.suite('truffle-enterprise', fatalIfMissing=True, context=self)
-            vm_enterprise_dir = join(dirname(truffle_enterprise.dir), 'vm-enterprise')
+            lium_suite = mx.suite('lium', fatalIfMissing=True, context=self)
+            vm_enterprise_dir = join(dirname(lium_suite.dir), 'vm-enterprise')
             yield join(vm_enterprise_dir, 'GraalVM_GFTC_License.txt'), 'LICENSE.txt'
             yield from mx.distribution('lium:LICENSE_INFORMATION_USER_MANUAL').getArchivableResults(use_relpath, single=True)
             if not mx.suite('sdk').is_release():
@@ -338,7 +348,7 @@ class NativeImageLibraryProject(NativeImageProject):
 
     def get_build_args(self):
         extra_build_args = ['--shared']
-        if _is_nativeimage_ee():
+        if is_nativeimage_ee():
             # PGO is supported
             extra_build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+ProfilingEnableProfileDumpHooks'])
         return super().get_build_args() + extra_build_args
@@ -397,7 +407,7 @@ class NativeImageBuildTask(mx.BuildTask):
         canonical_name = self.subject.base_file_name()
         profiles = mx_sdk_vm_impl._image_profiles(canonical_name)
         if profiles:
-            if not _is_nativeimage_ee():
+            if not is_nativeimage_ee():
                 raise mx.abort("Image profiles can not be used if PGO is not supported.")
             basenames = [basename(p) for p in profiles]
             if len(set(basenames)) != len(profiles):
@@ -955,7 +965,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         path_substitutions.register_no_arg('graalvm_os', mx_sdk_vm_impl.get_graalvm_os())
         string_substitutions = mx_subst.SubstitutionEngine(path_substitutions)
 
-        if _is_enterprise():
+        if is_enterprise():
             dir_name = enterprise_dir_name or f'{enterprise_archive_name}-<version>-<graalvm_os>-<arch>'
             dist_name = 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
         else:
