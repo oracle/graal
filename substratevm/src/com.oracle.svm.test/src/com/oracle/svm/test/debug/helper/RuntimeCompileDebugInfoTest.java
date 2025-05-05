@@ -31,10 +31,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -44,6 +50,7 @@ import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.test.debug.CStructTests;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -70,6 +77,10 @@ class RuntimeCompilations {
 
     @NeverInline("For testing")
     private void breakHere(@SuppressWarnings("unused") Object... pin) {
+    }
+
+    @NeverInline("For testing")
+    private void breakHere(@SuppressWarnings("unused") WordBase... pin) {
     }
 
     @NeverInline("For testing")
@@ -128,6 +139,11 @@ class RuntimeCompilations {
         sc = param3;
         sd = param4;
         return sa + sb;
+    }
+
+    @NeverInline("For testing")
+    public void cPointerTypes(CCharPointer charPtr, CCharPointerPointer charPtrPtr) {
+        breakHere(charPtr, charPtrPtr);
     }
 
     @NeverInline("For testing")
@@ -190,19 +206,22 @@ public class RuntimeCompileDebugInfoTest {
         SubstrateMethod testMethod6;
         SubstrateMethod testMethod7;
         SubstrateMethod testMethod8;
+        SubstrateMethod testMethod9;
+        SubstrateMethod testMethod10;
+        SubstrateMethod testMethod11;
     }
 
     public static class RegisterMethodsFeature implements Feature {
         RegisterMethodsFeature() {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
                             "org.graalvm.nativeimage.builder",
-                            "com.oracle.svm.graal", "com.oracle.svm.graal.hosted.runtimecompilation", "com.oracle.svm.hosted");
+                            "com.oracle.svm.graal", "com.oracle.svm.graal.hosted.runtimecompilation", "com.oracle.svm.hosted", "com.oracle.svm.core.util");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
                             "jdk.internal.vm.ci",
                             "jdk.vm.ci.code");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, RegisterMethodsFeature.class, false,
                             "jdk.graal.compiler",
-                            "jdk.graal.compiler.api.directives");
+                            "jdk.graal.compiler.api.directives", "jdk.graal.compiler.word");
         }
 
         @Override
@@ -229,6 +248,9 @@ public class RuntimeCompileDebugInfoTest {
             holder.testMethod6 = prepareMethodForRuntimeCompilation(config, runtimeCompilationFeature, RuntimeCompilations.class, "localsMethod", String.class);
             holder.testMethod7 = prepareMethodForRuntimeCompilation(config, runtimeCompilationFeature, RuntimeCompilations.class, "staticMethod", Integer.class, int.class, String.class, Object.class);
             holder.testMethod8 = prepareMethodForRuntimeCompilation(config, runtimeCompilationFeature, RuntimeCompilations.class, "inlineTest", String.class);
+            holder.testMethod9 = prepareMethodForRuntimeCompilation(config, runtimeCompilationFeature, CStructTests.class, "mixedArguments");
+            holder.testMethod10 = prepareMethodForRuntimeCompilation(config, runtimeCompilationFeature, CStructTests.class, "weird");
+            holder.testMethod11 = prepareMethodForRuntimeCompilation(config, runtimeCompilationFeature, RuntimeCompilations.class, "cPointerTypes", CCharPointer.class, CCharPointerPointer.class);
         }
 
         private static SubstrateMethod prepareMethodForRuntimeCompilation(BeforeAnalysisAccessImpl config, RuntimeCompilationFeature runtimeCompilationFeature, Class<?> holder, String methodName,
@@ -250,6 +272,12 @@ public class RuntimeCompileDebugInfoTest {
         Object invoke(Object receiver);
 
         @InvokeJavaFunctionPointer
+        void invoke();
+
+        @InvokeJavaFunctionPointer
+        void invoke(Object receiver, CCharPointer arg1, CCharPointerPointer arg2);
+
+        @InvokeJavaFunctionPointer
         int invoke(Object receiver, int arg1);
 
         @InvokeJavaFunctionPointer
@@ -268,6 +296,14 @@ public class RuntimeCompileDebugInfoTest {
 
     private static Integer invoke(TestFunctionPointer functionPointer, Object receiver, Integer arg1, int arg2, String arg3, Object arg4) {
         return functionPointer.invoke(receiver, arg1, arg2, arg3, arg4);
+    }
+
+    private static void invoke(TestFunctionPointer functionPointer) {
+        functionPointer.invoke();
+    }
+
+    private static void invoke(TestFunctionPointer functionPointer, Object receiver, CCharPointer arg1, CCharPointerPointer arg2) {
+        functionPointer.invoke(receiver, arg1, arg2);
     }
 
     private static Object invoke(TestFunctionPointer functionPointer, Object receiver) {
@@ -296,7 +332,6 @@ public class RuntimeCompileDebugInfoTest {
 
     @SuppressWarnings("unused")
     public static void testParams() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod1);
         InstalledCode installedCodeStatic = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod7);
 
@@ -315,7 +350,6 @@ public class RuntimeCompileDebugInfoTest {
 
     @SuppressWarnings("unused")
     public static void testNoParam() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod2);
 
         RuntimeCompilations x = new RuntimeCompilations(11);
@@ -326,7 +360,6 @@ public class RuntimeCompileDebugInfoTest {
     }
 
     public static void testVoid() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod3);
 
         RuntimeCompilations x = new RuntimeCompilations(11);
@@ -338,7 +371,6 @@ public class RuntimeCompileDebugInfoTest {
 
     @SuppressWarnings("unused")
     public static void testPrimitiveReturn() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod4);
 
         RuntimeCompilations x = new RuntimeCompilations(11);
@@ -351,7 +383,6 @@ public class RuntimeCompileDebugInfoTest {
 
     @SuppressWarnings("unused")
     public static void testArray() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod5);
 
         RuntimeCompilations x = new RuntimeCompilations(11);
@@ -365,7 +396,6 @@ public class RuntimeCompileDebugInfoTest {
 
     @SuppressWarnings("unused")
     public static void testLocals() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod6);
 
         RuntimeCompilations x = new RuntimeCompilations(11);
@@ -377,7 +407,6 @@ public class RuntimeCompileDebugInfoTest {
     }
 
     public static void testInlining() {
-
         InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod8);
 
         RuntimeCompilations x = new RuntimeCompilations(11);
@@ -386,6 +415,31 @@ public class RuntimeCompileDebugInfoTest {
         invoke(getFunctionPointer(installedCode), x, param1);
 
         installedCode.invalidate();
+    }
+
+    public static void testCStructs() {
+        InstalledCode installedCode1 = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod9);
+        InstalledCode installedCode2 = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod10);
+
+        invoke(getFunctionPointer(installedCode1));
+        invoke(getFunctionPointer(installedCode2));
+
+        installedCode1.invalidate();
+        installedCode2.invalidate();
+    }
+
+    public static void testCPointer() {
+        InstalledCode installedCode = SubstrateGraalUtils.compileAndInstall(getHolder().testMethod11);
+
+        RuntimeCompilations x = new RuntimeCompilations(11);
+        CCharPointer param1 = CTypeConversion.toCString("test").get();
+        CCharPointerPointer param2 = UnmanagedMemory.malloc(SizeOf.get(CCharPointer.class));
+        param2.write(param1);
+
+        invoke(getFunctionPointer(installedCode), x, param1, param2);
+
+        installedCode.invalidate();
+        UnmanagedMemory.free(param2);
     }
 
     @SuppressWarnings("unused")
@@ -417,5 +471,7 @@ public class RuntimeCompileDebugInfoTest {
         testArray();
         testLocals();
         testInlining();
+        testCStructs();
+        testCPointer();
     }
 }

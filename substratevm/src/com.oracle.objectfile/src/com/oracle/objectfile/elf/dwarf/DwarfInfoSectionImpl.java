@@ -134,11 +134,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = 0;
 
         /*
-         * Write TUs for primitive types and header struct and pointer to types. Required for AOT
-         * and run-time debug info.
+         * Write TUs for primitive types and pointer to types. Required for AOT and run-time debug
+         * info.
          */
         pos = writePrimitives(context, buffer, pos);
-        pos = writeHeaderType(context, buffer, pos);
         pos = writePointerToTypes(context, buffer, pos);
 
         /*
@@ -159,6 +158,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * This is the AOT debug info, we write all gathered information into the debug info
              * object file. Most of this information is only produced at image build time.
              */
+
+            /*
+             * Write the header struct representing the object header o a Java object in the native
+             * image.
+             */
+            pos = writeHeaderType(context, buffer, pos);
 
             /*
              * Write TUs for foreign structure types. No CUs, functions of foreign types are handled
@@ -587,15 +592,25 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] instance classes", pos);
         Cursor cursor = new Cursor(pos);
         instanceClassStream().forEach(classEntry -> {
-            // For run-time debug info, we create a type unit with the opaque type, so no need to
-            // create a full type unit here
-            // The foreign method list is no actual instance class, but just needs a compilation
-            // unit to reference the compilation
+            /*
+             * For run-time debug info, we create a type unit with the opaque type, so no need to
+             * create a full type unit here. The foreign method list is no actual instance class,
+             * but just needs a compilation unit to reference the compilation.
+             */
             if (!dwarfSections.isRuntimeCompilation() && classEntry != dwarfSections.getForeignMethodListClassEntry()) {
                 cursor.set(writeTypeUnits(context, classEntry, buffer, cursor.get()));
             }
-            setCUIndex(classEntry, cursor.get());
-            cursor.set(writeInstanceClassInfo(context, classEntry, buffer, cursor.get()));
+            /*
+             * We only need to write a CU for a class entry if compilations or static fields are
+             * available for this class. This includes inlined compilations as they refer to the
+             * declaration in the owner type CU. Other information is already written to the
+             * corresponding type units.
+             */
+            if (classEntry.getMethods().stream().anyMatch(m -> m.isInRange() || m.isInlined()) ||
+                            classEntry.getFields().stream().anyMatch(DwarfInfoSectionImpl::isManifestedStaticField)) {
+                setCUIndex(classEntry, cursor.get());
+                cursor.set(writeInstanceClassInfo(context, classEntry, buffer, cursor.get()));
+            }
         });
         return cursor.get();
     }
@@ -929,12 +944,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] opaque types", p);
 
         Cursor cursor = new Cursor(p);
-        // all structured types as opaque types
-        // i.e. types are resolved by name in gdb (at run-time we know the types must already exist
-        // in the AOT debug info)
-        typeStream().filter(t -> t instanceof StructureTypeEntry).forEach(structureTypeEntry -> {
-            cursor.set(writeOpaqueType(context, structureTypeEntry, buffer, cursor.get()));
-        });
+        /*
+         * Write all structured types as opaque types (except Foreign method list). With this
+         * representation, types are resolved by name in gdb (at run-time we know the types must
+         * already exist in the AOT debug info).
+         */
+        typeStream().filter(t -> t instanceof StructureTypeEntry && t != dwarfSections.getForeignMethodListClassEntry())
+                        .forEach(structureTypeEntry -> cursor.set(writeOpaqueType(context, structureTypeEntry, buffer, cursor.get())));
 
         return cursor.get();
     }
@@ -971,8 +987,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeStrSectionOffset(name, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
         pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
-        log(context, "  [0x%08x]     byte_size  0x%x", pos, 0);
-        pos = writeAttrData2((short) 0, buffer, pos);
 
         /* Fix up the type offset. */
         writeInt(pos - lengthPos, buffer, typeOffsetPos);
@@ -1093,24 +1107,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
-        // this works for interfaces, foreign types and classes, entry kind specifics are in the
-        // type units
         if (dwarfSections.getForeignMethodListClassEntry() != classEntry) {
+            // This works for any structured type entry. Entry kind specifics are in the
+            // type units.
             pos = writeSkeletonClassLayout(context, classEntry, buffer, pos);
         } else {
+            // The foreign class list does not have a corresponding type unit, so we have to add
+            // full declarations here.
             pos = writeMethodDeclarations(context, classEntry, buffer, pos);
         }
 
         /* Write all compiled code locations */
-
         pos = writeMethodLocations(context, classEntry, buffer, pos);
 
         /* Write abstract inline methods. */
-
         pos = writeAbstractInlineMethods(context, classEntry, buffer, pos);
 
         /* Write all static field definitions */
-
         pos = writeStaticFieldLocations(context, classEntry, buffer, pos);
 
         /* if we opened a namespace then terminate its children */

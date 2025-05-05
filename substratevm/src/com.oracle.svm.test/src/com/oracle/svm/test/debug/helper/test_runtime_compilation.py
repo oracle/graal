@@ -35,8 +35,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__))))
 from gdb_helper import *
 
 
-# shouldn't require the gdb patch to be available
-# however, running it without the patch causes an error in gdb
 # this just tests the jit compilation interface, not the generated debug info
 # however still requires symbols to be available for setting a breakpoint
 class TestJITCompilationInterface(unittest.TestCase):
@@ -259,6 +257,90 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         self.assertEqual(gdb_print_type('param3'), param3_t)
         self.assertEqual(gdb_output('param4'), param4)
         self.assertEqual(gdb_print_type('param4'), param4_t)
+
+    # checks run-time debug info for c types
+    def test_c_types_1(self):
+        gdb_set_breakpoint("com.oracle.svm.test.debug.CStructTests::weird")
+        # first stop for the AOT compiled variant
+        gdb_continue()
+        gdb_next()
+
+        # check if contents are correct
+        wd = gdb_output('wd')
+        self.assertIn('f_short = 42', wd)
+        self.assertIn('f_int = 43', wd)
+        self.assertIn('f_long = 44', wd)
+        self.assertIn('f_float = 4.5', wd)
+        self.assertIn('f_double = 4.59999', wd)
+        self.assertIn('a_int = int [8] = {', wd)
+        self.assertIn('a_char = char [12] = {', wd)
+
+        # check if opaque type resolution works
+        # the full type unit is in the AOT debug info, the run-time debug contains an opaque type (resolve by type name)
+        # the actual type name is the Java class name (the class annotated with @CStruct) as typedef for the c type
+        #   -> typedefs are resolved by gdb automatically
+        wd_t = gdb_print_type('wd')
+        self.assertIn('type = struct weird {', wd_t)
+        self.assertIn('short f_short;', wd_t)
+        self.assertIn('int f_int;', wd_t)
+        self.assertIn('long f_long;', wd_t)
+        self.assertIn('float f_float;', wd_t)
+        self.assertIn('double f_double;', wd_t)
+        self.assertIn('int a_int[8];', wd_t)
+        self.assertIn('char a_char[12];', wd_t)
+
+    def test_c_types_2(self):
+        gdb_set_breakpoint("com.oracle.svm.test.debug.CStructTests::mixedArguments")
+        # first stop for the AOT compiled variant
+        gdb_continue()
+        gdb_next()
+        gdb_next()
+
+        # check if contents are correct
+        ss1 = gdb_output('ss1')
+        self.assertIn('first = 1', ss1)
+        self.assertIn('second = 2', ss1)
+        ss2 = gdb_output('ss2')
+        self.assertIn('alpha = 99', ss2)
+        self.assertIn('beta = 100', ss2)
+
+        # check if opaque type resolution works
+        # the full type unit is in the AOT debug info, the run-time debug contains an opaque type (resolve by type name)
+        # the actual type name is the Java class name (the class annotated with @CStruct) as typedef for the c type
+        #   -> typedefs are resolved by gdb automatically
+        ss1_t = gdb_print_type('ss1')
+        self.assertIn('type = struct simple_struct {', ss1_t)
+        self.assertIn('int first;', ss1_t)
+        self.assertIn('int second;', ss1_t)
+        ss2_t = gdb_print_type('ss2')
+        self.assertIn('type = struct simple_struct2 {', ss2_t)
+        self.assertIn('byte alpha;', ss2_t)
+        self.assertIn('long beta;', ss2_t)
+
+    def test_c_types_3(self):
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::cPointerTypes")
+        # first stop for the AOT compiled variant
+        gdb_continue()
+
+        # check if contents are correct
+        c1 = gdb_output('charPtr')
+        self.assertRegex(c1, f'\\(org.graalvm.nativeimage.c.type.CCharPointer\\) 0x{hex_rexp.pattern} "test"')
+        c2_p = gdb_output('charPtrPtr')
+        self.assertRegex(c2_p, f'\\(org.graalvm.nativeimage.c.type.CCharPointerPointer\\) 0x{hex_rexp.pattern}')
+        c2 = gdb_output('*charPtrPtr')
+        self.assertEquals(c1, c2)
+
+        # check if opaque type resolution works
+        # the full type unit is in the AOT debug info, the run-time debug contains an opaque type (resolve by type name)
+        # the actual type name is the Java class name (the class annotated with @CStruct) as typedef for the c type
+        #   -> typedefs are resolved by gdb automatically
+        c1_t = gdb_print_type('charPtr')
+        self.assertIn('type = char *', c1_t)
+        c2_p_t = gdb_print_type('charPtrPtr')
+        self.assertIn('type = char **', c2_p_t)
+
+        # check if dereferencing resolves to the correct value
+        self.assertEqual(gdb.parse_and_eval('charPtr'), gdb.parse_and_eval('*charPtrPtr'))
 
 
 # redirect unittest output to terminal
