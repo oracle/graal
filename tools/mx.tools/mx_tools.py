@@ -198,6 +198,27 @@ class ToolsUnittestConfig(mx_unittest.MxUnittestConfig):
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
         vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
+        # The tools unittests use internals
+        vmArgs = vmArgs + [
+            '--add-exports=com.oracle.truffle.tools.chromeinspector/com.oracle.truffle.tools.chromeinspector=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.chromeinspector/com.oracle.truffle.tools.chromeinspector.objects=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.chromeinspector/com.oracle.truffle.tools.chromeinspector.server=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.chromeinspector/com.oracle.truffle.tools.chromeinspector.types=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.chromeinspector/com.oracle.truffle.tools.chromeinspector.util=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.chromeinspector/com.oracle.truffle.tools.utils.java_websocket.client=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.coverage/com.oracle.truffle.tools.coverage=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.coverage/com.oracle.truffle.tools.coverage.impl=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.dap/com.oracle.truffle.tools.dap.server=ALL-UNNAMED',
+            '--add-exports=com.oracle.truffle.tools.dap/com.oracle.truffle.tools.dap.types=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.insight.heap/org.graalvm.tools.insight.heap=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.insight.heap/org.graalvm.tools.insight.heap.instrument=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.lsp/org.graalvm.tools.lsp.exceptions=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.lsp/org.graalvm.tools.lsp.instrument=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.lsp/org.graalvm.tools.lsp.server=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.lsp/org.graalvm.tools.lsp.server.types=ALL-UNNAMED',
+            '--add-exports=org.graalvm.tools.lsp/org.graalvm.tools.lsp.server.utils=ALL-UNNAMED',
+            '--add-opens=org.graalvm.tools.insight/com.oracle.truffle.tools.agentscript.impl=ALL-UNNAMED',
+        ]
         return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.register_unittest_config(ToolsUnittestConfig())
