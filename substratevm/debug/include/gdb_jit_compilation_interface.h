@@ -26,6 +26,9 @@
 #ifndef SVM_NATIVE_GDBJITCOMPILATIONINTERFACE_H
 #define SVM_NATIVE_GDBJITCOMPILATIONINTERFACE_H
 
+// This header specifies the types used by the GDB JIT compilation interface (see https://sourceware.org/gdb/current/onlinedocs/gdb.html/Declarations.html#Declarations)
+// The implementation of the JIT compilation interface is located in com.oracle.svm.core.debug.GdbJitInterface.
+
 #include <stdint.h>
 
 typedef enum
