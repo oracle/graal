@@ -296,7 +296,7 @@ final class BundleSupport {
         outputDir = rootDir.resolve("output");
 
         Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
-        nativeImage.archiveSupport().expandJarToDir(e -> relativizeBundleEntry(getOriginalOutputDirName(), e), bundleFilePath, rootDir, deleteBundleRoot);
+        nativeImage.archiveSupport().expandJarToDir(e -> relativizeBundleEntry(getOriginalOutputDirName(), e), bundleFilePath, rootDir, deleteBundleRoot::get);
 
         if (deleteBundleRoot.get()) {
             /* Abort image build request without error message and exit with 0 */

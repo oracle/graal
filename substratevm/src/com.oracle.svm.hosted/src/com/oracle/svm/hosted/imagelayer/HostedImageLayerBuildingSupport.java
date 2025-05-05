@@ -24,23 +24,23 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -49,17 +49,22 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
-import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsContainer;
 
 public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
 
@@ -71,22 +76,18 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private SVMImageLayerWriter writer;
     private SVMImageLayerSingletonLoader singletonLoader;
     private final ImageClassLoader imageClassLoader;
-    private final List<SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader> snapshots;
+    private final SharedLayerSnapshot.Reader snapshot;
     private final List<FileChannel> graphsChannels;
     private final WriteLayerArchiveSupport writeLayerArchiveSupport;
     private final LoadLayerArchiveSupport loadLayerArchiveSupport;
 
-    public record FilePaths(Path snapshot, Path snapshotGraphs) {
-    }
-
-    private HostedImageLayerBuildingSupport(SVMImageLayerSingletonLoader singletonLoader, ImageClassLoader imageClassLoader,
-                    List<SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader> snapshots, List<FileChannel> graphsChannels, boolean buildingImageLayer, boolean buildingInitialLayer,
-                    boolean buildingApplicationLayer,
+    private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
+                    Reader snapshot, List<FileChannel> graphsChannels,
+                    boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer,
                     WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport) {
         super(buildingImageLayer, buildingInitialLayer, buildingApplicationLayer);
-        this.singletonLoader = singletonLoader;
         this.imageClassLoader = imageClassLoader;
-        this.snapshots = snapshots;
+        this.snapshot = snapshot;
         this.graphsChannels = graphsChannels;
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
@@ -124,17 +125,21 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return loadLayerArchiveSupport;
     }
 
-    public void archiveLayer(String imageName) {
-        writer.dumpFiles();
-        writeLayerArchiveSupport.write(imageName);
+    public WriteLayerArchiveSupport getWriteLayerArchiveSupport() {
+        return writeLayerArchiveSupport;
     }
 
-    public SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader getSnapshot() {
-        return snapshots.get(0);
+    public void archiveLayer() {
+        writer.dumpFiles();
+        writeLayerArchiveSupport.write();
+    }
+
+    public SharedLayerSnapshot.Reader getSnapshot() {
+        return snapshot;
     }
 
     public FileChannel getGraphsChannel() {
-        return graphsChannels.get(0);
+        return graphsChannels.getFirst();
     }
 
     public Class<?> lookupClass(boolean optional, String className) {
@@ -254,7 +259,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
-    public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader) {
+    public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
         boolean buildingSharedLayer = isLayerCreateOptionEnabled(values);
         boolean buildingExtensionLayer = isLayerUseOptionEnabled(values);
 
@@ -268,46 +273,63 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
+        String layerName = SubstrateOptions.Name.getValue(values);
         if (buildingSharedLayer) {
-            writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, imageClassLoader.classLoaderSupport.getLayerFile());
+            writeLayerArchiveSupport = new WriteLayerArchiveSupport(layerName, imageClassLoader.classLoaderSupport, builderTempDir, archiveSupport);
         }
-        SVMImageLayerSingletonLoader singletonLoader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
-        List<SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader> snapshots = null;
-        List<FileChannel> graphsChannels = null;
+        SharedLayerSnapshot.Reader snapshot = null;
+        List<FileChannel> graphs = List.of();
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
-            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
-            FilePaths filePaths = new FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
-            List<FilePaths> loadPaths = List.of(filePaths);
-            snapshots = new ArrayList<>();
-            graphsChannels = new ArrayList<>();
-            for (FilePaths paths : loadPaths) {
-                try {
-                    graphsChannels.add(FileChannel.open(paths.snapshotGraphs));
-
-                    try (FileChannel ch = FileChannel.open(paths.snapshot)) {
-                        MappedByteBuffer bb = ch.map(FileChannel.MapMode.READ_ONLY, ch.position(), ch.size());
-                        ReaderOptions opt = new ReaderOptions(Long.MAX_VALUE, ReaderOptions.DEFAULT_READER_OPTIONS.nestingLimit);
-                        snapshots.add(Serialize.read(bb, opt).getRoot(SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.factory));
-                        // NOTE: buffer is never unmapped, but is read-only and pages can be evicted
-                    }
-                } catch (IOException e) {
-                    throw AnalysisError.shouldNotReachHere("Error during image layer snapshot loading", e);
-                }
+            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport);
+            boolean strict = SubstrateOptions.LayerOptionVerification.getValue(values);
+            boolean verbose = SubstrateOptions.LayerOptionVerificationVerbose.getValue(values);
+            loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader), strict, verbose);
+            try {
+                graphs = List.of(FileChannel.open(loadLayerArchiveSupport.getSnapshotGraphsPath()));
+            } catch (IOException e) {
+                throw AnalysisError.shouldNotReachHere("Error during image layer snapshot graphs loading " + loadLayerArchiveSupport.getSnapshotGraphsPath(), e);
             }
 
-            assert loadPaths.size() == 1 : "Currently only one path is supported for image layer loading " + loadPaths;
+            try (FileChannel ch = FileChannel.open(loadLayerArchiveSupport.getSnapshotPath())) {
+                MappedByteBuffer bb = ch.map(FileChannel.MapMode.READ_ONLY, ch.position(), ch.size());
+                ReaderOptions opt = new ReaderOptions(Long.MAX_VALUE, ReaderOptions.DEFAULT_READER_OPTIONS.nestingLimit);
+                snapshot = Serialize.read(bb, opt).getRoot(SharedLayerSnapshot.factory);
+                // NOTE: buffer is never unmapped, but is read-only and pages can be evicted
+            } catch (IOException e) {
+                throw AnalysisError.shouldNotReachHere("Error during image layer snapshot loading " + loadLayerArchiveSupport.getSnapshotPath(), e);
+            }
         }
 
-        HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(singletonLoader, imageClassLoader, snapshots, graphsChannels, buildingImageLayer,
+        HostedImageLayerBuildingSupport imageLayerBuildingSupport = new HostedImageLayerBuildingSupport(imageClassLoader, snapshot, graphs, buildingImageLayer,
                         buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport);
 
         if (buildingExtensionLayer) {
-            imageLayerBuildingSupport.setSingletonLoader(new SVMImageLayerSingletonLoader(imageLayerBuildingSupport, snapshots.get(0)));
+            imageLayerBuildingSupport.setSingletonLoader(new SVMImageLayerSingletonLoader(imageLayerBuildingSupport, snapshot));
         }
 
         return imageLayerBuildingSupport;
+    }
+
+    record OptionLayerVerificationRequests(OptionDescriptor option, EconomicMap<LayerVerifiedOption.Kind, LayerVerifiedOption> requests) {
+        OptionLayerVerificationRequests(OptionDescriptor option) {
+            this(option, EconomicMap.create());
+        }
+    }
+
+    public static Map<String, OptionLayerVerificationRequests> collectLayerVerifications(ImageClassLoader loader) {
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(loader.getClassLoader());
+        EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
+        EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
+        HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
+        Map<String, OptionLayerVerificationRequests> result = new HashMap<>();
+        for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
+            for (LayerVerifiedOption layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerifiedOption.class)) {
+                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.put(layerVerification.kind(), layerVerification);
+            }
+        }
+        return result;
     }
 
     @SuppressFBWarnings(value = "NP", justification = "FB reports null pointer dereferencing because it doesn't see through UserError.guarantee.")
@@ -323,27 +345,5 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         String libName = fullLibName.substring("lib".length(), fullLibName.length() - ".so".length());
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
-    }
-
-    public static void setupImageLayerArtifacts(String imageName) {
-        VMError.guarantee(!imageName.contains(File.separator), "Expected simple file name, found %s.", imageName);
-
-        Path snapshotFile = NativeImageGenerator.getOutputDirectory().resolve(SVMImageLayerSnapshotUtil.snapshotFileName(imageName));
-        Path snapshotFileName = getFileName(snapshotFile);
-        HostedImageLayerBuildingSupport.singleton().getWriter().setSnapshotFileInfo(snapshotFile, snapshotFileName.toString(), SVMImageLayerSnapshotUtil.FILE_EXTENSION);
-        BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT, snapshotFile);
-
-        Path graphsFile = NativeImageGenerator.getOutputDirectory().resolve(SVMImageLayerSnapshotUtil.snapshotGraphsFileName(imageName));
-        Path graphsFileName = getFileName(graphsFile);
-        HostedImageLayerBuildingSupport.singleton().getWriter().openGraphsOutput(graphsFile, graphsFileName.toString(), SVMImageLayerSnapshotUtil.FILE_EXTENSION);
-        BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LAYER_SNAPSHOT_GRAPHS, graphsFile);
-    }
-
-    private static Path getFileName(Path path) {
-        Path fileName = path.getFileName();
-        if (fileName == null) {
-            throw VMError.shouldNotReachHere("Layer snapshot file(s) missing.");
-        }
-        return fileName;
     }
 }
