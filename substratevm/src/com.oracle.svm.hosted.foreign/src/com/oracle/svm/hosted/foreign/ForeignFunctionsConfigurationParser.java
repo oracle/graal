@@ -302,7 +302,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
                  * information from the run-time NativeEntryPoint object. So, we always use
                  * 'Linker.Option.captureCallState("errno")' here.
                  */
-                res.add(Linker.Option.captureCallState(CapturableState.ERRNO.stateName()));
+                res.add(Linker.Option.captureCallState("errno"));
             }
         }
         if (map.containsKey(DOWNCALL_OPTION_CRITICAL)) {
