@@ -1224,6 +1224,9 @@ def _runtimedebuginfotest(native_image, output_path, args=None):
     # Build the native image from Java code
     build_args = [
         '-g', '-O0',
+        # set property controlling inclusion of foreign struct header
+        '-DbuildDebugInfoTestExample=true',
+        '--native-compiler-options=-I' + test_source_path,
         '-o', join(output_path, 'runtimedebuginfotest'),
         '-cp', classpath('com.oracle.svm.test'),
         # We do not want to step into class initializer, so initialize everything at build time.

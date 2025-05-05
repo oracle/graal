@@ -1167,8 +1167,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfForm.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_declaration, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
-        pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
         /*
          * Now terminate.
          */
