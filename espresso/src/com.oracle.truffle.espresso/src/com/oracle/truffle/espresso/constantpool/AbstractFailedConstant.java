@@ -22,10 +22,9 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public abstract class AbstractFailedConstant extends AbstractStickyFailure implements Resolvable.ResolvedConstant {
+public abstract class AbstractFailedConstant extends AbstractStickyFailure implements ResolvedConstant {
     public AbstractFailedConstant(EspressoException failure) {
         super(failure);
     }

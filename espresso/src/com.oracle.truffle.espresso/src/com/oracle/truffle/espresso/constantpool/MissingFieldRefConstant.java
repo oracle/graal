@@ -24,12 +24,11 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public final class MissingFieldRefConstant implements FieldRefConstant, Resolvable.ResolvedConstant {
+public final class MissingFieldRefConstant implements ResolvedConstant {
     private final EspressoException failure;
     private final Assumption assumption;
 
@@ -51,5 +50,10 @@ public final class MissingFieldRefConstant implements FieldRefConstant, Resolvab
     @Override
     public boolean isSuccess() {
         return false;
+    }
+
+    @Override
+    public Tag tag() {
+        return Tag.FIELD_REF;
     }
 }

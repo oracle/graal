@@ -383,4 +383,8 @@ public final class SignatureSymbols {
         assert pos == totalLength + 2;
         return ByteSequence.wrap(bytes);
     }
+
+    public static boolean returnsVoid(ByteSequence signature) {
+        return signature.length() > 2 && signature.byteAt(signature.length() - 2) == ')' && signature.byteAt(signature.length() - 1) == 'V';
+    }
 }

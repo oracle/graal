@@ -33,7 +33,6 @@ import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
@@ -134,9 +133,9 @@ public final class HostFrameRecord {
             if (next != null) {
                 // Ensures the next method is a valid invoke
                 ConstantPool pool = methodVersion.getPool();
-                MethodRefConstant.Indexes ref = pool.methodAt(bs.readCPI(bci()));
-                Symbol<Name> name = ref.getName(pool);
-                Symbol<Signature> signature = ref.getSignature(pool);
+                int methodIndex = bs.readCPI(bci());
+                Symbol<Name> name = pool.methodName(methodIndex);
+                Symbol<Signature> signature = pool.methodSignature(methodIndex);
                 // Compatible method reference
                 guarantee(next.methodVersion.getName() == name && next.methodVersion.getRawSignature() == signature, "Wrong method on the recorded frames", meta);
                 // Loading constraints are respected

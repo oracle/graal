@@ -69,6 +69,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
@@ -870,7 +871,8 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @Override
     public abstract @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader();
 
-    public abstract ConstantPool getConstantPool();
+    @Override
+    public abstract RuntimeConstantPool getConstantPool();
 
     public final JavaKind getJavaKind() {
         return (this instanceof PrimitiveKlass)
@@ -1849,7 +1851,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @Override
     public JDWPConstantPool getJDWPConstantPool() {
         ConstantPool pool = getConstantPool();
-        return new JDWPConstantPool(pool.length(), pool.getRawBytes());
+        return new JDWPConstantPool(pool.length(), pool.toRawBytes());
     }
 
     @Override

@@ -125,13 +125,14 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         return linkedField.getParserField().getAttributes();
     }
 
+    @SuppressWarnings("unchecked")
     public final Symbol<ModifiedUTF8> getGenericSignature() {
         if (genericSignature == null) {
             SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
                 genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
-                genericSignature = pool.symbolAtUnsafe(attr.getSignatureIndex());
+                genericSignature = (Symbol<ModifiedUTF8>) pool.utf8At(attr.getSignatureIndex(), "generic signature");
             }
         }
         return genericSignature;

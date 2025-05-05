@@ -32,8 +32,8 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.ParsingContext;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -176,8 +176,8 @@ public class ClassLoadingEnv implements LanguageAccess {
             }
 
             @Override
-            public Utf8Constant getOrCreateUtf8Constant(ByteSequence byteSequence) {
-                return env.getLanguage().getUtf8ConstantTable().getOrCreate(byteSequence, ensureStrongReferences);
+            public Symbol<? extends ModifiedUTF8> getOrCreateUtf8(ByteSequence byteSequence) {
+                return env.getLanguage().getUtf8Symbols().getOrCreateValidUtf8(byteSequence, ensureStrongReferences);
             }
         };
     }

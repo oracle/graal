@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile.attributes;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -34,12 +33,8 @@ public class NestHostAttribute extends Attribute {
     public final int hostClassIndex;
 
     public NestHostAttribute(Symbol<Name> name, int hostClassIndex) {
-        super(name, null);
+        assert name == NAME;
         this.hostClassIndex = hostClassIndex;
-    }
-
-    private ClassConstant.ImmutableClassConstant getClassConstant(ConstantPool pool) {
-        return pool.classAt(hostClassIndex);
     }
 
     @Override
@@ -48,6 +43,11 @@ public class NestHostAttribute extends Attribute {
             return false;
         }
         NestHostAttribute otherNestHostAttribute = (NestHostAttribute) other;
-        return getClassConstant(thisPool).isSame(otherNestHostAttribute.getClassConstant(otherPool), thisPool, otherPool);
+        return thisPool.isSame(hostClassIndex, otherNestHostAttribute.hostClassIndex, otherPool);
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

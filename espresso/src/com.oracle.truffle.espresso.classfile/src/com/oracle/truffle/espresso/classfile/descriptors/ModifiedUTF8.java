@@ -29,10 +29,13 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
- * Provides Modified UTF-8 encoding methods.
+ * Provides <b>Modified UTF-8</b> encoding methods.
  * <p>
  * Tag type representing Java's Modified UTF-8 encoding format. Used as a type parameter in
  * {@code Symbol<ModifiedUTF8>} for type safety.
+ *
+ * @see <a href="https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-4.html#jvms-4.4.7">JVM
+ *      Spec - The CONSTANT_Utf8_info Structure</a>
  */
 public sealed class ModifiedUTF8 permits Descriptor, Name {
 

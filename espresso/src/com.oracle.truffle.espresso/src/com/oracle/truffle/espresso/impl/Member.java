@@ -28,7 +28,7 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.MemberAccess;
 
@@ -50,7 +50,7 @@ public abstract class Member<T extends Descriptor> implements MemberAccess<Klass
 
     @Override
     public final boolean accessChecks(Klass accessingClass, Klass holderClass) {
-        return Resolution.memberCheckAccess(accessingClass, holderClass, this);
+        return RuntimeConstantPool.memberCheckAccess(accessingClass, holderClass, this);
     }
 
     @Override
