@@ -464,6 +464,10 @@ class TruffleGateTags:
     truffle_jvm = ['truffle-jvm']
     truffle_native = ['truffle-native']
     truffle_native_quickbuild = ['truffle-native-quickbuild']
+    truffle_native_memory_fencing = ['truffle-native-memory-fencing']
+    truffle_native_memory_fencing_quickbuild = ['truffle-native-memory-fencing-quickbuild']
+    truffle_native_libcmusl_static = ['truffle-native-libcmusl-static']
+    truffle_native_libcmusl_static_quickbuild = ['truffle-native-libcmusl-static-quickbuild']
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
@@ -516,19 +520,59 @@ def gate_truffle_jvm(tasks):
         if t:
             sl_jvm_gate_tests(additional_jvm_args)
 
+
+def _native_image_supports_option(option):
+    native_image = _native_image(mx.get_jdk(tag='graalvm'))
+    out = mx.LinesOutputCapture()
+    mx.run([native_image, '--expert-options-all'], out=out)
+    for line in out.lines:
+        if option in line:
+            return True
+    return False
+
+
 def gate_truffle_native(tasks, quickbuild=False):
     tag = TruffleGateTags.truffle_native_quickbuild if quickbuild else TruffleGateTags.truffle_native
     name_suffix = ' with quickbuild' if quickbuild else ''
+
     with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=tag) as t:
         if t:
             sl_native_fallback_gate_tests(quickbuild)
+
     with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=tag) as t:
         if t:
             sl_native_optimized_gate_tests(quickbuild)
+
     with Task('Truffle API Native Tests' + name_suffix, tasks, tags=tag) as t:
         if t:
+            truffle_native_context_preinitialization_tests(quickbuild)
+            # Test that the static object model can deal with non-long aligned byte array base offsets (GR-43403)
+            if _native_image_supports_option('OptionalIdentityHashCodes'):
+                truffle_native_context_preinitialization_tests(quickbuild, [
+                    '-H:+UnlockExperimentalVMOptions',
+                    '-H:-OptionalIdentityHashCodes',
+                    '-H:-UnlockExperimentalVMOptions'
+                ])
             truffle_native_unit_tests_gate(True, quickbuild)
             truffle_native_unit_tests_gate(False, quickbuild)
+
+    tag = TruffleGateTags.truffle_native_memory_fencing_quickbuild if quickbuild else TruffleGateTags.truffle_native_memory_fencing
+    with Task('Truffle API Native Tests with MemoryMaskingAndFencing mitigation' + name_suffix, tasks, tags=tag) as t:
+            if t:
+                if _native_image_supports_option('MemoryMaskingAndFencing'):
+                    truffle_native_unit_tests_gate(True, False, [
+                        '-H:+UnlockExperimentalVMOptions',
+                        '-R:+MemoryMaskingAndFencing',
+                        '-H:-UnlockExperimentalVMOptions'
+                    ])
+
+    tag = TruffleGateTags.truffle_native_libcmusl_static_quickbuild if quickbuild else TruffleGateTags.truffle_native_libcmusl_static
+    with Task('Truffle API Native Tests with static libc musl' + name_suffix, tasks, tags=tag) as t:
+        if t:
+            truffle_native_unit_tests_gate(True, False, [
+                "--libc=musl",
+                "--static"
+            ])
 
 # Run with:
 # mx -p ../vm --env ce build
@@ -834,7 +878,21 @@ def sl_native_fallback_gate_tests(quick_build=False):
     _sl_native_fallback_gate_tests(force_cp=True, quick_build=quick_build)
 
 
-def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False):
+def truffle_native_context_preinitialization_tests(quick_build=False, build_args=None):
+    # ContextPreInitializationNativeImageTest can only run with its own image.
+    # See class javadoc for details.
+    # Context pre-initialization is supported only in optimized runtime.
+    # See TruffleFeature for details.
+    use_build_args = build_args if build_args else []
+    if quick_build:
+        use_build_args = use_build_args + ['-Ob']
+    native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + ['--build-args'] + use_build_args)
+
+
+def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False, build_args=None):
+    build_args = build_args if build_args else []
+    is_libc_musl = '--libc=musl' in build_args
+    is_static = '--static' in build_args
     if use_optimized_runtime:
         build_truffle_runtime_args = []
         run_truffle_runtime_args = []
@@ -846,20 +904,18 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     else:
         build_optimize_args = []
 
-    # ContextPreInitializationNativeImageTest can only run with its own image.
-    # See class javadoc for details.
-    # Context pre-initialization is supported only in optimized runtime.
-    # See TruffleFeature for details.
-    if use_optimized_runtime:
-        native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] +
-                                ['--build-args'] + build_optimize_args)
-
     # Run Truffle and NFI tests
     test_packages = [
         'com.oracle.truffle.api.test',
         'com.oracle.truffle.api.staticobject.test',
-        'com.oracle.truffle.nfi.test',
+        'com.oracle.truffle.sandbox.enterprise.test',
     ]
+    if not is_static:
+        # static executable does not support dynamic library loading required by NFI tests
+        test_packages += [
+            'com.oracle.truffle.nfi.test',
+        ]
+
     excluded_tests = [
         'com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest',    # runs in its own image
         'com.oracle.truffle.api.test.profiles.*',    # GR-52260
@@ -872,7 +928,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         excluded_tests = excluded_tests + [
             'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
         ]
-    build_args = build_optimize_args + build_truffle_runtime_args + [
+    build_args = build_args + build_optimize_args + build_truffle_runtime_args + [
         '-R:MaxHeapSize=2g',
         '-H:MaxRuntimeCompileMethods=5000',
         '--enable-url-protocols=http,jar',
@@ -881,7 +937,7 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
         '--enable-native-access=org.graalvm.truffle',
     ]
-    run_args = run_truffle_runtime_args + [
+    run_args = run_truffle_runtime_args + (['-Xss1m'] if is_libc_musl else []) + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
     ]
     exclude_args = list(itertools.chain(*[('--exclude-class', item) for item in excluded_tests]))

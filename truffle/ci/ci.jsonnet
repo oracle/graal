@@ -119,8 +119,8 @@
     ],
     notify_groups: ["truffle"],
     components+: ["truffle"],
-    timelimit: '1:00:00',
-    name: 'gate-truffle-ce-native' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-linux-amd64',
+    timelimit: '1:30:00',
+    name: 'gate-truffle-ce-native' + self.gate_tag_suffix + '-jvm-' + self.jdk_name + '-' + self.os + '-' + self.arch,
   },
 
   local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
@@ -153,12 +153,16 @@
     linux_amd64  + common.oraclejdk23 + truffle_jvm_gate,
     linux_amd64  + graalVMCELatest + truffle_jvm_gate,
     # Truffle Native gate
-    linux_amd64  + common.graalvmee21 + truffle_native_gate,
-    linux_amd64  + common.graalvmee21 + truffle_native_gate + {
+    linux_amd64    + common.graalvmee21 + truffle_native_gate,
+    linux_amd64   + common.graalvmee21 + truffle_native_gate + {
         gate_tag_suffix: '-quickbuild'
     },
-    linux_amd64  + graalVMCELatest + truffle_native_gate,
-    linux_amd64  + graalVMCELatest + truffle_native_gate + {
+    linux_amd64     + graalVMCELatest + truffle_native_gate,
+    windows_amd64   + graalVMCELatest + devkits["windows-jdkLatest"] + truffle_native_gate,
+    linux_amd64     + graalVMCELatest + truffle_native_gate + {
+        gate_tag_suffix: '-quickbuild'
+    },
+    windows_amd64   + graalVMCELatest + devkits["windows-jdkLatest"] + truffle_native_gate + {
         gate_tag_suffix: '-quickbuild'
     },
 
