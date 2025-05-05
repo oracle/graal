@@ -54,9 +54,9 @@ public class LayerArchiveSupport {
     protected final LayerProperties layerProperties;
     protected final ArchiveSupport archiveSupport;
 
-    public LayerArchiveSupport(ArchiveSupport archiveSupport) {
+    public LayerArchiveSupport(String layerName, ArchiveSupport archiveSupport) {
         this.archiveSupport = archiveSupport;
-        this.layerProperties = new LayerArchiveSupport.LayerProperties();
+        this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
     }
 
     protected static final Path layerPropertiesFileName = Path.of("META-INF/nilayer.properties");
@@ -73,8 +73,10 @@ public class LayerArchiveSupport {
 
         private final Map<String, String> properties;
 
-        LayerProperties() {
-            this.properties = new HashMap<>();
+        LayerProperties(String layerName) {
+            properties = new HashMap<>();
+            VMError.guarantee(layerName != null && !layerName.isEmpty(), "LayerProperties entry " + PROPERTY_KEY_IMAGE_LAYER_NAME + " requires non-empty layer-name");
+            properties.put(PROPERTY_KEY_IMAGE_LAYER_NAME, layerName);
         }
 
         void loadAndVerify(Path inputLayerLocation, Path expandedInputLayerDir) {
@@ -87,6 +89,7 @@ public class LayerArchiveSupport {
 
             properties.putAll(ArchiveSupport.loadProperties(layerPropertiesFile));
             verifyVersion(layerFileName);
+            info("Loaded layer %s from %s", layerName(), layerFileName);
 
             String niVendor = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_VENDOR, "unknown");
             String javaVmVendor = System.getProperty("java.vm.vendor");
@@ -98,7 +101,6 @@ public class LayerArchiveSupport {
             // GR-55581 will enforce platform compatibility
             String currentPlatform = niPlatform.equals(platform()) ? "" : " != '" + platform() + "'";
             String layerCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_LAYER_FILE_CREATION_TIMESTAMP, "");
-            info("Loaded layer from %s", layerFileName);
             info("Layer created at '%s'", ArchiveSupport.parseTimestamp(layerCreationTimestamp));
             info("Using version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", niVersion, currentVersion, niVendor, currentVendor, niPlatform, currentPlatform);
         }
@@ -143,15 +145,8 @@ public class LayerArchiveSupport {
             }
         }
 
-        public void writeLayerName(String layerName) {
-            properties.put(PROPERTY_KEY_IMAGE_LAYER_NAME, layerName);
-        }
-
         public String layerName() {
-            VMError.guarantee(!properties.isEmpty(), "Property file is no loaded.");
-            String name = properties.get(PROPERTY_KEY_IMAGE_LAYER_NAME);
-            VMError.guarantee(name != null, "Property " + PROPERTY_KEY_IMAGE_LAYER_NAME + " must be set.");
-            return name;
+            return properties.get(PROPERTY_KEY_IMAGE_LAYER_NAME);
         }
     }
 

@@ -124,9 +124,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return loadLayerArchiveSupport;
     }
 
-    public void archiveLayer(String imageName) {
+    public void archiveLayer() {
         writer.dumpFiles();
-        writeLayerArchiveSupport.write(imageName);
+        writeLayerArchiveSupport.write();
     }
 
     public SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader getSnapshot() {
@@ -261,8 +261,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
+        String layerName = SubstrateOptions.Name.getValue(values);
         if (buildingSharedLayer) {
-            writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, imageClassLoader.classLoaderSupport.getLayerFile());
+            writeLayerArchiveSupport = new WriteLayerArchiveSupport(layerName, archiveSupport, imageClassLoader.classLoaderSupport.getLayerFile());
         }
         SVMImageLayerSingletonLoader singletonLoader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
@@ -270,7 +271,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         List<FileChannel> graphsChannels = null;
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
-            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
+            loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, archiveSupport);
             FilePaths filePaths = new FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
             List<FilePaths> loadPaths = List.of(filePaths);
             snapshots = new ArrayList<>();
