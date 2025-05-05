@@ -129,6 +129,11 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
     }
 
     @Override
+    public boolean modifiesStackPointer() {
+        return spillR13;
+    }
+
+    @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         GraalError.guarantee(outValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid outValue kind: %s", outValue);
         GraalError.guarantee(inValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid inValue kind: %s", inValue);

@@ -30,7 +30,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 
 /**
- * Required by legacy code. Use {@link InitializeReservedRegistersPrologue} instead.
+ * GR-64740: required by legacy code. Use {@link InitializeReservedRegistersPrologue} instead.
  */
 public class SetThreadAndHeapBasePrologue implements CEntryPointOptions.Prologue {
     @Uninterruptible(reason = "prologue")

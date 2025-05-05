@@ -891,6 +891,9 @@ public class SubstrateDiagnostics {
             log.string("Runtime information:").indent(true);
             log.string("Isolate id: ").signed(Isolates.getIsolateId()).newline();
             log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
+            if (SubstrateOptions.RelativeCodePointers.getValue()) {
+                log.string("Code base: ").zhex(KnownIntrinsics.codeBase()).newline();
+            }
             log.string("CGlobalData base: ").zhex(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS.getPointer()).newline();
 
             if (Container.singleton().isContainerized()) {
@@ -1142,6 +1145,11 @@ public class SubstrateDiagnostics {
          * NOTE: this method may only be called by a single thread.
          */
         public boolean printLocationInfo(Log log, UnsignedWord value) {
+            if (SubstrateOptions.RelativeCodePointers.getValue() && KnownIntrinsics.codeBase().equal(value)) {
+                log.string("is the code base");
+                return true;
+            }
+
             CodeInfo imageCodeInfo = CodeInfoTable.getFirstImageCodeInfo();
             while (imageCodeInfo.isNonNull()) {
                 if (imageCodeInfo.equal(value)) {

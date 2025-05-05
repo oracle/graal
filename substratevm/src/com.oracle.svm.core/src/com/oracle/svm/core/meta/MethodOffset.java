@@ -39,8 +39,7 @@ public final class MethodOffset implements WordBase {
     private final ResolvedJavaMethod method;
 
     public MethodOffset(ResolvedJavaMethod method) {
-        Objects.requireNonNull(method);
-        this.method = method;
+        this.method = Objects.requireNonNull(method);
     }
 
     public ResolvedJavaMethod getMethod() {

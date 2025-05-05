@@ -37,7 +37,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -693,11 +693,16 @@ public final class InterpreterToVM {
                 vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getTypeID());
             }
         }
-        Pointer entryPoint = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        WordBase vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        return getSVMVTableCodePointer(vtableEntry);
+    }
+
+    private static CFunctionPointer getSVMVTableCodePointer(WordBase vtableEntry) {
+        WordBase codePointer = vtableEntry;
         if (SubstrateOptions.useRelativeCodePointers()) {
-            entryPoint = entryPoint.add(KnownIntrinsics.codeBase());
+            codePointer = KnownIntrinsics.codeBase().add((UnsignedWord) codePointer);
         }
-        return (CFunctionPointer) entryPoint;
+        return (CFunctionPointer) codePointer;
     }
 
     private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
