@@ -48,6 +48,13 @@ public final class GraalDirectives {
     public static final double FASTPATH_PROBABILITY = 1.0 - SLOWPATH_PROBABILITY;
 
     /**
+     * Forces a safepoint in the compiled code.
+     */
+    public static void safepoint() {
+
+    }
+
+    /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point. All
      * arguments to this method must be compile-time constant.
      *
