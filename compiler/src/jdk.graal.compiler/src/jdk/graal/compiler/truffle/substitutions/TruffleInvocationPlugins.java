@@ -149,14 +149,18 @@ public class TruffleInvocationPlugins {
                     }
                 }
 
-                ValueNode loadNode = isTrustedImmutable(b, object);
+                ValueNode loadNode = object;
+                if (Options.TruffleTrustedFinalFrameFields.getValue(b.getOptions())) {
+                    loadNode = castTrustedFinalFrameField(b, object);
+                }
+
                 b.addPush(JavaKind.Object, PiNode.create(loadNode, piStamp, valueAnchorNode));
                 return true;
             }
         });
     }
 
-    private static ValueNode isTrustedImmutable(GraphBuilderContext b, ValueNode object) {
+    private static ValueNode castTrustedFinalFrameField(GraphBuilderContext b, ValueNode object) {
         ValueNode loadNode = object;
         if (loadNode instanceof LoadFieldNode cast && canBeImmutable(cast.field())) {
             loadNode = b.add(LoadFieldNode.createOverrideImmutable(cast));
@@ -200,7 +204,7 @@ public class TruffleInvocationPlugins {
 
                 TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
                 Stamp piStamp = StampFactory.object(type, true);
-                b.addPush(JavaKind.Object, PiNode.create(isTrustedImmutable(b, object), piStamp, null));
+                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, null));
 
                 return true;
             }

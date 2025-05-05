@@ -150,6 +150,8 @@ public class TruffleGraphBuilderPlugins {
         public static final OptionKey<Boolean> TruffleTrustedNonNullCast = new OptionKey<>(true);
         @Option(help = "Whether Truffle trusted type casts are enabled.", type = OptionType.Debug) //
         public static final OptionKey<Boolean> TruffleTrustedTypeCast = new OptionKey<>(true);
+        @Option(help = "Whether Truffle frame field reads are trusted final.", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> TruffleTrustedFinalFrameFields = new OptionKey<>(true);
 
     }
 
