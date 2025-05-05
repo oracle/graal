@@ -39,7 +39,7 @@ public class ReducedProductDomainTest {
         }
 
         /**
-         * Creates an IntervalSignDomain with the given interval and sign domains.
+         * Creates an IntervalSignReducedProductDomain with the given interval and sign domains.
          */
         public static IntervalSignDomain create(IntInterval interval, SignDomain sign) {
             return new Builder<>(IntervalSignDomain::new)
@@ -115,9 +115,9 @@ public class ReducedProductDomainTest {
 //
 //    @Test
 //    public void testJoinWith() {
-//        IntervalSignDomain domain1 = IntervalSignDomain.create(
+//        IntervalSignReducedProductDomain domain1 = IntervalSignReducedProductDomain.create(
 //                new IntInterval(1, 5), new SignDomain(Sign.POS));
-//        IntervalSignDomain domain2 = IntervalSignDomain.create(
+//        IntervalSignReducedProductDomain domain2 = IntervalSignReducedProductDomain.create(
 //                new IntInterval(-3, -1), new SignDomain(Sign.NEG));
 //
 //        domain1.joinWith(domain2);
