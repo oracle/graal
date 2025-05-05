@@ -124,8 +124,8 @@ public class PatchedWordConstant implements JavaConstant, TypedConstant {
         if (word instanceof MethodPointer mp) {
             return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", permitsRewriteToPLT: " + mp.permitsRewriteToPLT();
         } else if (word instanceof MethodOffset mo) {
-            return "relocatable method offset: " + mo.getMethod().format("%H.%n(%p)");
+            return "method offset: " + mo.getMethod().format("%H.%n(%p)");
         }
-        return "relocatable constant";
+        return "patched word constant";
     }
 }

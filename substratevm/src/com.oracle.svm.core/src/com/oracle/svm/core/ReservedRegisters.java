@@ -94,9 +94,7 @@ public abstract class ReservedRegisters {
     public boolean isAllowedInFrameState(JavaValue value) {
         if (value instanceof RegisterValue rv) {
             Register r = rv.getRegister();
-            if (r.equals(threadRegister) || r.equals(heapBaseRegister) || r.equals(codeBaseRegister)) {
-                return true;
-            }
+            return r.equals(threadRegister) || r.equals(heapBaseRegister) || r.equals(codeBaseRegister);
         }
         return false;
     }

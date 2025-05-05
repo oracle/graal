@@ -42,7 +42,7 @@ public class SubstrateMethodOffsetConstant implements VMConstant {
     private final MethodOffset offset;
 
     public SubstrateMethodOffsetConstant(MethodOffset offset) {
-        this.offset = offset;
+        this.offset = Objects.requireNonNull(offset);
     }
 
     public MethodOffset offset() {
@@ -61,7 +61,7 @@ public class SubstrateMethodOffsetConstant implements VMConstant {
 
     @Override
     public String toString() {
-        return "method offset: " + ((offset == null) ? "null" : offset.getMethod().format("%H.%n"));
+        return "method offset: " + offset.getMethod().format("%H.%n");
     }
 
     @Override
@@ -74,6 +74,6 @@ public class SubstrateMethodOffsetConstant implements VMConstant {
 
     @Override
     public int hashCode() {
-        return (offset == null) ? 0 : Objects.hashCode(offset.getMethod());
+        return Objects.hashCode(offset.getMethod());
     }
 }

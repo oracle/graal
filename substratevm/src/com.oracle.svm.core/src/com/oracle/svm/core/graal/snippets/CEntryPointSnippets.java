@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCodeBaseNode.writeCurrentVMCodeBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
@@ -201,7 +202,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void setHeapBase(PointerBase heapBase) {
         writeCurrentVMHeapBase(heapBase);
         if (MemoryProtectionProvider.isAvailable()) {
@@ -209,15 +210,19 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     @NeverInline("Heap base register is set in caller, prevent reads from floating before that.")
     private static void initCodeBase() {
-        ImageCodeInfo imageCodeInfo = MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, 0);
+        ImageCodeInfo imageCodeInfo = MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, MultiLayeredImageSingleton.INITIAL_LAYER_NUMBER);
         CodePointer codeBase = imageCodeInfo.getCodeStart();
         writeCurrentVMCodeBase(codeBase);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    /**
+     * Use {@link #initBaseRegisters} instead. Calling this method is not necessary unless
+     * heap-relative addressing is needed before the heap is fully set up.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void earlyInitHeapBase(PointerBase heapBase) {
         setHeapBase(heapBase);
     }
@@ -226,7 +231,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
      * Sets the heap base register to the provided value. If the code base register is in use,
      * initializes it to contain the code base address.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initBaseRegisters(PointerBase heapBase) {
         setHeapBase(heapBase);
         if (SubstrateOptions.useRelativeCodePointers()) {
@@ -235,7 +240,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     /** Sets the heap base register, and if in use, the code base register, to the given values. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initBaseRegisters(PointerBase heapBase, PointerBase codeBase) {
         setHeapBase(heapBase);
         if (SubstrateOptions.useRelativeCodePointers()) {

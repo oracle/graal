@@ -105,15 +105,12 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
          * In case we have both a vtableIndex and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
          */
-        CFunctionPointer target;
-        if (vtableIndex == VTABLE_INDEX_NOT_YET_COMPUTED || interfaceTypeID == INTERFACE_TYPEID_NOT_YET_COMPUTED) {
-            throw VMError.shouldNotReachHere("Missed recomputation at image build time");
-        } else if (vtableIndex != VTABLE_INDEX_STATICALLY_BOUND) {
-            return (CFunctionPointer) LoadMethodByIndexNode.loadMethodByIndex(obj.getClass(), vtableIndex, interfaceTypeID);
+        VMError.guarantee(vtableIndex != VTABLE_INDEX_NOT_YET_COMPUTED && interfaceTypeID != INTERFACE_TYPEID_NOT_YET_COMPUTED, "Missed recomputation at image build time");
+        if (vtableIndex == VTABLE_INDEX_STATICALLY_BOUND) {
+            return directTarget;
         } else {
-            target = directTarget;
+            return (CFunctionPointer) LoadMethodByIndexNode.loadMethodByIndex(obj.getClass(), vtableIndex, interfaceTypeID);
         }
-        return target;
     }
 
     @Override

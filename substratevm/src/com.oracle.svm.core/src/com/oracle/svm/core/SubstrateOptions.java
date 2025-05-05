@@ -1453,7 +1453,11 @@ public class SubstrateOptions {
 
             UserError.guarantee(Platform.includedIn(PLATFORM_JNI.class) || Platform.includedIn(NATIVE_ONLY.class), "%s is supported only with hardware target platforms.", enabledOption);
 
-            // Offsets need to be passed on between layer builds rather than using symbol names.
+            /*
+             * GR-59707: Dispatch tables must potentially be patched at runtime still. Method
+             * offsets for dispatch need to be passed on between layer builds rather than using
+             * symbol names.
+             */
             UserError.guarantee(!ImageLayerBuildingSupport.buildingImageLayer(), "%s is currently not supported with layered images.", enabledOption);
 
             // The concept of a code base would need to be introduced in the LLVM backend first.

@@ -148,10 +148,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          * or sp.
          */
         regs.remove(r31);
-        /*
-         * If enabled, the heapBaseRegister and threadRegister are r27 and r28, respectively. See
-         * AArch64ReservedRegisters and ReservedRegisters for more information.
-         */
+        /* Reserved registers: see AArch64ReservedRegisters and ReservedRegisters for details. */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
         regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
