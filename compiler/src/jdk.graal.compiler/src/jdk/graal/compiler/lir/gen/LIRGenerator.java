@@ -855,10 +855,4 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
     public int getArrayBaseOffset(JavaKind elementKind) {
         return getMetaAccess().getArrayBaseOffset(elementKind);
     }
-
-    /**
-     * Determines whether the given register is a reserved register, such as the register holding
-     * the heap base address for compressed pointers.
-     */
-    public abstract boolean isReservedRegister(Register r);
 }

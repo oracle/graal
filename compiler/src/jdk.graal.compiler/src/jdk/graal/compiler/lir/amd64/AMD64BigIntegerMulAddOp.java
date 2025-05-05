@@ -41,8 +41,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import java.util.function.Predicate;
-
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -52,6 +50,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -83,12 +82,12 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
     private final boolean spillR13;
 
     public AMD64BigIntegerMulAddOp(
+                    LIRGeneratorTool tool,
                     Value outValue,
                     Value inValue,
                     Value offsetValue,
                     Value lenValue,
-                    Value kValue,
-                    Predicate<Register> isReservedRegister) {
+                    Value kValue) {
         super(TYPE);
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
@@ -106,13 +105,13 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         this.kValue = kValue;
         this.result = AMD64.rax.asValue(lenValue.getValueKind());
 
-        if (isReservedRegister.test(r12)) {
-            GraalError.guarantee(!isReservedRegister.test(r14), "One of r12 or r14 must be available");
+        if (tool.isReservedRegister(r12)) {
+            GraalError.guarantee(!tool.isReservedRegister(r14), "One of r12 or r14 must be available");
             this.tmp1Value = r14.asValue();
         } else {
             this.tmp1Value = r12.asValue();
         }
-        this.spillR13 = isReservedRegister.test(r13);
+        this.spillR13 = tool.isReservedRegister(r13);
 
         this.tmpValues = new Value[]{
                         rax.asValue(),

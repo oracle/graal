@@ -717,4 +717,10 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     default VectorSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
         throw GraalError.unimplemented("Max vector size is not specified on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
+
+    /**
+     * Determines whether the given register is a reserved register, such as the register holding
+     * the heap base address for compressed pointers.
+     */
+    boolean isReservedRegister(Register r);
 }
