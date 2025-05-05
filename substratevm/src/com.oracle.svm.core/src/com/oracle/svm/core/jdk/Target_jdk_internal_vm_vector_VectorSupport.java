@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -32,6 +37,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.code.CPUFeatureName;
 
 @TargetClass(className = "jdk.internal.vm.vector.VectorSupport")
 final class Target_jdk_internal_vm_vector_VectorSupport {
@@ -42,6 +50,24 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
     @Substitute
     private static int getMaxLaneCount(Class<?> etype) {
         return VectorAPISupport.singleton().getMaxLaneCount(etype);
+    }
+
+    /**
+     * Substitutes the native method with a constant string defined at build time.
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDKLatest.class)
+    public static String getCPUFeatures() {
+        return Helper_jdk_internal_vm_vector_VectorSupport.getCPUFeatures();
+    }
+}
+
+final class Helper_jdk_internal_vm_vector_VectorSupport {
+    @Fold
+    public static String getCPUFeatures() {
+        return ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getFeatures().stream()
+                        .map(CPUFeatureName::name)
+                        .collect(Collectors.joining(","));
     }
 }
 
