@@ -5,7 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
@@ -16,7 +16,7 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 
-public class LeaksIdSetNodeInterpreter implements NodeInterpreter<SetDomain<ResourceId>> {
+public class LeaksIdSetAbstractInterpreter implements AbstractInterpreter<SetDomain<ResourceId>> {
 
     @Override
     public SetDomain<ResourceId> execEdge(Node source,

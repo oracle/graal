@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
@@ -31,7 +31,7 @@ import jdk.graal.compiler.nodes.java.StoreFieldNode;
  * NOTE: This interpreter does not handle inter-procedural relationships,
  * it handles only intra-procedural methods.
  */
-public class PentagonNodeInterpreter implements NodeInterpreter<PentagonDomain<AccessPath>> {
+public class PentagonAbstractInterpreter implements AbstractInterpreter<PentagonDomain<AccessPath>> {
 
     private final AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
 

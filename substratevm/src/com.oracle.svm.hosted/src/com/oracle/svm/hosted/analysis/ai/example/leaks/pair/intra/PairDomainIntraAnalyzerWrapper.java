@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAna
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
-import com.oracle.svm.hosted.analysis.ai.example.leaks.pair.LeaksPairDomainNodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.pair.LeaksPairDomainAbstractInterpreter;
 
 public class PairDomainIntraAnalyzerWrapper {
 
@@ -15,7 +15,7 @@ public class PairDomainIntraAnalyzerWrapper {
     public PairDomainIntraAnalyzerWrapper() {
         analyzer = new IntraProceduralAnalyzer.Builder<>(
                 new PairDomain<>(new CountDomain(1024), new BooleanOrDomain(false)),
-                new LeaksPairDomainNodeInterpreter())
+                new LeaksPairDomainAbstractInterpreter())
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
     }

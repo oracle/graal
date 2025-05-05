@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.IntraProceduralInvokeHandler;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 
 /**
  * An intra-procedural analyzer that performs an intra-procedural analysis on the given method.
@@ -25,14 +25,14 @@ public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     @Override
     public void runAnalysis(AnalysisMethod method) {
         IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
-        IntraProceduralInvokeHandler<Domain> callHandler = new IntraProceduralInvokeHandler<>(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload);
+        IntraProceduralInvokeHandler<Domain> callHandler = new IntraProceduralInvokeHandler<>(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload);
         callHandler.handleRootInvoke(method);
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {
 
-        public Builder(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
-            super(initialDomain, nodeInterpreter);
+        public Builder(Domain initialDomain, AbstractInterpreter<Domain> abstractInterpreter) {
+            super(initialDomain, abstractInterpreter);
         }
 
         public IntraProceduralAnalyzer<Domain> build() {

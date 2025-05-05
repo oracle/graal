@@ -13,7 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
@@ -41,13 +41,13 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
     public InterProceduralInvokeHandler(
             Domain initialDomain,
-            NodeInterpreter<Domain> nodeInterpreter,
+            AbstractInterpreter<Domain> abstractInterpreter,
             CheckerManager checkerManager,
             AnalysisMethodFilterManager methodFilterManager,
             IteratorPayload iteratorPayload,
             SummaryFactory<Domain> summaryFactory,
             int maxRecursionDepth) {
-        super(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload);
+        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload);
         this.callStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
     }

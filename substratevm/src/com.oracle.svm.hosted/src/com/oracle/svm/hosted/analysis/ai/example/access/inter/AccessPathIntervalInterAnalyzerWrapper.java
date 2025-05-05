@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer.Builde
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
-import com.oracle.svm.hosted.analysis.ai.example.access.AccessPathIntervalNodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.example.access.AccessPathIntervalAbstractInterpreter;
 
 /**
  * This analyzer assigns intervals to accessPaths.
@@ -18,7 +18,7 @@ public class AccessPathIntervalInterAnalyzerWrapper {
     public AccessPathIntervalInterAnalyzerWrapper() {
         analyzer = new Builder<>(
                 new AccessPathMap<>(new IntInterval()),
-                new AccessPathIntervalNodeInterpreter(),
+                new AccessPathIntervalAbstractInterpreter(),
                 new AccessPathIntervalSummaryFactory())
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();

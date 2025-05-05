@@ -10,7 +10,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.access.PlaceHolderAccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.List;
 
-public class AccessPathIntervalNodeInterpreter implements NodeInterpreter<AccessPathMap<IntInterval>> {
+public class AccessPathIntervalAbstractInterpreter implements AbstractInterpreter<AccessPathMap<IntInterval>> {
 
     @Override
     public AccessPathMap<IntInterval> execEdge(Node source,

@@ -17,8 +17,10 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
-public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterpreter<Domain> nodeInterpreter,
+public record TransferFunction<Domain extends AbstractDomain<Domain>>(AbstractInterpreter<Domain> abstractInterpreter,
                                                                       InvokeCallBack<Domain> analyzeDependencyCallback) {
+
+    // TODO: refactor this shit please
 
     /**
      * Perform semantic transformation of the given {@link Node}, while modifying the post-condition of {@code node}
@@ -32,7 +34,7 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
             return abstractState.getState(node).getPostCondition();
         }
 
-        return nodeInterpreter.execNode(node, abstractState, analyzeDependencyCallback);
+        return abstractInterpreter.execNode(node, abstractState, analyzeDependencyCallback);
     }
 
     /**
@@ -49,7 +51,7 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterp
             abstractState.getState(target).markRestrictedFromExecution();
             return;
         }
-        nodeInterpreter.execEdge(source, target, abstractState);
+        abstractInterpreter.execEdge(source, target, abstractState);
     }
 
     /**

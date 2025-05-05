@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InterProceduralInvokeHandler;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.util.InterAnalysisConstants;
 
@@ -27,7 +27,7 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     @Override
     public void runAnalysis(AnalysisMethod method) {
         IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
-        InterProceduralInvokeHandler<Domain> callHandler = new InterProceduralInvokeHandler<>(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload, summaryFactory, maxRecursionDepth);
+        InterProceduralInvokeHandler<Domain> callHandler = new InterProceduralInvokeHandler<>(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload, summaryFactory, maxRecursionDepth);
         callHandler.handleRootInvoke(method);
     }
 
@@ -36,8 +36,8 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
         private final SummaryFactory<Domain> summaryFactory;
         private int maxRecursionDepth = InterAnalysisConstants.MAX_RECURSION_DEPTH;
 
-        public Builder(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter, SummaryFactory<Domain> summaryFactory) {
-            super(initialDomain, nodeInterpreter);
+        public Builder(Domain initialDomain, AbstractInterpreter<Domain> abstractInterpreter, SummaryFactory<Domain> summaryFactory) {
+            super(initialDomain, abstractInterpreter);
             this.summaryFactory = summaryFactory;
         }
 

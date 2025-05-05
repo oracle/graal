@@ -5,7 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.checker.example.ResourceLeaksChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
-import com.oracle.svm.hosted.analysis.ai.example.leaks.set.LeaksIdSetNodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.set.LeaksIdSetAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
 
 public class LeaksIdSetInterAnalyzerWrapper {
@@ -15,7 +15,7 @@ public class LeaksIdSetInterAnalyzerWrapper {
     public LeaksIdSetInterAnalyzerWrapper() {
         analyzer = new InterProceduralAnalyzer.Builder<>(
                 new SetDomain<>(),
-                new LeaksIdSetNodeInterpreter(),
+                new LeaksIdSetAbstractInterpreter(),
                 new LeaksIdSetSummaryFactory())
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .registerChecker(new ResourceLeaksChecker())

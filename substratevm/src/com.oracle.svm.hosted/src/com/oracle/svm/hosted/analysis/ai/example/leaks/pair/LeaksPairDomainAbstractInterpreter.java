@@ -8,13 +8,13 @@ import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.InvokeUtil;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ReturnNode;
 
-public class LeaksPairDomainNodeInterpreter implements NodeInterpreter<PairDomain<CountDomain, BooleanOrDomain>> {
+public class LeaksPairDomainAbstractInterpreter implements AbstractInterpreter<PairDomain<CountDomain, BooleanOrDomain>> {
 
     @Override
     public PairDomain<CountDomain, BooleanOrDomain> execEdge(Node source,

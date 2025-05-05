@@ -18,7 +18,7 @@ public class IntraProceduralPentagonAnalyzerWrapper {
     public IntraProceduralPentagonAnalyzerWrapper() {
         this.analyzer = new IntraProceduralAnalyzer.Builder<>(
                 new PentagonDomain<>(),
-                new PentagonNodeInterpreter())
+                new PentagonAbstractInterpreter())
                 .registerChecker(new PentagonDomainChecker())
                 .build();
     }

@@ -4,7 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 
 /**
@@ -22,12 +22,12 @@ public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> i
 
     @SuppressWarnings("this-escape")
     public BaseInvokeHandler(Domain initialDomain,
-                             NodeInterpreter<Domain> nodeInterpreter,
+                             AbstractInterpreter<Domain> abstractInterpreter,
                              CheckerManager checkerManager,
                              AnalysisMethodFilterManager methodFilterManager,
                              IteratorPayload iteratorPayload) {
         this.initialDomain = initialDomain;
-        this.transferFunction = new TransferFunction<>(nodeInterpreter, this::handleInvoke);
+        this.transferFunction = new TransferFunction<>(abstractInterpreter, this::handleInvoke);
         this.checkerManager = checkerManager;
         this.methodFilterManager = methodFilterManager;
         this.iteratorPayload = iteratorPayload;

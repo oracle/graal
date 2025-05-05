@@ -10,7 +10,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -25,11 +25,11 @@ public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Do
         extends BaseInvokeHandler<Domain> {
 
     public IntraProceduralInvokeHandler(Domain initialDomain,
-                                        NodeInterpreter<Domain> nodeInterpreter,
+                                        AbstractInterpreter<Domain> abstractInterpreter,
                                         CheckerManager checkerManager,
                                         AnalysisMethodFilterManager methodFilterManager,
                                         IteratorPayload iteratorPayload) {
-        super(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload);
+        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload);
     }
 
     @Override

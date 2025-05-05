@@ -7,7 +7,7 @@ import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 
@@ -28,14 +28,14 @@ import java.io.IOException;
 public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
 
     protected final Domain initialDomain;
-    protected final NodeInterpreter<Domain> nodeInterpreter;
+    protected final AbstractInterpreter<Domain> abstractInterpreter;
     protected final IteratorPolicy iteratorPolicy;
     protected final CheckerManager checkerManager;
     protected final AnalysisMethodFilterManager methodFilterManager;
 
     protected Analyzer(Builder<?, Domain> builder) {
         this.initialDomain = builder.initialDomain;
-        this.nodeInterpreter = builder.nodeInterpreter;
+        this.abstractInterpreter = builder.abstractInterpreter;
         this.iteratorPolicy = builder.iteratorPolicy;
         this.checkerManager = builder.checkerManager;
         this.methodFilterManager = builder.methodFilterManager;
@@ -45,14 +45,14 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
 
     public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {
         protected final Domain initialDomain;
-        protected final NodeInterpreter<Domain> nodeInterpreter;
+        protected final AbstractInterpreter<Domain> abstractInterpreter;
         protected IteratorPolicy iteratorPolicy = IteratorPolicy.DEFAULT_FORWARD_SEQUENTIAL;
         protected CheckerManager checkerManager = new CheckerManager();
         protected AnalysisMethodFilterManager methodFilterManager = new AnalysisMethodFilterManager();
 
-        protected Builder(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
+        protected Builder(Domain initialDomain, AbstractInterpreter<Domain> abstractInterpreter) {
             this.initialDomain = initialDomain;
-            this.nodeInterpreter = nodeInterpreter;
+            this.abstractInterpreter = abstractInterpreter;
         }
 
         public T iteratorPolicy(IteratorPolicy iteratorPolicy) {

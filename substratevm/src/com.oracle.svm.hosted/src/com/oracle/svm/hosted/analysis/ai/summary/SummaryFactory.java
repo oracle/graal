@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.example.access.inter.AccessPathIntervalSummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import jdk.graal.compiler.nodes.Invoke;
 
 import java.util.List;
@@ -30,7 +30,7 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
      *
      * @param invoke             contains information about the invocation
      * @param callerPreCondition the abstract context precondition at the call site
-     * @param arguments          converted to the used abstract domain using the provided {@link NodeInterpreter}
+     * @param arguments          converted to the used abstract domain using the provided {@link AbstractInterpreter}
      * @return a {@link Summary} containing only the pre-condition of the summary
      */
     Summary<Domain> createSummary(Invoke invoke,
