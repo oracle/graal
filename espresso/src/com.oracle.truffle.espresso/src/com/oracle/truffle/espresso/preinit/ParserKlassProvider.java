@@ -99,7 +99,7 @@ public interface ParserKlassProvider {
         } catch (ParserException.NoClassDefFoundError noClassDefFoundError) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, noClassDefFoundError.getMessage());
         } catch (ParserException parserException) {
-            throw EspressoError.shouldNotReachHere("Not a validation nor parser exception", parserException);
+            throw EspressoError.shouldNotReachHere("Not a validation or known parser exception", parserException);
         }
     }
 }

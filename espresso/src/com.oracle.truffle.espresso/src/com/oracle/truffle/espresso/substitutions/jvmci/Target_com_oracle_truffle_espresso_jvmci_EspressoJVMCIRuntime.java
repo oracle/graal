@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
@@ -203,7 +203,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
 
         @TruffleBoundary
         private static boolean checkAccess(ObjectKlass accessingKlass, ObjectKlass declaringKlass, Method method) {
-            return Resolution.memberCheckAccess(accessingKlass, declaringKlass, method);
+            return RuntimeConstantPool.memberCheckAccess(accessingKlass, declaringKlass, method);
         }
     }
 }

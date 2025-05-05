@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
@@ -44,7 +43,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
-import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -493,15 +491,14 @@ public abstract class ClassRegistry {
         int maxCPIndex = Math.min(patches.length, constantPool.length());
         for (int i = 1; i < maxCPIndex; i++) {
             if (patches[i] != null && StaticObject.notNull(patches[i])) {
-                PoolConstant poolConstant = constantPool.at(i);
-                ConstantPool.Tag tag = poolConstant.tag();
+                ConstantPool.Tag tag = constantPool.tagAt(i);
                 if (Objects.requireNonNull(tag) == ConstantPool.Tag.STRING) {
                     /*
                      * The runtime CP entry tag may be different from the actual constant that is
                      * pre-resolved. Pre-resolved/patched entries may contain arbitrary guest
                      * objects, like classes.
                      */
-                    constantPool.patchAt(i, Resolution.preResolvedConstant(patches[i], tag));
+                    constantPool.patchAt(i, RuntimeConstantPool.preResolvedConstant(patches[i], tag));
                 } else {
                     throw EspressoError.unimplemented("Patching anonymous class CP entry with: " + tag);
                 }

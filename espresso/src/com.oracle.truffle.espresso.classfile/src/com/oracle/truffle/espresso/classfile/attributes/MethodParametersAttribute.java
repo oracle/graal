@@ -58,14 +58,14 @@ public final class MethodParametersAttribute extends Attribute {
         }
 
         public boolean isSame(Entry otherEntry, ConstantPool thisPool, ConstantPool otherPool) {
-            return thisPool.at(nameIndex).isSame(otherPool.at(otherEntry.nameIndex), thisPool, otherPool) && accessFlags == otherEntry.accessFlags;
+            return thisPool.isSame(nameIndex, otherEntry.nameIndex, otherPool) && accessFlags == otherEntry.accessFlags;
         }
     }
 
     private final Entry[] entries;
 
     public MethodParametersAttribute(Symbol<Name> name, Entry[] entries) {
-        super(name, null);
+        assert name == NAME;
         this.entries = entries;
     }
 
@@ -88,5 +88,10 @@ public final class MethodParametersAttribute extends Attribute {
             }
         }
         return true;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

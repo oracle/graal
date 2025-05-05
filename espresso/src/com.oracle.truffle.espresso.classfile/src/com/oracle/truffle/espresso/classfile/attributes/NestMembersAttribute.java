@@ -38,7 +38,7 @@ public class NestMembersAttribute extends Attribute {
     private final int[] classes;
 
     public NestMembersAttribute(Symbol<Name> name, int[] classes) {
-        super(name, null);
+        assert name == NAME;
         this.classes = classes;
     }
 
@@ -61,8 +61,13 @@ public class NestMembersAttribute extends Attribute {
     private static Set<Symbol<Name>> fillConstants(int[] classIndices, ConstantPool pool) {
         Set<Symbol<Name>> symbols = new HashSet<>();
         for (int classIndex : classIndices) {
-            symbols.add(pool.classAt(classIndex).getName(pool));
+            symbols.add(pool.className(classIndex));
         }
         return symbols;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

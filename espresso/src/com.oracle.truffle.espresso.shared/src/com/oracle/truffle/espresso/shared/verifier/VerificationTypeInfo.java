@@ -225,12 +225,12 @@ final class UninitializedVariable extends VerificationTypeInfo {
 
     @Override
     protected String fromCP(ConstantPool pool) {
-        return "new " + pool.classAt(newOffset).getName(pool);
+        return "new " + pool.className(newOffset);
     }
 
     @Override
     public Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs) {
-        return types.fromClassNameEntry(pool.classAt(bs.readCPI(getNewOffset())).getName(pool));
+        return types.fromClassNameEntry(pool.className(bs.readCPI(getNewOffset())));
     }
 }
 
@@ -254,11 +254,11 @@ final class ReferenceVariable extends VerificationTypeInfo {
 
     @Override
     protected String fromCP(ConstantPool pool) {
-        return "" + pool.classAt(constantPoolOffset).getName(pool);
+        return "" + pool.className(constantPoolOffset);
     }
 
     @Override
     public Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs) {
-        return types.fromClassNameEntry(pool.classAt(getConstantPoolOffset()).getName(pool));
+        return types.fromClassNameEntry(pool.className(getConstantPoolOffset()));
     }
 }

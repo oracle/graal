@@ -40,6 +40,7 @@ public final class LocalVariableTable extends Attribute implements LocalVariable
     public static final LocalVariableTable EMPTY_LVT = new LocalVariableTable(ParserNames.LocalVariableTable, Local.EMPTY_ARRAY);
     public static final LocalVariableTable EMPTY_LVTT = new LocalVariableTable(ParserNames.LocalVariableTypeTable, Local.EMPTY_ARRAY);
 
+    private final boolean isTypeTable;
     @CompilationFinal(dimensions = 1) //
     private final Local[] locals;
 
@@ -52,7 +53,8 @@ public final class LocalVariableTable extends Attribute implements LocalVariable
     // @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "caller transfers ownership of
     // `locals`")
     public LocalVariableTable(Symbol<Name> name, Local[] locals) {
-        super(name, null);
+        assert name == ParserNames.LocalVariableTable || name == ParserNames.LocalVariableTypeTable;
+        this.isTypeTable = (name == ParserNames.LocalVariableTypeTable);
         this.locals = locals;
     }
 
@@ -95,5 +97,10 @@ public final class LocalVariableTable extends Attribute implements LocalVariable
             }
         }
         return result.toArray(Local.EMPTY_ARRAY);
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return isTypeTable ? ParserNames.LocalVariableTypeTable : ParserNames.LocalVariableTable;
     }
 }

@@ -920,7 +920,7 @@ public final class ObjectKlass extends Klass {
         }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : nestMembers.getClasses()) {
-            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+            if (k.getName().equals(pool.className(index))) {
                 return true;
             }
         }
@@ -949,7 +949,7 @@ public final class ObjectKlass extends Klass {
         }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : permittedSubclasses.getClasses()) {
-            if (subKlass.getName().equals(pool.classAt(index).getName(pool))) {
+            if (subKlass.getName().equals(pool.className(index))) {
                 // There should be no need to resolve: the previous checks guarantees it would
                 // resolve to k, but resolving here would cause circularity errors.
                 return true;
@@ -1272,9 +1272,10 @@ public final class ObjectKlass extends Klass {
         ArrayList<Symbol<Name>> result = new ArrayList<>();
         InnerClassesAttribute innerClasses = getKlassVersion().innerClasses;
         if (innerClasses != null) {
-            for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+            for (int i = 0; i < innerClasses.entryCount(); i++) {
+                InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
                 if (entry.innerClassIndex != 0) {
-                    result.add(getConstantPool().classAt(entry.innerClassIndex).getName(getConstantPool()));
+                    result.add(getConstantPool().className(entry.innerClassIndex));
                 }
             }
         }
@@ -1356,7 +1357,7 @@ public final class ObjectKlass extends Klass {
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
-                genericSignature = getConstantPool().symbolAtUnsafe(attr.getSignatureIndex()).toString();
+                genericSignature = getConstantPool().utf8At(attr.getSignatureIndex(), "generic signature").toString();
             }
         }
         return genericSignature;
@@ -1691,11 +1692,11 @@ public final class ObjectKlass extends Klass {
             this.modifiers = linkedKlass.getFlags();
             this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
 
-            LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
+            ParserMethod[] parserMethods = linkedKlass.getParserKlass().getMethods();
 
-            Method.MethodVersion[] methods = new Method.MethodVersion[linkedMethods.length];
-            for (int i = 0; i < linkedMethods.length; i++) {
-                methods[i] = new Method(this, linkedMethods[i], pool).getMethodVersion();
+            Method.MethodVersion[] methods = new Method.MethodVersion[parserMethods.length];
+            for (int i = 0; i < parserMethods.length; i++) {
+                methods[i] = new Method(this, parserMethods[i], pool).getMethodVersion();
             }
 
             // Package initialization must be done before vtable creation,
@@ -1749,19 +1750,18 @@ public final class ObjectKlass extends Klass {
             boolean virtualMethodsModified = false;
 
             for (Method.MethodVersion removedMethod : removedMethods) {
-                virtualMethodsModified |= isVirtual(removedMethod.getLinkedMethod().getParserMethod());
-                ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
+                virtualMethodsModified |= isVirtual(removedMethod.getParserMethod());
+                ParserMethod parserMethod = removedMethod.getParserMethod();
                 if (invalidatedClasses != null) {
                     checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
                 }
                 removedMethod.getMethod().removedByRedefinition();
                 ClassRedefinition.LOGGER.fine(
-                                () -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
+                                () -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getParserMethod().getName());
             }
 
             for (ParserMethod addedMethod : addedMethods) {
-                LinkedMethod linkedMethod = new LinkedMethod(addedMethod);
-                Method.MethodVersion added = new Method(this, linkedMethod, pool).getMethodVersion();
+                Method.MethodVersion added = new Method(this, addedMethod, pool).getMethodVersion();
                 newDeclaredMethods.addLast(added);
                 virtualMethodsModified |= isVirtual(addedMethod);
                 if (invalidatedClasses != null) {
@@ -1938,9 +1938,10 @@ public final class ObjectKlass extends Klass {
         private int computeModifiers() {
             int flags = modifiers;
             if (innerClasses != null) {
-                for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+                for (int i = 0; i < innerClasses.entryCount(); i++) {
+                    InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
                     if (entry.innerClassIndex != 0) {
-                        Symbol<Name> innerClassName = getConstantPool().classAt(entry.innerClassIndex).getName(getConstantPool());
+                        Symbol<Name> innerClassName = getConstantPool().className(entry.innerClassIndex);
                         if (innerClassName.equals(getName())) {
                             flags = entry.innerClassAccessFlags;
                             break;

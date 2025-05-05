@@ -25,35 +25,26 @@ package com.oracle.truffle.espresso.classfile.attributes;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
-public class Attribute {
+public abstract class Attribute {
 
     public static final Attribute[] EMPTY_ARRAY = new Attribute[0];
 
-    private final Symbol<Name> name;
+    // Singleton instance for the Synthetic attribute.
+    public static final Attribute SYNTHETIC = createRaw(ParserNames.Synthetic, null);
 
-    @CompilationFinal(dimensions = 1) //
-    private final byte[] data;
-
-    public final Symbol<Name> getName() {
-        return name;
-    }
+    public abstract Symbol<Name> getName();
 
     /**
      * Attribute raw data. Known attributes that parse the raw data, can drop the raw data (return
      * null).
      */
-    public final byte[] getData() {
-        return data;
-    }
-
-    public Attribute(Symbol<Name> name, final byte[] data) {
-        this.name = name;
-        this.data = data;
+    public byte[] getData() {
+        return null;
     }
 
     /**
@@ -70,6 +61,20 @@ public class Attribute {
         if (other == null || getClass() != other.getClass()) {
             return false;
         }
-        return Objects.equals(name, other.name) && Arrays.equals(data, other.data);
+        return Objects.equals(getName(), other.getName()) && Arrays.equals(getData(), other.getData());
+    }
+
+    public static Attribute createRaw(Symbol<Name> name, byte[] data) {
+        return new Attribute() {
+            @Override
+            public Symbol<Name> getName() {
+                return name;
+            }
+
+            @Override
+            public byte[] getData() {
+                return data;
+            }
+        };
     }
 }

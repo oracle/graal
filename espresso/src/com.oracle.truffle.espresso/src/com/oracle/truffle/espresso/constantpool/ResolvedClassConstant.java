@@ -22,8 +22,11 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
-public interface ResolvedClassConstant extends ClassConstant, Resolvable.ResolvedConstant {
+public interface ResolvedClassConstant extends ResolvedConstant {
+    @Override
+    default Tag tag() {
+        return Tag.CLASS;
+    }
 }

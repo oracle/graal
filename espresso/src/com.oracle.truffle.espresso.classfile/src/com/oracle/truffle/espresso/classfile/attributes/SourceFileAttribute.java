@@ -30,14 +30,19 @@ public final class SourceFileAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = ParserNames.SourceFile;
 
-    private final int sourceFileIndex;
+    private final char sourceFileIndex;
 
     public SourceFileAttribute(Symbol<Name> name, int sourceFileIndex) {
-        super(name, null);
-        this.sourceFileIndex = sourceFileIndex;
+        assert name == NAME;
+        this.sourceFileIndex = (char) sourceFileIndex;
     }
 
     public int getSourceFileIndex() {
         return sourceFileIndex;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }
