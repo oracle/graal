@@ -167,19 +167,17 @@ class StandaloneLicenses(mx.Project):
             raise ValueError('single not supported')
 
         if self.enterprise:
+            if not _suite.is_release():
+                yield join(_suite.mxDir, 'DISCLAIMER_FOR_GFTC_SNAPSHOT_ARTIFACTS.txt'), 'DISCLAIMER.txt'
             if self.uses_enterprise_sources:
                 lium_suite = mx.suite('lium', fatalIfMissing=True, context=self)
                 vm_enterprise_dir = join(dirname(lium_suite.dir), 'vm-enterprise')
                 yield join(vm_enterprise_dir, 'GraalVM_GFTC_License.txt'), 'LICENSE.txt'
                 yield from mx.distribution('lium:LICENSE_INFORMATION_USER_MANUAL').getArchivableResults(use_relpath, single=True)
-                if not mx.suite('sdk').is_release():
-                    yield join(vm_enterprise_dir, 'DISCLAIMER_FOR_SNAPSHOT_ARTIFACTS.txt'), 'DISCLAIMER.txt'
             else:
                 # If the only enterprise input is a bootstrap Oracle GraalVM then copy the license from there
                 yield join(_external_bootstrap_graalvm, 'LICENSE.txt'), 'LICENSE.txt'
                 yield join(_external_bootstrap_graalvm, 'license-information-user-manual.zip'), 'license-information-user-manual.zip'
-                if not mx.suite('sdk').is_release():
-                    mx.warn('Cannot find DISCLAIMER_FOR_SNAPSHOT_ARTIFACTS.txt, you should copy it yourself in the result')
         else:
             yield join(self.suite.dir, self.community_license_file), 'LICENSE.txt'
             yield join(self.suite.dir, self.community_3rd_party_license_file), '3rd_party_licenses.txt'
