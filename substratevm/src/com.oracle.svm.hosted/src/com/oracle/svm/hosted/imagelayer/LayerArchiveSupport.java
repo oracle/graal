@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 import com.oracle.svm.core.OS;
@@ -66,9 +67,7 @@ public class LayerArchiveSupport {
         private static final String PROPERTY_KEY_LAYER_FILE_VERSION_MAJOR = "LayerFileVersionMajor";
         private static final String PROPERTY_KEY_LAYER_FILE_VERSION_MINOR = "LayerFileVersionMinor";
         private static final String PROPERTY_KEY_LAYER_FILE_CREATION_TIMESTAMP = "LayerFileCreationTimestamp";
-        private static final String PROPERTY_KEY_NATIVE_IMAGE_PLATFORM = "NativeImagePlatform";
-        private static final String PROPERTY_KEY_NATIVE_IMAGE_VENDOR = "NativeImageVendor";
-        private static final String PROPERTY_KEY_NATIVE_IMAGE_VERSION = "NativeImageVersion";
+        private static final String PROPERTY_KEY_LAYER_BUILDER_VM_PLATFORM = "BuilderVMPlatform";
         private static final String PROPERTY_KEY_IMAGE_LAYER_NAME = "LayerName";
 
         private final Map<String, String> properties;
@@ -77,6 +76,37 @@ public class LayerArchiveSupport {
             properties = new HashMap<>();
             VMError.guarantee(layerName != null && !layerName.isEmpty(), "LayerProperties entry " + PROPERTY_KEY_IMAGE_LAYER_NAME + " requires non-empty layer-name");
             properties.put(PROPERTY_KEY_IMAGE_LAYER_NAME, layerName);
+        }
+
+        private record BuilderVMIdentifier(String vendor, String version) {
+
+            private static final String PROPERTY_KEY_VM_VENDOR = "BuilderVMVendor";
+            private static final String PROPERTY_KEY_VM_VERSION = "BuilderVMVersion";
+
+            BuilderVMIdentifier {
+                Objects.requireNonNull(vendor);
+                Objects.requireNonNull(version);
+            }
+
+            static BuilderVMIdentifier system() {
+                return new BuilderVMIdentifier(System.getProperty("java.vm.vendor"), System.getProperty("java.vm.version"));
+            }
+
+            static BuilderVMIdentifier load(Map<String, String> properties) {
+                String vmVendor = properties.get(PROPERTY_KEY_VM_VENDOR);
+                String vmVersion = properties.get(PROPERTY_KEY_VM_VERSION);
+                return new BuilderVMIdentifier(vmVendor, vmVersion);
+            }
+
+            public void store(Map<String, String> properties) {
+                properties.put(PROPERTY_KEY_VM_VENDOR, vendor);
+                properties.put(PROPERTY_KEY_VM_VERSION, version);
+            }
+
+            @Override
+            public String toString() {
+                return '\'' + vendor + ' ' + version + '\'';
+            }
         }
 
         void loadAndVerify(Path inputLayerLocation, Path expandedInputLayerDir) {
@@ -88,24 +118,31 @@ public class LayerArchiveSupport {
             }
 
             properties.putAll(ArchiveSupport.loadProperties(layerPropertiesFile));
-            verifyVersion(layerFileName);
+            verifyLayerFileVersion(layerFileName);
             info("Loaded layer %s from %s", layerName(), layerFileName);
 
-            String niVendor = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_VENDOR, "unknown");
-            String javaVmVendor = System.getProperty("java.vm.vendor");
-            String currentVendor = niVendor.equals(javaVmVendor) ? "" : " != '" + javaVmVendor + "'";
-            String niVersion = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_VERSION, "unknown");
-            String javaVmVersion = System.getProperty("java.vm.version");
-            String currentVersion = niVersion.equals(javaVmVersion) ? "" : " != '" + javaVmVersion + "'";
-            String niPlatform = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, "unknown");
-            // GR-55581 will enforce platform compatibility
-            String currentPlatform = niPlatform.equals(platform()) ? "" : " != '" + platform() + "'";
+            BuilderVMIdentifier layerBuilderVMIdentifier = BuilderVMIdentifier.load(properties);
+            if (!layerBuilderVMIdentifier.equals(BuilderVMIdentifier.system())) {
+                String message = String.format("The given layer file '%s' was created with an image builder running on %s. This image builder is using %s." +
+                                " The given layer file can only be used with an image builder running the exact same version.",
+                                layerFileName, layerBuilderVMIdentifier, BuilderVMIdentifier.system());
+                throw UserError.abort(message);
+            }
+
+            String niPlatform = properties.getOrDefault(PROPERTY_KEY_LAYER_BUILDER_VM_PLATFORM, "unknown");
+            if (!niPlatform.equals(platform())) {
+                String message = String.format("The given layer file '%s' was created on platform '%s'. The current platform is '%s'." +
+                                " The given layer file can only be used with an image builder running on that same platform.",
+                                layerFileName, niPlatform, platform());
+                throw UserError.abort(message);
+            }
+
             String layerCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_LAYER_FILE_CREATION_TIMESTAMP, "");
             info("Layer created at '%s'", ArchiveSupport.parseTimestamp(layerCreationTimestamp));
-            info("Using version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", niVersion, currentVersion, niVendor, currentVendor, niPlatform, currentPlatform);
+            info("Using version: %s on platform: '%s'", layerBuilderVMIdentifier, niPlatform);
         }
 
-        private void verifyVersion(Path layerFileName) {
+        private void verifyLayerFileVersion(Path layerFileName) {
             String fileVersionKey = PROPERTY_KEY_LAYER_FILE_VERSION_MAJOR;
             try {
                 int major = Integer.parseInt(properties.getOrDefault(fileVersionKey, "-1"));
@@ -127,9 +164,8 @@ public class LayerArchiveSupport {
 
         void write() {
             properties.put(PROPERTY_KEY_LAYER_FILE_CREATION_TIMESTAMP, ArchiveSupport.currentTime());
-            properties.put(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, platform());
-            properties.put(PROPERTY_KEY_NATIVE_IMAGE_VENDOR, System.getProperty("java.vm.vendor"));
-            properties.put(PROPERTY_KEY_NATIVE_IMAGE_VERSION, System.getProperty("java.vm.version"));
+            properties.put(PROPERTY_KEY_LAYER_BUILDER_VM_PLATFORM, platform());
+            BuilderVMIdentifier.system().store(properties);
             Path layerPropertiesFile = NativeImageGenerator.getOutputDirectory().resolve(layerPropertiesFileName);
             Path parent = layerPropertiesFile.getParent();
             if (parent == null) {
