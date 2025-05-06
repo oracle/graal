@@ -38,6 +38,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Utility class that allows the compiler to monitor compilations that take a very long time.
@@ -219,15 +220,21 @@ public final class CompilationAlarm implements AutoCloseable {
         if (root == null) {
             root = new PhaseTreeNode(String.format("Root -> %s", graph.method().format("%H.%n(%p)")), graph);
             currentNode = root;
-        } else if (currentNode instanceof PhaseTreeIntermediateRoot && !currentNode.graph.equals(graph)) {
-            // Switching to a new graph, possibly a parent or sibling. Drop the current subgraph.
-            currentNode = currentNode.parent;
-        } else if (currentNode != null && !currentNode.graph.equals(graph)) {
-            // Insert a new root node to distinguish the separate graph.
-            PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", graph.method().format("%H.%n(%p)")), graph);
-            newRoot.parent = currentNode;
-            currentNode.addChild(newRoot);
-            currentNode = newRoot;
+        } else {
+            if (graph != null) {
+                if (currentNode instanceof PhaseTreeIntermediateRoot && !currentNode.graph.equals(graph)) {
+                    // Switching to a new graph, possibly a parent or sibling. Drop the current
+                    // subgraph.
+                    currentNode = currentNode.parent;
+                } else if (currentNode != null && !currentNode.graph.equals(graph)) {
+                    // Insert a new root node to distinguish the separate graph.
+                    ResolvedJavaMethod method = graph.method();
+                    PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", method == null ? graph : method.format("%H.%n(%p)")), graph);
+                    newRoot.parent = currentNode;
+                    currentNode.addChild(newRoot);
+                    currentNode = newRoot;
+                }
+            }
         }
 
         PhaseTreeNode node = new PhaseTreeNode(name, graph);
