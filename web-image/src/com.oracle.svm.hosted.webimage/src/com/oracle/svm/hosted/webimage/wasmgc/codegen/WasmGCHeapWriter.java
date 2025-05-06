@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -835,7 +835,7 @@ public class WasmGCHeapWriter {
     private Instruction createHubVtableArray(ImageHeapInstance instance) {
         WasmId.ArrayType vtableFieldType = providers.knownIds().vtableFieldType;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
-        CFunctionPointer[] vtable = (CFunctionPointer[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
+        WordBase[] vtable = (WordBase[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
 
         int vtableLength = vtable.length;
 
