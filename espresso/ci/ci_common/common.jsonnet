@@ -113,7 +113,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   darwin_amd64_21:   self.espresso_jdk_21 + graal_common.labsjdkLatest + self.espresso_jdk_21_llvm + self.darwin_amd64,
   linux_aarch64_21:  self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.linux_aarch64,
   darwin_aarch64_21: self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
-  windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk21"],
+  windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
 
   linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm + self.linux_amd64,
