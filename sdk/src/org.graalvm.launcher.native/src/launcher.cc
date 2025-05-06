@@ -103,13 +103,14 @@
 #define VM_LIBRARY_PATH_ARG_OFFSET (sizeof(VM_LIBRARY_PATH_ARG_PREFIX)-1)
 #define VM_STACK_SIZE_ARG_OFFSET (sizeof(VM_STACK_SIZE_ARG_PREFIX)-1)
 
-#define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_P_ARG(ARG) (ARG.rfind(VM_P_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_MODULE_PATH_ARG(ARG) (ARG.rfind(VM_MODULE_PATH_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_LIBRARY_PATH_ARG(ARG) (ARG.rfind(VM_LIBRARY_PATH_ARG_PREFIX, 0) != std::string::npos)
-#define IS_VM_STACK_SIZE_ARG(ARG) (ARG.rfind(VM_STACK_SIZE_ARG_PREFIX, 0) != std::string::npos)
+#define STARTS_WITH(ARG, PREFIX) (ARG.rfind(PREFIX, 0) != std::string::npos)
+#define IS_VM_ARG(ARG) STARTS_WITH(ARG, VM_ARG_PREFIX)
+#define IS_VM_CP_ARG(ARG) STARTS_WITH(ARG, VM_CP_ARG_PREFIX)
+#define IS_VM_CLASSPATH_ARG(ARG) STARTS_WITH(ARG, VM_CLASSPATH_ARG_PREFIX)
+#define IS_VM_P_ARG(ARG) STARTS_WITH(ARG, VM_P_ARG_PREFIX)
+#define IS_VM_MODULE_PATH_ARG(ARG) STARTS_WITH(ARG, VM_MODULE_PATH_ARG_PREFIX)
+#define IS_VM_LIBRARY_PATH_ARG(ARG) STARTS_WITH(ARG, VM_LIBRARY_PATH_ARG_PREFIX)
+#define IS_VM_STACK_SIZE_ARG(ARG) STARTS_WITH(ARG, VM_STACK_SIZE_ARG_PREFIX)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -343,7 +344,7 @@ static std::string vm_path(std::string exeDir, bool jvmMode) {
     return liblangPath.str();
 }
 
-static size_t parse_size(const char* str);
+static size_t parse_size(std::string_view str);
 
 static void parse_vm_option(
         std::vector<std::string> *vmArgs,
@@ -351,7 +352,7 @@ static void parse_vm_option(
         std::stringstream *modulePath,
         std::stringstream *libraryPath,
         size_t* stack_size,
-        std::string option) {
+        std::string_view option) {
     if (IS_VM_CP_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
     } else if (IS_VM_CLASSPATH_ARG(option)) {
@@ -364,7 +365,7 @@ static void parse_vm_option(
         *libraryPath << CP_SEP_STR << option.substr(VM_LIBRARY_PATH_ARG_OFFSET);
     } else if (IS_VM_ARG(option)) {
         if (IS_VM_STACK_SIZE_ARG(option)) {
-            *stack_size = parse_size(option.substr(VM_STACK_SIZE_ARG_OFFSET).c_str());
+            *stack_size = parse_size(option.substr(VM_STACK_SIZE_ARG_OFFSET));
         }
         std::stringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
@@ -550,7 +551,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     if (!relaunch) {
         /* handle CLI arguments */
         for (int i = 1; i < argc; i++) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, std::string(argv[i]));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, argv[i]);
         }
 
         /* handle optional vm args from LanguageLibraryConfig.option_vars */
@@ -595,7 +596,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, std::string(cur));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, &stack_size, cur);
             /* clean up env variable */
             setenv(envKey, "");
         }
@@ -1039,20 +1040,20 @@ static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
  * Returns the parsed size in bytes or 0 if invalid.
  * Inspired by: https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/share/native/libjli/java.c#L920-L954
  */
-static size_t parse_size(const char* str) {
-    const char* s = str;
+static size_t parse_size(std::string_view str) {
     size_t n = 0;
-    while (*s >= '0' && *s <= '9') {
-        int digit = *s - '0';
+    size_t pos = 0;
+    while (pos < str.size() && str[pos] >= '0' && str[pos] <= '9') {
+        int digit = str[pos] - '0';
         n = n * 10 + digit;
-        s++;
+        pos++;
     }
-    if (s == str || strlen(s) > 1) {
+    if (pos == 0 || str.size() - pos != 1) {
         // invalid
         return 0;
     }
     size_t multiplier = 1;
-    switch (*s) {
+    switch (str[pos]) {
         case 'T':
         case 't':
             multiplier *= 1024;
