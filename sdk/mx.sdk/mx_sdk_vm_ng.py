@@ -947,7 +947,7 @@ else:
 
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
-    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, **kw_args):
+    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, standalone_prefix=True, **kw_args):
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
         enterprise_archive_name = _require(kw_args, 'enterprise_archive_name', suite, name)
@@ -960,12 +960,13 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         path_substitutions.register_no_arg('graalvm_os', mx_sdk_vm_impl.get_graalvm_os())
         string_substitutions = mx_subst.SubstitutionEngine(path_substitutions)
 
+        dist_name_prefix = 'STANDALONE_' if standalone_prefix else ''
         if _is_enterprise():
             dir_name = enterprise_dir_name or f'{enterprise_archive_name}-<version>-<graalvm_os>-<arch>'
-            dist_name = 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
+            dist_name = dist_name_prefix + enterprise_archive_name.upper().replace('-', '_')
         else:
             dir_name = community_dir_name or f'{community_archive_name}-<version>-<graalvm_os>-<arch>'
-            dist_name = 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
+            dist_name = dist_name_prefix + community_archive_name.upper().replace('-', '_')
 
         layout = {
             f'{dir_name}/': f'dependency:{standalone_dir_dist}/*'
@@ -981,3 +982,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         self._resolveDepsHelper(resolved)
         self.standalone_dir_dist = resolved[0]
         self.theLicense = self.standalone_dir_dist.theLicense
+
+    def get_artifact_metadata(self):
+        return {'edition': 'ee' if _is_enterprise() else 'ce', 'type': 'standalone', 'project': 'graal'}
