@@ -201,7 +201,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         }
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
+//    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     @Override
     public void flush() {
         assert lock.isOwner();

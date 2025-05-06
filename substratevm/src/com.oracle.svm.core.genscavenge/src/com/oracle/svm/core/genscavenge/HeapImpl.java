@@ -325,6 +325,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     protected Class<?>[] getAllClasses() {
+        System.out.println(" ----- caching classes!!!!!");
         /* Two threads might race to set classList, but they compute the same result. */
         if (getCachedClasses() == null) {
             ArrayList<Class<?>> list = findAllDynamicHubs();

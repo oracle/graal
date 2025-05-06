@@ -71,7 +71,7 @@ public abstract class ConstantPoolParser {
         missingIds.removeAll(foundIds);
 
         if (!missingIds.isEmpty()) {
-            Assert.fail("Error during parsing " + this + " constant pool! Missing IDs: " + missingIds + ". Expected IDs: " + expectedIds + ". Found IDs: " + foundIds);
+            Assert.fail("Error during parsing " +  this.getClass().getName() + " constant pool! Missing IDs: " + missingIds + ". Expected IDs: " + expectedIds + ". Found IDs: " + foundIds);
         }
     }
 
