@@ -41,6 +41,7 @@ import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_CALLOC;
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_FREE;
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_MALLOC;
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.MEM_REALLOC;
+import static com.oracle.svm.webimage.wasm.types.WasmPrimitiveType.i64;
 
 import java.util.Set;
 
@@ -394,10 +395,17 @@ public class WebImageWasmLMNodeLowerer extends WebImageWasmNodeLowerer {
         callTarget.arguments().forEach(param -> params.add(lowerExpression(param)));
 
         if (callTarget instanceof IndirectCallTargetNode indirectCallTarget) {
+            WasmPrimitiveType addressType = util.typeForNode(indirectCallTarget.computedAddress()).asPrimitive();
+            Instruction index = lowerExpression(indirectCallTarget.computedAddress());
             /*
-             * TODO GR-42105 stop using wrap
+             * The computed address can have different kind of stamps that are represented as either
+             * i32 or i64 in wasm. For example the stamp could be an i64 integer stamp (represented
+             * as i64) or a method pointer stamp (represented as i32). If the computed address is
+             * represented as an i64, it has to first be truncated to i32.
              */
-            Instruction index = Unary.Op.I32Wrap64.create(lowerExpression(indirectCallTarget.computedAddress()));
+            if (addressType == i64) {
+                index = Unary.Op.I32Wrap64.create(index);
+            }
             TypeUse typeUse;
 
             if (targetMethod == null) {
