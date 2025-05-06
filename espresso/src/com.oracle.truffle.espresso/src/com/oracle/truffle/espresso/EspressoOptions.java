@@ -617,8 +617,8 @@ public final class EspressoOptions {
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
-    @Option(help = "Enable use of a custom Espresso implementation of libjava, allowing not entering native code for some boot classes.\\n" +
-                    "For unimplemented methods, espresso will use the provided native backend to fallback to the regular libjava.", //
+    @Option(help = "Enable use of a custom Espresso implementation of boot libraries, which allows for not entering native code.\\n" +
+                    "For example, this will replace the usual 'libjava'. Missing implementations will thus fail with 'UnsatifiedLinkError'.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "true|false") //

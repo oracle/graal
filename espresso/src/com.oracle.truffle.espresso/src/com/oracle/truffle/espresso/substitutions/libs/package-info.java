@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package java.io;
+@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+package com.oracle.truffle.espresso.substitutions.libs;
 
-/**
- * Replaces JDK's own {@link DefaultFileSystem} to link to a Truffle-based {@code FileSystem}.
- * <p>
- * This file must be compatible with all Java versions supported by Espresso, strict Java 8
- * compatibility is required.
- */
-final class DefaultFileSystem {
-    private DefaultFileSystem() {
-    }
-
-    /**
-     * Return the FileSystem object for Truffle-based platform.
-     */
-    public static FileSystem getFileSystem() {
-        return new TruffleFileSystem();
-    }
-}
+import com.oracle.truffle.api.dsl.SuppressPackageWarnings;

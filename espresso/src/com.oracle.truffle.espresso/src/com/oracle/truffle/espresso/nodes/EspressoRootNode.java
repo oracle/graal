@@ -216,6 +216,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
      */
     public static EspressoRootNode createNative(JniEnv env, Method.MethodVersion methodVersion, TruffleObject nativeMethod) {
         if (nativeMethod instanceof SubstitutionFactoryWrapper substitutionFactoryWrapper) {
+            // Not a substitution, but actually a "native" method implementation in host java.
             return createSubstitution(methodVersion, substitutionFactoryWrapper.getSubstitution());
         }
         return create(null, new NativeMethodNode(env, nativeMethod, methodVersion));

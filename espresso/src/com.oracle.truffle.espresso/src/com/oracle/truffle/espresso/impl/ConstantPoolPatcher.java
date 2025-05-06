@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ParserException;
@@ -42,11 +41,12 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.LanguageFilter;
+import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
 
 public class ConstantPoolPatcher {
     private static final Map<Symbol<Type>, Patcher> patches = Map.ofEntries(
                     entry(EspressoSymbols.Types.java_nio_file_FileSystems_DefaultFileSystemHolder,
-                                    new MethodPatcher(EspressoLanguage::useEspressoLibs, (ctx) -> ctx.getTruffleIO().sun_nio_fs_DefaultFileSystemProvider_instance))
+                                    new MethodPatcher(EspressoLibsFilter.INSTANCE, (ctx) -> ctx.getTruffleIO().sun_nio_fs_DefaultFileSystemProvider_instance))
     //
     );
 

@@ -101,6 +101,9 @@ public final class TruffleIO implements ContextAccess {
     public final ObjectKlass java_io_File;
     public final Field java_io_File_path;
 
+    public final ObjectKlass java_io_TruffleFileSystem;
+    public final Method java_io_TruffleFileSystem_init;
+
     public final ObjectKlass sun_nio_fs_TrufflePath;
     public final Field sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE;
 
@@ -598,6 +601,9 @@ public final class TruffleIO implements ContextAccess {
 
         java_io_File = meta.knownKlass(Types.java_io_File);
         java_io_File_path = java_io_File.requireDeclaredField(Names.path, Types.java_lang_String);
+
+        java_io_TruffleFileSystem = meta.knownKlass(Types.java_io_TruffleFileSystem);
+        java_io_TruffleFileSystem_init = java_io_TruffleFileSystem.requireDeclaredMethod(Names._init_, Signatures._void);
 
         sun_nio_fs_TruffleBasicFileAttributes = meta.knownKlass(Types.sun_nio_fs_TruffleBasicFileAttributes);
         sun_nio_fs_TruffleBasicFileAttributes_init = sun_nio_fs_TruffleBasicFileAttributes.requireDeclaredMethod(Names._init_, Signatures.sun_nio_fs_TruffleBasicFileAttributes_init_signature);
