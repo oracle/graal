@@ -345,6 +345,6 @@ public class RuntimeCodeCache {
          * continue, else false.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting code.")
-        boolean visitCode(CodeInfo codeInfo);
+        void visitCode(CodeInfo codeInfo);
     }
 }

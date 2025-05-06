@@ -31,28 +31,35 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneSnippets;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
-import com.oracle.svm.core.util.coder.NativeCoder;
 
 import jdk.graal.compiler.word.Word;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
+    @NeverInline("Non-performance critical version.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
+    public static void walkReferences(Pointer baseAddress, InstanceReferenceMap referenceMap, ObjectReferenceVisitor visitor, Object holderObject) {
+        walkReferencesInline(baseAddress, referenceMap, visitor, holderObject);
+    }
+
     /** This code is duplicated in {@link SubstrateObjectCloneSnippets}. */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean walkOffsetsFromPointer(Pointer baseAddress, InstanceReferenceMap referenceMap, ObjectReferenceVisitor visitor, Object holderObject) {
+    public static void walkReferencesInline(Pointer baseAddress, InstanceReferenceMap referenceMap, ObjectReferenceVisitor visitor, Object holderObject) {
         Pointer position = (Pointer) referenceMap;
         int entryCount = position.readInt(0);
-        position = position.add(4);
+        if (entryCount == 0) {
+            return;
+        }
 
-        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
+        position = position.add(4);
 
         assert entryCount >= 0;
         UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
@@ -61,19 +68,12 @@ public class InstanceReferenceMapDecoder {
             int offset = position.readInt(0);
             position = position.add(4);
 
-            long count = NativeCoder.readU4(position);
+            int count = position.readInt(0);
             position = position.add(4);
 
             Pointer objRef = baseAddress.add(offset);
-            for (int c = 0; c < count; c++) {
-                final boolean visitResult = callVisitor(visitor, holderObject, compressed, objRef);
-                if (!visitResult) {
-                    return false;
-                }
-                objRef = objRef.add(referenceSize);
-            }
+            callVisitor(visitor, holderObject, objRef, count);
         }
-        return true;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -90,8 +90,9 @@ public class InstanceReferenceMapDecoder {
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectReferenceVisitor visitor, Object holderObject, boolean compressed, Pointer objRef) {
-        return visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+    private static void callVisitor(ObjectReferenceVisitor visitor, Object holderObject, Pointer objRef, int count) {
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        visitor.visitObjectReferences(objRef, true, referenceSize, holderObject, count);
     }
 
     public interface InstanceReferenceMap extends WordBase {

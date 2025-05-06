@@ -54,7 +54,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.coder.NativeCoder;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -149,7 +148,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int objectOffset = refMapPos.readInt(0);
             refMapPos = refMapPos.add(4);
 
-            long count = NativeCoder.readU4(refMapPos);
+            long count = refMapPos.readInt(0);
             refMapPos = refMapPos.add(4);
 
             /* Copy non-object data. */

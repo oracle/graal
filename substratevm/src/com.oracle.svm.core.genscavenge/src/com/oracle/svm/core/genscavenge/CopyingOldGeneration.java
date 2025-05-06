@@ -65,8 +65,9 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return getFromSpace().walkObjects(visitor) && getToSpace().walkObjects(visitor);
+    public void walkObjects(ObjectVisitor visitor) {
+        getFromSpace().walkObjects(visitor);
+        getToSpace().walkObjects(visitor);
     }
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */

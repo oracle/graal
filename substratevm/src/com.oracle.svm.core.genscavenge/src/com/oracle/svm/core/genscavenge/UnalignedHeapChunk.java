@@ -33,6 +33,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -136,14 +137,14 @@ public final class UnalignedHeapChunk {
         return (UnalignedHeader) chunkPointer;
     }
 
-    public static boolean walkObjects(UnalignedHeader that, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFrom(that, getObjectStart(that), visitor);
+    public static void walkObjects(UnalignedHeader that, ObjectVisitor visitor) {
+        HeapChunk.walkObjectsFrom(that, getObjectStart(that), visitor);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkObjectsInline(UnalignedHeader that, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
+    public static void walkObjectsInline(UnalignedHeader that, UninterruptibleObjectVisitor visitor) {
+        HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
     }
 
     @Fold
