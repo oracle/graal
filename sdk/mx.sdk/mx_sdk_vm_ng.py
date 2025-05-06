@@ -494,6 +494,9 @@ class NativeImageBuildTask(mx.BuildTask):
     def _get_command_file(self):
         return self.subject.output_file() + '.cmd'
 
+    def newestOutput(self):
+        return mx.TimeStampFile.newest(file for file, _ in self.subject.getArchivableResults())
+
     def clean(self, forBuild=False):
         build_directory = self.subject.build_directory()
         if exists(build_directory):
