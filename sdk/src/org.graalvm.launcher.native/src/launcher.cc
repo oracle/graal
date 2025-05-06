@@ -146,7 +146,13 @@
     #include <objc/objc-auto.h>
 
 #elif defined (_WIN32)
+    #pragma push_macro("NOMINMAX")
+    #pragma push_macro("WIN32_LEAN_AND_MEAN")
+    #define NOMINMAX
+    #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
+    #pragma pop_macro("WIN32_LEAN_AND_MEAN")
+    #pragma pop_macro("NOMINMAX")
     #include <libloaderapi.h>
     #include <cstdlib>
     #include <process.h>
@@ -640,6 +646,7 @@ static void ParkEventLoop() {
 }
 #endif /* __APPLE__ */
 
+#ifndef _WIN32
 static void *jvm_main_thread_start(void *arg)
 {
     std::unique_ptr<struct MainThreadArgs> args(static_cast<struct MainThreadArgs*>(arg));
@@ -649,6 +656,14 @@ static void *jvm_main_thread_start(void *arg)
 #endif
     return (void*)(intptr_t)ret;
 }
+#else /* defined(_WIN32) */
+static unsigned __stdcall jvm_main_thread_start(void *arg)
+{
+    std::unique_ptr<struct MainThreadArgs> args(static_cast<struct MainThreadArgs*>(arg));
+    int ret = jvm_main_thread(*args);
+    return (unsigned)ret;
+}
+#endif
 
 int main(int argc, char *argv[]) {
     debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
@@ -684,7 +699,6 @@ int main(int argc, char *argv[]) {
      * we create a new thread only when needed (see below); otherwise, we continue on the main thread.
      */
     bool use_new_thread = false;
-#if !defined(_WIN32)
 #if defined (__APPLE__)
     if (jvmMode) {
         if (!load_jli_lib(exeDir)) {
@@ -706,6 +720,9 @@ int main(int argc, char *argv[]) {
 #endif
 
     if (use_new_thread) {
+        auto threadArgs = std::make_unique<decltype(parsedArgs)>(std::move(parsedArgs));
+
+#ifndef _WIN32
         pthread_attr_t attr;
         if (pthread_attr_init(&attr) != 0) {
             std::cerr << "Could not initialize pthread attribute structure: " << strerror(errno) << std::endl;
@@ -717,14 +734,16 @@ int main(int argc, char *argv[]) {
         }
 
         pthread_t main_thr;
-        auto threadArgs = std::make_unique<decltype(parsedArgs)>(std::move(parsedArgs));
         if (pthread_create(&main_thr, &attr, &jvm_main_thread_start, threadArgs.get()) != 0) {
             std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
+            pthread_attr_destroy(&attr);
             return -1;
-        } else {
-            // ownership transferred to new thread
-            threadArgs.release();
         }
+
+        // ownership transferred to new thread
+        threadArgs.release();
+        pthread_attr_destroy(&attr);
+
 #if defined(__APPLE__)
         if (pthread_detach(main_thr)) {
             std::cerr << "pthread_detach() failed: " << strerror(errno) << std::endl;
@@ -741,8 +760,24 @@ int main(int argc, char *argv[]) {
         }
         return (int)(intptr_t)retval;
 #endif
+#else /* defined(_WIN32) */
+        uintptr_t hThread = _beginthreadex(nullptr, stack_size, &jvm_main_thread_start, threadArgs.get(), STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr);
+        if (hThread == 0) {
+            std::cerr << "_beginthreadex() failed: " << GetLastError() << std::endl;
+            return -1;
+        }
+
+        // ownership transferred to new thread
+        threadArgs.release();
+
+        // join thread
+        DWORD exitCode = 0;
+        WaitForSingleObject((HANDLE)hThread, INFINITE);
+        GetExitCodeThread((HANDLE)hThread, &exitCode);
+        CloseHandle((HANDLE)hThread);
+        return (int)exitCode;
+#endif
     }
-#endif /* !defined(_WIN32) */
     return jvm_main_thread(parsedArgs);
 }
 
@@ -1092,6 +1127,14 @@ static size_t current_thread_stack_size() {
         pthread_attr_getstack(&attr, &stack_addr, &current_thread_stack_size);
         pthread_attr_destroy(&attr);
     }
+#elif defined(_WIN32)
+    // Windows 8+: GetCurrentThreadStackLimits(&low, &high);
+    MEMORY_BASIC_INFORMATION mbi{};
+    VirtualQuery(&mbi, &mbi, sizeof(mbi));
+    NT_TIB* tib = (NT_TIB*)NtCurrentTeb();
+    uintptr_t low = (uintptr_t)mbi.AllocationBase;
+    uintptr_t high = (uintptr_t)tib->StackBase;
+    current_thread_stack_size = high - low;
 #endif
     return current_thread_stack_size;
 }
