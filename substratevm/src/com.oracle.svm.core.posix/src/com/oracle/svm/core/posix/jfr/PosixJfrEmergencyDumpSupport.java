@@ -63,7 +63,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
     }
 
     public void setDumpPath(String dumpPathText) {
-        pathBuffer =  PrimitiveArrayView.createForReadingAndWriting(new byte[JVM_MAXPATHLEN]);
+        dumpPathBytes = dumpPathText.getBytes(StandardCharsets.UTF_8);
     }
 
     public String getDumpPath() {

@@ -181,7 +181,7 @@ public class JfrTypeRepository implements JfrRepository {
         Class<?> clazz = classInfoRaw.getInstance();
         PackageInfoRaw packageInfoRaw = StackValue.get(PackageInfoRaw.class);
         setPackageNameAndLength(clazz, packageInfoRaw);
-        packageInfoRaw.setHash(getHash("test"));
+        packageInfoRaw.setHash(getHash(packageInfoRaw));
 
         boolean hasClassLoader = clazz.getClassLoader() != null;
         writer.writeCompressedLong(classInfoRaw.getId());
@@ -326,6 +326,7 @@ public class JfrTypeRepository implements JfrRepository {
         String moduleName = hasModule ? clazz.getModule().getName() : null;
 
         PackageInfoRaw packageInfoRaw = StackValue.get(PackageInfoRaw.class);
+        packageInfoRaw.setName(null); // No allocation free way to get the name String.
         setPackageNameAndLength(clazz, packageInfoRaw);
 
         /* The empty/null package represented by "" is always traced with id 0.
@@ -333,8 +334,8 @@ public class JfrTypeRepository implements JfrRepository {
         if (packageInfoRaw.getNameLength().equal(0)) {
             return false;
         }
-
-        packageInfoRaw.setHash(getHash("test")); // TODO there must be a better way
+        System.out.println(clazz.getPackageName());
+        packageInfoRaw.setHash(getHash(packageInfoRaw));
         if (isPackageVisited(typeInfo, packageInfoRaw)) {
             assert moduleName == (flushedPackages.contains(packageInfoRaw) ? ((PackageInfoRaw)flushedPackages.get(packageInfoRaw)).getModuleName() : ((PackageInfoRaw)typeInfo.packages.get(packageInfoRaw)).getModuleName());
             NullableNativeMemory.free(packageInfoRaw.getModifiedUTF8Name());
@@ -525,6 +526,19 @@ public class JfrTypeRepository implements JfrRepository {
         }
         long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
         return UninterruptibleUtils.Long.hashCode(rawPointerValue);
+    }
+
+    /** We do not have access to an image heap String for packages.
+     * Instead, sum the value of the serialized String and use that for the hash.*/
+    private static int getHash(PackageInfoRaw packageInfoRaw) {
+        if (packageInfoRaw.getModifiedUTF8Name().isNull() || packageInfoRaw.getNameLength().belowOrEqual(0)) {
+            return 0;
+        }
+        long sum = 0;
+        for (int i = 0; packageInfoRaw.getNameLength().aboveThan(i); i++){
+            sum += ((Pointer) packageInfoRaw.getModifiedUTF8Name()).readByte(i);
+        }
+        return UninterruptibleUtils.Long.hashCode(sum);
     }
 
     @RawStructure
