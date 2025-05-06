@@ -115,6 +115,9 @@ def is_ee():
 def sulong_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()
     if is_ee():
+        # SULONG_ENTERPRISE and SULONG_MANAGED do not belong in the EE standalone of SULONG_NATIVE, but we want a single definition of libllvmvm.
+        # So we compromise here by including them. We do not use or distribute the EE standalone of SULONG_NATIVE so it does not matter.
+        # See also the comments in suite.py, in SULONG_*_STANDALONE_RELEASE_ARCHIVE.
         deps += [
             'sulong-managed:SULONG_ENTERPRISE',
             'sulong-managed:SULONG_MANAGED',
