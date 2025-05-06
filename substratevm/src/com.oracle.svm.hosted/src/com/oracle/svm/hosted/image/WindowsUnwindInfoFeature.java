@@ -221,8 +221,8 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
             return; /* No frame, no unwind info needed. */
         }
 
-        int framePointerSaveAreaOffset = ((SharedCompilationResult) compilation).getFramePointerSaveAreaOffset();
-        if (framePointerSaveAreaOffset < 0) {
+        SharedCompilationResult cr = (SharedCompilationResult) compilation;
+        if (!cr.hasFramePointerSaveAreaOffset()) {
             /* There is no frame pointer, so there is only the primary range. */
             visitor.visit(RUNTIME_FUNCTION.PRIMARY_RANGE, START_MARK, compilation.getTargetCodeSize());
             return;
