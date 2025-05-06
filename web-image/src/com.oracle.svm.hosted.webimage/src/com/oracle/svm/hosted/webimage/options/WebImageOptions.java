@@ -126,7 +126,7 @@ public class WebImageOptions {
         public static final HostedOptionKey<Boolean> RuntimeDebugChecks = new HostedOptionKey<>(false);
 
         @Option(help = "Enable verification phases.")//
-        public static final OptionKey<Boolean> VerificationPhases = new OptionKey<>(false);
+        public static final HostedOptionKey<Boolean> VerificationPhases = new HostedOptionKey<>(false);
 
         @Option(help = "Dump type control graph, a graph of dependencies between types, methods, and inspected objects.")//
         public static final OptionKey<Boolean> DumpTypeControlGraph = new OptionKey<>(false);

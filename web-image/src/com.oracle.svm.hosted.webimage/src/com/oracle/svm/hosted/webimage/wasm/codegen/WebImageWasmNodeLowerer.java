@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -1142,6 +1143,35 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
     protected Instruction lowerReadException(@SuppressWarnings("unused") ReadExceptionObjectNode n) {
         return exceptionObjectVariable.getter();
+    }
+
+    protected Instruction lowerWordCast(WordCastNode n) {
+        return lowerWordCast(n, n.getInput());
+    }
+
+    protected Instruction lowerFloatingWordCast(FloatingWordCastNode n) {
+        return lowerWordCast(n, n.getInput());
+    }
+
+    protected Instruction lowerWordCast(ValueNode castNode, ValueNode input) {
+        Instruction value = lowerExpression(input);
+
+        int inputBits = util.typeForNode(input).asPrimitive().getBitCount();
+        int outputBits = util.typeForNode(castNode).asPrimitive().getBitCount();
+
+        /*
+         * TODO GR-42105 word types are 64-bit while objects are 32-bits. Add 32-bit architecture,
+         * then we can probably save both the wrap and extend operations.
+         */
+        if (inputBits == outputBits) {
+            return value;
+        } else if (inputBits == 32 && outputBits == 64) {
+            return Unary.Op.I64ExtendI32U.create(value);
+        } else if (inputBits == 64 && outputBits == 32) {
+            return Unary.Op.I32Wrap64.create(value);
+        } else {
+            throw GraalError.unimplemented(castNode + ", inputBits=" + inputBits + ", outputBits=" + outputBits); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     // region Unsupported operations
