@@ -60,28 +60,28 @@ $ mx --dy /espresso,/sulong maven-deploy --tags=public --all-suites --all-distri
 
 You can now depend on the jars using a version like `24.2.0-SNAPSHOT`.
 
-## `mx espresso-standalone ...`
+## `mx espresso-embedded ...`
 
-To run Espresso on a vanilla JDK (8|11) and/or not within a GraalVM use `mx espresso-standalone ...`, it mimics the `java` (8|11) command. The launcher adds all jars and properties required to run Espresso on any vanilla JDK (8|11).
+To run Espresso on a vanilla JDK and/or not within a standalone use `mx espresso-embedded ...`, it mimics the `java` command. The launcher adds all jars and properties required to run Espresso on any vanilla JDK.
 
 To debug Espresso:
 
 ```bash
 $ mx build
-$ mx -d espresso-standalone -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+$ mx -d espresso-embedded -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
 ```
 
 It can also run on a GraalVM with JIT compilation:
 
 ```bash
 $ mx build
-$ mx --dy /compiler espresso-standalone -cp my.jar HelloWorld
+$ mx --dy /compiler espresso-embedded -cp my.jar HelloWorld
 ```
 
 ## Dumping IGV graphs
 
 ```bash
-$ mx -v --dy /compiler -J"-Djdk.graal.Dump=:4 -Djdk.graal.TraceTruffleCompilation=true -Djdk.graal.TruffleBackgroundCompilation=false" espresso-standalone -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
+$ mx -v --dy /compiler -J"-Djdk.graal.Dump=:4 -Djdk.graal.TraceTruffleCompilation=true -Djdk.graal.TruffleBackgroundCompilation=false" espresso-embedded -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ## Running Espresso cross-versions
