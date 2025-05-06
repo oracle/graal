@@ -221,12 +221,13 @@ public final class CompilationAlarm implements AutoCloseable {
             root = new PhaseTreeNode(String.format("Root -> %s", graph.method().format("%H.%n(%p)")), graph);
             currentNode = root;
         } else {
-            if (graph != null) {
+            assert currentNode != null : Assertions.errorMessage("Must have a current node if the root is non null", root);
+            if (graph != null && currentNode.graph != null) {
                 if (currentNode instanceof PhaseTreeIntermediateRoot && !currentNode.graph.equals(graph)) {
                     // Switching to a new graph, possibly a parent or sibling. Drop the current
                     // subgraph.
                     currentNode = currentNode.parent;
-                } else if (currentNode != null && !currentNode.graph.equals(graph)) {
+                } else if (!currentNode.graph.equals(graph)) {
                     // Insert a new root node to distinguish the separate graph.
                     ResolvedJavaMethod method = graph.method();
                     PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", method == null ? graph : method.format("%H.%n(%p)")), graph);
