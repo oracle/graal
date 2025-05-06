@@ -83,11 +83,11 @@ public final class Vector128 implements TruffleObject {
     }
 
     public ByteVector getVector() {
-        return ByteVector.fromArray(ByteVector.SPECIES_128, bytes, 0);
+        return Vector128Ops.fromArray(bytes);
     }
 
-    public static Vector128 fromVector(Vector vec) {
-        return new Vector128(vec.reinterpretAsBytes().toArray());
+    public static Vector128 fromVector(ByteVector vec) {
+        return new Vector128(Vector128Ops.toArray(vec));
     }
 
     public short[] toShorts() {

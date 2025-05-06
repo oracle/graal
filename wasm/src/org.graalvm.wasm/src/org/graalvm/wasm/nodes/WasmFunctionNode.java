@@ -64,6 +64,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
+import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.Vector;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
@@ -2557,10 +2558,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_CONST: {
-                final Vector128 value = new Vector128(rawPeekI128(bytecode, offset));
+                final byte[] bytes = rawPeekI128(bytecode, offset);
                 offset += 16;
 
-                pushVector128(frame, stackPointer++, value.getVector());
+                final ByteVector vector = Vector128Ops.fromArray(bytes);
+                pushVector128(frame, stackPointer++, vector);
                 break;
             }
             case Bytecode.VECTOR_I8X16_SWIZZLE:
@@ -2690,9 +2692,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_F64X2_RELAXED_MAX:
             case Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S:
             case Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S: {
-                Vector y = popVector128(frame, --stackPointer);
-                Vector x = popVector128(frame, --stackPointer);
-                Vector result = Vector128Ops.binary(x, y, vectorOpcode);
+                ByteVector y = popVector128(frame, --stackPointer);
+                ByteVector x = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.binary(x, y, vectorOpcode);
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
@@ -2705,7 +2707,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_I32X4_BITMASK:
             case Bytecode.VECTOR_I64X2_ALL_TRUE:
             case Bytecode.VECTOR_I64X2_BITMASK: {
-                Vector x = popVector128(frame, --stackPointer);
+                ByteVector x = popVector128(frame, --stackPointer);
                 int result = Vector128Ops.vectorToInt(x, vectorOpcode);
                 pushInt(frame, stackPointer++, result);
                 break;

@@ -49,7 +49,6 @@ import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
-import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorOperators;
 import org.graalvm.wasm.constants.Bytecode;
 
@@ -64,6 +63,8 @@ import static org.graalvm.wasm.api.Vector128.LONG_LENGTH;
 import static org.graalvm.wasm.api.Vector128.SHORT_LENGTH;
 
 public class Vector128Ops {
+
+    private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(ByteVector.SPECIES_128).getClass();
 
     private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
@@ -101,20 +102,20 @@ public class Vector128Ops {
         };
     }
 
-    public static Vector binary(Vector x, Vector y, int vectorOpcode) {
+    public static ByteVector binary(ByteVector x, ByteVector y, int vectorOpcode) {
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I32X4_EQ, Bytecode.VECTOR_I32X4_NE, Bytecode.VECTOR_I32X4_LT_S, Bytecode.VECTOR_I32X4_LT_U, Bytecode.VECTOR_I32X4_GT_S, Bytecode.VECTOR_I32X4_GT_U,
                             Bytecode.VECTOR_I32X4_LE_S, Bytecode.VECTOR_I32X4_LE_U, Bytecode.VECTOR_I32X4_GE_S, Bytecode.VECTOR_I32X4_GE_U ->
-                i32x4_relop(x.reinterpretAsInts(), y.reinterpretAsInts(), vectorOpcode);
+                i32x4_relop(x, y, vectorOpcode);
             case Bytecode.VECTOR_I32X4_ADD, Bytecode.VECTOR_I32X4_SUB, Bytecode.VECTOR_I32X4_MUL, Bytecode.VECTOR_I32X4_MIN_S, Bytecode.VECTOR_I32X4_MIN_U, Bytecode.VECTOR_I32X4_MAX_S,
                             Bytecode.VECTOR_I32X4_MAX_U ->
-                i32x4_binop(x.reinterpretAsInts(), y.reinterpretAsInts(), vectorOpcode);
+                i32x4_binop(x, y, vectorOpcode);
             case Bytecode.VECTOR_F32X4_ADD, Bytecode.VECTOR_F32X4_SUB, Bytecode.VECTOR_F32X4_MUL, Bytecode.VECTOR_F32X4_DIV, Bytecode.VECTOR_F32X4_MIN, Bytecode.VECTOR_F32X4_MAX,
                             Bytecode.VECTOR_F32X4_PMIN, Bytecode.VECTOR_F32X4_PMAX, Bytecode.VECTOR_F32X4_RELAXED_MIN, Bytecode.VECTOR_F32X4_RELAXED_MAX ->
-                f32x4_binop(x.reinterpretAsFloats(), y.reinterpretAsFloats(), vectorOpcode);
+                f32x4_binop(x, y, vectorOpcode);
             case Bytecode.VECTOR_F64X2_ADD, Bytecode.VECTOR_F64X2_SUB, Bytecode.VECTOR_F64X2_MUL, Bytecode.VECTOR_F64X2_DIV, Bytecode.VECTOR_F64X2_MIN, Bytecode.VECTOR_F64X2_MAX,
                             Bytecode.VECTOR_F64X2_PMIN, Bytecode.VECTOR_F64X2_PMAX, Bytecode.VECTOR_F64X2_RELAXED_MIN, Bytecode.VECTOR_F64X2_RELAXED_MAX ->
-                f64x2_binop(x.reinterpretAsDoubles(), y.reinterpretAsDoubles(), vectorOpcode);
+                f64x2_binop(x, y, vectorOpcode);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -131,10 +132,10 @@ public class Vector128Ops {
         };
     }
 
-    public static int vectorToInt(Vector x, int vectorOpcode) {
+    public static int vectorToInt(ByteVector x, int vectorOpcode) {
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_ANY_TRUE -> v128_any_true(x);
-            case Bytecode.VECTOR_I32X4_ALL_TRUE -> i32x4_all_true(x.reinterpretAsInts());
+            case Bytecode.VECTOR_I32X4_ALL_TRUE -> i32x4_all_true(x);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -323,8 +324,8 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int v128_any_true(Vector vec) {
-        return vec.reinterpretAsBytes().reduceLanes(VectorOperators.OR) != 0 ? 1 : 0;
+    private static int v128_any_true(ByteVector vec) {
+        return BYTE_128_CLASS.cast(vec).reduceLanes(VectorOperators.OR) != 0 ? 1 : 0;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -373,7 +374,9 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static Vector<Integer> i32x4_relop(IntVector x, IntVector y, int vectorOpcode) {
+    private static ByteVector i32x4_relop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
+        IntVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsInts();
+        IntVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsInts();
         VectorOperators.Comparison comparison = switch (vectorOpcode) {
             case Bytecode.VECTOR_I32X4_EQ -> VectorOperators.EQ;
             case Bytecode.VECTOR_I32X4_NE -> VectorOperators.NE;
@@ -387,7 +390,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I32X4_GE_U -> VectorOperators.UGE;
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        return x.compare(comparison, y).toVector();
+        return BYTE_128_CLASS.cast(x.compare(comparison, y).toVector().reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -794,7 +797,8 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i32x4_all_true(IntVector vec) {
+    private static int i32x4_all_true(ByteVector vecBytes) {
+        IntVector vec = BYTE_128_CLASS.cast(vecBytes).reinterpretAsInts();
         return vec.lanewise(VectorOperators.ZOMO).reduceLanes(VectorOperators.AND) == 0 ? 0 : 1;
     }
 
@@ -827,8 +831,10 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static IntVector i32x4_binop(IntVector x, IntVector y, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    private static ByteVector i32x4_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
+        IntVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsInts();
+        IntVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsInts();
+        IntVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_I32X4_ADD -> x.add(y);
             case Bytecode.VECTOR_I32X4_SUB -> x.sub(y);
             case Bytecode.VECTOR_I32X4_MUL -> x.mul(y);
@@ -838,6 +844,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I32X4_MAX_U -> x.lanewise(VectorOperators.UMAX, y);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
+        return BYTE_128_CLASS.cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1064,8 +1071,10 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static FloatVector f32x4_binop(FloatVector x, FloatVector y, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    private static ByteVector f32x4_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
+        FloatVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsFloats();
+        FloatVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsFloats();
+        FloatVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_F32X4_ADD -> x.add(y);
             case Bytecode.VECTOR_F32X4_SUB -> x.sub(y);
             case Bytecode.VECTOR_F32X4_MUL -> x.mul(y);
@@ -1076,6 +1085,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_PMAX -> x.blend(y, x.compare(VectorOperators.LT, y));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
+        return BYTE_128_CLASS.cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1116,8 +1126,10 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static DoubleVector f64x2_binop(DoubleVector x, DoubleVector y, int vectorOpcode) {
-        return switch (vectorOpcode) {
+    private static ByteVector f64x2_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
+        DoubleVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsDoubles();
+        DoubleVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsDoubles();
+        DoubleVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_F64X2_ADD -> x.add(y);
             case Bytecode.VECTOR_F64X2_SUB -> x.sub(y);
             case Bytecode.VECTOR_F64X2_MUL -> x.mul(y);
@@ -1128,6 +1140,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_PMAX -> x.blend(y, x.compare(VectorOperators.LT, y));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
+        return BYTE_128_CLASS.cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1281,11 +1294,15 @@ public class Vector128Ops {
         }
     }
 
-    private static ByteVector fromBytes(byte[] bytes) {
-        return ByteVector.fromArray(ByteVector.SPECIES_128, bytes, 0);
+    public static ByteVector fromArray(byte[] bytes) {
+        return fromArray(bytes, 0);
     }
 
-    private static byte[] toBytes(Vector vec) {
-        return vec.reinterpretAsBytes().toArray();
+    public static ByteVector fromArray(byte[] bytes, int offset) {
+        return BYTE_128_CLASS.cast(ByteVector.fromArray(ByteVector.SPECIES_128, bytes, offset));
+    }
+
+    public static byte[] toArray(ByteVector vec) {
+        return BYTE_128_CLASS.cast(vec).toArray();
     }
 }
