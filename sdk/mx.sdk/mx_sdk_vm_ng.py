@@ -353,7 +353,7 @@ class LanguageLibraryProject(NativeImageLibraryProject):
         build_args += [
             '-R:+EnableSignalHandling',
             '-R:+InstallSegfaultHandler',
-            '--install-exit-handlers',
+            '-H:+InstallJavaExitHandlersForSharedLibrary',
         ]
 
         # Monitoring flags
