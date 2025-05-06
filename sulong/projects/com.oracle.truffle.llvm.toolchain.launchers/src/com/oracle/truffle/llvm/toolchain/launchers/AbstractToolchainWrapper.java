@@ -74,7 +74,7 @@ public abstract class AbstractToolchainWrapper {
     protected void run(String[] args) {
         Path executablePath = getCurrentExecutablePath();
         if (executablePath == null) {
-            System.err.println("Error: Could not find toolchain path");
+            System.err.println("Error: Could not determine current executable path");
             System.exit(1);
         }
 
