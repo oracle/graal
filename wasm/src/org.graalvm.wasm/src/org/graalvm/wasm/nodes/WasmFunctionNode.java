@@ -2558,10 +2558,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_CONST: {
-                final byte[] bytes = rawPeekI128(bytecode, offset);
+                final ByteVector vector = Vector128Ops.fromArray(bytecode, offset);
                 offset += 16;
 
-                final ByteVector vector = Vector128Ops.fromArray(bytes);
                 pushVector128(frame, stackPointer++, vector);
                 break;
             }
