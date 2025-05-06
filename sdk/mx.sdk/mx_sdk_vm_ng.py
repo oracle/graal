@@ -287,20 +287,21 @@ class NativeImageProject(mx.Project, metaclass=ABCMeta):
                 with open(build_artifacts_file, 'r') as f:
                     build_artifacts = json.load(f)
 
-                def _yield_files(file_type):
+                def _yield_files(file_type, prefix=None):
                     if file_type not in build_artifacts:
                         return
+                    file_type_prefix = prefix or file_type
                     for build_artifact in build_artifacts[file_type]:
                         build_artifact_path = join(build_directory, build_artifact)
                         if isfile(build_artifact_path):
-                            yield build_artifact_path, join(file_type, build_artifact)
+                            yield build_artifact_path, join(file_type_prefix, build_artifact)
                         elif isdir(build_artifact_path):
                             for root, _, files in os.walk(build_artifact_path):
-                                relroot = join(file_type, relpath(root, build_directory))
+                                relroot = join(file_type_prefix, relpath(root, build_directory))
                                 for name in files:
                                     yield join(root, name), join(relroot, name)
                         else:
-                            mx.abort("Could not find or understand build artifact '{}', referred by '{}' and produced while building '{}'".format(build_artifact_path, build_artifacts_file, self.native_image_name))
+                            mx.logv(f"Ignoring non-existent build artifact {build_artifact_path}', referred by '{build_artifacts_file}' produced while building '{self.output_file_name()}'")
 
                 yield from _yield_files('shared_libraries')
                 yield from _yield_files('executables')
@@ -308,6 +309,11 @@ class NativeImageProject(mx.Project, metaclass=ABCMeta):
                 yield from _yield_files('c_headers')
                 yield from _yield_files('language_resources')
                 yield from _yield_files('debug_info')
+
+                yield from _yield_files('shared_libraries', 'standard-deliverables')
+                yield from _yield_files('executables', 'standard-deliverables')
+                if mx_sdk_vm_impl._debug_images():
+                    yield from _yield_files('debug_info', 'standard-deliverables')
 
 class NativeImageExecutableProject(NativeImageProject):
     def resolveDeps(self):
