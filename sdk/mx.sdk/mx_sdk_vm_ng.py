@@ -1054,3 +1054,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         self._resolveDepsHelper(resolved)
         self.standalone_dir_dist = resolved[0]
         self.theLicense = self.standalone_dir_dist.theLicense
+
+    def get_artifact_metadata(self):
+        return {'edition': 'ee' if is_enterprise() else 'ce', 'type': 'standalone', 'project': 'graal'}
