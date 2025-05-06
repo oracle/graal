@@ -429,40 +429,6 @@ public class WebImageWasmLMNodeLowerer extends WebImageWasmNodeLowerer {
         }
     }
 
-    private Instruction lowerWordCast(WordCastNode n) {
-        ValueNode input = n.getInput();
-        Instruction value = lowerExpression(input);
-
-        int inputBits = util.typeForNode(input).asPrimitive().getBitCount();
-        int outputBits = util.typeForNode(n).asPrimitive().getBitCount();
-
-        /*
-         * TODO GR-42105 word types are 64-bit while objects are 32-bits. Add 32-bit architecture,
-         * then we can probably save both the wrap and extend operations.
-         */
-        if (inputBits == outputBits) {
-            return value;
-        } else if (inputBits == 32 && outputBits == 64) {
-            return Unary.Op.I64ExtendI32U.create(value);
-        } else if (inputBits == 64 && outputBits == 32) {
-            return Unary.Op.I32Wrap64.create(value);
-        } else {
-            throw GraalError.unimplemented(n + ", inputBits=" + inputBits + ", outputBits=" + outputBits); // ExcludeFromJacocoGeneratedReport
-        }
-    }
-
-    private Instruction lowerFloatingWordCast(FloatingWordCastNode n) {
-        ValueNode input = n.getInput();
-
-        Instruction value = lowerExpression(input);
-        /*
-         * TODO GR-42105 the input is a 64-bit word type, add architecture to ensure word type is 32
-         * bit and we don't need to i32.wrap64 instruction.
-         */
-        assert input.getStackKind().getBitCount() == 64 : input.getStackKind();
-        return Unary.Op.I32Wrap64.create(value);
-    }
-
     private Instruction lowerWasmAddressBase(WasmAddressNode n) {
         ValueNode baseNode = n.getBase();
 
