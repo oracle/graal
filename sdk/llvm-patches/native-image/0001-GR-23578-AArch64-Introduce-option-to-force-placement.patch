@@ -1,18 +1,18 @@
-From 73ff46f9f97161d099d22ed46d89148a868a5960 Mon Sep 17 00:00:00 2001
+From a7183f5a171aab1c57194db203ee0dea078a2570 Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Tue, 8 Sep 2020 13:03:06 +0200
-Subject: [PATCH 1/4] [GR-23578][AArch64] Introduce option to force placement
- of the frame record on top of the stack frame
+Subject: [PATCH] [GR-23578][AArch64] Introduce option to force placement of
+ the frame record on top of the stack frame
 
 ---
  llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp | 7 +++++++
  1 file changed, 7 insertions(+)
 
 diff --git a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-index 48e1c1bc7302..9742e5a93b30 100644
+index e9730348ba58..037d69da6ef1 100644
 --- a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-@@ -39,6 +39,11 @@ using namespace llvm;
+@@ -38,6 +38,11 @@ using namespace llvm;
  #define GET_REGINFO_TARGET_DESC
  #include "AArch64GenRegisterInfo.inc"
  
@@ -21,10 +21,10 @@ index 48e1c1bc7302..9742e5a93b30 100644
 +                     cl::desc("place the frame record on top of the frame"),
 +                     cl::init(false), cl::Hidden);
 +
- AArch64RegisterInfo::AArch64RegisterInfo(const Triple &TT)
-     : AArch64GenRegisterInfo(AArch64::LR), TT(TT) {
+ AArch64RegisterInfo::AArch64RegisterInfo(const Triple &TT, unsigned HwMode)
+     : AArch64GenRegisterInfo(AArch64::LR, 0, 0, 0, HwMode), TT(TT) {
    AArch64_MC::initLLVMToCVRegMapping(this);
-@@ -131,6 +136,8 @@ AArch64RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+@@ -141,6 +146,8 @@ AArch64RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
      return CSR_AArch64_AAPCS_X18_SaveList;
    if (MF->getInfo<AArch64FunctionInfo>()->isSVECC())
      return CSR_AArch64_SVE_AAPCS_SaveList;
@@ -34,5 +34,5 @@ index 48e1c1bc7302..9742e5a93b30 100644
  }
  
 -- 
-2.42.0
+2.47.2
 
