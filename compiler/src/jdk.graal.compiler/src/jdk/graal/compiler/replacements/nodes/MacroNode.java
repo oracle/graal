@@ -30,7 +30,6 @@ import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
@@ -187,10 +186,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return arguments;
     }
 
-    public ValueNode[] toArgumentArray() {
-        return arguments.toArray(ValueNode.EMPTY_ARRAY);
-    }
-
     @Override
     public int bci() {
         return bci;
@@ -240,15 +235,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
 
     @Override
     public final boolean hasSideEffect() {
-        return true;
-    }
-
-    /**
-     * Returns {@code true} if the lowered version of the macro, or the fallback invoke, can
-     * deoptimize in any way or throw any implicit or explicit exception. Such nodes should be
-     * represented as {@link MacroWithExceptionNode} in SVM runtime compilations.
-     */
-    public boolean canDeoptimizeOrThrow() {
         return true;
     }
 
@@ -309,22 +295,5 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         originalReturnStamp = methodHandle.originalReturnStamp;
         originalTargetMethod = methodHandle.originalTargetMethod;
         originalArguments.addAll(methodHandle.originalArguments);
-    }
-
-    /**
-     * Build a new copy of the {@link MacroParams} stored in this node.
-     */
-    public MacroParams copyParams() {
-        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, returnStamp, toArgumentArray());
-    }
-
-    /**
-     * Builds a new copy of this node's macro parameters, but with the return stamp replaced by the
-     * trusted {@code newStamp}.
-     */
-    protected MacroParams copyParamsWithImprovedStamp(ObjectStamp newStamp) {
-        GraalError.guarantee(newStamp.join(returnStamp.getTrustedStamp()).equals(newStamp), "stamp should improve from %s to %s", returnStamp, newStamp);
-        StampPair improvedReturnStamp = StampPair.createSingle(newStamp);
-        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, improvedReturnStamp, toArgumentArray());
     }
 }

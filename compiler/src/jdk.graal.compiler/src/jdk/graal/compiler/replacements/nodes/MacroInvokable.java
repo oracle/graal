@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.replacements.nodes;
 
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -88,6 +89,13 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
      * Gets the arguments for this macro node.
      */
     NodeInputList<ValueNode> getArguments();
+
+    /**
+     * Gets {@linkplain #getArguments() the arguments} for this macro node as an array.
+     */
+    default ValueNode[] toArgumentArray() {
+        return getArguments().toArray(ValueNode.EMPTY_ARRAY);
+    }
 
     /**
      * @see #getArguments()
@@ -197,4 +205,21 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
      * {@link Invoke} later.
      */
     void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle);
+
+    /**
+     * Build a new copy of the {@link MacroNode.MacroParams} stored in this node.
+     */
+    default MacroNode.MacroParams copyParams() {
+        return new MacroNode.MacroParams(getInvokeKind(), getContextMethod(), getTargetMethod(), bci(), getReturnStamp(), toArgumentArray());
+    }
+
+    /**
+     * Builds a new copy of this node's macro parameters, but with the return stamp replaced by the
+     * trusted {@code newStamp}.
+     */
+    default MacroNode.MacroParams copyParamsWithImprovedStamp(ObjectStamp newStamp) {
+        GraalError.guarantee(newStamp.join(getReturnStamp().getTrustedStamp()).equals(newStamp), "stamp should improve from %s to %s", getReturnStamp(), newStamp);
+        StampPair improvedReturnStamp = StampPair.createSingle(newStamp);
+        return new MacroNode.MacroParams(getInvokeKind(), getContextMethod(), getTargetMethod(), bci(), improvedReturnStamp, toArgumentArray());
+    }
 }
