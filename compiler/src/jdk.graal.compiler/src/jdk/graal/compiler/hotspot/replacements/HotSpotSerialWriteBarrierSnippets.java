@@ -37,7 +37,6 @@ import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.gc.SerialWriteBarrierSnippets;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 
 public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippets {
@@ -79,7 +78,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
             HotSpotSerialWriteBarrierSnippets receiver = new HotSpotSerialWriteBarrierSnippets();
 
-            if (JavaVersionUtil.JAVA_SPEC > 21 && Assertions.assertionsEnabled()) {
+            if (Assertions.assertionsEnabled()) {
                 serialImpreciseWriteBarrier = snippet(providers,
                                 SerialWriteBarrierSnippets.class,
                                 "serialImpreciseWriteBarrier",

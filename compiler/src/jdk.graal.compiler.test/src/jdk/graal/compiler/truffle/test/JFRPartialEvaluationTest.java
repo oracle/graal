@@ -40,7 +40,6 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 import jdk.jfr.Event;
@@ -69,19 +68,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
                 }
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            Class<?> throwableTracer = findThrowableTracerClass();
-            ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
-            StructuredGraph graph = partialEval(callTarget, new Object[0]);
-            // The call from the exception constructor to the JFR tracing must not be inlined.
-            assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findInvoke(graph, traceThrowable));
-            // Also make sure that the node count hasn't exploded.
-            assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
-        } else {
-            // On JDK-22+ JFR exception tracing is unconditionally disabled by PartialEvaluator
-            assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
-        }
+        assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
     }
 
     @SuppressWarnings("serial")
@@ -90,14 +77,6 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
         TruffleExceptionImpl(int value) {
             this.value = value;
-        }
-    }
-
-    private static Class<?> findThrowableTracerClass() {
-        try {
-            return Class.forName("jdk.jfr.internal.instrument.ThrowableTracer");
-        } catch (ClassNotFoundException cnf) {
-            throw new RuntimeException("ThrowableTracer not found", cnf);
         }
     }
 
@@ -117,21 +96,8 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
                 }
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            Class<?> throwableTracer = findThrowableTracerClass();
-            ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
-            ResolvedJavaMethod traceError = getResolvedJavaMethod(throwableTracer, "traceError");
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
-            StructuredGraph graph = partialEval(callTarget, new Object[0]);
-            // The call from the exception constructor to the JFR tracing must not be inlined.
-            assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findInvoke(graph, traceThrowable));
-            assertNotNull("The call to ThrowableTracer#traceError was not inlined or is missing.", findInvoke(graph, traceError));
-            // Also make sure that the node count hasn't exploded.
-            assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
-        } else {
-            // On JDK-22+ JFR exception tracing is unconditionally disabled by PartialEvaluator
-            assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
-        }
+        // On JDK-22+ JFR exception tracing is unconditionally disabled by PartialEvaluator
+        assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
     }
 
     @SuppressWarnings("serial")

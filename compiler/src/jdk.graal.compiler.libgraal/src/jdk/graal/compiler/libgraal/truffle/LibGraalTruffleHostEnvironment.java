@@ -24,13 +24,18 @@
  */
 package jdk.graal.compiler.libgraal.truffle;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.util.List;
+
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
@@ -39,11 +44,6 @@ import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.vm.ci.meta.AnnotationData;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.util.List;
 
 final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
 
@@ -132,11 +132,8 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
             try {
                 return MethodHandles.lookup().findConstructor(Class.forName("jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope"), MethodType.methodType(void.class, boolean.class));
             } catch (ReflectiveOperationException e) {
-                if (JavaVersionUtil.JAVA_SPEC != 21) {
-                    throw new InternalError(e);
-                }
+                throw new InternalError(e);
             }
-            return null;
         }
 
         private final AutoCloseable impl;
