@@ -271,7 +271,7 @@ The storage formats include: `embed`, which embeds the SBOM in the binary; `clas
 The SBOM feature is enabled by default and defaults to the `embed` option. 
 When embedded, the SBOM size is displayed. 
 The number of components is always displayed. 
-The SBOM feature can be disabled with `--enable-sbom=false`.
+The SBOM feature can be disabled by using `--enable-sbom=false` on the command line.
 
 Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
 If these types contain vulnerabilities, SBOM scanning will not detect them.
