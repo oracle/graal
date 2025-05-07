@@ -122,10 +122,15 @@ class NativeImageDebugInfoFeature implements InternalFeature {
 
                 BFDNameProvider bfdNameProvider = new BFDNameProvider(ignored);
                 ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
-                SubstrateDebugTypeEntrySupport typeEntrySupport = new SubstrateDebugTypeEntrySupport();
-                ImageSingletons.add(SubstrateDebugTypeEntrySupport.class, typeEntrySupport);
             }
         }
+
+        /*
+         * Foreign Type entries are produced upfront. This way we can also use them for run-time
+         * debug info.
+         */
+        SubstrateDebugTypeEntrySupport typeEntrySupport = new SubstrateDebugTypeEntrySupport();
+        ImageSingletons.add(SubstrateDebugTypeEntrySupport.class, typeEntrySupport);
     }
 
     @Override
@@ -194,13 +199,13 @@ class NativeImageDebugInfoFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         var accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+        var metaAccess = accessImpl.getMetaAccess();
 
         /*
          * Traverse all types and process native types into type entries. These type entries can
          * also be reused for run-time debug info generation.
          */
         for (AnalysisType t : accessImpl.getUniverse().getTypes()) {
-            var metaAccess = accessImpl.getMetaAccess();
             if (nativeLibs.isWordBase(t)) {
                 TypeEntry typeEntry = NativeImageDebugInfoProvider.processElementInfo(nativeLibs, metaAccess, t);
                 /*

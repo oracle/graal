@@ -249,6 +249,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 blackHole(new ForeignStructTypeEntry("dummy", -1, -1, -1, -1, "struct dummy", null));
 
                 if (typeEntry != null) {
+                    // this must be a foreign type (struct, pointer, or primitive)
                     if (typeEntry instanceof PointerToTypeEntry pointerToTypeEntry && pointerToTypeEntry.getPointerTo() == null) {
                         // fix-up void pointers
                         pointerToTypeEntry.setPointerTo(lookupTypeEntry(voidType));
@@ -263,7 +264,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @NeverInline("Prevent instance getting optimized away")
-    void blackHole(Object o) {
+    void blackHole(@SuppressWarnings("unused") Object o) {
     }
 
     /**
