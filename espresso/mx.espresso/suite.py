@@ -543,6 +543,9 @@ suite = {
                     "dependency:espresso:espresso-release-file",
                     "dependency:espresso:espresso-license-files/*",
                 ],
+                "languages/java/": [
+                    "dependency:espresso:ESPRESSO_SUPPORT/*",
+                ],
             },
             "maven": False,
         },
@@ -578,9 +581,6 @@ suite = {
                 "languages/java/lib/": [
                     "dependency:espresso:javavm/standard-deliverables/*",
                 ],
-                "languages/java/": [
-                    "dependency:espresso:ESPRESSO_SUPPORT/*",
-                ],
             },
             "maven": False,
         },
@@ -612,7 +612,6 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
                 "languages/java/": [
-                    "dependency:espresso:ESPRESSO_SUPPORT/*",
                     {
                         'source_type': 'extracted-dependency',
                         'dependency': 'espresso:ESPRESSO_LLVM_SUPPORT',
