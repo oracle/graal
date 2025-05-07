@@ -47,6 +47,8 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.EnumClassEntry;
@@ -101,7 +103,6 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -711,7 +712,16 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
-    public static TypeEntry processElementInfo(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ResolvedJavaType type) {
+    /**
+     * Processes a word base analysis type into a type entry for use during debug info generation.
+     * Creates other type entries recursively if needed.
+     *
+     * @param nativeLibs The NativeLibraries used to fetch element infos.
+     * @param metaAccess The AnalysisMetaAccess used to lookup referenced analysis types.
+     * @param type The type to produce a debug info type entry for.
+     * @return The type entry for the given type.
+     */
+    public static TypeEntry processElementInfo(NativeLibraries nativeLibs, AnalysisMetaAccess metaAccess, AnalysisType type) {
         assert nativeLibs.isWordBase(type);
 
         ElementInfo elementInfo = nativeLibs.findElementInfo(type);
@@ -721,8 +731,16 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
         String typeName = type.toJavaName();
         int size = elementSize(elementInfo);
-        String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getClass().getClassLoader());
+        // We need the loader name here to match the type signature generated later for looking up
+        // type entries.
+        String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getJavaClass().getClassLoader());
         long typeSignature = getTypeSignature(typeName + loaderName);
+
+        // Reuse already created type entries.
+        TypeEntry existingTypeEntry = SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
+        if (existingTypeEntry != null) {
+            return existingTypeEntry;
+        }
 
         switch (elementInfo) {
             case PointerToInfo pointerToInfo -> {
@@ -736,7 +754,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                      * any target type for the pointer will be defined by a CPointerTo or
                      * RawPointerTo annotation
                      */
-                    ResolvedJavaType pointerTo = null;
+                    AnalysisType pointerTo = null;
                     CPointerTo cPointerTo = type.getAnnotation(CPointerTo.class);
                     if (cPointerTo != null) {
                         pointerTo = metaAccess.lookupJavaType(cPointerTo.value());
@@ -764,7 +782,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             case StructInfo structInfo -> {
                 long layoutTypeSignature = getTypeSignature(LAYOUT_PREFIX + typeName + loaderName);
                 ForeignStructTypeEntry parentEntry = null;
-                for (ResolvedJavaType interfaceType : type.getInterfaces()) {
+                for (AnalysisType interfaceType : type.getInterfaces()) {
                     ElementInfo otherInfo = nativeLibs.findElementInfo(interfaceType);
                     if (otherInfo instanceof StructInfo) {
                         TypeEntry otherTypeEntry = processElementInfo(nativeLibs, metaAccess, interfaceType);
