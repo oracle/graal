@@ -789,6 +789,10 @@ suite = {
       "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
       "url": "http://www.oracle.com/us/legal/copyright/index.html"
     },
+    "GFTC": {
+      "name": "GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions",
+      "url": "https://www.oracle.com/downloads/licenses/graal-free-license.html"
+    },
 },
 
   # ------------- Distributions -------------

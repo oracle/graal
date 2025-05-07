@@ -51,10 +51,6 @@ suite = {
             "name": "Universal Permissive License, Version 1.0",
             "url": "http://opensource.org/licenses/UPL",
         },
-        "GFTC": {
-            "name": "GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions",
-            "url": "https://www.oracle.com/downloads/licenses/graal-free-license.html"
-        },
     },
     "defaultLicense": "GPLv2",
 
