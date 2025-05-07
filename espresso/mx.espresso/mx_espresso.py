@@ -600,6 +600,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
 
 def register_espresso_runtime_resources(register_project, register_distribution, suite, java_home_dep, llvm_java_home_dep):
+    is_ee_suite = suite != _suite
+    # Only register if this is the correct EE/CE or espresso-tests doesn't exist
+    if java_home_dep.is_ee_implementor != is_ee_suite and mx.suite('espresso-tests', fatalIfMissing=False):
+        return
+
     if llvm_java_home_dep:
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_lib_suffix('')
@@ -708,7 +713,7 @@ def register_espresso_runtime_resources(register_project, register_distribution,
             "groupId": "org.graalvm.espresso",
             "artifactId": "espresso-runtime-resources-" + espresso_runtime_resource_name,
             "tag": ["default", "public"],
-        }))
+        } if java_home_dep.is_ee_implementor == is_ee_suite else False))
 
 
 class EspressoRuntimeResourceProject(mx.JavaProject):
