@@ -24,45 +24,23 @@
  */
 package com.oracle.svm.core.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.WordBase;
 
-import java.util.Objects;
-
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * The offset of the compiled code of a method from the {@linkplain KnownIntrinsics#codeBase() code
- * base}.
+ * A reference to a {@linkplain ResolvedJavaMethod method}. Subtypes are instantiated for specific
+ * target methods during the image build and embedded in image heap objects, for example, in
+ * dispatch tables of {@link DynamicHub} objects. For the image, the references are turned into
+ * addresses or offsets which can be used to invoke the target method.
  */
-public final class MethodOffset implements MethodRef {
-    private final ResolvedJavaMethod method;
+public interface MethodRef extends WordBase {
 
-    public MethodOffset(ResolvedJavaMethod method) {
-        this.method = Objects.requireNonNull(method);
-    }
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ResolvedJavaMethod getMethod();
 
-    @Override
-    public ResolvedJavaMethod getMethod() {
-        return method;
-    }
-
-    @Override
-    public long rawValue() {
-        throw shouldNotReachHere("must not be called in hosted mode");
-    }
-
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    public boolean equals(Object obj) {
-        throw VMError.shouldNotReachHere("equals() not supported on words");
-    }
-
-    @Override
-    public int hashCode() {
-        throw VMError.shouldNotReachHere("hashCode() not supported on words");
-    }
 }

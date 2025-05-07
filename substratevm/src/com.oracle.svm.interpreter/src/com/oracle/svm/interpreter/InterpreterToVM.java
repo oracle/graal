@@ -37,7 +37,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -48,6 +48,7 @@ import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -693,14 +694,14 @@ public final class InterpreterToVM {
                 vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getTypeID());
             }
         }
-        WordBase vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
         return getSVMVTableCodePointer(vtableEntry);
     }
 
-    private static CFunctionPointer getSVMVTableCodePointer(WordBase vtableEntry) {
-        WordBase codePointer = vtableEntry;
+    private static CFunctionPointer getSVMVTableCodePointer(MethodRef vtableEntry) {
+        Pointer codePointer = (Pointer) vtableEntry;
         if (SubstrateOptions.useRelativeCodePointers()) {
-            codePointer = KnownIntrinsics.codeBase().add((UnsignedWord) codePointer);
+            codePointer = codePointer.add(KnownIntrinsics.codeBase());
         }
         return (CFunctionPointer) codePointer;
     }

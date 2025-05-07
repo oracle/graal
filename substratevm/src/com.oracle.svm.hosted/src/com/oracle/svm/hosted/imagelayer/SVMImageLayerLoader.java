@@ -87,7 +87,9 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -1506,9 +1508,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 case NULL_POINTER -> JavaConstant.NULL_POINTER;
                 case NOT_MATERIALIZED ->
                     unsupportedReferencedConstant("Reading the value of a base layer constant which was not materialized in the base image", parentConstant, finalPosition);
-                case METHOD_OFFSET ->
-                    unsupportedReferencedConstant("Reading the value of a code offset constant in a base image, which is not supported. Offsets should be accessed via PersistedHostedMethod",
-                                    parentConstant, finalPosition);
                 case PRIMITIVE_VALUE -> {
                     PrimitiveValue.Reader pv = constantData.getPrimitiveValue();
                     yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
@@ -1533,12 +1532,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private boolean delegateProcessing(ConstantReference.Reader constantRef, Object[] values, int i) {
-        if (constantRef.isMethodPointer()) {
+        if (constantRef.isMethodPointer() || constantRef.isMethodOffset()) {
             AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
-                AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
-                int mid = constantRef.getMethodPointer().getMethodId();
-                AnalysisMethod method = getAnalysisMethodForBaseLayerId(mid);
-                PatchedWordConstant constant = new PatchedWordConstant(new MethodPointer(method), methodPointerType);
+                MethodRef ref;
+                if (constantRef.isMethodPointer()) {
+                    int mid = constantRef.getMethodPointer().getMethodId();
+                    ref = new MethodPointer(getAnalysisMethodForBaseLayerId(mid));
+                } else {
+                    int mid = constantRef.getMethodOffset().getMethodId();
+                    ref = new MethodOffset(getAnalysisMethodForBaseLayerId(mid));
+                }
+                AnalysisType refType = metaAccess.lookupJavaType(ref.getClass());
+                PatchedWordConstant constant = new PatchedWordConstant(ref, refType);
                 values[i] = constant;
                 return constant;
             });

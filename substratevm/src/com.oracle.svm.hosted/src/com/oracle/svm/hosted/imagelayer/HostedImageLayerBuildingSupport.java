@@ -203,7 +203,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
              */
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
 
-            setOptionIfHasNotBeenSet(values, SubstrateOptions.RelativeCodePointers, true);
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
         }
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
@@ -214,7 +214,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
             enableConservativeUnsafeAccess(values);
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
-            setOptionIfHasNotBeenSet(values, SubstrateOptions.RelativeCodePointers, true);
+            setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
         }
     }
 

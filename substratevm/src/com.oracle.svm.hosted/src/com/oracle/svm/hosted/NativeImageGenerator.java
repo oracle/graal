@@ -160,6 +160,8 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -1234,6 +1236,12 @@ public class NativeImageGenerator {
             bb.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
             bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated("root class");
             bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated("root class");
+
+            /* MethodRef can conceal use of MethodPointer and MethodOffset until after analysis. */
+            bb.addRootClass(MethodPointer.class, false, true);
+            if (SubstrateOptions.useRelativeCodePointers()) {
+                bb.addRootClass(MethodOffset.class, false, true);
+            }
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
                             "Runtime support, registered in " + NativeImageGenerator.class);
