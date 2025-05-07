@@ -325,7 +325,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int v128_any_true(ByteVector vec) {
-        return BYTE_128_CLASS.cast(vec).reduceLanes(VectorOperators.OR) != 0 ? 1 : 0;
+        return BYTE_128_CLASS.cast(vec).eq((byte) 0).allTrue() ? 0 : 1;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
