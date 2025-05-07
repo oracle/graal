@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -49,11 +49,11 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.TypeResult;
 
-public class RegistryAdapter implements ReflectionConfigurationParserDelegate<ConfigurationCondition, Class<?>> {
+public class RegistryAdapter implements ReflectionConfigurationParserDelegate<RegistrationCondition, Class<?>> {
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
-    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
+    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<RegistrationCondition> serializationSupport,
                     ImageClassLoader classLoader) {
         if (registry instanceof RuntimeReflectionSupport) {
             return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, serializationSupport, classLoader);
@@ -68,12 +68,12 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerType(ConfigurationCondition condition, Class<?> type) {
+    public void registerType(RegistrationCondition condition, Class<?> type) {
         registry.register(condition, type);
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+    public TypeResult<Class<?>> resolveType(RegistrationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
         switch (typeDescriptor.getDescriptorType()) {
             case NAMED -> {
                 NamedConfigurationTypeDescriptor namedDescriptor = (NamedConfigurationTypeDescriptor) typeDescriptor;
@@ -133,67 +133,67 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerPublicClasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerPublicClasses(RegistrationCondition condition, Class<?> type) {
         registry.register(condition, type.getClasses());
     }
 
     @Override
-    public void registerDeclaredClasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerDeclaredClasses(RegistrationCondition condition, Class<?> type) {
         registry.register(condition, type.getDeclaredClasses());
     }
 
     @Override
-    public void registerRecordComponents(ConfigurationCondition condition, Class<?> type) {
+    public void registerRecordComponents(RegistrationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerPermittedSubclasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerPermittedSubclasses(RegistrationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerNestMembers(ConfigurationCondition condition, Class<?> type) {
+    public void registerNestMembers(RegistrationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerSigners(ConfigurationCondition condition, Class<?> type) {
+    public void registerSigners(RegistrationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerPublicFields(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         if (!queriedOnly) {
             registry.register(condition, false, type.getFields());
         }
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerDeclaredFields(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         if (!queriedOnly) {
             registry.register(condition, false, type.getDeclaredFields());
         }
     }
 
     @Override
-    public void registerPublicMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerPublicMethods(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         registry.register(condition, queriedOnly, type.getMethods());
     }
 
     @Override
-    public void registerDeclaredMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerDeclaredMethods(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         registry.register(condition, queriedOnly, type.getDeclaredMethods());
     }
 
     @Override
-    public void registerPublicConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerPublicConstructors(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         registry.register(condition, queriedOnly, type.getConstructors());
     }
 
     @Override
-    public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerDeclaredConstructors(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         registry.register(condition, queriedOnly, type.getDeclaredConstructors());
     }
 
     @Override
-    public void registerField(ConfigurationCondition condition, Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
+    public void registerField(RegistrationCondition condition, Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
         try {
             registry.register(condition, allowWrite, type.getDeclaredField(fieldName));
         } catch (NoSuchFieldException e) {
@@ -206,7 +206,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public boolean registerAllMethodsWithName(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName) {
+    public boolean registerAllMethodsWithName(RegistrationCondition condition, boolean queriedOnly, Class<?> type, String methodName) {
         boolean found = false;
         Executable[] methods = type.getDeclaredMethods();
         for (Executable method : methods) {
@@ -219,14 +219,14 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public boolean registerAllConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public boolean registerAllConstructors(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         Executable[] methods = type.getDeclaredConstructors();
         registerExecutable(condition, queriedOnly, methods);
         return methods.length > 0;
     }
 
     @Override
-    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerUnsafeAllocated(RegistrationCondition condition, Class<?> clazz) {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             registry.register(condition, true, clazz);
             /*
@@ -237,7 +237,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerMethod(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerMethod(RegistrationCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         try {
             Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
             Method method;
@@ -270,7 +270,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerConstructor(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerConstructor(RegistrationCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
         try {
             registerExecutable(condition, queriedOnly, type.getDeclaredConstructor(parameterTypesArray));
@@ -287,12 +287,12 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
         return methodParameterTypes.toArray(Class<?>[]::new);
     }
 
-    private void registerExecutable(ConfigurationCondition condition, boolean queriedOnly, Executable... executable) {
+    private void registerExecutable(RegistrationCondition condition, boolean queriedOnly, Executable... executable) {
         registry.register(condition, queriedOnly, executable);
     }
 
     @Override
-    public void registerAsSerializable(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAsSerializable(RegistrationCondition condition, Class<?> clazz) {
         /* Serializable has no effect on JNI registrations */
     }
 

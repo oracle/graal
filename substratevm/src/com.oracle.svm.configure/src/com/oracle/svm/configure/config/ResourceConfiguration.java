@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConditionalElement;
@@ -82,7 +82,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addCondition(ConfigurationCondition condition, Module module, String resourcePath) {
+        public void addCondition(RegistrationCondition condition, Module module, String resourcePath) {
             throw new UnsupportedOperationException("Unused function.");
         }
 

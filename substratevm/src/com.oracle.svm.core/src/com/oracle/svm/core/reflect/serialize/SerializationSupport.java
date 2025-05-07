@@ -38,7 +38,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
@@ -191,7 +191,7 @@ public class SerializationSupport implements SerializationRegistry {
     private final EconomicMap<String, RuntimeConditionSet> lambdaCapturingClasses = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerSerializationTargetClass(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
+    public void registerSerializationTargetClass(RegistrationCondition cnd, Class<?> serializationTargetClass) {
         synchronized (classes) {
             var previous = classes.putIfAbsent(serializationTargetClass, RuntimeConditionSet.createHosted(cnd));
             if (previous != null) {
@@ -201,7 +201,7 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerLambdaCapturingClass(ConfigurationCondition cnd, String lambdaCapturingClass) {
+    public void registerLambdaCapturingClass(RegistrationCondition cnd, String lambdaCapturingClass) {
         synchronized (lambdaCapturingClasses) {
             var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeConditionSet.createHosted(cnd));
             if (previousConditions != null) {

@@ -27,14 +27,14 @@ package com.oracle.svm.hosted.reflect.proxy;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.LogUtils;
 
-public class ProxyRegistry extends ConditionalConfigurationRegistry implements BiConsumer<ConfigurationCondition, List<String>> {
+public class ProxyRegistry extends ConditionalConfigurationRegistry implements BiConsumer<RegistrationCondition, List<String>> {
     private final DynamicProxyRegistry dynamicProxySupport;
     private final ImageClassLoader imageClassLoader;
 
@@ -44,7 +44,7 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements B
     }
 
     @Override
-    public void accept(ConfigurationCondition condition, List<String> proxies) {
+    public void accept(RegistrationCondition condition, List<String> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
             registerConditionalConfiguration(condition, (cnd) -> {
