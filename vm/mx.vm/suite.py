@@ -137,6 +137,8 @@ suite = {
                 "truffle:TRUFFLE_NFI_GRAALVM_SUPPORT",
             ],
             "cflags" : [
+                "-g",
+                "-O3",
                 "-I<path:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT>/include",
             ],
             "testProject" : True,

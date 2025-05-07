@@ -568,6 +568,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
     def cflags(self):
         _dynamic_cflags = [
             ('/std:c++17' if mx.is_windows() else '-std=c++17'),
+            '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
