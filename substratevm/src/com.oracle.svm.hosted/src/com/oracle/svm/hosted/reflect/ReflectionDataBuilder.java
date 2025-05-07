@@ -621,7 +621,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
 
             if (declaringClass.isAnnotation()) {
-                processAnnotationField(cnd, reflectField);
+                processAnnotationField(reflectField);
             }
         }
 
@@ -662,12 +662,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Class<?> annotationClass = method.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
-            /*
-             * build-time condition as it is registered during analysis GR-62516, this should be
-             * deleted
-             */
-            var condition = TypeReachabilityCondition.create(proxyClass, false);
-            register(condition, queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
+            register(AccessCondition.unconditional(), queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
         } catch (NoSuchMethodException e) {
             /*
              * The annotation member is not present in the proxy class so we don't add it.
@@ -676,11 +671,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @SuppressWarnings("deprecation")
-    private void processAnnotationField(AccessCondition cnd, Field field) {
+    private void processAnnotationField(Field field) {
         Class<?> annotationClass = field.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
-            register(cnd, false, proxyClass.getDeclaredField(field.getName()));
+            register(AccessCondition.unconditional(), false, proxyClass.getDeclaredField(field.getName()));
         } catch (NoSuchFieldException e) {
             /*
              * The annotation member is not present in the proxy class so we don't add it.
@@ -1242,7 +1237,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
                 registerTypesForField(analysisField, reflectField, false);
                 if (analysisField.getDeclaringClass().isAnnotation()) {
-                    processAnnotationField(AccessCondition.unconditional(), reflectField);
+                    processAnnotationField(reflectField);
                 }
             }
         }
