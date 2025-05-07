@@ -158,11 +158,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     private static Path legacyGraalvmllvmBootLibraryPath(String javaVersion, Path llvmRoot) {
         // Try $ESPRESSO_HOME/lib/llvm/default first.
         Path llvmDefault = llvmRoot.resolve("default");
-        if (!Files.exists(llvmDefault)) {
-            LOGGER.warning(() -> "espresso-llvm (default) component not found. Install it, if available for your platform.");
-        }
         String llvmDefaultVersion = getJavaVersion(llvmDefault);
-        LOGGER.fine(() -> "Check " + llvmDefault + " with Java version: " + llvmDefaultVersion);
         if (javaVersion.equals(llvmDefaultVersion)) {
             return llvmDefault;
         }
