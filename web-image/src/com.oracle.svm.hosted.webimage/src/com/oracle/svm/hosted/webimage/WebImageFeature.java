@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
@@ -219,9 +219,9 @@ public class WebImageFeature implements InternalFeature {
 
         String entryPointConfig = WebImageOptions.EntryPointsConfig.getValue(ImageSingletons.lookup(HostedOptionValues.class));
         if (entryPointConfig != null) {
-            ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+            ConfigurationConditionResolver<RegistrationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                             ClassInitializationSupport.singleton());
-            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(null, false, conditionResolver, entryPointsData, null, null,
+            ReflectionConfigurationParser<RegistrationCondition, Class<?>> parser = ConfigurationParserUtils.create(null, false, conditionResolver, entryPointsData, null, null,
                             access.getImageClassLoader());
             try {
                 parser.parseAndRegister(Path.of(entryPointConfig).toUri());
