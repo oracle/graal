@@ -72,6 +72,7 @@ public abstract class ConfigurationParser {
     public static final String GLOBS_KEY = "globs";
     public static final String MODULE_KEY = "module";
     public static final String GLOB_KEY = "glob";
+    public static final String BUNDLE_KEY = "bundle";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final EnumSet<ConfigurationParserOption> parserOptions;
 
