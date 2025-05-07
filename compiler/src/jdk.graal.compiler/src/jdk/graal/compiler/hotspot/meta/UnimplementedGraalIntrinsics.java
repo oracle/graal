@@ -130,6 +130,13 @@ public final class UnimplementedGraalIntrinsics {
                             "com/sun/crypto/provider/ML_KEM.implKyberInverseNtt([S[S)I",
                             "com/sun/crypto/provider/ML_KEM.implKyberNtt([S[S)I",
                             "com/sun/crypto/provider/ML_KEM.implKyberNttMult([S[S[S[S)I");
+
+            add(toBeInvestigated, // @formatter:off
+                            // JDK-8353786: Migrate Vector API math library support to FFM API
+                            "jdk/internal/vm/vector/VectorSupport.libraryBinaryOp(JLjava/lang/Class;Ljava/lang/Class;ILjava/lang/String;Ljdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$BinaryOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.libraryUnaryOp(JLjava/lang/Class;Ljava/lang/Class;ILjava/lang/String;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$UnaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
+                            // @formatter:on
+            );
         }
 
         add(ignore,
