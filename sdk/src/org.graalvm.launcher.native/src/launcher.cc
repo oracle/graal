@@ -695,28 +695,30 @@ int main(int argc, char *argv[]) {
     parse_vm_options(parsedArgs);
     size_t stack_size = parsedArgs.stack_size;
 
-    /* Unlike the `java` launcher, which always creates a new thread for the JVM by default,
-     * we create a new thread only when needed (see below); otherwise, we continue on the main thread.
+    /*
+     * If -Xss is greater than the os-allocated stack size of the main thread,
+     * create a new "main" thread for the JVM with increased stack size.
+     *
+     * Unlike the `java` launcher, which always creates a new thread for the JVM by default [1],
+     * we create a new thread only if needed; otherwise, we attach the JVM to the main thread.
+     * On macOS, it is always needed because the actual main thread must run the UI event loop [2].
+     *
+     * [1] https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/unix/native/libjli/java_md.c#L114
+     * [2] https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/macosx/native/libjli/java_md_macosx.m#L292-L325
      */
-    bool use_new_thread = false;
+    bool use_new_thread = stack_size > current_thread_stack_size();
 #if defined (__APPLE__)
+    /* On macOS, always create a dedicated "main" thread for the JVM.
+     * The actual main thread must run the UI event loop (needed for AWT).
+     */
+    use_new_thread = true;
+
     if (jvmMode) {
         if (!load_jli_lib(exeDir)) {
             std::cerr << "Loading libjli failed." << std::endl;
             return -1;
         }
     }
-
-    /* Create dedicated "main" thread for the JVM. The actual main thread
-     * must run the UI event loop on macOS. Inspired by this OpenJDK code:
-     * https://github.com/openjdk/jdk/blob/011958d30b275f0f6a2de097938ceeb34beb314d/src/java.base/macosx/native/libjli/java_md_macosx.m#L328-L358
-     */
-    use_new_thread = true;
-#else
-    /* If -Xss is greater than the os-allocated stack size of the main thread,
-     * create a new "main" thread for the JVM with increased stack size.
-     */
-    use_new_thread = stack_size > current_thread_stack_size();
 #endif
 
     if (use_new_thread) {
