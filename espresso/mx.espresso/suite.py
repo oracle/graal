@@ -398,7 +398,6 @@ suite = {
                 "LIB_JAVAVM",
                 "ESPRESSO",
                 "ESPRESSO_LIBS_RESOURCES",
-                "ESPRESSO_RUNTIME_RESOURCES",
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "truffle:TRUFFLE_RUNTIME",
                 "sdk:TOOLS_FOR_STANDALONE",
@@ -406,6 +405,7 @@ suite = {
             # optionally provides:
             # - truffle-enterprise:TRUFFLE_ENTERPRISE
             # - regex:TREGEX
+            # - espresso:ESPRESSO_RUNTIME_RESOURCES or espresso-tests:ESPRESSO_RUNTIME_RESOURCES
             "dynamicDependencies": "javavm_deps",
             "build_args": [
                 '-Dpolyglot.java.GuestFieldOffsetStrategy=graal',

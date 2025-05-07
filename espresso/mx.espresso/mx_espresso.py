@@ -99,7 +99,7 @@ def _espresso_standalone_command(args, with_sulong=False, allow_jacoco=True, jdk
     )
 
 def javavm_deps():
-    result = []
+    result = [espresso_resources_suite() + ':ESPRESSO_RUNTIME_RESOURCES']
     if mx.suite('truffle-enterprise', fatalIfMissing=False):
         result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     if mx.suite('regex', fatalIfMissing=False):
@@ -591,7 +591,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             "./": [],
         }, None, True, None, platforms='local', ignore=ignore_msg))
 
-    register_espresso_runtime_resources(register_project, register_distribution, _suite, java_home_dep, llvm_java_home_dep)
+    register_espresso_runtime_resources(register_project, register_distribution, _suite)
     register_distribution(DeliverableStandaloneArchive(_suite,
         standalone_dist='ESPRESSO_NATIVE_STANDALONE',
         community_archive_name=f'graalvm-espresso-community-java{java_home_dep.major_version}',
@@ -599,10 +599,21 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         standalone_prefix=False))
 
 
-def register_espresso_runtime_resources(register_project, register_distribution, suite, java_home_dep, llvm_java_home_dep):
+def espresso_resources_suite():
+    # Espresso resources are in the CE/EE suite depending on espresso java home type
+    # or in espresso if there is no EE suite
+    java_home_dep = get_java_home_dep()
+    if java_home_dep.is_ee_implementor and mx.suite('espresso-tests', fatalIfMissing=False):
+        return 'espresso-tests'
+    else:
+        return 'espresso'
+
+
+def register_espresso_runtime_resources(register_project, register_distribution, suite):
+    java_home_dep = get_java_home_dep()
+    llvm_java_home_dep = get_llvm_java_home_dep()
     is_ee_suite = suite != _suite
-    # Only register if this is the correct EE/CE or espresso-tests doesn't exist
-    if java_home_dep.is_ee_implementor != is_ee_suite and mx.suite('espresso-tests', fatalIfMissing=False):
+    if espresso_resources_suite() != suite.name:
         return
 
     if llvm_java_home_dep:
