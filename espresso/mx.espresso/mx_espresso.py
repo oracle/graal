@@ -116,7 +116,7 @@ def javavm_build_args():
         result.append('-H:-IncludeLanguageResources')
     if mx.is_linux() and mx.get_os_variant() != "musl":
         result += [
-            '-Dpolyglot.image-build-time.PreinitializeContexts=java,nfi,internal/nfi-native',
+            '-Dpolyglot.image-build-time.PreinitializeContexts=java',
             '-Dpolyglot.image-build-time.PreinitializeContextsWithNative=true',
         ]
     return result

@@ -424,7 +424,7 @@ suite = {
             # --enable-monitoring=threaddump or -H:+DumpThreadStacksOnSignal
             # -H:+CopyLanguageResources
             # -H:-IncludeLanguageResources
-            # -Dpolyglot.image-build-time.PreinitializeContexts=java,nfi,internal/nfi-native
+            # -Dpolyglot.image-build-time.PreinitializeContexts=java
             # -Dpolyglot.image-build-time.PreinitializeContextsWithNative=true
             "dynamicBuildArgs": "javavm_build_args",
         },
