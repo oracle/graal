@@ -634,12 +634,14 @@ suite = {
                     "dependency": "sdk:STANDALONE_JAVA_HOME",
                     "path": "*",
                     "exclude": [
-                        "lib/jfr",
+                        # Native Image-related
+                        "bin/native-image*",
                         "lib/static",
                         "lib/svm",
-                        "lib/src.zip",
                         "lib/<lib:native-image-agent>",
                         "lib/<lib:native-image-diagnostics-agent>",
+                        # Unnecessary and big
+                        "lib/src.zip",
                         "jmods",
                     ],
                 },
