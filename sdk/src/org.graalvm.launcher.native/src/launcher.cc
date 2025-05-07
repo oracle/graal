@@ -285,7 +285,7 @@ static std::string canonicalize(std::string path) {
  * system JRE and fail if none is installed
  */
 static void *load_jli_lib(std::string exeDir) {
-    std::stringstream libjliPath;
+    std::ostringstream libjliPath;
     libjliPath << exeDir << DIR_SEP_STR << LIBJLI_RELPATH_STR;
     return dlopen(libjliPath.str().c_str(), RTLD_NOW);
 }
@@ -330,7 +330,7 @@ void* get_function(void* library, const char* function_name) {
 }
 
 static std::string vm_path(std::string exeDir, bool jvmMode) {
-    std::stringstream liblangPath;
+    std::ostringstream liblangPath;
     if (jvmMode) {
         liblangPath << exeDir << DIR_SEP_STR << LIBJVM_RELPATH_STR;
     } else {
@@ -348,9 +348,9 @@ static size_t parse_size(std::string_view str);
 
 static void parse_vm_option(
         std::vector<std::string> *vmArgs,
-        std::stringstream *cp,
-        std::stringstream *modulePath,
-        std::stringstream *libraryPath,
+        std::ostringstream *cp,
+        std::ostringstream *modulePath,
+        std::ostringstream *libraryPath,
         size_t* stack_size,
         std::string_view option) {
     if (IS_VM_CP_ARG(option)) {
@@ -367,7 +367,7 @@ static void parse_vm_option(
         if (IS_VM_STACK_SIZE_ARG(option)) {
             *stack_size = parse_size(option.substr(VM_STACK_SIZE_ARG_OFFSET));
         }
-        std::stringstream opt;
+        std::ostringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
         vmArgs->push_back(opt.str());
     } else if (option == "--jvm") {
@@ -412,7 +412,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     }
     vmArgs.push_back("-Dorg.graalvm.version=" GRAALVM_VERSION_STR);
 
-    std::stringstream executablename;
+    std::ostringstream executablename;
     executablename << "-Dorg.graalvm.launcher.executablename=";
     char *executablenameEnv = getenv("GRAALVM_LAUNCHER_EXECUTABLE_NAME");
     if (executablenameEnv) {
@@ -427,10 +427,10 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     }
 
     /* construct classpath - only needed for jvm mode */
-    std::stringstream cp;
+    std::ostringstream cp;
 
     /* construct module path - only needed for jvm mode */
-    std::stringstream modulePath;
+    std::ostringstream modulePath;
     modulePath << "--module-path=";
     #ifdef LAUNCHER_MODULE_PATH
     if (jvmMode) {
@@ -438,7 +438,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
         const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
         int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
         for (int i = 0; i < launcherModulePathCnt; i++) {
-            std::stringstream entry;
+            std::ostringstream entry;
             entry << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
             modulePath << canonicalize(entry.str());
             if (i < launcherModulePathCnt-1) {
@@ -455,7 +455,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
         const char* dirs[] = { LANGUAGES_DIR_STR, TOOLS_DIR_STR };
         for (int i = 0; i < 2; i++) {
             const char* relativeDir = dirs[i];
-            std::stringstream absoluteDirStream;
+            std::ostringstream absoluteDirStream;
             absoluteDirStream << exeDir << DIR_SEP_STR << relativeDir;
             std::string absoluteDir = absoluteDirStream.str();
 
@@ -476,7 +476,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
             // From https://learn.microsoft.com/en-us/windows/win32/fileio/listing-the-files-in-a-directory
             // and https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
             WIN32_FIND_DATAA entry;
-            std::stringstream searchDir;
+            std::ostringstream searchDir;
             searchDir << absoluteDir << "\\*";
             HANDLE dir = FindFirstFileA(searchDir.str().c_str(), &entry);
             if (dir != INVALID_HANDLE_VALUE) {
@@ -495,7 +495,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     #endif
 
     /* construct java.library.path - only needed for jvm mode */
-    std::stringstream libraryPath;
+    std::ostringstream libraryPath;
     #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
         /* add the library path */
@@ -512,8 +512,8 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
     const char *launcherLangHomePaths[] = LAUNCHER_LANG_HOME_PATHS;
     int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
     for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
-        std::stringstream ss;
-        std::stringstream relativeHome;
+        std::ostringstream ss;
+        std::ostringstream relativeHome;
         relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
         ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << canonicalize(relativeHome.str());
         vmArgs.push_back(ss.str());
@@ -526,8 +526,8 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
         const char *extractedLibPaths[] = LAUNCHER_EXTRACTED_LIB_PATHS;
         int extractedLibCnt = sizeof(extractedLibNames) / sizeof(*extractedLibNames);
         for (int i = 0; i < extractedLibCnt; i++) {
-            std::stringstream ss;
-            std::stringstream relativePath;
+            std::ostringstream ss;
+            std::ostringstream relativePath;
             relativePath << exeDir << DIR_SEP_STR << extractedLibPaths[i];
             ss << "-D" << extractedLibNames[i] << "=" << canonicalize(relativePath.str());
             vmArgs.push_back(ss.str());
@@ -588,7 +588,7 @@ static void parse_vm_options(struct MainThreadArgs& parsedArgs) {
             std::cout << "Relaunch environment variable detected" << std::endl;
         }
         for (int i = 0; i < vmArgCount; i++) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
             std::string envKey = ss.str();
             char *cur = getenv(envKey.c_str());
@@ -996,7 +996,7 @@ static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
             if (debug) {
                 std::cout << "Relaunch VM arguments read: " << vmArgCount << std::endl;
             }
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << vmArgCount;
             if (setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", ss.str()) == -1) {
                 return -1;
@@ -1015,7 +1015,7 @@ static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
                     return -1;
                 }
                 /* set environment variables for relaunch vm arguments */
-                std::stringstream key;
+                std::ostringstream key;
                 key << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
                 std::string arg(vmArg);
                 if (setenv(key.str(), arg) == -1) {
