@@ -112,7 +112,6 @@ public class GraalHotSpotVMConfigAccess {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
-    public static final int JDK = JavaVersionUtil.JAVA_SPEC;
     public static final JVMCIVersionCheck.Version JVMCI_VERSION;
     public static final boolean JVMCI;
     public static final boolean JDK_PRERELEASE;
@@ -183,7 +182,7 @@ public class GraalHotSpotVMConfigAccess {
         if (!missing.isEmpty() || !unexpected.isEmpty()) {
             String jvmci = JVMCI_VERSION == null ? "" : " jvmci-" + JVMCI_VERSION;
             String runtime = String.format("JDK %d%s %s-%s (java.home=%s, java.vm.name=%s, java.vm.version=%s)",
-                            JDK, jvmci, osName, osArch,
+                            JavaVersionUtil.JAVA_SPEC, jvmci, osName, osArch,
                             getSavedProperty("java.home"),
                             getSavedProperty("java.vm.name"),
                             getSavedProperty("java.vm.version"));

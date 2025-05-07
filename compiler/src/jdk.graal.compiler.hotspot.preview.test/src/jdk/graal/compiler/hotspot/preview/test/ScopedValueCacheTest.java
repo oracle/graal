@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.libgraal;
+package jdk.graal.compiler.hotspot.preview.test;
 
-import java.util.function.BooleanSupplier;
-import java.util.stream.Stream;
+import java.lang.reflect.Method;
 
-import jdk.vm.ci.services.Services;
+import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
 
-/**
- * Determines if the JDK runtime does not include JDK-8346781.
- */
-public class BeforeJDK8346781 implements BooleanSupplier {
+public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
 
-    static final boolean VALUE = Stream.of(Services.class.getFields()).anyMatch(f -> f.getName().equals("IS_BUILDING_NATIVE_IMAGE"));
+    private static boolean contains(Object[] array, Object value) {
+        for (Object element : array) {
+            if (element == value) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    @Override
-    public boolean getAsBoolean() {
-        return VALUE;
+    @SuppressWarnings("preview")
+    public static void testScopedValue() {
+        ScopedValue<Integer> scopedValue = ScopedValue.newInstance();
+        ScopedValue.where(scopedValue, 42).run(() -> {
+            scopedValue.get();
+            try {
+                Method get = Thread.class.getDeclaredMethod("scopedValueCache");
+                get.setAccessible(true);
+                Object[] cache = (Object[]) get.invoke(null);
+                assertTrue(contains(cache, scopedValue));
+            } catch (ReflectiveOperationException e) {
+                fail(e.getMessage());
+            }
+        });
     }
 }

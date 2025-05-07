@@ -625,7 +625,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public int getArrayLengthOffset() {
-        return config.arrayOopDescLengthOffset();
+        return config.arrayLengthOffsetInBytes;
     }
 
     @Override

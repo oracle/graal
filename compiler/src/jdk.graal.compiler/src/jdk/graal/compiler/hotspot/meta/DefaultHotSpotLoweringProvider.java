@@ -1195,7 +1195,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     @Override
     public int arrayLengthOffset() {
-        return runtime.getVMConfig().arrayOopDescLengthOffset();
+        return runtime.getVMConfig().arrayLengthOffsetInBytes;
     }
 
     @Override

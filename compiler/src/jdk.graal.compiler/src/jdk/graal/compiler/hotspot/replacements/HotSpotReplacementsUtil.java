@@ -25,7 +25,6 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 import static jdk.graal.compiler.nodes.CompressionNode.CompressionOp.Compress;
 
@@ -375,18 +374,8 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity KLASS_MISC_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_misc_flags");
 
     @Fold
-    public static boolean shouldUseKlassMiscFlags() {
-        return JDK >= 24;
-    }
-
-    @Fold
     public static int klassMiscFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.klassMiscFlagsOffset;
-    }
-
-    @Fold
-    public static int klassAccessFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.klassAccessFlagsOffset;
     }
 
     @Fold
@@ -587,11 +576,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int objectMonitorCxqOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorCxq;
-    }
-
-    @Fold
     public static int objectMonitorEntryListOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorEntryList;
     }
@@ -623,7 +607,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayLengthOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.arrayOopDescLengthOffset();
+        return config.arrayLengthOffsetInBytes;
     }
 
     @Fold
