@@ -31,10 +31,13 @@ import org.junit.Test;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.Phase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 
@@ -151,4 +154,140 @@ public class CompilationAlarmPhaseTimesTest extends GraalCompilerTest {
         }
     }
 
+    public static boolean PRINT = false;
+
+    /**
+     * Test that the different combinations of graphs and phase names together with {@code null}
+     * values does not cause any errors.
+     */
+    @Test
+    public void testExplicitly() {
+        final StructuredGraph g1 = parseEager("foo", StructuredGraph.AllowAssumptions.YES);
+        final StructuredGraph g2 = parseEager("bar", StructuredGraph.AllowAssumptions.YES);
+        final StructuredGraph g3 = parseEager("convolutedWork", StructuredGraph.AllowAssumptions.YES);
+
+        Runnable empty = () -> {
+        };
+        Runnable singleSubPhase = () -> {
+            CanonicalizerPhase.create().apply(g2, getDefaultHighTierContext());
+        };
+        Runnable listSubPhase = () -> {
+            CanonicalizerPhase.create().apply(g2, getDefaultHighTierContext());
+            CanonicalizerPhase.create().apply(g2, getDefaultHighTierContext());
+        };
+
+        StringBuilder singlePhaseNoSubTree = runAndTrack(() -> new PhaseWithSubPhases(empty).apply(g1));
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", singlePhaseNoSubTree);
+        }
+
+        StringBuilder singlePhaseSinlgeSub = runAndTrack(() -> new PhaseWithSubPhases(singleSubPhase).apply(g1));
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", singlePhaseSinlgeSub);
+        }
+
+        StringBuilder singlePhaseListSub = runAndTrack(() -> new PhaseWithSubPhases(listSubPhase).apply(g1));
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", singlePhaseListSub);
+        }
+
+        StringBuilder doublePhaseNoSubTree = runAndTrack(() -> {
+            new PhaseWithSubPhases(empty).apply(g1);
+            new PhaseWithSubPhases(empty).apply(g1);
+        });
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", doublePhaseNoSubTree);
+        }
+
+        StringBuilder doublePhaseSinlgeSub = runAndTrack(() -> {
+            new PhaseWithSubPhases(singleSubPhase).apply(g1);
+            new PhaseWithSubPhases(singleSubPhase).apply(g1);
+        });
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", doublePhaseSinlgeSub);
+        }
+
+        StringBuilder doublePhaseListSub = runAndTrack(() -> {
+            new PhaseWithSubPhases(listSubPhase).apply(g1);
+            new PhaseWithSubPhases(listSubPhase).apply(g1);
+        });
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", doublePhaseListSub);
+        }
+
+        Runnable twoChildrenSinglePhase = () -> {
+            new PhaseWithSubPhases(() -> {
+                new PhaseWithSubPhases(() -> {
+                    CanonicalizerPhase.create().apply(g3, getDefaultHighTierContext());
+                }).apply(g2);
+            }).apply(g1);
+        };
+        StringBuilder twoChildren = runAndTrack(twoChildrenSinglePhase);
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", twoChildren);
+        }
+
+        // enter the root with null
+        StringBuilder nullGraphs = runAndTrack(() -> {
+            CompilationAlarm c = CompilationAlarm.current();
+            c.enterPhase("abcd", null);
+            c.exitPhase("abcd", null);
+        });
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", nullGraphs);
+        }
+
+        // enter child with null
+        StringBuilder nullGraphs2 = runAndTrack(() -> {
+            new PhaseWithSubPhases(() -> {
+                CompilationAlarm c = CompilationAlarm.current();
+                c.enterPhase("abcd", null);
+                c.exitPhase("abcd", null);
+            }).apply(g1);
+        });
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", nullGraphs2);
+        }
+
+        StringBuilder nullGraphs3 = runAndTrack(() -> {
+            CompilationAlarm c = CompilationAlarm.current();
+            c.enterPhase("abcd", null);
+            c.enterPhase("abcd2", g1);
+            c.exitPhase("abcd2", g2);
+            c.exitPhase("abcd", null);
+        });
+        if (PRINT) {
+            TTY.printf("Tree is%n%s%n", nullGraphs3);
+        }
+
+    }
+
+    @SuppressWarnings("try")
+    private static StringBuilder runAndTrack(Runnable r) {
+        // set the timeout very high, we just want to verify toString methods
+        OptionValues opt = new OptionValues(getInitialOptions(), CompilationAlarm.Options.CompilationExpirationPeriod, Double.MAX_VALUE);
+        try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(opt)) {
+            r.run();
+            return alarm.elapsedPhaseTreeAsString();
+        }
+    }
+
+    private static final class PhaseWithSubPhases extends Phase {
+
+        final Runnable subPhases;
+
+        private PhaseWithSubPhases(Runnable subPhases) {
+            this.subPhases = subPhases;
+        }
+
+        @Override
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            subPhases.run();
+        }
+    }
 }

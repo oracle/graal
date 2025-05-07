@@ -218,24 +218,21 @@ public final class CompilationAlarm implements AutoCloseable {
             return;
         }
         if (root == null) {
-            root = new PhaseTreeNode(String.format("Root -> %s", graph.method().format("%H.%n(%p)")), graph);
+            String identifier = null;
+            if (graph == null) {
+                identifier = "NULL_GRAPH";
+            } else if (graph.method() == null) {
+                // use graph.toString
+                identifier = graph.toString();
+            } else {
+                identifier = graph.method().format("%H.%n(%p)");
+            }
+            // if we do not have a method use the graph
+            root = new PhaseTreeNode(String.format("Root -> %s", identifier), graph);
             currentNode = root;
         } else {
             assert currentNode != null : Assertions.errorMessage("Must have a current node if the root is non null", root);
-            if (graph != null && currentNode.graph != null) {
-                if (currentNode instanceof PhaseTreeIntermediateRoot && !currentNode.graph.equals(graph)) {
-                    // Switching to a new graph, possibly a parent or sibling. Drop the current
-                    // subgraph.
-                    currentNode = currentNode.parent;
-                } else if (!currentNode.graph.equals(graph)) {
-                    // Insert a new root node to distinguish the separate graph.
-                    ResolvedJavaMethod method = graph.method();
-                    PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", method == null ? graph : method.format("%H.%n(%p)")), graph);
-                    newRoot.parent = currentNode;
-                    currentNode.addChild(newRoot);
-                    currentNode = newRoot;
-                }
-            }
+            handleIntermediateRoots(graph);
         }
 
         PhaseTreeNode node = new PhaseTreeNode(name, graph);
@@ -248,12 +245,37 @@ public final class CompilationAlarm implements AutoCloseable {
         currentNode = node;
     }
 
+    private void handleIntermediateRoots(StructuredGraph graph) {
+        // we only track intermediate roots if we have a graph
+        if (currentNode.graph != null && graph != null) {
+            if (graphMarksIntermediateRootEnd(graph)) {
+                while (graphMarksIntermediateRootEnd(graph)) {
+                    // Switching to a new graph, possibly a parent or sibling. Drop the current
+                    // subgraph.
+                    currentNode = currentNode.parent;
+                }
+            } else if (!currentNode.graph.equals(graph)) {
+                // Insert a new root node to distinguish the separate graph.
+                ResolvedJavaMethod method = graph.method();
+                PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", method == null ? graph : method.format("%H.%n(%p)")), graph);
+                newRoot.parent = currentNode;
+                currentNode.addChild(newRoot);
+                currentNode = newRoot;
+            }
+        }
+    }
+
     /**
      * Signal the execution of the phase identified by {@code name} is over.
      */
     public void exitPhase(CharSequence name, StructuredGraph graph) {
         if (!isEnabled()) {
             return;
+        }
+        while (graphMarksIntermediateRootEnd(graph)) {
+            // Switching to a new graph, possibly a parent or sibling. Drop the current
+            // subgraph.
+            currentNode = currentNode.parent;
         }
         assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
         setCurrentNodeDuration(name);
@@ -263,6 +285,17 @@ public final class CompilationAlarm implements AutoCloseable {
         }
         currentNode.parent.durationNS += currentNode.durationNS;
         currentNode = currentNode.parent;
+    }
+
+    /**
+     * Potentially closes an intermediate root node in the phase tree.
+     *
+     * This method checks if the current phase tree node is an intermediate root and if so, closes
+     * it.
+     */
+    private boolean graphMarksIntermediateRootEnd(StructuredGraph graph) {
+        // use object equals instead to account for null graphs
+        return currentNode instanceof PhaseTreeIntermediateRoot && currentNode.graph != null && graph != null && !currentNode.graph.equals(graph);
     }
 
     private void setCurrentNodeDuration(CharSequence name) {
@@ -399,6 +432,9 @@ public final class CompilationAlarm implements AutoCloseable {
      * Recursively print the phase tree represented by {@code node}.
      */
     private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot) {
+        if (root == null) {
+            return;
+        }
         sb.append(indent);
         if (!printRoot && node == root) {
             sb.append(node.name);
