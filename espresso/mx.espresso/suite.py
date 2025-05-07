@@ -453,7 +453,7 @@ suite = {
         "espresso-license-files": {
             "class": "StandaloneLicenses",
             "community_license_file": "LICENSE",
-            "community_3rd_party_license_file": "LICENSE",   # TODO GR-64780
+            "community_3rd_party_license_file": "LICENSE",  # TODO GR-64780
         },
     },
 
