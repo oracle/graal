@@ -207,6 +207,7 @@ public abstract class NativeImageCodeCache {
     public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
+        DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
@@ -224,6 +225,7 @@ public abstract class NativeImageCodeCache {
                     constantReasons.put(constant, compilation.getName());
                 }
             }
+            watchdog.recordActivity();
         }
         dataSection.close(HostedOptionValues.singleton(), 1);
     }
