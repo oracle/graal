@@ -3042,7 +3042,7 @@ def _get_jvm_cfg():
 def _get_jvm_cfg_contents(cfgs_to_add):
 
     def validate_cfg_line(line, source):
-        if line.startswith('#'):
+        if line.startswith('#') or len(line.strip()) == 0:
             return
         if not line.startswith('-'):
             raise mx.abort("Invalid line in {}:\n{}".format(source, line))

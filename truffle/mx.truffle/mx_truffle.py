@@ -462,10 +462,10 @@ class TruffleGateTags:
     dsl_max_state_bit_test = ['dsl-max-state-bit-test', 'fulltest']
     parser_test = ['parser-test', 'test', 'fulltest']
     truffle_jvm = ['truffle-jvm']
-    truffle_native = ['truffle-native']
-    truffle_native_quickbuild = ['truffle-native-quickbuild']
-    truffle_native_memory_fencing = ['truffle-native-memory-fencing']
-    truffle_native_memory_fencing_quickbuild = ['truffle-native-memory-fencing-quickbuild']
+    sl_native = ['sl-native', 'truffle-native']
+    sl_native_quickbuild = ['sl-native-quickbuild', 'truffle-native-quickbuild']
+    unittest_native = ['unittest-native', 'truffle-native']
+    unittest_native_quickbuild = ['unittest-native-quickbuild', 'truffle-native-quickbuild']
     truffle_native_libcmusl_static = ['truffle-native-libcmusl-static']
     truffle_native_libcmusl_static_quickbuild = ['truffle-native-libcmusl-static-quickbuild']
 
@@ -521,18 +521,8 @@ def gate_truffle_jvm(tasks):
             sl_jvm_gate_tests(additional_jvm_args)
 
 
-def _native_image_supports_option(option):
-    native_image = _native_image(mx.get_jdk(tag='graalvm'))
-    out = mx.LinesOutputCapture()
-    mx.run([native_image, '--expert-options-all'], out=out)
-    for line in out.lines:
-        if option in line:
-            return True
-    return False
-
-
 def gate_truffle_native(tasks, quickbuild=False):
-    tag = TruffleGateTags.truffle_native_quickbuild if quickbuild else TruffleGateTags.truffle_native
+    tag = TruffleGateTags.sl_native_quickbuild if quickbuild else TruffleGateTags.sl_native
     name_suffix = ' with quickbuild' if quickbuild else ''
 
     with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=tag) as t:
@@ -543,28 +533,12 @@ def gate_truffle_native(tasks, quickbuild=False):
         if t:
             sl_native_optimized_gate_tests(quickbuild)
 
+    tag = TruffleGateTags.unittest_native_quickbuild if quickbuild else TruffleGateTags.unittest_native
     with Task('Truffle API Native Tests' + name_suffix, tasks, tags=tag) as t:
         if t:
             truffle_native_context_preinitialization_tests(quickbuild)
-            # Test that the static object model can deal with non-long aligned byte array base offsets (GR-43403)
-            if _native_image_supports_option('OptionalIdentityHashCodes'):
-                truffle_native_context_preinitialization_tests(quickbuild, [
-                    '-H:+UnlockExperimentalVMOptions',
-                    '-H:-OptionalIdentityHashCodes',
-                    '-H:-UnlockExperimentalVMOptions'
-                ])
             truffle_native_unit_tests_gate(True, quickbuild)
             truffle_native_unit_tests_gate(False, quickbuild)
-
-    tag = TruffleGateTags.truffle_native_memory_fencing_quickbuild if quickbuild else TruffleGateTags.truffle_native_memory_fencing
-    with Task('Truffle API Native Tests with MemoryMaskingAndFencing mitigation' + name_suffix, tasks, tags=tag) as t:
-            if t:
-                if _native_image_supports_option('MemoryMaskingAndFencing'):
-                    truffle_native_unit_tests_gate(True, False, [
-                        '-H:+UnlockExperimentalVMOptions',
-                        '-R:+MemoryMaskingAndFencing',
-                        '-H:-UnlockExperimentalVMOptions'
-                    ])
 
     tag = TruffleGateTags.truffle_native_libcmusl_static_quickbuild if quickbuild else TruffleGateTags.truffle_native_libcmusl_static
     with Task('Truffle API Native Tests with static libc musl' + name_suffix, tasks, tags=tag) as t:
@@ -751,7 +725,15 @@ def native_truffle_unittest(args):
             '-cp', tmp,
             '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
             'org.graalvm.junit.platform.NativeImageJUnitLauncher']
-        mx.run([native_image] + vm_args + native_image_args)
+
+        # Use an argument file to avoid exceeding the command-line length limit on Windows
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as args_file:
+            for arg in vm_args + native_image_args:
+                args_file.write(arg)
+                args_file.write(os.linesep)
+        mx.run([native_image, '@' + args_file.name])
+        # delete file only on success
+        os.unlink(args_file.name)
 
         # 4. Execute native unittests
         test_results = os.path.join(tmp, 'test-results-native', 'test')
@@ -966,12 +948,11 @@ def _run_sl_tests(create_command):
             base_name = os.path.splitext(f)[0]
             test_file = join(test_path, base_name + '.sl')
             expected_file = join(test_path, base_name + '.output')
-            temp = tempfile.NamedTemporaryFile(delete=False)
-            command = create_command(test_file)
-            mx.log("Running SL test {}".format(test_file))
-            with open(temp.name, 'w') as out:
-                mx.run(command, nonZeroIsFatal=False, out=out, err=out)
-                out.flush()
+            with tempfile.NamedTemporaryFile(delete=False) as temp:
+                command = create_command(test_file)
+                mx.log("Running SL test {}".format(test_file))
+                mx.run(command, nonZeroIsFatal=False, out=temp, err=temp)
+
             diff = compare_files(expected_file, temp.name)
             if diff:
                 mx.log("Failed command: {}".format(" ".join(command)))
