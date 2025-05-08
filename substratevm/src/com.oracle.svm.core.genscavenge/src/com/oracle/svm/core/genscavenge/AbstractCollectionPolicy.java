@@ -300,7 +300,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
          * unaligned chunks are also allocated). We could alternatively return
          * getCurrentHeapCapacity() to have chunks ready during full GCs as well.
          */
-        UnsignedWord total = edenSize.add(survivorSize);
+        UnsignedWord total = edenSize.add(HeapImpl.getAccounting().getSurvivorUsedBytes());
         double alignedFraction = Math.min(1, Math.max(0, avgYoungGenAlignedChunkFraction.getAverage()));
         return UnsignedUtils.fromDouble(UnsignedUtils.toDouble(total) * alignedFraction);
     }
