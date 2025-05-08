@@ -133,6 +133,7 @@ public final class NativeImageClassLoaderSupport {
 
     private final IncludeSelectors layerSelectors = new IncludeSelectors(SubstrateOptions.LayerCreate);
     private final IncludeSelectors preserveSelectors = new IncludeSelectors(SubstrateOptions.Preserve);
+    private final IncludeSelectors dynamicAccessSelectors = new IncludeSelectors(SubstrateOptions.TrackDynamicAccess);
     private boolean includeConfigSealed;
     private boolean preserveAll;
     private ValueWithOrigin<String> preserveAllOrigin;
@@ -149,6 +150,10 @@ public final class NativeImageClassLoaderSupport {
 
     public IncludeSelectors getLayerSelectors() {
         return layerSelectors;
+    }
+
+    public IncludeSelectors getDynamicAccessSelectors() {
+        return dynamicAccessSelectors;
     }
 
     private final Set<Class<?>> classesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -292,6 +297,7 @@ public final class NativeImageClassLoaderSupport {
 
         layerSelectors.verifyAndResolve();
         preserveSelectors.verifyAndResolve();
+        dynamicAccessSelectors.verifyAndResolve();
 
         includeConfigSealed = true;
 
@@ -338,6 +344,7 @@ public final class NativeImageClassLoaderSupport {
         EconomicMap<OptionKey<?>, Object> hostedValues = hostedOptionParser.getHostedValues();
         HostedImageLayerBuildingSupport.processLayerOptions(hostedValues, this);
         PreserveOptionsSupport.parsePreserveOption(hostedValues, this);
+        DynamicAccessDetectionFeature.parseDynamicAccessOptions(hostedValues, this);
         parsedHostedOptions = new OptionValues(hostedValues);
     }
 
@@ -1285,6 +1292,10 @@ public final class NativeImageClassLoaderSupport {
 
         public Set<String> moduleNames() {
             return moduleNames.keySet();
+        }
+
+        public Set<IncludeOptionsSupport.PackageOptionValue> packages() {
+            return packages.keySet();
         }
     }
 }
