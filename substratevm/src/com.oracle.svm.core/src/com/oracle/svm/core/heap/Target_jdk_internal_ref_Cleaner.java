@@ -39,7 +39,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.misc.InnocuousThread;
 
 @TargetClass(className = "jdk.internal.ref.Cleaner")
@@ -146,7 +145,7 @@ final class HolderObjectFieldTransformer implements FieldValueTransformer {
 }
 
 final class Target_jdk_internal_ref_CleanerImpl_CleanableList_Singleton {
-    static final Object list = JavaVersionUtil.JAVA_SPEC > 21 ? ReflectionUtil.newInstance(ReflectionUtil.lookupClass("jdk.internal.ref.CleanerImpl$CleanableList")) : null;
+    static final Object list = ReflectionUtil.newInstance(ReflectionUtil.lookupClass("jdk.internal.ref.CleanerImpl$CleanableList"));
 }
 
 final class GetCleanableListSingletonTransformer implements FieldValueTransformer {

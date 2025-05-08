@@ -55,7 +55,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
 
@@ -122,28 +121,12 @@ public class MethodHandleFeature implements InternalFeature {
         Class<?> makersClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl$Makers");
         typedCollectors = ReflectionUtil.lookupField(makersClass, "TYPED_COLLECTORS");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            try {
-                Class<?> referencedKeySetClass = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
-                // The following call must match the static initializer of MethodType#internTable.
-                if (JavaVersionUtil.JAVA_SPEC >= 24) {
-                    Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, Supplier.class);
-                    runtimeMethodTypeInternTable = create.invoke(null,
-                                    /* isSoft */ false, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
-                } else {
-                    Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, boolean.class, Supplier.class);
-                    runtimeMethodTypeInternTable = create.invoke(null,
-                                    /* isSoft */ false, /* useNativeQueue */ true, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
-                }
-                referencedKeySetAdd = ReflectionUtil.lookupMethod(referencedKeySetClass, "add", Object.class);
-            } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        } else {
-            Class<?> concurrentWeakInternSetClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
-            runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
-            referencedKeySetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
-        }
+        Class<?> referencedKeySetClass = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
+        // The following call must match the static initializer of MethodType#internTable.
+        Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, Supplier.class);
+        runtimeMethodTypeInternTable = ReflectionUtil.invokeMethod(create, null,
+                        /* isSoft */ false, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
+        referencedKeySetAdd = ReflectionUtil.lookupMethod(referencedKeySetClass, "add", Object.class);
 
         var accessImpl = (DuringSetupAccessImpl) access;
         substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
@@ -243,51 +226,48 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"), methodHandleArrayTransformer);
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl"), "ARRAYS"), methodHandleArrayTransformer);
 
-        if (JavaVersionUtil.JAVA_SPEC >= 24) {
-            /*
-             * StringConcatFactory$InlineHiddenClassStrategy was added in JDK 24, as well as its
-             * CACHE field, so there is no need to filter for previous JDK versions.
-             */
-            Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
-            Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
-            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
-            Class<?> methodHandlePair = ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy$MethodHandlePair");
-            Method constructorGetter = ReflectionUtil.lookupMethod(methodHandlePair, "constructor");
-            Method concatenatorGetter = ReflectionUtil.lookupMethod(methodHandlePair, "concatenator");
+        /*
+         * StringConcatFactory$InlineHiddenClassStrategy was added in JDK 24, as well as its CACHE
+         * field, so there is no need to filter for previous JDK versions.
+         */
+        Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
+        Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
+        Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
+        Class<?> methodHandlePair = ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy$MethodHandlePair");
+        Method constructorGetter = ReflectionUtil.lookupMethod(methodHandlePair, "constructor");
+        Method concatenatorGetter = ReflectionUtil.lookupMethod(methodHandlePair, "concatenator");
 
-            /*
-             * StringConcatFactory$InlineHiddenClassStrategy.CACHE is a cache like
-             * SpeciesData.transformHelpers, so it needs a similar transformation for the same
-             * reasons.
-             */
-            access.registerFieldValueTransformer(
-                            ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy"), "CACHE"),
-                            new FieldValueTransformerWithAvailability() {
-                                @Override
-                                public boolean isAvailable() {
-                                    return BuildPhaseProvider.isHostedUniverseBuilt();
-                                }
+        /*
+         * StringConcatFactory$InlineHiddenClassStrategy.CACHE is a cache like
+         * SpeciesData.transformHelpers, so it needs a similar transformation for the same reasons.
+         */
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy"), "CACHE"),
+                        new FieldValueTransformerWithAvailability() {
+                            @Override
+                            public boolean isAvailable() {
+                                return BuildPhaseProvider.isHostedUniverseBuilt();
+                            }
 
-                                @Override
-                                @SuppressWarnings("unchecked")
-                                public Object transform(Object receiver, Object originalValue) {
-                                    Map<Object, SoftReference<Object>> cache = (Map<Object, SoftReference<Object>>) originalValue;
-                                    Map<Object, Object> result = ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
+                            @Override
+                            @SuppressWarnings("unchecked")
+                            public Object transform(Object receiver, Object originalValue) {
+                                Map<Object, SoftReference<Object>> cache = (Map<Object, SoftReference<Object>>) originalValue;
+                                Map<Object, Object> result = ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
 
-                                    for (var entry : cache.entrySet()) {
-                                        SoftReference<Object> value = entry.getValue();
-                                        Object object = value.get();
-                                        MethodHandle constructor = ReflectionUtil.invokeMethod(constructorGetter, object);
-                                        MethodHandle concatenator = ReflectionUtil.invokeMethod(concatenatorGetter, object);
-                                        if (constructor != null && concatenator != null && heapScanner.isObjectReachable(constructor) && heapScanner.isObjectReachable(concatenator)) {
-                                            result.put(entry.getKey(), value);
-                                        }
+                                for (var entry : cache.entrySet()) {
+                                    SoftReference<Object> value = entry.getValue();
+                                    Object object = value.get();
+                                    MethodHandle constructor = ReflectionUtil.invokeMethod(constructorGetter, object);
+                                    MethodHandle concatenator = ReflectionUtil.invokeMethod(concatenatorGetter, object);
+                                    if (constructor != null && concatenator != null && heapScanner.isObjectReachable(constructor) && heapScanner.isObjectReachable(concatenator)) {
+                                        result.put(entry.getKey(), value);
                                     }
-
-                                    return result;
                                 }
-                            });
-        }
+
+                                return result;
+                            }
+                        });
 
         /*
          * Retrieve all six basic types from the java.lang.invoke.LambdaForm$BasicType class (void,
@@ -300,8 +280,7 @@ public class MethodHandleFeature implements InternalFeature {
          */
         Class<?> lambdaFormClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm");
         Class<?> basicTypeClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$BasicType");
-        Method createFormsForMethod = JavaVersionUtil.JAVA_SPEC == 21 ? ReflectionUtil.lookupMethod(lambdaFormClass, "createFormsFor", basicTypeClass)
-                        : ReflectionUtil.lookupMethod(lambdaFormClass, "createIdentityForm", basicTypeClass);
+        Method createFormsForMethod = ReflectionUtil.lookupMethod(lambdaFormClass, "createIdentityForm", basicTypeClass);
         try {
             for (Object type : (Object[]) ReflectionUtil.readStaticField(basicTypeClass, "ALL_TYPES")) {
                 createFormsForMethod.invoke(null, type);

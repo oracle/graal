@@ -475,7 +475,7 @@ public class NativeImageGeneratorRunner {
                     }
                     try {
                         /*
-                         * First look for an main method with the C-level signature for arguments.
+                         * First look for a main method with the C-level signature for arguments.
                          */
                         mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                     } catch (NoSuchMethodException ignored2) {
@@ -493,7 +493,7 @@ public class NativeImageGeneratorRunner {
                                  *
                                  * MainMethodFinder will perform all the necessary checks
                                  */
-                                String mainMethodFinderClassName = JavaVersionUtil.JAVA_SPEC >= 22 ? "jdk.internal.misc.MethodFinder" : "jdk.internal.misc.MainMethodFinder";
+                                String mainMethodFinderClassName = "jdk.internal.misc.MethodFinder";
                                 Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, mainMethodFinderClassName);
                                 Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
                                 javaMainMethod = (Method) findMainMethod.invoke(null, mainClass);

@@ -32,7 +32,6 @@ import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
@@ -44,12 +43,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @TargetClass(className = "java.lang.VirtualThread")
 public final class Target_java_lang_VirtualThread {
@@ -346,79 +342,9 @@ public final class Target_java_lang_VirtualThread {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     native boolean isTerminated();
-
-    /**
-     * Only uses the interrupt lock when called from a different thread, therefore does not need to
-     * be substituted to use {@link VirtualThreadHelper#acquireInterruptLockMaybeSwitch}.
-     */
-    @Alias
-    native void interrupt();
-
-    /**
-     * Only uses the interrupt lock when pinned, therefore does not need to be substituted to use
-     * {@link VirtualThreadHelper#acquireInterruptLockMaybeSwitch}.
-     */
-    @Alias
-    native void unpark();
 }
 
 final class VirtualThreadHelper {
-    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        assert JavaVersionUtil.JAVA_SPEC <= 21 : "blockedOn in newer JDKs uses safe disableSuspendAndPreempt";
-
-        Target_java_lang_VirtualThread self = asVTarget(Thread.currentThread());
-        Object token = acquireInterruptLockMaybeSwitch(self);
-        try {
-            self.nioBlocker = b;
-        } finally {
-            releaseInterruptLockMaybeSwitchBack(self, token);
-        }
-    }
-
-    /**
-     * Must be used instead of {@code synchronized(interruptLock)} in all contexts where it is
-     * possible that {@code VirtualThread.this == Thread.currentThread()} in order to avoid a
-     * deadlock between virtual thread and carrier thread.
-     *
-     * @see #releaseInterruptLockMaybeSwitchBack
-     */
-    static Object acquireInterruptLockMaybeSwitch(Target_java_lang_VirtualThread self) {
-        assert JavaVersionUtil.JAVA_SPEC <= 21 : "newer JDKs provide disableSuspendAndPreempt";
-
-        Object token = null;
-        if (SubstrateUtil.cast(self, Object.class) == Thread.currentThread()) {
-            /*
-             * If we block on our interrupt lock, we yield, for which we first unmount. Unmounting
-             * also tries to acquire our interrupt lock, so we likely block again, this time on the
-             * carrier thread. Then, the virtual thread cannot continue to yield, and the carrier
-             * thread might never get unparked, in which case both threads are stuck.
-             */
-            Thread carrier = self.carrierThread;
-            JavaThreads.setCurrentThread(carrier, carrier);
-            token = self;
-        }
-        Object lock = asTarget(self).interruptLock;
-        MonitorSupport.singleton().monitorEnter(lock, MonitorInflationCause.VM_INTERNAL);
-        return token;
-    }
-
-    /** @see #acquireInterruptLockMaybeSwitch */
-    static void releaseInterruptLockMaybeSwitchBack(Target_java_lang_VirtualThread self, Object token) {
-        assert JavaVersionUtil.JAVA_SPEC <= 21 : "newer JDKs provide enableSuspendAndPreempt";
-
-        Object lock = asTarget(self).interruptLock;
-        MonitorSupport.singleton().monitorExit(lock, MonitorInflationCause.VM_INTERNAL);
-        if (token != null) {
-            assert token == self;
-            Thread carrier = asVTarget(token).carrierThread;
-            assert Thread.currentThread() == carrier;
-            JavaThreads.setCurrentThread(carrier, asThread(token));
-        }
-    }
-
-    static Target_java_lang_VirtualThread asVTarget(Object obj) {
-        return (Target_java_lang_VirtualThread) obj;
-    }
 
     static Target_java_lang_Thread asTarget(Object obj) {
         return (Target_java_lang_Thread) obj;
