@@ -707,7 +707,8 @@ int main(int argc, char *argv[]) {
      * [1] https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/unix/native/libjli/java_md.c#L114
      * [2] https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/macosx/native/libjli/java_md_macosx.m#L292-L325
      */
-    bool use_new_thread = stack_size > current_thread_stack_size();
+    size_t main_thread_stack_size = current_thread_stack_size();
+    bool use_new_thread = stack_size > main_thread_stack_size;
 #if defined (__APPLE__)
     /* On macOS, always create a dedicated "main" thread for the JVM.
      * The actual main thread must run the UI event loop (needed for AWT).
@@ -724,6 +725,9 @@ int main(int argc, char *argv[]) {
 
     if (use_new_thread) {
         auto threadArgs = std::make_unique<decltype(parsedArgs)>(std::move(parsedArgs));
+        if (debug) {
+            std::cout << "Creating a new thread for the JVM with stack_size=" << stack_size << " main_thread_stack_size=" << main_thread_stack_size << std::endl;
+        }
 
 #ifndef _WIN32
         pthread_attr_t attr;
