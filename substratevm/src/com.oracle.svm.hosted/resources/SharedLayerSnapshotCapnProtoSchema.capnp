@@ -22,34 +22,33 @@ struct PersistedAnalysisType {
   isInterface @7 :Bool;
   isEnum @8 :Bool;
   isInitialized @9 :Bool;
-  isInitializedAtBuildTime @10 :Bool;
-  isLinked @11 :Bool;
-  sourceFileName @12 :Text;
-  enclosingTypeId @13 :TypeId;
-  componentTypeId @14 :TypeId;
-  superClassTypeId @15 :TypeId;
-  isInstantiated @16 :Bool;
-  isUnsafeAllocated @17 :Bool;
-  isReachable @18 :Bool;
-  interfaces @19 :List(TypeId);
-  instanceFieldIds @20 :List(FieldId);
-  instanceFieldIdsWithSuper @21 :List(FieldId);
-  staticFieldIds @22 :List(FieldId);
-  annotationList @23 :List(Annotation);
-  classInitializationInfo @24 :ClassInitializationInfo;
-  hasArrayType @25 :Bool;
-  subTypes @26 :List(TypeId);
-  isAnySubtypeInstantiated @27 :Bool;
+  isLinked @10 :Bool;
+  sourceFileName @11 :Text;
+  enclosingTypeId @12 :TypeId;
+  componentTypeId @13 :TypeId;
+  superClassTypeId @14 :TypeId;
+  isInstantiated @15 :Bool;
+  isUnsafeAllocated @16 :Bool;
+  isReachable @17 :Bool;
+  interfaces @18 :List(TypeId);
+  instanceFieldIds @19 :List(FieldId);
+  instanceFieldIdsWithSuper @20 :List(FieldId);
+  staticFieldIds @21 :List(FieldId);
+  annotationList @22 :List(Annotation);
+  classInitializationInfo @23 :ClassInitializationInfo;
+  hasArrayType @24 :Bool;
+  subTypes @25 :List(TypeId);
+  isAnySubtypeInstantiated @26 :Bool;
   wrappedType :union {
-    none @28 :Void; # default
+    none @27 :Void; # default
     serializationGenerated :group {
-      rawDeclaringClass @29 :Text;
-      rawTargetConstructor @30 :Text;
+      rawDeclaringClass @28 :Text;
+      rawTargetConstructor @29 :Text;
     }
     lambda :group {
-      capturingClass @31 :Text;
+      capturingClass @30 :Text;
     }
-    proxyType @32 :Void;
+    proxyType @31 :Void;
   }
 }
 

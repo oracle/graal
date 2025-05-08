@@ -226,7 +226,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      */
     public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
         if (type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType baseLayerType) {
-            return baseLayerType.initializedAtBuildTime();
+            return baseLayerType.isInitialized();
         }
         return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
