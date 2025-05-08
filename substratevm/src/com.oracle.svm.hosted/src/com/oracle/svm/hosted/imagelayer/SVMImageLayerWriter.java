@@ -73,8 +73,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -145,7 +145,7 @@ import com.oracle.svm.hosted.lambda.StableLambdaProxyNameFeature;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
 import com.oracle.svm.hosted.reflect.ReflectionExpandSignatureMethod;
@@ -971,13 +971,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static boolean delegateProcessing(ConstantReference.Builder builder, Object constant) {
-        if (constant instanceof RelocatableConstant relocatableConstant) {
-            RelocatedPointer pointer = relocatableConstant.getPointer();
-            if (pointer instanceof MethodPointer methodPointer) {
+        if (constant instanceof PatchedWordConstant patchedWordConstant) {
+            WordBase word = patchedWordConstant.getWord();
+            if (word instanceof MethodPointer methodPointer) {
                 AnalysisMethod method = getRelocatableConstantMethod(methodPointer);
                 builder.initMethodPointer().setMethodId(method.getId());
                 return true;
-            } else if (pointer instanceof CEntryPointLiteralCodePointer cp) {
+            } else if (word instanceof CEntryPointLiteralCodePointer cp) {
                 CEntryPointLiteralReference.Builder b = builder.initCEntryPointLiteralCodePointer();
                 b.setMethodName(cp.methodName);
                 b.setDefiningClass(cp.definingClass.getName());
@@ -986,7 +986,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                     b.getParameterNames().set(i, new Text.Reader(cp.parameterTypes[i].getName()));
                 }
                 return true;
-            } else if (pointer instanceof CGlobalDataBasePointer) {
+            } else if (word instanceof CGlobalDataBasePointer) {
                 builder.setCGlobalDataBasePointer(Void.VOID);
                 return true;
             }

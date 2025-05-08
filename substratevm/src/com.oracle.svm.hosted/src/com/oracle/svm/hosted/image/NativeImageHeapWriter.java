@@ -54,6 +54,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
@@ -67,8 +68,9 @@ import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -176,7 +178,7 @@ public final class NativeImageHeapWriter {
             int heapOffset = NumUtil.safeToInt(fields.getOffset() + field.getLocation());
             CrossLayerConstantRegistryFeature.singleton().markFutureHeapConstantPatchSite(constant, heapOffset);
             fillReferenceWithGarbage(buffer, index);
-        } else if (value instanceof RelocatableConstant) {
+        } else if (value instanceof PatchedWordConstant) {
             addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
@@ -221,7 +223,7 @@ public final class NativeImageHeapWriter {
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
-        if (constant instanceof RelocatableConstant) {
+        if (constant instanceof PatchedWordConstant) {
             addNonDataRelocation(buffer, index, prepareRelocatable(info, constant));
             return;
         }
@@ -252,8 +254,12 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object value, ObjectInfo info) {
-        if (value instanceof RelocatedPointer) {
+    private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object constantValue, ObjectInfo info) {
+        Object value = constantValue;
+        if (value instanceof MethodOffset methodOffset) {
+            HostedMethod target = NativeImage.getMethodPointerTargetMethod(heap.hMetaAccess, methodOffset.getMethod());
+            value = target.getCodeAddressOffset();
+        } else if (value instanceof RelocatedPointer) {
             addNonDataRelocation(buffer, index, (RelocatedPointer) value);
             return;
         }

@@ -124,7 +124,7 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
@@ -358,7 +358,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean isRelocatedPointer(JavaConstant constant) {
-        return constant instanceof RelocatableConstant;
+        return constant instanceof PatchedWordConstant;
     }
 
     @Override

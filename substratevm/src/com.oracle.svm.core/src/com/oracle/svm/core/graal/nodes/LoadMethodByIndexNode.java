@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,44 +24,31 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
-import com.oracle.svm.core.meta.SharedMethod;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
+
+import org.graalvm.nativeimage.c.function.CodePointer;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.word.WordTypes;
 
-/**
- * When using the open type world, each interface a type implements has a unique dispatch table. For
- * a given type, all the tables are stored together with the DynamicHubs' vtable slots. The logic
- * for determining the starting offset of the dispatch table is contained in
- * {@link OpenTypeWorldDispatchTableSnippets}.
- */
-@NodeInfo(size = NodeSize.SIZE_UNKNOWN, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class LoadOpenTypeWorldDispatchTableStartingOffset extends FixedWithNextNode implements Lowerable {
-    public static final NodeClass<LoadOpenTypeWorldDispatchTableStartingOffset> TYPE = NodeClass.create(LoadOpenTypeWorldDispatchTableStartingOffset.class);
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
+public final class LoadMethodByIndexNode extends FixedWithNextNode implements Lowerable {
+    public static final NodeClass<LoadMethodByIndexNode> TYPE = NodeClass.create(LoadMethodByIndexNode.class);
 
     @Input protected ValueNode hub;
+    @Input protected ValueNode vtableIndex;
     @OptionalInput protected ValueNode interfaceTypeID;
 
-    protected final SharedMethod target;
-
-    public LoadOpenTypeWorldDispatchTableStartingOffset(ValueNode hub, SharedMethod target) {
-        super(TYPE, StampFactory.forInteger(64));
+    protected LoadMethodByIndexNode(@InjectedNodeParameter WordTypes wordTypes, ValueNode hub, ValueNode vtableIndex, ValueNode interfaceTypeID) {
+        super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
         this.hub = hub;
-        this.target = target;
-        this.interfaceTypeID = null;
-    }
-
-    public LoadOpenTypeWorldDispatchTableStartingOffset(ValueNode hub, ValueNode interfaceTypeID) {
-        super(TYPE, StampFactory.forInteger(64));
-        this.hub = hub;
-        this.target = null;
+        this.vtableIndex = vtableIndex;
         this.interfaceTypeID = interfaceTypeID;
     }
 
@@ -69,11 +56,14 @@ public class LoadOpenTypeWorldDispatchTableStartingOffset extends FixedWithNextN
         return hub;
     }
 
+    public ValueNode getVTableIndex() {
+        return vtableIndex;
+    }
+
     public ValueNode getInterfaceTypeID() {
         return interfaceTypeID;
     }
 
-    public SharedMethod getTarget() {
-        return target;
-    }
+    @NodeIntrinsic
+    public static native CodePointer loadMethodByIndex(Object hub, int vtableIndex, int interfaceTypeID);
 }
