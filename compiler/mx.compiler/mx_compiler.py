@@ -168,7 +168,7 @@ class JVMCIVersionCheckVersion(object):
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
 
-if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '25':
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '24':
     mx.abort('Graal requires JDK 25 or later, got ' + str(jdk) +
              '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
