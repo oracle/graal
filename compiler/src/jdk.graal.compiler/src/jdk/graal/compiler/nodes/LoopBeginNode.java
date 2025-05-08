@@ -210,7 +210,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         super(TYPE);
         loopOrigFrequency = 1;
         unswitches = 0;
-        splits = 0;
         loopEndsSafepointState = SafepointState.ENABLED;
         loopExitsSafepointState = SafepointState.ENABLED;
         guestLoopEndsSafepointState = SafepointState.ENABLED;
@@ -481,10 +480,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public EndNode forwardEnd() {
         assert forwardEndCount() == 1 : forwardEnds();
         return forwardEndAt(0);
-    }
-
-    public void incrementSplits() {
-        splits++;
     }
 
     public int peelings() {
