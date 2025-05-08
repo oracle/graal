@@ -7,7 +7,6 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
@@ -23,26 +22,21 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
         AbstractInterpreter<Domain> abstractInterpreter,
         InvokeCallBack<Domain> analyzeDependencyCallback) {
 
-    // TODO: the actual interpreter should not modify abstract state, directly, it should just return the new domain,
-
     /**
      * Performs semantic transformation of the given {@link Node}, while modifying the post-condition of {@code node}
      *
      * @param node          to analyze
      * @param abstractState current abstract state during fixpoint iteration
      */
-    public Domain analyzeNode(Node node, AbstractState<Domain> abstractState) {
+    public void analyzeNode(Node node, AbstractState<Domain> abstractState) {
         if (abstractState.getState(node).isRestrictedFromExecution()) {
-            return abstractState.getState(node).getPostCondition();
+            return;
         }
-
-        return abstractInterpreter.execNode(node, abstractState, analyzeDependencyCallback);
+        abstractInterpreter.execNode(node, abstractState, analyzeDependencyCallback);
     }
 
     /**
      * Performs semantic transformation of an edge between two {@link Node}s. while modifying the pre-condition of {@code target}
-     * This is done because some nodes, like {@link ControlSplitNode},
-     * have multiple outgoing edges and the destination node can't just simply join with the abstract domain of the source node.
      *
      * @param source        the node from which the edge originates
      * @param target        the node to which the edge goes
@@ -53,6 +47,7 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
             abstractState.getState(target).markRestrictedFromExecution();
             return;
         }
+
         abstractInterpreter.execEdge(source, target, abstractState);
     }
 

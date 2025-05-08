@@ -9,12 +9,10 @@ import jdk.graal.compiler.graph.Node;
 public class EmptyDomainInterpreter implements AbstractInterpreter<EmptyDomain> {
 
     @Override
-    public EmptyDomain execEdge(Node source, Node target, AbstractState<EmptyDomain> abstractState) {
-        return abstractState.getPreCondition(source);
+    public void execEdge(Node source, Node target, AbstractState<EmptyDomain> abstractState) {
     }
 
     @Override
-    public EmptyDomain execNode(Node node, AbstractState<EmptyDomain> abstractState, InvokeCallBack<EmptyDomain> invokeCallBack) {
-        return abstractState.getPreCondition(node);
+    public void execNode(Node node, AbstractState<EmptyDomain> abstractState, InvokeCallBack<EmptyDomain> invokeCallBack) {
     }
 }

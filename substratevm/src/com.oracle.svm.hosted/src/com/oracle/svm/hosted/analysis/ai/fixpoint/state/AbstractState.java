@@ -65,10 +65,6 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
         state.setPreCondition(preCondition);
     }
 
-    public void incrementVisitCount(Node node) {
-        getState(node).incrementVisitedCount();
-    }
-
     public void resetCount(Node node) {
         getState(node).resetCount();
     }
@@ -134,6 +130,12 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
         return returnDomain;
     }
 
+    /**
+     * Get the start node of the control flow graph.
+     * This is done to allow more flexibility when handling inter-procedural calls.
+     *
+     * @return the start node of the control flow graph
+     */
     private Node getStartNode() {
         for (Node node : cfgGraph.graph.getNodes()) {
             if (node instanceof StartNode) {

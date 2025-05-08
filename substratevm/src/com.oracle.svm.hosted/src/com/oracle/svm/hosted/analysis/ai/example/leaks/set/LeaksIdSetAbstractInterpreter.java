@@ -19,17 +19,16 @@ import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 public class LeaksIdSetAbstractInterpreter implements AbstractInterpreter<SetDomain<ResourceId>> {
 
     @Override
-    public SetDomain<ResourceId> execEdge(Node source,
-                                          Node destination,
-                                          AbstractState<SetDomain<ResourceId>> abstractState) {
+    public void execEdge(Node source,
+                         Node destination,
+                         AbstractState<SetDomain<ResourceId>> abstractState) {
         abstractState.getPreCondition(destination).joinWith(abstractState.getPostCondition(source));
-        return abstractState.getPreCondition(destination);
     }
 
     @Override
-    public SetDomain<ResourceId> execNode(Node node,
-                                          AbstractState<SetDomain<ResourceId>> abstractState,
-                                          InvokeCallBack<SetDomain<ResourceId>> invokeCallBack) {
+    public void execNode(Node node,
+                         AbstractState<SetDomain<ResourceId>> abstractState,
+                         InvokeCallBack<SetDomain<ResourceId>> invokeCallBack) {
 
         var logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing node: " + node, LoggerVerbosity.DEBUG);
@@ -96,7 +95,6 @@ public class LeaksIdSetAbstractInterpreter implements AbstractInterpreter<SetDom
         }
         logger.log("Computed post: " + computedPost, LoggerVerbosity.DEBUG);
         abstractState.getState(node).setPostCondition(computedPost);
-        return computedPost;
     }
 
     private void getResourceIdsFromReceiver(Node receiver,

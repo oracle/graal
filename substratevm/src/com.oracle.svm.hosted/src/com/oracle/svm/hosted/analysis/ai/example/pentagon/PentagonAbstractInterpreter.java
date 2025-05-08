@@ -36,56 +36,52 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
     private final AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
 
     @Override
-    public PentagonDomain<AccessPath> execEdge(Node source,
-                                               Node target,
-                                               AbstractState<PentagonDomain<AccessPath>> abstractState) {
+    public void execEdge(Node source,
+                         Node target,
+                         AbstractState<PentagonDomain<AccessPath>> abstractState) {
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing edge: " + source + " -> " + target, LoggerVerbosity.DEBUG);
 
-        // If not an if-node, simply propagate post-condition to target's pre-condition
+        /* If not an if-node, simply propagate post-condition to target's pre-condition */
         if (!(source instanceof IfNode ifNode)) {
             abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
-            return abstractState.getPreCondition(target);
+            return;
         }
 
         PentagonDomain<AccessPath> ifPost = abstractState.getPostCondition(ifNode);
 
-        // Check for unreachable branches
         if (ifPost.isBot() && target.equals(ifNode.trueSuccessor())) {
             abstractState.getState(target).markRestrictedFromExecution();
-            return abstractState.getPreCondition(target);
+            return;
         }
 
         if (!ifPost.isBot() && target.equals(ifNode.falseSuccessor())) {
             abstractState.getState(target).markRestrictedFromExecution();
-            return abstractState.getPreCondition(target);
+            return;
         }
 
-        // Only handle integer less than conditions for now
+        /* Only handle integer less than conditions for now */
         if (!(ifNode.condition() instanceof IntegerLessThanNode lessThanNode)) {
-            return abstractState.getPreCondition(target);
+            return;
         }
 
-        // Get the variables involved in the comparison
+        /* Get the variables involved in the comparison */
         AccessPath leftVar = new AccessPath(lessThanNode.getX());
         AccessPath rightVar = new AccessPath(lessThanNode.getY());
 
-        // Get the current intervals
         PentagonDomain<AccessPath> targetPre = abstractState.getPreCondition(target);
         targetPre.joinWith(abstractState.getPostCondition(source));
 
-        // Refine based on which branch we're taking
         if (target.equals(ifNode.trueSuccessor())) {
-            // On true branch, we know that leftVar < rightVar
-            // Add the less-than relationship to the pentagon domain
+            /* On true branch, we know that leftVar < rightVar
+               Add the less-than relationship to the pentagon domain */
             targetPre.addLessThanRelation(leftVar, rightVar);
 
-            // Also refine the intervals
             IntInterval leftInterval = targetPre.getInterval(leftVar);
             IntInterval rightInterval = targetPre.getInterval(rightVar);
 
-            // Refine right interval to be > left's minimum
+            /* Refine right interval to be > left's minimum */
             if (rightInterval.getLowerBound() <= leftInterval.getUpperBound()) {
                 IntInterval refinedRight = new IntInterval(
                         Math.max(rightInterval.getLowerBound(), leftInterval.getLowerBound() + 1),
@@ -93,7 +89,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 targetPre.setInterval(rightVar, refinedRight);
             }
 
-            // Refine left interval to be < right's maximum
+            /* Refine left interval to be < right's maximum */
             if (leftInterval.getUpperBound() >= rightInterval.getLowerBound()) {
                 IntInterval refinedLeft = new IntInterval(
                         leftInterval.getLowerBound(),
@@ -101,12 +97,11 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 targetPre.setInterval(leftVar, refinedLeft);
             }
         } else {
-            // On false branch, we know that leftVar >= rightVar
-            // Update intervals accordingly
+            /* Inside false branch, we know that leftVar >= rightVar */
             IntInterval leftInterval = targetPre.getInterval(leftVar);
             IntInterval rightInterval = targetPre.getInterval(rightVar);
 
-            // Refine left interval to be >= right's minimum
+            /* Refine left interval to be >= right's minimum */
             if (leftInterval.getLowerBound() < rightInterval.getLowerBound()) {
                 IntInterval refinedLeft = new IntInterval(
                         rightInterval.getLowerBound(),
@@ -114,7 +109,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 targetPre.setInterval(leftVar, refinedLeft);
             }
 
-            // Refine right interval to be <= left's maximum
+            /*  Refine right interval to be <= left's maximum */
             if (rightInterval.getUpperBound() > leftInterval.getUpperBound()) {
                 IntInterval refinedRight = new IntInterval(
                         rightInterval.getLowerBound(),
@@ -122,14 +117,12 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 targetPre.setInterval(rightVar, refinedRight);
             }
         }
-
-        return targetPre;
     }
 
     @Override
-    public PentagonDomain<AccessPath> execNode(Node node,
-                                               AbstractState<PentagonDomain<AccessPath>> abstractState,
-                                               InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack) {
+    public void execNode(Node node,
+                         AbstractState<PentagonDomain<AccessPath>> abstractState,
+                         InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack) {
 
         PentagonDomain<AccessPath> preCondition = abstractState.getPreCondition(node);
         PentagonDomain<AccessPath> computedPost = preCondition.copyOf();
@@ -138,7 +131,6 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
             case ConstantNode constantNode -> {
                 if (constantNode.asJavaConstant() != null &&
                         constantNode.asJavaConstant().getJavaKind().isNumericInteger()) {
-                    // Constant integers get precise intervals
                     int value = constantNode.asJavaConstant().asInt();
                     computedPost.setInterval(new AccessPath(node), new IntInterval(value, value));
                 }
@@ -148,8 +140,8 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 AccessPath resultVar = new AccessPath(binaryNode);
                 AccessPath leftVar = new AccessPath(binaryNode.getX());
                 AccessPath rightVar = new AccessPath(binaryNode.getY());
-                PentagonDomain<AccessPath> xPentagon = execNode(binaryNode.getX(), abstractState, invokeCallBack);
-                PentagonDomain<AccessPath> yPentagon = execNode(binaryNode.getY(), abstractState, invokeCallBack);
+                var xPentagon = execAndGet(binaryNode.getX(), abstractState, invokeCallBack);
+                var yPentagon = execAndGet(binaryNode.getY(), abstractState, invokeCallBack);
                 IntInterval leftInterval = xPentagon.getInterval(leftVar);
                 IntInterval rightInterval = yPentagon.getInterval(rightVar);
                 IntInterval result;
@@ -161,14 +153,11 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                     default -> result = new IntInterval();
                 }
                 computedPost.setInterval(resultVar, result);
-
-                // Maintain relationships for monotonic operations
+                /* Maintain relationships for monotonic operations */
                 if (binaryNode instanceof AddNode) {
-                    // For add operations with constants, we can maintain inequalities
                     if (binaryNode.getY() instanceof ConstantNode constNode) {
                         assert constNode.asJavaConstant() != null;
                         if (constNode.asJavaConstant().asInt() > 0) {
-                            // If x < y, then x + c < y + c for positive c
                             transferLessThanRelations(leftVar, resultVar, computedPost);
                         }
                     }
@@ -185,10 +174,10 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
             case StoreFieldNode storeFieldNode -> {
                 /* Same potential problem as in LoadFieldNode case */
                 AccessPath fieldVar = AccessPath.getAccessPathFromAccessFieldNode(storeFieldNode);
-                PentagonDomain<AccessPath> storeFieldEnv = execNode(storeFieldNode.value(), abstractState, invokeCallBack);
+                var storeFieldEnv = execAndGet(storeFieldNode.value(), abstractState, invokeCallBack);
                 computedPost.setInterval(fieldVar, storeFieldEnv.getInterval(new AccessPath(storeFieldNode.value())));
 
-                // Transfer inequality relations to the field
+                /* Transfer inequality relations to the field */
                 for (AccessPath otherVar : computedPost.getVariableNames()) {
                     if (computedPost.lessThan(fieldVar, otherVar)) {
                         computedPost.addLessThanRelation(fieldVar, otherVar);
@@ -215,7 +204,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                     if (isCyclicEdge) {
                         phiResult.joinWith(abstractState.getPostCondition(input).getInterval(variableName));
                     } else {
-                        PentagonDomain<AccessPath> inputEnv = execNode(input, abstractState, invokeCallBack);
+                        var inputEnv = execAndGet(input, abstractState, invokeCallBack);
                         phiResult.joinWith(inputEnv.getInterval(variableName));
                     }
 
@@ -226,14 +215,13 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
             case IntegerLessThanNode lessThanNode -> {
 
                 AccessPath nodeVar = new AccessPath(node);
-                PentagonDomain<AccessPath> xPentagon = execNode(lessThanNode.getX(), abstractState, invokeCallBack);
-                PentagonDomain<AccessPath> yPentagon = execNode(lessThanNode.getY(), abstractState, invokeCallBack);
+                var xPentagon = execAndGet(lessThanNode.getX(), abstractState, invokeCallBack);
+                var yPentagon = execAndGet(lessThanNode.getY(), abstractState, invokeCallBack);
                 AccessPath leftVar = new AccessPath(lessThanNode.getX());
                 AccessPath rightVar = new AccessPath(lessThanNode.getY());
                 IntInterval leftInterval = xPentagon.getInterval(leftVar);
                 IntInterval rightInterval = yPentagon.getInterval(rightVar);
 
-                // Check if the comparison is always true/false
                 if (leftInterval.getUpperBound() < rightInterval.getLowerBound()) {
                     computedPost.setInterval(nodeVar, new IntInterval(1, 1));
                 } else if (leftInterval.getLowerBound() >= rightInterval.getUpperBound()) {
@@ -246,13 +234,13 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
 
             case IfNode ifNode -> {
                 if (!(ifNode.condition() instanceof IntegerLessThanNode)) {
-                    return computedPost;
+                    return;
                 }
 
-                PentagonDomain<AccessPath> condition = execNode(ifNode.condition(), abstractState, invokeCallBack);
+                var condition = execAndGet(ifNode.condition(), abstractState, invokeCallBack);
                 if (condition.isBot()) {
                     abstractState.getPostCondition(ifNode).setToBot();
-                    return abstractState.getPostCondition(ifNode);
+                    return;
                 }
 
                 IntInterval condInterval = condition.getInterval(new AccessPath(ifNode.condition()));
@@ -289,7 +277,6 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
 
         abstractState.setPostCondition(node, computedPost);
         logger.log("Completed node: " + node + " -> " + computedPost, LoggerVerbosity.DEBUG);
-        return computedPost;
     }
 
     private void transferLessThanRelations(AccessPath sourceVar, AccessPath targetVar, PentagonDomain<AccessPath> domain) {
@@ -302,5 +289,12 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 domain.addLessThanRelation(otherVar, targetVar);
             }
         }
+    }
+
+    private PentagonDomain<AccessPath> execAndGet(Node node,
+                                                  AbstractState<PentagonDomain<AccessPath>> abstractState,
+                                                  InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack) {
+        execNode(node, abstractState, invokeCallBack);
+        return abstractState.getPostCondition(node);
     }
 }

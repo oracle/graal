@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.example.access.inter.AccessPathIntervalSummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -26,7 +25,6 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
      * Creation of a summary can include:
      * Taking only a part of the abstract context, that is relevant for the analysisMethod call.
      * Renaming the formal arguments to actual arguments, etc.
-     * You can see {@link AccessPathIntervalSummaryFactory} for a simple demo.
      *
      * @param invoke             contains information about the invocation
      * @param callerPreCondition the abstract context precondition at the call site

@@ -59,12 +59,14 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      */
     boolean subsumesSummary(Summary<Domain> other);
 
+    // TODO: here we should have the entire abstract state
+
     /**
      * This method is called by the framework after the fixpoint computation of the method body.
      * It should finalize the summary by correctly modifying the post-condition of the summary.
      * It needs to handle the case when the callee post-condition is {BOT or TOP}.
      *
-     * @param calleePostCondition the post-condition of the analysisMethod body
+     * @param calleePostCondition the post-condition of the method body
      */
     void finalizeSummary(Domain calleePostCondition);
 

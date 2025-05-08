@@ -14,22 +14,22 @@ import jdk.graal.compiler.graph.Node;
 public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
 
     /**
-     * Simulate the effect of an edge between two nodes in a GraalIR of a single method.
+     * Simulate the effect of executing an edge between two nodes {@link AbstractState}.
+     * For efficiency, this method should not modify the {@link AbstractState} directly.
      *
      * @param source        the node from which the edge originates
      * @param target        the node to which the edge goes
      * @param abstractState of the analyzed method
-     * @return the new pre-condition of the target node
      */
-    Domain execEdge(Node source, Node target, AbstractState<Domain> abstractState);
+    void execEdge(Node source, Node target, AbstractState<Domain> abstractState);
 
     /**
-     * Simulate the effect of an node in the GraalIR of a single method.
+     * Simulate the effect of executing a node in the GraalIR on the {@link AbstractState}.
+     * For efficiency, this method should not modify the {@link AbstractState} directly.
      *
      * @param node           to analyze
      * @param abstractState  of the analyzed method
      * @param invokeCallBack callback that can be used to analyze the summary of invokes
-     * @return the new post-condition of the target node
      */
-    Domain execNode(Node node, AbstractState<Domain> abstractState, InvokeCallBack<Domain> invokeCallBack);
+    void execNode(Node node, AbstractState<Domain> abstractState, InvokeCallBack<Domain> invokeCallBack);
 }

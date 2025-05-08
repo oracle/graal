@@ -15,42 +15,34 @@ import jdk.graal.compiler.nodes.Invoke;
 public class LeaksCountingDomainAbstractInterpreter implements AbstractInterpreter<CountDomain> {
 
     @Override
-    public CountDomain execEdge(Node source,
-                                Node target,
-                                AbstractState<CountDomain> abstractState) {
+    public void execEdge(Node source,
+                         Node target,
+                         AbstractState<CountDomain> abstractState) {
         abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
-        return abstractState.getPreCondition(target);
     }
 
     @Override
-    public CountDomain execNode(Node node, AbstractState<CountDomain> abstractState, InvokeCallBack<CountDomain> invokeCallBack) {
+    public void execNode(Node node, AbstractState<CountDomain> abstractState, InvokeCallBack<CountDomain> invokeCallBack) {
         NodeState<CountDomain> state = abstractState.getState(node);
         CountDomain preCondition = state.getPreCondition();
         CountDomain computedPost = preCondition.copyOf();
 
-        switch (node) {
-            case Invoke invoke -> {
-                if (InvokeUtil.opensResource(invoke)) {
-                    computedPost.increment();
-                } else if (InvokeUtil.closesResource(invoke)) {
-                    computedPost.decrement();
-                } else {
-                    /* We can use analyzeDependencyCallback to analyze calls to other methods */
-                    AnalysisOutcome<CountDomain> result = invokeCallBack.handleInvoke(invoke, node, abstractState);
-                    if (result.isError()) {
-                        throw AnalysisError.interruptAnalysis(result.toString());
-                    }
-                    Summary<CountDomain> summary = result.summary();
-                    computedPost = summary.applySummary(preCondition);
+        if (node instanceof Invoke invoke) {
+            if (InvokeUtil.opensResource(invoke)) {
+                computedPost.increment();
+            } else if (InvokeUtil.closesResource(invoke)) {
+                computedPost.decrement();
+            } else {
+                /* We can use our callback to analyze other methods */
+                AnalysisOutcome<CountDomain> result = invokeCallBack.handleInvoke(invoke, node, abstractState);
+                if (result.isError()) {
+                    throw AnalysisError.interruptAnalysis(result.toString());
                 }
-            }
-
-            default -> {
-                /* Leave the post-condition as-is */
+                Summary<CountDomain> summary = result.summary();
+                computedPost = summary.applySummary(preCondition);
             }
         }
 
         state.setPostCondition(computedPost);
-        return computedPost;
     }
 }

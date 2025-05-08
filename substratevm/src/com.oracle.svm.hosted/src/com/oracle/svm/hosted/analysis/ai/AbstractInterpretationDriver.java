@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
-import com.oracle.svm.hosted.analysis.ai.example.pentagon.IntraProceduralPentagonAnalyzerWrapper;
+import com.oracle.svm.hosted.analysis.ai.example.access.inter.AccessPathIntervalInterAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
@@ -13,6 +13,8 @@ import java.io.IOException;
 
 /**
  * The entry point of the abstract interpretation framework.
+ * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
+ * by the {@link AbstractInterpretationEngine}.
  */
 public class AbstractInterpretationDriver {
 
@@ -49,14 +51,14 @@ public class AbstractInterpretationDriver {
      * @throws IOException in case of I/O errors during logger initialization.
      */
     private void setupFramework() throws IOException {
-        /* Firstly, let's create a logger instance  */
+        /* We can crete our own custom link instance, if it is not provided, the framework will create one itself */
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.INFO);
         logger.log("Hello from the abstract interpretation", LoggerVerbosity.INFO);
 
-        /* We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer} */
-//        var accessAnalyzer = new AccessPathIntervalInterAnalyzerWrapper();
-//        analyzerManager.registerAnalyzer(accessAnalyzer.getAnalyzer());
-        var analyzer = new IntraProceduralPentagonAnalyzerWrapper().getAnalyzer();
+        /* We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer}
+         *  If we wish to use analyzers during the native image build, we must register them here. What is not registered, will not run.
+         */
+        var analyzer = new AccessPathIntervalInterAnalyzerWrapper().getAnalyzer();
         analyzerManager.registerAnalyzer(analyzer);
     }
 }

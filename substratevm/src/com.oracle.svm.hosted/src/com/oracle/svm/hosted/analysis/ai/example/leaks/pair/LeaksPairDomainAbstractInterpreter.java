@@ -17,17 +17,16 @@ import jdk.graal.compiler.nodes.ReturnNode;
 public class LeaksPairDomainAbstractInterpreter implements AbstractInterpreter<PairDomain<CountDomain, BooleanOrDomain>> {
 
     @Override
-    public PairDomain<CountDomain, BooleanOrDomain> execEdge(Node source,
-                                                             Node target,
-                                                             AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState) {
+    public void execEdge(Node source,
+                         Node target,
+                         AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState) {
         abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
-        return abstractState.getPreCondition(target);
     }
 
     @Override
-    public PairDomain<CountDomain, BooleanOrDomain> execNode(Node node,
-                                                             AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState,
-                                                             InvokeCallBack<PairDomain<CountDomain, BooleanOrDomain>> invokeCallBack) {
+    public void execNode(Node node,
+                         AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState,
+                         InvokeCallBack<PairDomain<CountDomain, BooleanOrDomain>> invokeCallBack) {
         PairDomain<CountDomain, BooleanOrDomain> preCondition = abstractState.getPreCondition(node);
         PairDomain<CountDomain, BooleanOrDomain> computedPost = preCondition.copyOf();
         int preCount = preCondition.getFirst().getValue();
@@ -62,6 +61,5 @@ public class LeaksPairDomainAbstractInterpreter implements AbstractInterpreter<P
         }
 
         abstractState.getState(node).setPostCondition(computedPost);
-        return computedPost;
     }
 }

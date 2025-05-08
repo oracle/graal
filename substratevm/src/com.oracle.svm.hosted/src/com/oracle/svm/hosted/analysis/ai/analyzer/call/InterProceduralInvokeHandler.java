@@ -137,7 +137,8 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
     private List<Domain> convertActualArgs(Invoke invoke, AbstractState<Domain> callerState) {
         List<Domain> result = new ArrayList<>();
         for (Node argument : invoke.callTarget().arguments()) {
-            result.add(abstractTransformers.analyzeNode(argument, callerState));
+            abstractTransformers.analyzeNode(argument, callerState);
+            result.add(callerState.getPostCondition(argument));
         }
         return result;
     }

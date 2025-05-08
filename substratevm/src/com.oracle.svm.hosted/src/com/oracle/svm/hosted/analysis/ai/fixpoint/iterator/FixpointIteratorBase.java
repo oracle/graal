@@ -54,11 +54,6 @@ public abstract class FixpointIteratorBase<
     }
 
     @Override
-    public ControlFlowGraph getControlFlowGraph() {
-        return cfgGraph;
-    }
-
-    @Override
     public AbstractState<Domain> getAbstractState() {
         return abstractState;
     }
