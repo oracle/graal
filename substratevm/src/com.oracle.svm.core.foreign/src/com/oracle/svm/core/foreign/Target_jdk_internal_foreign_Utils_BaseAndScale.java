@@ -30,14 +30,13 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.Utils;
 import jdk.vm.ci.meta.JavaKind;
 
-@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = {ForeignAPIPredicates.Enabled.class, JDKLatest.class})
+@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = ForeignAPIPredicates.Enabled.class)
 final class Target_jdk_internal_foreign_Utils_BaseAndScale {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = BaseFieldRecomputer.class) //

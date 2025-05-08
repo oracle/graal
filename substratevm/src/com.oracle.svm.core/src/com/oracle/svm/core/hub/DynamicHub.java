@@ -102,7 +102,6 @@ import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -114,7 +113,6 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
@@ -1647,7 +1645,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     public static native Class<?> forPrimitiveName(String primitiveName);
 
     @KeepOriginal
@@ -1705,11 +1702,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public native String toGenericString();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     private native void addSealingInfo(int modifiersParam, StringBuilder sb);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     private native boolean hasSealedAncestor(Class<?> clazz);
 
     @KeepOriginal
@@ -2054,7 +2049,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native GenericsFactory getFactory();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     native Method findMethod(boolean publicOnly, String nameParam, Class<?>... parameterTypes);
 
     @KeepOriginal
@@ -2064,7 +2058,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static native void addAll(Collection<Field> c, Field[] o);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic, boolean publicOnly);
 
     @KeepOriginal
@@ -2342,7 +2335,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     private Constructor<?> generateConstructor(Class<?> cl, Constructor<?> constructorToCall) {
         SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
         ConstructorAccessor acc = (ConstructorAccessor) serializationRegistry.getSerializationConstructorAccessor(cl, constructorToCall.getDeclaringClass());

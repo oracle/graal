@@ -36,7 +36,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -78,14 +77,13 @@ final class Target_java_lang_ref_Cleaner_Cleanable {
 @TargetClass(className = "jdk.internal.ref.CleanerImpl")
 final class Target_jdk_internal_ref_CleanerImpl {
 
-    @TargetElement(onlyWith = JDKLatest.class)//
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$CleanableList")//
     Target_jdk_internal_ref_CleanerImpl_CleanableList activeList;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
     public ReferenceQueue<Object> queue;
 
-    @TargetElement(name = "run", onlyWith = JDKLatest.class)
+    @TargetElement(name = "run")
     @Substitute
     public void run() {
         Thread t = Thread.currentThread();
@@ -108,7 +106,7 @@ final class Target_jdk_internal_ref_CleanerImpl {
     }
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDKLatest.class)
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable")
 final class Target_jdk_internal_ref_PhantomCleanable {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = GetCleanableListSingletonTransformer.class) //
     Target_jdk_internal_ref_CleanerImpl_CleanableList list;
@@ -122,7 +120,7 @@ final class Target_jdk_internal_ref_PhantomCleanable {
     /* final */ native void clean();
 }
 
-@TargetClass(className = "jdk.internal.ref.CleanerImpl$CleanableList", onlyWith = JDKLatest.class)
+@TargetClass(className = "jdk.internal.ref.CleanerImpl$CleanableList")
 final class Target_jdk_internal_ref_CleanerImpl_CleanableList {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$CleanableList$Node") //
@@ -136,7 +134,7 @@ final class Target_jdk_internal_ref_CleanerImpl_CleanableList {
 
 }
 
-@TargetClass(className = "jdk.internal.ref.CleanerImpl$CleanableList$Node", onlyWith = JDKLatest.class)
+@TargetClass(className = "jdk.internal.ref.CleanerImpl$CleanableList$Node")
 final class Target_jdk_internal_ref_CleanerImpl_CleanableList_Node {
 }
 

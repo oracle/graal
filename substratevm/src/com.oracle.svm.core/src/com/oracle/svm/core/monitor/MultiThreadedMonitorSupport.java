@@ -40,12 +40,10 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
@@ -529,10 +527,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 final class Target_jdk_internal_misc_Blocker {
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     public static native boolean begin();
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     public static native void end(boolean attempted);
 }

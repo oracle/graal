@@ -98,7 +98,7 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     }
 
     @Substitute
-    @TargetElement(name = "arrayBaseOffset", onlyWith = JDKLatest.class)
+    @TargetElement(name = "arrayBaseOffset")
     public long arrayBaseOffset(Class<?> clazz) {
         return LayoutEncoding.getArrayBaseOffset(DynamicHub.fromClass(clazz).getLayoutEncoding()).rawValue();
     }

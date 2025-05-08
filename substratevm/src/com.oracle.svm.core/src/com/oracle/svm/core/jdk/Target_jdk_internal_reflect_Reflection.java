@@ -31,7 +31,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
@@ -56,6 +55,5 @@ final class Target_jdk_internal_reflect_Reflection {
     }
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     public static native void ensureNativeAccess(Class<?> currentClass, Class<?> owner, String methodName, boolean jni);
 }

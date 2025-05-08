@@ -43,8 +43,6 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -203,7 +201,6 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
-    @TargetElement(onlyWith = JDKLatest.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     String name,
@@ -353,7 +350,6 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     private static void sleepNanos0(long nanos) throws InterruptedException {
         // Virtual threads are handled in sleep()
         PlatformThreads.sleep(nanos);
