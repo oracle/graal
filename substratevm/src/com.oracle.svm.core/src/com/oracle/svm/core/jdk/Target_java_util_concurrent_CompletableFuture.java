@@ -44,7 +44,7 @@ final class Target_java_util_concurrent_CompletableFuture {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "java.util.concurrent.DelayScheduler", onlyWith = JDKLatest.class)
+@TargetClass(className = "java.util.concurrent.DelayScheduler")
 final class Target_java_util_concurrent_DelayScheduler {
     @Alias @InjectAccessors(DelaySchedulerNanoTimeOffsetAccessor.class) //
     private static long nanoTimeOffset;

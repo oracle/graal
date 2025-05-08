@@ -110,7 +110,6 @@ final class Target_java_security_Provider_ServiceKey {
 final class Target_java_security_Provider {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadLocalServiceKeyComputer.class) //
-    @TargetElement(onlyWith = JDKLatest.class) //
     private static Target_java_lang_ThreadLocal previousKey;
 }
 

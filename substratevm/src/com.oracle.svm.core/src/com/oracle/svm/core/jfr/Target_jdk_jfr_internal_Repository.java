@@ -31,11 +31,10 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 import jdk.jfr.internal.Repository;
 
-@TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDKLatest.class})
+@TargetClass(value = Repository.class, onlyWith = HasJfrSupport.class)
 @SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_Repository {
 
@@ -59,7 +58,7 @@ public final class Target_jdk_jfr_internal_Repository {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = {HasJfrSupport.class, JDKLatest.class})
+@TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_util_Utils {
     @Alias
     public static native Path getPathInProperty(String prop, String subPath);

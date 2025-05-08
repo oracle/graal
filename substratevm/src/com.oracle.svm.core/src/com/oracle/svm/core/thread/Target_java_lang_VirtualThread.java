@@ -42,8 +42,6 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -63,20 +61,20 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int PARKED;
     @Alias static int PINNED;
     @Alias static int YIELDING;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int YIELDED;
+    @Alias static int YIELDED;
     @Alias static int TERMINATED;
     @Alias static int SUSPENDED;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKING;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKED;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PINNED;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int UNPARKED;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int BLOCKING;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int BLOCKED;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int UNBLOCKED;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int WAITING;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int WAIT;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_WAITING;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_WAIT;
+    @Alias static int TIMED_PARKING;
+    @Alias static int TIMED_PARKED;
+    @Alias static int TIMED_PINNED;
+    @Alias static int UNPARKED;
+    @Alias static int BLOCKING;
+    @Alias static int BLOCKED;
+    @Alias static int UNBLOCKED;
+    @Alias static int WAITING;
+    @Alias static int WAIT;
+    @Alias static int TIMED_WAITING;
+    @Alias static int TIMED_WAIT;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
 
     /**
@@ -100,13 +98,13 @@ public final class Target_java_lang_VirtualThread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NondefaultSchedulerSupplier.class) //
     private Executor nondefaultScheduler;
 
-    @TargetElement(onlyWith = JDKLatest.class) @Alias volatile int state;
+    @Alias volatile int state;
 
     // With our monitor implementation, we do not use these fields.
-    @TargetElement(onlyWith = JDKLatest.class) @Delete volatile Target_java_lang_VirtualThread next;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean blockPermit;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean onWaitingList;
-    @TargetElement(onlyWith = JDKLatest.class) @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean notified;
+    @Delete volatile Target_java_lang_VirtualThread next;
+    @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean blockPermit;
+    @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean onWaitingList;
+    @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean notified;
     // Checkstyle: resume
 
     @Inject //
@@ -205,14 +203,12 @@ public final class Target_java_lang_VirtualThread {
 
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
-    @TargetElement(onlyWith = JDKLatest.class)
     private static void notifyJvmtiDisableSuspend(boolean enter) {
         // unimplemented (GR-51158)
     }
 
     @Substitute
     @SuppressWarnings("unused")
-    @TargetElement(onlyWith = JDKLatest.class)
     private static void postPinnedEvent(String op) {
     }
 
@@ -232,15 +228,12 @@ public final class Target_java_lang_VirtualThread {
     native StackTraceElement[] tryGetStackTrace();
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     native void disableSuspendAndPreempt();
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     native void enableSuspendAndPreempt();
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     native Object carrierThreadAccessLock();
 
     @Alias
@@ -277,7 +270,6 @@ public final class Target_java_lang_VirtualThread {
     native int state();
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     void setState(int s) {
         assert s != BLOCKING && s != BLOCKED && s != UNBLOCKED && s != WAITING && s != WAIT && s != TIMED_WAIT && s != TIMED_WAITING //
                         : "states should never be reached with our monitor implementation";
@@ -285,23 +277,19 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     @SuppressWarnings({"static-method", "unused"})
     void waitTimeoutExpired(byte seqNo) {
         throw VMError.shouldNotReachHere("not used in our monitor implementation");
     }
 
     @Delete
-    @TargetElement(onlyWith = JDKLatest.class)
     static native void unblockVirtualThreads();
 
     @Delete
-    @TargetElement(onlyWith = JDKLatest.class)
     private static native Target_java_lang_VirtualThread takeVirtualThreadListToUnblock();
 
     /** Needed for handling monitor-specific states. */
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     @SuppressWarnings("hiding")
     Thread.State threadState() {
         int state = state() & ~SUSPENDED;

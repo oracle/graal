@@ -28,8 +28,6 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.foreign.MemorySessionImpl;
@@ -68,12 +66,11 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * As one might notice, what is not supported is not creating shared arenas, but closing them.
      */
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     void closeScope0(MemorySessionImpl session, Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
         throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = {JDKLatest.class, ForeignAPIPredicates.Enabled.class})
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = ForeignAPIPredicates.Enabled.class)
 final class Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError {
 }

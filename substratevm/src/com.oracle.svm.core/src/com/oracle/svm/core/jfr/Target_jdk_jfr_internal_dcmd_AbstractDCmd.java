@@ -26,8 +26,6 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(className = "jdk.jfr.internal.dcmd.AbstractDCmd")
 public final class Target_jdk_jfr_internal_dcmd_AbstractDCmd {
@@ -35,7 +33,6 @@ public final class Target_jdk_jfr_internal_dcmd_AbstractDCmd {
     public native String[] execute(String source, String arg, char delimiter);
 
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
     public native String[] getHelp();
 
     @Alias

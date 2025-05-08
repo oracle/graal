@@ -37,7 +37,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -105,7 +104,7 @@ public final class JfrJdkCompatibility {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_JVMSupport {
     @Substitute
     public static String makeFilename(Recording recording) {
@@ -113,7 +112,7 @@ final class Target_jdk_jfr_internal_JVMSupport {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);

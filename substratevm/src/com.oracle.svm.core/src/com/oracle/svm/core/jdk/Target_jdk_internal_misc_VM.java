@@ -35,7 +35,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.internal.misc.Unsafe;
@@ -69,7 +68,6 @@ public final class Target_jdk_internal_misc_VM {
     @Alias @InjectAccessors(DirectMemoryAccessors.class) //
     private static long directMemory;
     @Alias @InjectAccessors(PageAlignDirectMemoryAccessors.class) //
-    @TargetElement(onlyWith = JDKLatest.class) //
     private static Boolean pageAlignDirectMemory;
 }
 
