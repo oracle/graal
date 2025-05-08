@@ -36,11 +36,14 @@
   for suite in bench.groups.main_suites
   ]),
 
-  local weekly_amd64_forks_builds = std.flattenArrays([
+  local weekly_amd64_forks_builds = std.flattenArrays(std.flattenArrays([
+    [
+    bc.generate_fork_builds(c.weekly  + hw.x52  + jdk + cc.libgraal + suite, subdir='compiler'),
     bc.generate_fork_builds(c.weekly  + hw.e3  + jdk + cc.libgraal + suite, subdir='compiler')
+    ]
   for jdk in cc.product_jdks
   for suite in bench.groups.weekly_forks_suites
-  ]),
+  ])),
 
   local weekly_aarch64_forks_builds = std.flattenArrays([
     bc.generate_fork_builds(c.weekly + hw.a12c + jdk + cc.libgraal + suite, subdir='compiler')
