@@ -36,6 +36,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -49,7 +50,9 @@ import jdk.internal.misc.Unsafe;
  */
 abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
-    protected static final int MIN_SPACE_SIZE_IN_ALIGNED_CHUNKS = 8;
+    protected static final int MIN_SPACE_SIZE_AS_NUMBER_OF_ALIGNED_CHUNKS = 8;
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L572-L575") //
     protected static final int MAX_TENURING_THRESHOLD = 15;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -68,15 +71,19 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
      * Don't change these values individually without carefully going over their occurrences in
      * HotSpot source code, there are dependencies between them that are not handled in our code.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L413-L415") //
     protected static final int INITIAL_SURVIVOR_RATIO = 8;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L409-L411") //
     protected static final int MIN_SURVIVOR_RATIO = 3;
-    protected static final int DEFAULT_TIME_WEIGHT = 25; // -XX:AdaptiveTimeWeight
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L340-L342") //
+    protected static final int ADAPTIVE_TIME_WEIGHT = 25;
 
     /* Constants to compute defaults for values which can be set through existing options. */
     protected static final UnsignedWord INITIAL_HEAP_SIZE = Word.unsigned(128 * 1024 * 1024);
-    protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L554-L556") //
+    protected static final int NEW_RATIO = 2;
 
-    protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
+    protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
 
     private final int initialNewRatio;
     protected UnsignedWord survivorSize;
@@ -130,7 +137,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Fold
     static UnsignedWord minSpaceSize() {
-        return getAlignment().multiply(MIN_SPACE_SIZE_IN_ALIGNED_CHUNKS);
+        return HeapParameters.getAlignedHeapChunkSize().multiply(MIN_SPACE_SIZE_AS_NUMBER_OF_ALIGNED_CHUNKS);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -221,6 +228,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L104-L116")
     public final UnsignedWord getMaximumEdenSize() {
         guaranteeSizeParametersInitialized();
         return alignDown(sizes.maxYoungSize.subtract(survivorSize.multiply(2)));
@@ -295,9 +303,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
         /*
-         * Keep chunks ready for allocations in eden and for the survivor to-spaces during young
-         * collections (although we might keep too many aligned chunks when large objects in
-         * unaligned chunks are also allocated). We could alternatively return
+         * Keep chunks ready for allocations in eden as well as for copying the objects currently in
+         * survivor spaces in a future collection. We could alternatively return
          * getCurrentHeapCapacity() to have chunks ready during full GCs as well.
          */
         UnsignedWord total = edenSize.add(HeapImpl.getAccounting().getSurvivorUsedBytes());
@@ -331,6 +338,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract long gcCount();
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/shared/genArguments.cpp#L195-L310")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
     protected SizeParameters computeSizeParameters(SizeParameters existing) {
         UnsignedWord minYoungSpaces = minSpaceSize(); // eden
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
@@ -386,9 +395,10 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
             /*
              * In HotSpot, this is the reserved capacity of each of the survivor From and To spaces,
              * i.e., together they occupy 2x this size. Our chunked heap doesn't reserve memory, so
-             * we never occupy more than 1x this size for survivors except during collections.
-             * However, this is inconsistent with how we interpret the maximum size of the old
-             * generation, which we can exceed while copying during collections.
+             * we never occupy more than 1x this size for survivors except during collections. We
+             * reserve 2x regardless (see below). However, this is inconsistent with how we
+             * interpret the maximum size of the old generation, which we can exceed the same way
+             * while copying during collections, but reserve only 1x its size.
              */
             initialSurvivor = initialYoung.unsignedDivide(AbstractCollectionPolicy.INITIAL_SURVIVOR_RATIO);
             initialSurvivor = minSpaceSize(alignDown(initialSurvivor));
@@ -448,6 +458,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L104-L116")
         UnsignedWord maxSurvivorSize() {
             if (HeapParameters.getMaxSurvivorSpaces() == 0) {
                 return Word.zero();
