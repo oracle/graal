@@ -2712,6 +2712,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         super().__init__(custom_harness_command)
         self._version = None
         self._context = None
+        self._extra_run_options = []
 
     @property
     def context(self):
@@ -2800,6 +2801,19 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         if tracker_type in _baristaConfig["disable_trackers"]:
             mx.log(f"Ignoring the registration of '{name}' tracker as it was disabled for {self.__class__.__name__}.")
             return
+        if name == "energy":
+            if self.version() < "0.4.1":
+                mx.abort(
+                    "The 'energy' tracker is not supported for barista benchmarks before Barista version '0.4.1'."
+                    " Please update your Barista repository in order to use the 'energy' tracker! Aborting!"
+                )
+            # Allow for the baseline measurement before looking up the app process
+            self._extra_run_options += ["--cmd-app-prefix-init-timelimit", f"{tracker_type(self).baseline_duration + 5}"]
+            # Ensure that the workload is independent from the performance of the VM
+            # We want to track the energy needed for a set amount of work
+            self._extra_run_options += ["--startup-iteration-count", "0"]
+            self._extra_run_options += ["--warmup-iteration-count", "0"]
+            self._extra_run_options += ["--throughput-iteration-count", "0"]
         super().register_tracker(name, tracker_type)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -3033,7 +3047,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             jvm_vm_options = jvm_cmd[index_of_java_exe + 1:]
 
             # Verify that the run arguments don't already contain a "--mode" option
-            run_args = suite.runArgs(suite.context.bmSuiteArgs)
+            run_args = suite.runArgs(suite.context.bmSuiteArgs) + suite._extra_run_options
             mode_pattern = r"^(?:-m|--mode)(=.*)?$"
             mode_match = self._regexFindInCommand(run_args, mode_pattern)
             if mode_match:
