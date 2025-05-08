@@ -136,7 +136,6 @@ public class CoverageInstrument extends TruffleInstrument {
         try {
             if (absoluteOutputPath != null) {
                 final File file = new File(absoluteOutputPath);
-                new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());
