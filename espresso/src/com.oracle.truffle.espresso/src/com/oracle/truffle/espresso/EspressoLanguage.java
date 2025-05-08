@@ -121,6 +121,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private SignatureSymbols signatureSymbols;
 
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
+    private final StaticProperty arrayHashCodeProperty = new DefaultStaticProperty("ihashcode");
     // This field should be final, but creating a shape requires a fully-initialized instance of
     // TruffleLanguage.
     @CompilationFinal //
@@ -145,6 +146,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean whiteBoxEnabled;
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
+    @CompilationFinal private boolean continuum;
     // endregion Options
 
     // region Allocation
@@ -243,6 +245,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
+        continuum = env.getOptions().get(EspressoOptions.Continuum);
 
         EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
         guestFieldOffsetStrategy = switch (strategy) {
@@ -339,6 +342,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy);
     }
 
@@ -480,6 +484,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return arrayProperty;
     }
 
+    public StaticProperty getArrayHashCodeProperty() {
+        if (!continuum) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Accessing array hash code property without continuum set up.");
+        }
+        return arrayHashCodeProperty;
+    }
+
     public StaticShape<StaticObjectFactory> getArrayShape() {
         assert fullyInitialized : "Array shape accessed before language is fully initialized";
         return arrayShape;
@@ -488,7 +500,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @TruffleBoundary
     private StaticShape<StaticObjectFactory> createArrayShape() {
         assert arrayShape == null;
-        return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+        StaticShape.Builder builder = StaticShape.newBuilder(this).property(arrayProperty, Object.class, true);
+        if (continuum) {
+            builder.property(arrayHashCodeProperty, int.class, false);
+        }
+        return builder.build(StaticObject.class, StaticObjectFactory.class);
     }
 
     public StaticProperty getForeignProperty() {
@@ -563,6 +579,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean isJVMCIEnabled() {
         return internalJvmciEnabled;
+    }
+
+    public boolean isContinuumEnabled() {
+        return continuum;
     }
 
     public EspressoLanguageCache getLanguageCache() {

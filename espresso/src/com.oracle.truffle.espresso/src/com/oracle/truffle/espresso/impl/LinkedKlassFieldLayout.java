@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
 import static java.util.Map.entry;
 
 import java.util.HashSet;
@@ -177,6 +178,9 @@ final class LinkedKlassFieldLayout {
         private static final int NO_ADDITIONAL_FLAGS = 0;
         private static final HiddenField[] EMPTY = new HiddenField[0];
         private static final Map<Symbol<Type>, HiddenField[]> REGISTRY = Map.ofEntries(
+                        entry(Types.java_lang_Object, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_SYSTEM_IHASHCODE, Types._int, EspressoLanguage::isContinuumEnabled, ACC_VOLATILE),
+                        }),
                         entry(Types.java_lang_invoke_MemberName, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_VMTARGET),
                                         new HiddenField(Names.HIDDEN_VMINDEX)
@@ -196,7 +200,6 @@ final class LinkedKlassFieldLayout {
                         // All references (including strong) get an extra hidden field, this
                         // simplifies the code for weak/soft/phantom/final references.
                         entry(Types.java_lang_ref_Reference, new HiddenField[]{
-
                                         new HiddenField(Names.HIDDEN_HOST_REFERENCE)
                         }),
                         entry(Types.java_lang_Throwable, new HiddenField[]{
@@ -248,7 +251,6 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP),
                                         new HiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP)
                         }),
-
                         entry(Types.com_oracle_truffle_espresso_polyglot_TypeLiteral, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_INTERNAL_TYPE)}),
                         entry(Types.org_graalvm_continuations_ContinuationImpl, new HiddenField[]{

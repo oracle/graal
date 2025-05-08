@@ -79,9 +79,9 @@ public final class Target_java_lang_System {
     // endregion Profile values
 
     @Substitution(flags = {IsTrivial})
-    public static int identityHashCode(@JavaType(Object.class) StaticObject self, @Inject EspressoLanguage lang) {
+    public static int identityHashCode(@JavaType(Object.class) StaticObject self, @Inject Meta meta, @Inject EspressoLanguage lang) {
         SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
-        return VM.JVM_IHashCode(self, lang);
+        return VM.JVM_IHashCode(self, meta, lang);
     }
 
     @ReportPolymorphism
