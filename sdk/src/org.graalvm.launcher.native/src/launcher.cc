@@ -735,6 +735,9 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
+        // See: https://github.com/openjdk/jdk/blob/8c1b915c7ef2b3a6e65705b91f4eb464caaec4e7/src/java.base/unix/native/libjli/java_md.c#L685
+        pthread_attr_setguardsize(&attr, 0); // no pthread guard page on java threads
+
         pthread_t main_thr;
         if (pthread_create(&main_thr, &attr, &jvm_main_thread_start, threadArgs.get()) != 0) {
             std::cerr << "Could not create main thread: " << strerror(errno) << std::endl;
