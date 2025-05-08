@@ -34,7 +34,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(java.lang.reflect.Proxy.class)
@@ -43,20 +42,6 @@ final class Target_java_lang_reflect_Proxy {
     /** We have our own proxy cache so mark the original one as deleted. */
     @Delete //
     private static Target_jdk_internal_loader_ClassLoaderValue proxyCache;
-
-    @Substitute
-    @SuppressWarnings("unused")
-    @TargetElement(name = "getProxyConstructor", onlyWith = JDK21OrEarlier.class)
-    private static Constructor<?> getProxyConstructorJDK21(Class<?> caller, ClassLoader loader, Class<?>... interfaces) {
-        final Class<?> cl = ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(loader, interfaces);
-        try {
-            final Constructor<?> cons = cl.getConstructor(InvocationHandler.class);
-            cons.setAccessible(true);
-            return cons;
-        } catch (NoSuchMethodException e) {
-            throw new InternalError(e.toString(), e);
-        }
-    }
 
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)

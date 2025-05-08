@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.core.thread;
 
-import java.util.concurrent.Callable;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(className = "java.lang.ScopedValue")
@@ -58,19 +55,6 @@ final class Target_java_lang_ScopedValue_CallableOp {
 @TargetClass(className = "java.lang.ScopedValue", innerClass = "Carrier")
 final class Target_java_lang_ScopedValue_Carrier {
     @Alias int bitmask;
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @Uninterruptible(reason = "Ensure no safepoint actions can disrupt reverting scoped value bindings.", calleeMustBe = false)
-    private <R> R runWith(Target_java_lang_ScopedValue_Snapshot newSnapshot, Callable<R> op) throws Exception {
-        Target_java_lang_Thread.setScopedValueBindings(newSnapshot);
-        try {
-            return Target_jdk_internal_vm_ScopedValueContainer.call(op);
-        } finally {
-            Target_java_lang_Thread.setScopedValueBindings(newSnapshot.prev);
-            Target_java_lang_ScopedValue_Cache.invalidate(bitmask);
-        }
-    }
 
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
@@ -100,10 +84,6 @@ final class Target_java_lang_ScopedValue_Carrier {
 
 @TargetClass(className = "jdk.internal.vm.ScopedValueContainer")
 final class Target_jdk_internal_vm_ScopedValueContainer {
-    @Alias
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    static native <V> V call(Callable<V> op) throws Exception;
-
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)
     static native <V> V call(Target_java_lang_ScopedValue_CallableOp op) throws Exception;

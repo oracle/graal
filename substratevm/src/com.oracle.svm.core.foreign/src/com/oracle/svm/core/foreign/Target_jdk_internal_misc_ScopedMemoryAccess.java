@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
@@ -71,12 +70,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
     void closeScope0(MemorySessionImpl session, Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
-        throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    boolean closeScope0(MemorySessionImpl session) {
         throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
     }
 }

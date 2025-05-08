@@ -28,8 +28,6 @@ package com.oracle.svm.core.dcmd;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 /**
  * Base class for JFR-related diagnostic commands. Note that the JDK already implements those
  * diagnostic commands, so we wrap and reuse the JDK implementations.
@@ -57,15 +55,8 @@ public abstract class AbstractJfrDCmd extends AbstractDCmd {
     @Override
     protected String getSyntaxAndExamples() {
         Target_jdk_jfr_internal_dcmd_AbstractDCmd cmd = createDCmd();
-        String[] lines = getHelp(cmd);
+        String[] lines = cmd.getHelp();
         return String.join(System.lineSeparator(), lines);
-    }
-
-    private static String[] getHelp(Target_jdk_jfr_internal_dcmd_AbstractDCmd cmd) {
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            return cmd.printHelp();
-        }
-        return cmd.getHelp();
     }
 
     protected abstract Target_jdk_jfr_internal_dcmd_AbstractDCmd createDCmd();

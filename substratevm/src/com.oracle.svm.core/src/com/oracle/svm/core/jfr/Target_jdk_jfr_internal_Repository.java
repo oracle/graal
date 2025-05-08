@@ -31,7 +31,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 
 import jdk.jfr.internal.Repository;
@@ -55,24 +54,6 @@ public final class Target_jdk_jfr_internal_Repository {
     synchronized void ensureRepository() throws Exception {
         if (baseLocation == null) {
             Path path = Target_jdk_jfr_internal_util_Utils.getPathInProperty("java.io.tmpdir", null);
-            setBasePath(path);
-        }
-    }
-}
-
-@TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
-@SuppressWarnings("unused")
-final class Target_jdk_jfr_internal_Repository_JDK21 {
-    @Alias //
-    private Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation;
-
-    @Alias //
-    public native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation) throws IOException;
-
-    @Substitute
-    synchronized void ensureRepository() throws Exception {
-        if (baseLocation == null) {
-            Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 path = Target_jdk_jfr_internal_SecuritySupport_JDK21.getPathInProperty("java.io.tmpdir", null);
             setBasePath(path);
         }
     }

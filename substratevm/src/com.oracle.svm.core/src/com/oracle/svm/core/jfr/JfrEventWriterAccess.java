@@ -26,13 +26,12 @@ package com.oracle.svm.core.jfr;
 
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.thread.JavaThreads;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
@@ -55,9 +54,6 @@ public final class JfrEventWriterAccess {
         long committedPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            return new Target_jdk_jfr_internal_event_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
-        }
         boolean pinVirtualThread = JavaThreads.isCurrentThreadVirtual();
         return new Target_jdk_jfr_internal_event_EventWriter(committedPos, maxPos, jfrThreadId, true, pinVirtualThread, isCurrentThreadExcluded);
     }

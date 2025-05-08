@@ -71,10 +71,6 @@ public final class Target_jdk_internal_misc_VM {
     @Alias @InjectAccessors(PageAlignDirectMemoryAccessors.class) //
     @TargetElement(onlyWith = JDKLatest.class) //
     private static Boolean pageAlignDirectMemory;
-
-    @Alias @InjectAccessors(PageAlignDirectMemoryJDK21Accessors.class) //
-    @TargetElement(name = "pageAlignDirectMemory", onlyWith = JDK21OrEarlier.class) //
-    private static boolean pageAlignDirectMemoryJDK21;
 }
 
 final class DirectMemoryAccessors {
@@ -144,11 +140,5 @@ final class PageAlignDirectMemoryAccessors {
         /* Ensure values are published to other threads before marking fields as initialized. */
         Unsafe.getUnsafe().storeFence();
         initialized = true;
-    }
-}
-
-final class PageAlignDirectMemoryJDK21Accessors {
-    static boolean getPageAlignDirectMemory() {
-        return PageAlignDirectMemoryAccessors.getPageAlignDirectMemory();
     }
 }

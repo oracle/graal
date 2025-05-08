@@ -25,7 +25,6 @@
 package com.oracle.svm.core.methodhandles;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
@@ -49,11 +48,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
@@ -204,12 +201,6 @@ final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Delete
     private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private static void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context) {
-        throw unimplemented("CallSiteContext not supported");
-    }
 
     @AnnotateOriginal
     static native boolean refKindIsMethod(byte refKind);
@@ -419,8 +410,4 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_invokeInterface;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_LIMIT;
     // Checkstyle: resume
-}
-
-@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "CallSiteContext", onlyWith = JDK21OrEarlier.class)
-final class Target_java_lang_invoke_MethodHandleNatives_CallSiteContext {
 }
