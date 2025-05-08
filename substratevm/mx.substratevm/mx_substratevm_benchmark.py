@@ -394,8 +394,10 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 "--startup-iteration-count", "1",
                 "--warmup-iteration-count", "1",
                 "--warmup-duration", "5",
-                "--throughput-iteration-count", "0",
-                "--latency-iteration-count", "0",
+                "--throughput-iteration-count", "1",
+                "--throughput-duration", "5",
+                "--latency-iteration-count", "1",
+                "--latency-duration", "5",
             ]
 
         def _get_built_app_image(self, suite, stage):
@@ -439,6 +441,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                 # Make agent run short
                 cmd += self._short_load_testing_phases()
                 # Add explicit agent stage args
+                cmd += suite._extra_run_options
                 cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.context.bmSuiteArgs)
                 cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-agent-run-arg=", suite.context.bmSuiteArgs)
                 return cmd
@@ -461,7 +464,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             ni_barista_cmd = [suite.baristaHarnessPath(), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
-            ni_barista_cmd += suite.runArgs(suite.context.bmSuiteArgs)
+            ni_barista_cmd += suite.runArgs(suite.context.bmSuiteArgs) + suite._extra_run_options
             ni_barista_cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-jvm-arg=", suite.context.bmSuiteArgs)
             if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
                 # Make instrument run short
