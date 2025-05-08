@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(className = "jdk.jfr.internal.event.EventWriter", onlyWith = HasJfrSupport.class)
@@ -44,12 +43,6 @@ public final class Target_jdk_jfr_internal_event_EventWriter {
     long currentPosition;
     @Alias //
     long maxPosition;
-
-    @Alias
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @SuppressWarnings("unused")
-    Target_jdk_jfr_internal_event_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {
-    }
 
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)

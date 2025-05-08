@@ -29,14 +29,11 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
 import java.net.URL;
-import java.security.AccessControlContext;
 import java.security.CodeSource;
 import java.security.Permission;
 import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.security.Policy;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.Provider;
 import java.security.SecureRandom;
@@ -57,14 +54,11 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.Target_java_lang_ThreadLocal;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -75,88 +69,6 @@ import sun.security.util.SecurityConstants;
 /*
  * All security checks are disabled.
  */
-
-@TargetClass(value = java.security.AccessController.class, onlyWith = JDK21OrEarlier.class)
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-@SuppressWarnings({"unused"})
-final class Target_java_security_AccessController {
-
-    @Substitute
-    @SuppressWarnings("deprecation")
-    static AccessControlContext getStackAccessControlContext() {
-        if (!CEntryPointSnippets.isIsolateInitialized()) {
-            /*
-             * If isolate still isn't initialized, we can assume that we are so early in the JDK
-             * initialization that any attempt at stalk walk will fail as not even the basic
-             * PrintWriter/Logging is available yet. This manifested when
-             * UseDedicatedVMOperationThread hosted option was set, triggering a runtime crash.
-             */
-            return null;
-        }
-        return StackAccessControlContextVisitor.getFromStack();
-    }
-
-    @Substitute
-    static AccessControlContext getInheritedAccessControlContext() {
-        return SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class).inheritedAccessControlContext;
-    }
-
-    @Substitute
-    private static ProtectionDomain getProtectionDomain(final Class<?> caller) {
-        return caller.getProtectionDomain();
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        PrivilegedStack.push(context, caller);
-        try {
-            return action.run();
-        } finally {
-            PrivilegedStack.pop();
-        }
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) {
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        PrivilegedStack.push(context, caller);
-        try {
-            return action.run();
-        } finally {
-            PrivilegedStack.pop();
-        }
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation")
-    static AccessControlContext checkContext(AccessControlContext context, Class<?> caller) {
-
-        if (context != null && context.equals(AccessControllerUtil.DISALLOWED_CONTEXT_MARKER)) {
-            VMError.shouldNotReachHere(
-                            "Non-allowed AccessControlContext that was replaced with a blank one at build time was invoked without being reinitialized at run time." + System.lineSeparator() +
-                                            "This might be an indicator of improper build time initialization, or of a non-compatible JDK version." + System.lineSeparator() +
-                                            "In order to fix this you can either:" + System.lineSeparator() +
-                                            "    * Annotate the offending context's field with @RecomputeFieldValue" + System.lineSeparator() +
-                                            "    * Implement a custom runtime accessor and annotate said field with @InjectAccessors" + System.lineSeparator() +
-                                            "    * If this context originates from the JDK, and it doesn't leak sensitive info, you can allow it in 'AccessControlContextReplacerFeature.duringSetup'");
-        }
-
-        // check if caller is authorized to create context
-        if (System.getSecurityManager() != null) {
-            throw VMError.unsupportedFeature("SecurityManager isn't supported");
-        }
-        return context;
-    }
-}
 
 @TargetClass(SecurityManager.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -196,11 +108,6 @@ final class Target_java_security_Provider_ServiceKey {
 
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider {
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
-    @TargetElement(name = "previousKey", onlyWith = JDK21OrEarlier.class) //
-    private static Target_java_security_Provider_ServiceKey previousKeyJDK21;
-
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadLocalServiceKeyComputer.class) //
     @TargetElement(onlyWith = JDKLatest.class) //
@@ -463,38 +370,6 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
     }
 }
 
-@TargetClass(value = java.security.Policy.class, innerClass = "PolicyInfo", onlyWith = JDK21OrEarlier.class)
-final class Target_java_security_Policy_PolicyInfo {
-}
-
-@TargetClass(value = java.security.Policy.class, onlyWith = JDK21OrEarlier.class)
-final class Target_java_security_Policy {
-
-    @Delete //
-    private static Target_java_security_Policy_PolicyInfo policyInfo;
-
-    @Substitute
-    private static Policy getPolicyNoCheck() {
-        return AllPermissionsPolicy.SINGLETON;
-    }
-
-    @Substitute
-    private static boolean isSet() {
-        return true;
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private static void setPolicy(Policy p) {
-        /*
-         * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
-         * where an exception is silently ignored by an application and then necessary security
-         * checks are not in place.
-         */
-        throw VMError.shouldNotReachHere("Installing a Policy is not yet supported");
-    }
-}
-
 final class AllPermissionsPolicy extends Policy {
 
     static final Policy SINGLETON = new AllPermissionsPolicy();
@@ -525,50 +400,6 @@ final class AllPermissionsPolicy extends Policy {
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
     }
-}
-
-/**
- * This class is instantiated indirectly from the {@code Policy#getInstance} methods via the
- * {@link java.security.Security#getProviders security provider} abstractions. We could just
- * substitute the Policy.getInstance methods to return {@link AllPermissionsPolicy#SINGLETON}, this
- * version is more fool-proof in case someone manually registers security providers for reflective
- * instantiation.
- */
-@TargetClass(className = "sun.security.provider.PolicySpiFile", onlyWith = JDK21OrEarlier.class)
-@SuppressWarnings({"unused", "static-method", "deprecation"})
-final class Target_sun_security_provider_PolicySpiFile {
-
-    @Substitute
-    private Target_sun_security_provider_PolicySpiFile(Policy.Parameters params) {
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    private PermissionCollection engineGetPermissions(CodeSource codesource) {
-        return AllPermissionsPolicy.SINGLETON.getPermissions(codesource);
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    private PermissionCollection engineGetPermissions(ProtectionDomain d) {
-        return AllPermissionsPolicy.SINGLETON.getPermissions(d);
-    }
-
-    @Substitute
-    @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    private boolean engineImplies(ProtectionDomain d, Permission p) {
-        return AllPermissionsPolicy.SINGLETON.implies(d, p);
-    }
-
-    @Substitute
-    private void engineRefresh() {
-        AllPermissionsPolicy.SINGLETON.refresh();
-    }
-}
-
-@Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
-@TargetClass(className = "sun.security.provider.PolicyFile", onlyWith = JDK21OrEarlier.class)
-final class Target_sun_security_provider_PolicyFile {
 }
 
 @TargetClass(className = "sun.security.jca.ProviderConfig")

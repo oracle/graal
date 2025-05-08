@@ -34,7 +34,6 @@ import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -205,14 +204,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @TargetElement(onlyWith = JDKLatest.class)
     void closeScope0(Target_jdk_internal_foreign_MemorySessionImpl session, @SuppressWarnings("unused") Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
         new SyncCloseScopeOperation(session).enqueue();
-    }
-
-    @SuppressWarnings("static-method")
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    boolean closeScope0(Target_jdk_internal_foreign_MemorySessionImpl session) {
-        new SyncCloseScopeOperation(session).enqueue();
-        return true;
     }
 }
 

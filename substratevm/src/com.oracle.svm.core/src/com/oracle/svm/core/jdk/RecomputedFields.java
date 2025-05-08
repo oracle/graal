@@ -188,43 +188,6 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
 
 }
 
-@TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$LockedUpdater", onlyWith = JDK21OrEarlier.class)
-final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater {
-    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
-    private long offset;
-
-    /** the same as tclass, used for checks */
-    @Alias private Class<?> cclass;
-    /** class holding the field */
-    @Alias private Class<?> tclass;
-
-    // simplified version of the original constructor
-    @SuppressWarnings("unused")
-    @Substitute
-    Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater(final Class<?> tclass,
-                    final String fieldName, final Class<?> caller) {
-        Field field = null;
-        int modifiers = 0;
-        try {
-            field = tclass.getDeclaredField(fieldName);
-            modifiers = field.getModifiers();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-
-        if (field.getType() != long.class)
-            throw new IllegalArgumentException("Must be long type");
-
-        if (!Modifier.isVolatile(modifiers))
-            throw new IllegalArgumentException("Must be volatile type");
-
-        // access checks are disabled
-        this.cclass = tclass;
-        this.tclass = tclass;
-        this.offset = Unsafe.getUnsafe().objectFieldOffset(field);
-    }
-}
-
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {

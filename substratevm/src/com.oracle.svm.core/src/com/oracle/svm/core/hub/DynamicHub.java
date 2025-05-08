@@ -114,7 +114,6 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
@@ -1113,10 +1112,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native boolean isAnonymousClass();
 
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private native boolean isUnnamedClass();
-
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isHidden() {
@@ -1500,29 +1495,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native Class<?>[] getPermittedSubclasses();
 
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkMemberAccess(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
-        /* No runtime access checks. */
-    }
-
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @Substitute
-    @SuppressWarnings({"deprecation", "unused"})
-    private void checkPackageAccess(SecurityManager sm, ClassLoader ccl, boolean checkProxyInterfaces) {
-        /* No runtime access checks. */
-    }
-
-    /**
-     * Never called as it is partially evaluated away due to SecurityManager.
-     */
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @KeepOriginal
-    @SuppressWarnings({"deprecation", "unused"})
-    private static native void checkPackageAccessForPermittedSubclasses(@SuppressWarnings("removal") SecurityManager sm,
-                    ClassLoader ccl, Class<?>[] subClasses);
-
     @Substitute
     private static ReflectionFactory getReflectionFactory() {
         return Target_jdk_internal_reflect_ReflectionFactory.getReflectionFactory();
@@ -1634,9 +1606,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return forName(module, className, Reflection.getCallerClass());
     }
 
-    @Substitute
     @CallerSensitiveAdapter
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
@@ -1655,9 +1625,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return forName(name, initialize, loader, Reflection.getCallerClass());
     }
 
-    @Substitute
     @CallerSensitiveAdapter
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
@@ -1765,12 +1733,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             companion.protectionDomain = ProtectionDomainSupport.allPermDomain();
         }
         return companion.protectionDomain;
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private ProtectionDomain protectionDomain() {
-        return getProtectionDomain();
     }
 
     void setProtectionDomainAtRuntime(ProtectionDomain protectionDomain) {
@@ -2100,10 +2062,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     private static native void addAll(Collection<Field> c, Field[] o);
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic);
 
     @KeepOriginal
     @TargetElement(onlyWith = JDKLatest.class)

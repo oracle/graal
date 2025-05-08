@@ -62,10 +62,6 @@ public final class Target_java_lang_Module {
     }
 
     @Alias
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    public native void ensureNativeAccess(Class<?> owner, String methodName);
-
-    @Alias
     @TargetElement(onlyWith = JDKLatest.class)
     public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni);
 

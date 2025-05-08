@@ -45,7 +45,6 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
@@ -380,15 +379,10 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * too, so we don't have to intercept an InterruptedException from the carrier thread to
          * clear the virtual thread interrupt.
          */
-        long compensation = -1;
         boolean attempted = false;
         boolean pinned = JavaThreads.isCurrentThreadVirtualAndPinned();
         if (pinned) {
-            if (JavaVersionUtil.JAVA_SPEC < 23) {
-                compensation = Target_jdk_internal_misc_Blocker.beginJDK22();
-            } else {
-                attempted = Target_jdk_internal_misc_Blocker.begin();
-            }
+            attempted = Target_jdk_internal_misc_Blocker.begin();
         }
         try {
             /*
@@ -404,11 +398,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             }
         } finally {
             if (pinned) {
-                if (JavaVersionUtil.JAVA_SPEC < 23) {
-                    Target_jdk_internal_misc_Blocker.endJDK22(compensation);
-                } else {
-                    Target_jdk_internal_misc_Blocker.end(attempted);
-                }
+                Target_jdk_internal_misc_Blocker.end(attempted);
             }
         }
     }
@@ -537,13 +527,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
 @TargetClass(className = "jdk.internal.misc.Blocker")
 final class Target_jdk_internal_misc_Blocker {
-    @Alias
-    @TargetElement(name = "begin", onlyWith = JDK21OrEarlier.class)
-    public static native long beginJDK22();
-
-    @Alias
-    @TargetElement(name = "end", onlyWith = JDK21OrEarlier.class)
-    public static native void endJDK22(long compensateReturn);
 
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)

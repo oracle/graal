@@ -28,9 +28,9 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Substitute;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -50,16 +50,6 @@ final class Target_java_util_concurrent_ForkJoinTask {
      * {@code a.thread != Thread.currentThread()} in the context of a thread pool). This substitute
      * avoids this problem by never wrapping the exception, which is documented as correct behavior
      * by the original method.
-     */
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private Throwable getThrowableException() {
-        Target_java_util_concurrent_ForkJoinTask_Aux a = aux;
-        return a != null ? a.ex : null;
-    }
-
-    /**
-     * JDK24 variant of the above.
      */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)

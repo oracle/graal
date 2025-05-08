@@ -27,17 +27,10 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_StringPool {
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    public static long addString(@SuppressWarnings("unused") String s) {
-        // This disables String caching and forces the EventWriter to write strings by value.
-        return -1;
-    }
 
     @SuppressWarnings("unused")
     @Substitute
