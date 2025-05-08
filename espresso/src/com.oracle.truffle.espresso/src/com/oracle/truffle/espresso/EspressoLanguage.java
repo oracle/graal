@@ -164,7 +164,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     @CompilationFinal private GuestFieldOffsetStrategy guestFieldOffsetStrategy;
 
-    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
+    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal(EspressoThreadLocalState::new);
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
