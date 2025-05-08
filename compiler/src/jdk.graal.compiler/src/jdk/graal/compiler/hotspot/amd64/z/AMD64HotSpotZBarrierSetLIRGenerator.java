@@ -375,27 +375,6 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     }
 
     @Override
-    public Variable emitBarrieredLoad(LIRGeneratorTool tool,
-                    LIRKind kind,
-                    Value address,
-                    LIRFrameState state,
-                    MemoryOrderMode memoryOrder,
-                    BarrierType barrierType) {
-        if (kind.getPlatformKind().getVectorLength() == 1) {
-            GraalError.guarantee(kind.getPlatformKind() == AMD64Kind.QWORD, "ZGC only uses uncompressed oops: %s", kind);
-
-            ForeignCallLinkage callTarget = getReadBarrierStub(barrierType);
-            AMD64AddressValue loadAddress = ((AMD64LIRGenerator) tool).asAddressValue(address);
-            Variable result = tool.newVariable(tool.toRegisterKind(kind));
-            tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-            boolean isNotStrong = barrierType == BarrierType.REFERENCE_GET || barrierType == BarrierType.WEAK_REFERS_TO || barrierType == BarrierType.PHANTOM_REFERS_TO;
-            tool.append(new AMD64HotSpotZReadBarrierOp(result, loadAddress, state, config, callTarget, isNotStrong));
-            return result;
-        }
-        throw GraalError.shouldNotReachHere("unhandled barrier");
-    }
-
-    @Override
     public void emitCompareAndSwapOp(LIRGeneratorTool tool,
                     boolean isLogic,
                     LIRKind accessKind,
