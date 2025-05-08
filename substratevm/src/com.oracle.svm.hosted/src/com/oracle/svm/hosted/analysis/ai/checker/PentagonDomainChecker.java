@@ -1,9 +1,6 @@
-package com.oracle.svm.hosted.analysis.ai.checker.example;
+package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.Checker;
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerResult;
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
