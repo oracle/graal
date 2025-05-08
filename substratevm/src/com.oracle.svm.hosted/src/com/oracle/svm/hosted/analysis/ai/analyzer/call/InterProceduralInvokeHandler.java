@@ -103,7 +103,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, transferFunction, iteratorPayload);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformers, iteratorPayload);
         fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
         logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
         AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
@@ -112,14 +112,18 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
         summaryManager.putSummary(calleeMethod, summary);
         callStack.pop();
 
-        /* Here we are finished with the fixpoint iteration and updated the summary cache */
+        /* At this point, we are finished with the fixpoint iteration and updated the summary cache */
         checkerManager.runCheckers(targetAnalysisMethod, callerState);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }
 
     @Override
     public void handleRootInvoke(AnalysisMethod root) {
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, transferFunction, iteratorPayload);
+        if (methodFilterManager.shouldSkipMethod(root)) {
+            return;
+        }
+
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformers, iteratorPayload);
 
         callStack.push(root);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
@@ -133,7 +137,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
     private List<Domain> convertActualArgs(Invoke invoke, AbstractState<Domain> callerState) {
         List<Domain> result = new ArrayList<>();
         for (Node argument : invoke.callTarget().arguments()) {
-            result.add(transferFunction.analyzeNode(argument, callerState));
+            result.add(abstractTransformers.analyzeNode(argument, callerState));
         }
         return result;
     }

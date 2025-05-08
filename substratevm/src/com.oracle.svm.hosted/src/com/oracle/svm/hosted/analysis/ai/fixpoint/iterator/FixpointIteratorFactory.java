@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorStrategy;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
 
 /**
  * Factory class for creating different types of fixpoint iterators
@@ -18,13 +18,13 @@ public final class FixpointIteratorFactory {
 
     public static <Domain extends AbstractDomain<Domain>> FixpointIterator<Domain> createIterator(AnalysisMethod method,
                                                                                                   Domain initialDomain,
-                                                                                                  TransferFunction<Domain> transferFunction, IteratorPayload iteratorPayload) {
+                                                                                                  AbstractTransformers<Domain> abstractTransformers, IteratorPayload iteratorPayload) {
         return switch (iteratorPayload.getIterationStrategy()) {
             case IteratorStrategy.WTO ->
-                    new WtoFixpointIterator<>(method, initialDomain, transferFunction, iteratorPayload);
+                    new WtoFixpointIterator<>(method, initialDomain, abstractTransformers, iteratorPayload);
             case IteratorStrategy.WPO ->
-                    new WpoFixpointIterator<>(method, initialDomain, transferFunction, iteratorPayload);
-            default -> new WorkListFixpointIterator<>(method, initialDomain, transferFunction, iteratorPayload);
+                    new WpoFixpointIterator<>(method, initialDomain, abstractTransformers, iteratorPayload);
+            default -> new WorkListFixpointIterator<>(method, initialDomain, abstractTransformers, iteratorPayload);
         };
     }
 }

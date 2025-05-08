@@ -43,7 +43,7 @@ public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Do
         if (methodFilterManager.shouldSkipMethod(root)) {
             return;
         }
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, transferFunction, iteratorPayload);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformers, iteratorPayload);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
         checkerManager.runCheckers(root, abstractState);
     }

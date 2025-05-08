@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -24,17 +24,14 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
 
     public WorkListFixpointIterator(AnalysisMethod method,
                                     Domain initialDomain,
-                                    TransferFunction<Domain> transferFunction,
+                                    AbstractTransformers<Domain> abstractTransformers,
                                     IteratorPayload iteratorPayload) {
-        super(method, initialDomain, transferFunction, iteratorPayload);
+        super(method, initialDomain, abstractTransformers, iteratorPayload);
     }
 
     @Override
     public AbstractState<Domain> iterateUntilFixpoint() {
         logger.log("Starting WorkList fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-
-        /* We will be using nodes instead of blocks in this fixpoint iterator
-         * because this fixpoint is used for demonstration, and this is closer to the pseudocode. */
         Queue<Node> worklist = new LinkedList<>();
         Set<Node> inWorklist = new HashSet<>(); /* nodes that are in the worklist */
 
@@ -50,9 +47,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
         while (!worklist.isEmpty()) {
             Node current = worklist.poll();
             inWorklist.remove(current);
-
-            /* Analyze the node */
-            transferFunction.analyzeNode(current, abstractState);
+            abstractTransformers.analyzeNode(current, abstractState);
 
             /* We don't know if we are at a head of a cycle in this iterator, so we always extrapolate (join/widen) */
             extrapolate(current);
@@ -60,7 +55,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
             // Add successors to the worklist if their precondition changes
             for (Node successor : graphTraversalHelper.getNodeCfgSuccessors(current)) {
                 Domain oldPreCondition = abstractState.getPreCondition(successor).copyOf();
-                transferFunction.analyzeEdge(current, successor, abstractState);
+                abstractTransformers.analyzeEdge(current, successor, abstractState);
 
                 if (!oldPreCondition.leq(abstractState.getPreCondition(successor))) {
                     if (!inWorklist.contains(successor)) {

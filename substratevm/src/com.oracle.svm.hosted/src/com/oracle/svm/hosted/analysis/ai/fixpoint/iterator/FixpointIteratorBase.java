@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.BigBangUtil;
@@ -24,7 +24,7 @@ public abstract class FixpointIteratorBase<
         implements FixpointIterator<Domain> {
 
     protected final Domain initialDomain;
-    protected final TransferFunction<Domain> transferFunction;
+    protected final AbstractTransformers<Domain> abstractTransformers;
     protected final IteratorPayload iteratorPayload;
     protected final ControlFlowGraph cfgGraph;
     protected final AbstractState<Domain> abstractState;
@@ -34,13 +34,13 @@ public abstract class FixpointIteratorBase<
 
     protected FixpointIteratorBase(AnalysisMethod method,
                                    Domain initialDomain,
-                                   TransferFunction<Domain> transferFunction,
+                                   AbstractTransformers<Domain> abstractTransformers,
                                    IteratorPayload iteratorPayload) {
 
         this.logger = AbstractInterpretationLogger.getInstance();
         this.analysisMethod = method;
         this.initialDomain = initialDomain;
-        this.transferFunction = transferFunction;
+        this.abstractTransformers = abstractTransformers;
         this.iteratorPayload = iteratorPayload;
         if (iteratorPayload.containsMethodGraph(method)) {
             this.cfgGraph = iteratorPayload.getMethodGraph().get(method);

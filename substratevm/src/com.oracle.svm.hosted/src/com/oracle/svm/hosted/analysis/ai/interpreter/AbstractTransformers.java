@@ -11,23 +11,25 @@ import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
- * Transfer function for abstract interpretation.
- * This class is responsible for performing semantic transformation from original semantics
- * into an abstract domain semantics.
+ * Represents the transfer functions used in abstract interpretation.
+ * This class is responsible for applying abstract operations corresponding to the semantics
+ * of GraalIR nodes and edges, effectively transforming the abstract state as the analysis progresses.
+ * It uses an {@link AbstractInterpreter} to define the specific abstract semantics for each node type
+ * and an {@link InvokeCallBack} to handle method invocations.
  *
- * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
+ * @param <Domain> The type of the abstract domain used in the analysis.
  */
-public record TransferFunction<Domain extends AbstractDomain<Domain>>(AbstractInterpreter<Domain> abstractInterpreter,
-                                                                      InvokeCallBack<Domain> analyzeDependencyCallback) {
+public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
+        AbstractInterpreter<Domain> abstractInterpreter,
+        InvokeCallBack<Domain> analyzeDependencyCallback) {
 
-    // TODO: refactor this shit please
+    // TODO: the actual interpreter should not modify abstract state, directly, it should just return the new domain,
 
     /**
-     * Perform semantic transformation of the given {@link Node}, while modifying the post-condition of {@code node}
+     * Performs semantic transformation of the given {@link Node}, while modifying the post-condition of {@code node}
      *
      * @param node          to analyze
      * @param abstractState current abstract state during fixpoint iteration
-     * @return the {@link AbstractDomain} after analyzing the node
      */
     public Domain analyzeNode(Node node, AbstractState<Domain> abstractState) {
         if (abstractState.getState(node).isRestrictedFromExecution()) {
@@ -38,7 +40,7 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(AbstractIn
     }
 
     /**
-     * Perform semantic transformation of an edge between two {@link Node}s. while modifying the pre-condition of {@code target}
+     * Performs semantic transformation of an edge between two {@link Node}s. while modifying the pre-condition of {@code target}
      * This is done because some nodes, like {@link ControlSplitNode},
      * have multiple outgoing edges and the destination node can't just simply join with the abstract domain of the source node.
      *

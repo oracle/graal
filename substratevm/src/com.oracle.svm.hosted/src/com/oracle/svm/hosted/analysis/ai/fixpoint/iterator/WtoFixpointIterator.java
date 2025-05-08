@@ -8,7 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -29,10 +29,10 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
 
     public WtoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
-                               TransferFunction<Domain> transferFunction,
+                               AbstractTransformers<Domain> abstractTransformers,
                                IteratorPayload iteratorPayload) {
 
-        super(method, initialDomain, transferFunction, iteratorPayload);
+        super(method, initialDomain, abstractTransformers, iteratorPayload);
         if (iteratorPayload.containsMethodWto(method)) {
             this.weakTopologicalOrdering = iteratorPayload.getMethodWtoMap().get(method);
         } else {
@@ -71,7 +71,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
         if (node == graphTraversalHelper.getGraphStart() && !abstractState.hasNode(node)) {
             abstractState.setPreCondition(node, initialDomain);
         }
-        transferFunction.analyzeBlock(vertex.block(), abstractState, graphTraversalHelper);
+        abstractTransformers.analyzeBlock(vertex.block(), abstractState, graphTraversalHelper);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
@@ -80,7 +80,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
 
         while (iterate) {
             /* Analyze the nodes inside outermost head */
-            transferFunction.analyzeBlock(cycle.head(), abstractState, graphTraversalHelper);
+            abstractTransformers.analyzeBlock(cycle.head(), abstractState, graphTraversalHelper);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
@@ -92,7 +92,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
              * we look at the head of the cycle by collecting invariants from predecessors
              * and checking if the pre-condition at the head of the cycle changed.
              */
-            transferFunction.collectInvariantsFromCfgPredecessors(cycle.head(), abstractState, graphTraversalHelper);
+            abstractTransformers.collectInvariantsFromCfgPredecessors(cycle.head(), abstractState, graphTraversalHelper);
             Node headBegin = cycle.head().getBeginNode();
             if (abstractState.getPreCondition(headBegin).leq(abstractState.getPostCondition(headBegin))) {
                 iterate = false;

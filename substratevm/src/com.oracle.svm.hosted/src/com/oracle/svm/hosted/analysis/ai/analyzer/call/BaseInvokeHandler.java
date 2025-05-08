@@ -5,7 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodF
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
 
 /**
  * Base class for invoke handlers.
@@ -15,7 +15,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> implements InvokeHandler<Domain> {
 
     protected final Domain initialDomain;
-    protected final TransferFunction<Domain> transferFunction;
+    protected final AbstractTransformers<Domain> abstractTransformers;
     protected final CheckerManager checkerManager;
     protected final AnalysisMethodFilterManager methodFilterManager;
     protected final IteratorPayload iteratorPayload;
@@ -27,7 +27,7 @@ public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> i
                              AnalysisMethodFilterManager methodFilterManager,
                              IteratorPayload iteratorPayload) {
         this.initialDomain = initialDomain;
-        this.transferFunction = new TransferFunction<>(abstractInterpreter, this::handleInvoke);
+        this.abstractTransformers = new AbstractTransformers<>(abstractInterpreter, this::handleInvoke);
         this.checkerManager = checkerManager;
         this.methodFilterManager = methodFilterManager;
         this.iteratorPayload = iteratorPayload;
