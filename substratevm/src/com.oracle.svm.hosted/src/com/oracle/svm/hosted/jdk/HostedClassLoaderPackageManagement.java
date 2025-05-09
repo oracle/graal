@@ -236,7 +236,7 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
 
             var keyName = generateKeyName(hostedPackage.getName());
             if (registry.constantExists(keyName)) {
-                return registry.getConstant(keyName);
+                return (ImageHeapConstant) registry.getConstant(keyName);
             }
         }
 

@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 /**
  * Registry to manage cross-layer constant references.
  */
@@ -46,7 +48,7 @@ public interface CrossLayerConstantRegistry {
      * Retrieves the constant associated with {@code keyName}. If a constant does not exist then an
      * error is thrown.
      */
-    ImageHeapConstant getConstant(String keyName);
+    JavaConstant getConstant(String keyName);
 
     /**
      * Checks whether a constant for {@code keyName} was registered in a prior layer.
