@@ -117,10 +117,10 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     boolean notNull;
 
     public AArch64HotSpotShenandoahLoadRefBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                                                    AllocatableValue result, AllocatableValue object, AArch64AddressValue loadAddress,
-                                                    ForeignCallLinkage callTarget,
-                                                    ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
-                                                    boolean notNull) {
+                    AllocatableValue result, AllocatableValue object, AArch64AddressValue loadAddress,
+                    ForeignCallLinkage callTarget,
+                    ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
+                    boolean notNull) {
         super(TYPE);
         this.providers = providers;
         this.config = config;

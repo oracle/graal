@@ -49,14 +49,11 @@ public class AMD64HotSpotShenandoahCardBarrierOp  extends AMD64LIRInstruction {
     private final GraalHotSpotVMConfig config;
     private final HotSpotProviders providers;
 
-    @Alive({COMPOSITE})
-    private AMD64AddressValue address;
+    @Alive({COMPOSITE}) private AMD64AddressValue address;
 
-    @Temp({REG})
-    private AllocatableValue tmp;
+    @Temp({REG}) private AllocatableValue tmp;
 
-    @Temp({REG})
-    private AllocatableValue tmp2;
+    @Temp({REG}) private AllocatableValue tmp2;
 
     protected AMD64HotSpotShenandoahCardBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers, AMD64AddressValue addr, AllocatableValue tmp, AllocatableValue tmp2) {
         super(TYPE);

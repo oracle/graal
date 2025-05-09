@@ -58,25 +58,20 @@ public class AMD64ShenandoahPreWriteBarrierOp extends AMD64LIRInstruction {
     private final ForeignCallLinkage callTarget;
     private final boolean nonNull;
 
-    @Alive
-    private Value address;
+    @Alive private Value address;
 
-    @Alive({OperandFlag.REG, OperandFlag.ILLEGAL})
-    private Value expectedObject;
+    @Alive({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value expectedObject;
 
-    @Temp
-    private Value temp;
+    @Temp private Value temp;
 
-    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL})
-    private Value temp2;
+    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value temp2;
 
-    @Temp
-    private Value temp3;
+    @Temp private Value temp3;
 
     public AMD64ShenandoahPreWriteBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                                              AllocatableValue address, AllocatableValue expectedObject,
-                                              AllocatableValue temp, AllocatableValue temp2, AllocatableValue temp3,
-                                              ForeignCallLinkage callTarget, boolean nonNull) {
+                    AllocatableValue address, AllocatableValue expectedObject,
+                    AllocatableValue temp, AllocatableValue temp2, AllocatableValue temp3,
+                    ForeignCallLinkage callTarget, boolean nonNull) {
         super(TYPE);
         this.config = config;
         this.providers = providers;

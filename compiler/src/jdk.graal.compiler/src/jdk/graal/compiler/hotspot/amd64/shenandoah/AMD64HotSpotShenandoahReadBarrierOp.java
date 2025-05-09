@@ -85,6 +85,7 @@ public class AMD64HotSpotShenandoahReadBarrierOp extends AMD64LIRInstruction {
             return this.value;
         }
     }
+
     enum GCState {
         HAS_FORWARDED(1 << GCStateBitPos.HAS_FORWARDED_BITPOS.value),
         MARKING(1 << GCStateBitPos.MARKING_BITPOS.value),
@@ -95,6 +96,7 @@ public class AMD64HotSpotShenandoahReadBarrierOp extends AMD64LIRInstruction {
         OLD_MARKING(1 << GCStateBitPos.OLD_MARKING_BITPOS.value);
 
         private final int value;
+
         GCState(int val) {
             this.value = val;
         }
@@ -110,25 +112,20 @@ public class AMD64HotSpotShenandoahReadBarrierOp extends AMD64LIRInstruction {
     private final ShenandoahLoadRefBarrierNode.ReferenceStrength strength;
     private final boolean notNull;
 
-    @Temp({REG})
-    private AllocatableValue tmp;
+    @Temp({REG}) private AllocatableValue tmp;
 
-    @Temp({REG})
-    private AllocatableValue tmp2;
+    @Temp({REG}) private AllocatableValue tmp2;
 
-    @Def({REG})
-    private AllocatableValue result;
+    @Def({REG}) private AllocatableValue result;
 
-    @Alive({REG})
-    private AllocatableValue object;
+    @Alive({REG}) private AllocatableValue object;
 
-    @Alive({COMPOSITE})
-    private AMD64AddressValue loadAddress;
+    @Alive({COMPOSITE}) private AMD64AddressValue loadAddress;
 
     public AMD64HotSpotShenandoahReadBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                                                 AllocatableValue result, AllocatableValue object, AMD64AddressValue loadAddress,
-                                                 ForeignCallLinkage callTarget,  ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
-                                                 AllocatableValue tmp, AllocatableValue tmp2, boolean notNull) {
+                    AllocatableValue result, AllocatableValue object, AMD64AddressValue loadAddress,
+                    ForeignCallLinkage callTarget,  ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
+                    AllocatableValue tmp, AllocatableValue tmp2, boolean notNull) {
         super(TYPE);
         this.providers = providers;
         this.config = config;
