@@ -70,7 +70,7 @@ public class AMD64HotSpotShenandoahBarrierSetLIRGenerator implements ShenandoahB
         AllocatableValue tmp = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         AllocatableValue tmp2 = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        tool.append(new AMD64HotSpotShenandoahReadBarrierOp(config, providers, tool.asAllocatable(result), object, loadAddress, callTarget, strength, tmp, tmp2, notNull));
+        tool.append(new AMD64HotSpotShenandoahLoadRefBarrierOp(config, providers, tool.asAllocatable(result), object, loadAddress, callTarget, strength, tmp, tmp2, notNull));
         return result;
     }
 

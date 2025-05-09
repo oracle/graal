@@ -110,7 +110,7 @@ public class AMD64ShenandoahPreWriteBarrierOp extends AMD64LIRInstruction {
 
         // Is marking active?
         masm.movb(tmp, new AMD64Address(thread, HotSpotReplacementsUtil.shenandoahGCStateOffset(config)));
-        masm.testlAndJcc(tmp, AMD64HotSpotShenandoahReadBarrierOp.GCState.MARKING.getValue(), AMD64Assembler.ConditionFlag.Zero, done, true);
+        masm.testlAndJcc(tmp, AMD64HotSpotShenandoahLoadRefBarrierOp.GCState.MARKING.getValue(), AMD64Assembler.ConditionFlag.Zero, done, true);
 
         // Do we need to load the previous value?
         if (expectedObject.equals(Value.ILLEGAL)) {

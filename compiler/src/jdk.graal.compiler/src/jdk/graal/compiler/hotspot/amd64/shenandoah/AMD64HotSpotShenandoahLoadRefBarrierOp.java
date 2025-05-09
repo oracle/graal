@@ -49,8 +49,8 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-public class AMD64HotSpotShenandoahReadBarrierOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64HotSpotShenandoahReadBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotShenandoahReadBarrierOp.class);
+public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64HotSpotShenandoahLoadRefBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotShenandoahLoadRefBarrierOp.class);
 
     enum GCStateBitPos {
         // Heap has forwarded objects: needs LRB barriers.
@@ -122,10 +122,10 @@ public class AMD64HotSpotShenandoahReadBarrierOp extends AMD64LIRInstruction {
 
     @Alive({COMPOSITE}) private AMD64AddressValue loadAddress;
 
-    public AMD64HotSpotShenandoahReadBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                    AllocatableValue result, AllocatableValue object, AMD64AddressValue loadAddress,
-                    ForeignCallLinkage callTarget,  ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
-                    AllocatableValue tmp, AllocatableValue tmp2, boolean notNull) {
+    public AMD64HotSpotShenandoahLoadRefBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
+                                                  AllocatableValue result, AllocatableValue object, AMD64AddressValue loadAddress,
+                                                  ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
+                                                  AllocatableValue tmp, AllocatableValue tmp2, boolean notNull) {
         super(TYPE);
         this.providers = providers;
         this.config = config;
