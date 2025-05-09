@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.pentagon;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.checker.example.PentagonDomainChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.PentagonDomainChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
 

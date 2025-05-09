@@ -16,6 +16,9 @@ public class InvokeUtil {
     }
 
     private static boolean isResourceMethod(Invoke invoke, String methodName) {
+        if (invoke.getTargetMethod() == null) {
+            return false;
+        }
         ResolvedJavaType classType = invoke.getTargetMethod().getDeclaringClass();
         ResolvedJavaType autoCloseableType = BigBangUtil.getInstance().lookUpType(AutoCloseable.class);
 

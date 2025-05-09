@@ -38,7 +38,7 @@ public class ResourceLeaksChecker implements Checker<SetDomain<ResourceId>> {
              * Even though this is probably too harsh in real world usage.
              */
             else {
-                var checkerRes = new CheckerResult(CheckerStatus.WARNING, "Resource(s) escaping from method: " + returnPost);
+                var checkerRes = new CheckerResult(CheckerStatus.WARNING, "Resource(s) escaping from " + method + " -> " + returnPost);
                 results.add(checkerRes);
             }
         }

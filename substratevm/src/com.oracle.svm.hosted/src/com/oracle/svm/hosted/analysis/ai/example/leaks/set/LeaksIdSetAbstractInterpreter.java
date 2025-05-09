@@ -48,7 +48,8 @@ public class LeaksIdSetAbstractInterpreter implements AbstractInterpreter<SetDom
                 } else {
                     AnalysisOutcome<SetDomain<ResourceId>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                     if (outcome.isError()) {
-                        throw new RuntimeException(outcome.toString());
+                        computedPost.setToTop();
+                        return;
                     }
                     Summary<SetDomain<ResourceId>> summary = outcome.summary();
                     computedPost = summary.applySummary(preCondition);

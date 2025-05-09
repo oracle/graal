@@ -18,6 +18,8 @@ import java.util.List;
  * This class is responsible for running the abstract interpretation analyses,
  * that were configured by {@link AbstractInterpretationDriver}.
  */
+
+// TODO: set an option that can set from where to run the analysis
 public class AbstractInterpretationEngine {
 
     private final AnalyzerManager analyzerManager;
@@ -25,19 +27,25 @@ public class AbstractInterpretationEngine {
     private final DebugContext debug;
     private final List<AnalysisMethod> rootMethods; /* Roots of the call-graph */
     private final List<AnalysisMethod> invokedMethods; /* Methods that may-be invoked according to points-to analysis */
+    private boolean analyzeMainOnly; // New field to control analysis mode
 
     public AbstractInterpretationEngine(AnalyzerManager analyzerManager,
                                         AnalysisMethod root,
                                         DebugContext debug,
-                                        BigBang bigBang) {
+                                        BigBang bigBang) { // Updated constructor
         this.analyzerManager = analyzerManager;
         this.root = root;
         this.debug = debug;
+        this.analyzeMainOnly = true;
         var universe = bigBang.getUniverse();
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(universe);
         this.invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
         /* Initialize resolvedJavaTypeUtil so that the developers can use it in the analyses */
         BigBangUtil.getInstance(bigBang);
+    }
+
+    public void setAnalyzeMainOnly(boolean analyzeMainOnly) {
+        this.analyzeMainOnly = analyzeMainOnly;
     }
 
     public void execute() throws IOException {
@@ -47,6 +55,11 @@ public class AbstractInterpretationEngine {
             logger.log("Starting Abstract Interpretation Engine", LoggerVerbosity.INFO);
         } catch (Exception e) {
             logger = AbstractInterpretationLogger.getInstance(debug, LoggerVerbosity.INFO);
+        }
+
+        if (analyzeMainOnly && root == null) {
+            logger.log("Analysis terminated: Main method not provided in 'main-only' mode.", LoggerVerbosity.CHECKER_ERR);
+            throw new IllegalStateException("Main method not provided in 'main-only' mode.");
         }
 
         for (var analyzer : analyzerManager.getAnalyzers()) {
@@ -65,12 +78,13 @@ public class AbstractInterpretationEngine {
     }
 
     /**
-     * Run the intra-procedural analysis on all methods that can be potentially invoked.
+     * If there is a main method defined, run the intra-procedural analysis on it.
+     * Otherwise, run the intra-procedural analysis on all methods that can be potentially invoked.
      *
      * @param analyzer the analyzer to be used for the analysis.
      */
     private void executeIntraProcedurally(Analyzer<?> analyzer) {
-        if (root != null) {
+        if (analyzeMainOnly) {
             try {
                 analyzer.runAnalysis(root);
                 return;
@@ -90,8 +104,14 @@ public class AbstractInterpretationEngine {
         });
     }
 
+    /**
+     * If there is a main method defined, run the inter-procedural analysis from main it.
+     * Else run the inter-procedural analysis from all roots of the call graph.
+     *
+     * @param analyzer the analyzer to be used for the analysis.
+     */
     private void executeInterProcedurally(Analyzer<?> analyzer) {
-        if (root != null) {
+        if (analyzeMainOnly) {
             try {
                 analyzer.runAnalysis(root);
                 return;
@@ -101,7 +121,7 @@ public class AbstractInterpretationEngine {
         }
 
         var logger = AbstractInterpretationLogger.getInstance();
-        logger.log("No root method found for inter-procedural analysis. Running analysis from all roots of the call graph instead", LoggerVerbosity.INFO);
+        logger.log("No root method found for inter-procedural analysis. Running analysis from all roots of the call graph instead", LoggerVerbosity.SUMMARY);
         for (var method : rootMethods) {
             try {
                 analyzer.runAnalysis(method);
