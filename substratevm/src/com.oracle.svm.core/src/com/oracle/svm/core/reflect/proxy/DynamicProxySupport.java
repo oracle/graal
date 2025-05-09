@@ -124,6 +124,12 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         proxyCache.get(key).getConditions().addCondition(condition);
     }
 
+    @Override
+    public Class<?> registerProxyClass(RegistrationCondition condition, Class<?>... interfaces) {
+        addProxyClass(condition, interfaces);
+        return createProxyClassFromImplementedInterfaces(interfaces);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Object createProxyClass(Class<?>[] interfaces) {
         try {
