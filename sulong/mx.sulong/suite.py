@@ -757,11 +757,11 @@ suite = {
       "os" : {
         "windows" : {},
         "solaris" : {
-          "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+          "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-m64"],
           "ldflags" : ["-m64"],
         },
         "<others>" : {
-          "cflags" : ["-g", "-Wall", "-Werror"],
+          "cflags" : ["-g", "-O3", "-Wall", "-Werror"],
         },
       },
     },

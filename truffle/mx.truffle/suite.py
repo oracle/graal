@@ -1021,31 +1021,31 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : []
+            "cflags" : ["-O3"],
           }
         },
         "solaris" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-m64", "-pthread"],
             "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-ldl"],
           },
         },
         "linux" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE", "-fvisibility=hidden"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-D_GNU_SOURCE", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },
         "linux-musl" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-fvisibility=hidden"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-fvisibility=hidden"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },
@@ -1090,19 +1090,19 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : []
+            "cflags" : ["-O3"]
           }
         },
         "solaris" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-m64", "-pthread"],
             "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-pthread"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-pthread"],
             "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
           },
@@ -1120,17 +1120,17 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : []
+            "cflags" : ["-O3"]
           }
         },
         "solaris" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-m64"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror"],
           },
         },
       },
@@ -1348,18 +1348,18 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : []
+            "cflags" : ["-O3"]
           }
         },
         "linux" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror", "-D_GNU_SOURCE"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-O3", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },
