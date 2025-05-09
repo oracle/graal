@@ -235,7 +235,6 @@
     # Style jobs need to stay on a JDK compatible with all the style
     # checking tools (SpotBugs, Checkstyle, Eclipse formatter etc).
     "gate-compiler-style-labsjdk-latest-linux-amd64": t("45:00"),
-    "gate-compiler-build-labsjdk-21-linux-amd64": t("25:00"),
 
     "gate-compiler-ctw-labsjdk-latest-linux-amd64": {},
     "gate-compiler-ctw-labsjdk-latest-windows-amd64": t("1:50:00"),
@@ -495,12 +494,6 @@
         JVMCI_VERSION_CHECK: "strict",
       },
   }],
-  local jdk_21_version_check_builds = [self.make_build("21", "linux-amd64", "build", extra_tasks={build:: s.base("build"),}).build + galahad.exclude {
-      environment+: {
-        # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
-        JVMCI_VERSION_CHECK: "strict",
-      },
-  }],
 
   # Builds run on only on linux-amd64-jdk-latestDebug
   local jdk_latestDebug_builds = [self.make_build("LatestDebug", os_arch, task).build
@@ -520,7 +513,6 @@
     all_zgc_builds +
     all_serialgc_builds +
     style_builds +
-    jdk_21_version_check_builds +
     linux_amd64_jdk_latest_builds +
     jdk_latestDebug_builds,
 

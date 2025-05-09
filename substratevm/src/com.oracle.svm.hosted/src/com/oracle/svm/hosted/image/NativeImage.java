@@ -99,6 +99,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -921,6 +922,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
+        DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
 
         public static NativeTextSectionImpl factory(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
             return codeCache.getTextSectionImpl(relocatableBuffer, objectFile, codeCache);
@@ -993,6 +995,7 @@ public abstract class NativeImage extends AbstractImage {
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
                     defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, ImageLayerBuildingSupport.buildingSharedLayer(), pair.getRight());
+                    watchdog.recordActivity();
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -1016,6 +1019,7 @@ public abstract class NativeImage extends AbstractImage {
                             defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.compilationResultFor(method));
                         }
                     }
+                    watchdog.recordActivity();
                 }
 
                 // Write the text contents.

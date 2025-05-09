@@ -33,11 +33,16 @@ public final class SignatureAttribute extends Attribute {
     private final char signatureIndex;
 
     public SignatureAttribute(Symbol<Name> name, int signatureIndex) {
-        super(name, null);
+        assert name == NAME;
         this.signatureIndex = (char) signatureIndex;
     }
 
     public int getSignatureIndex() {
         return signatureIndex;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

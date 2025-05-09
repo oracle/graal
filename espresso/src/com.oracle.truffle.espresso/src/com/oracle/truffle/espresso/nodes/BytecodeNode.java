@@ -304,6 +304,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.MapperBCI;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
@@ -313,23 +314,11 @@ import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.bytecode.VolatileArrayAccess;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.LongConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
-import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.constantpool.ResolvedConstant;
 import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
 import com.oracle.truffle.espresso.constantpool.ResolvedWithInvokerClassMethodRefConstant;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
@@ -392,7 +381,7 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 /**
  * Bytecode interpreter loop.
- *
+ * <p>
  * Calling convention uses strict Java primitive types although internally the VM basic types are
  * used with conversions at the boundaries.
  *
@@ -2102,41 +2091,52 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void putPoolConstant(VirtualFrame frame, int top, char cpi, int opcode) {
         assert opcode == LDC || opcode == LDC_W || opcode == LDC2_W;
         RuntimeConstantPool pool = getConstantPool();
-        PoolConstant constant = pool.at(cpi);
-        if (constant instanceof IntegerConstant) {
-            assert opcode == LDC || opcode == LDC_W;
-            putInt(frame, top, ((IntegerConstant) constant).value());
-        } else if (constant instanceof LongConstant) {
-            assert opcode == LDC2_W;
-            putLong(frame, top, ((LongConstant) constant).value());
-        } else if (constant instanceof DoubleConstant) {
-            assert opcode == LDC2_W;
-            putDouble(frame, top, ((DoubleConstant) constant).value());
-        } else if (constant instanceof FloatConstant) {
-            assert opcode == LDC || opcode == LDC_W;
-            putFloat(frame, top, ((FloatConstant) constant).value());
-        } else if (constant instanceof StringConstant) {
-            assert opcode == LDC || opcode == LDC_W;
-            StaticObject internedString = pool.resolvedStringAt(cpi);
-            putObject(frame, top, internedString);
-        } else if (constant instanceof ClassConstant) {
-            assert opcode == LDC || opcode == LDC_W;
-            Klass klass = pool.resolvedKlassAt(getDeclaringKlass(), cpi);
-            putObject(frame, top, klass.mirror());
-        } else if (constant instanceof MethodHandleConstant) {
-            assert opcode == LDC || opcode == LDC_W;
-            StaticObject methodHandle = pool.resolvedMethodHandleAt(getDeclaringKlass(), cpi);
-            putObject(frame, top, methodHandle);
-        } else if (constant instanceof MethodTypeConstant) {
-            assert opcode == LDC || opcode == LDC_W;
-            StaticObject methodType = pool.resolvedMethodTypeAt(getDeclaringKlass(), cpi);
-            putObject(frame, top, methodType);
-        } else if (constant instanceof DynamicConstant) {
-            ResolvedDynamicConstant dynamicConstant = pool.resolvedDynamicConstantAt(getDeclaringKlass(), cpi);
-            dynamicConstant.putResolved(frame, top, this);
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.unimplemented(constant.toString());
+        ConstantPool.Tag tag = pool.tagAt(cpi);
+        switch (tag) {
+            case INTEGER -> {
+                assert opcode == LDC || opcode == LDC_W;
+                putInt(frame, top, pool.intAt(cpi));
+            }
+            case FLOAT -> {
+                assert opcode == LDC || opcode == LDC_W;
+                putFloat(frame, top, pool.floatAt(cpi));
+            }
+            case LONG -> {
+                assert opcode == LDC2_W;
+                putLong(frame, top, pool.longAt(cpi));
+            }
+            case DOUBLE -> {
+                assert opcode == LDC2_W;
+                putDouble(frame, top, pool.doubleAt(cpi));
+            }
+            case CLASS -> {
+                assert opcode == LDC || opcode == LDC_W;
+                Klass klass = pool.resolvedKlassAt(getDeclaringKlass(), cpi);
+                putObject(frame, top, klass.mirror());
+            }
+            case STRING -> {
+                assert opcode == LDC || opcode == LDC_W;
+                StaticObject internedString = pool.resolvedStringAt(cpi);
+                putObject(frame, top, internedString);
+            }
+            case METHODHANDLE -> {
+                assert opcode == LDC || opcode == LDC_W;
+                StaticObject methodHandle = pool.resolvedMethodHandleAt(getDeclaringKlass(), cpi);
+                putObject(frame, top, methodHandle);
+            }
+            case METHODTYPE -> {
+                assert opcode == LDC || opcode == LDC_W;
+                StaticObject methodType = pool.resolvedMethodTypeAt(getDeclaringKlass(), cpi);
+                putObject(frame, top, methodType);
+            }
+            case DYNAMIC -> {
+                ResolvedDynamicConstant dynamicConstant = pool.resolvedDynamicConstantAt(getDeclaringKlass(), cpi);
+                dynamicConstant.putResolved(frame, top, this);
+            }
+            default -> {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.unimplemented(pool.toString(cpi));
+            }
         }
     }
 
@@ -2542,15 +2542,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert !lockIsHeld();
         // During resolution of the symbolic reference to the method, any of the exceptions
         // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
-        MethodRefConstant methodRefConstant = getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi);
-        Method resolutionSeed = (Method) ((Resolvable.ResolvedConstant) methodRefConstant).value();
+        ResolvedConstant resolvedConstant = getConstantPool().resolvedAt(getDeclaringKlass(), cpi);
+        Method resolutionSeed = (Method) resolvedConstant.value();
 
-        Klass symbolicRef = Resolution.getResolvedHolderKlass(getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
+        Klass symbolicRef = getConstantPool().getResolvedHolderKlass(cpi, getDeclaringKlass());
         CallSiteType callSiteType = SiteTypes.callSiteFromOpCode(opcode);
         ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(getContext(), getDeclaringKlass(), resolutionSeed, callSiteType, symbolicRef);
         MethodHandleInvoker invoker = null;
         // There might be an invoker if it's an InvokeGeneric
-        if (methodRefConstant instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
+        if (resolvedConstant instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
             invoker = withInvoker.invoker();
             assert invoker == null || ((opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL) && resolvedCall.getResolvedMethod().isInvokeIntrinsic());
         }

@@ -689,8 +689,10 @@ class CodeInfoVerifier {
                     assert offset < compilationSize : infopoint;
                     CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult, constantAccess);
 
-                    CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(Word.zero(), CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
+                    /* Use a non-zero base to avoid negative addresses. */
+                    Pointer base = Word.pointer(1024L * 1024L * 1024L);
+                    CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor(base);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(base, CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result) : infopoint;
@@ -926,17 +928,25 @@ class MethodTableFirstIDTracker implements LayeredImageSingleton {
 }
 
 class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
+    private final Pointer base;
     protected final SubstrateReferenceMap result = new SubstrateReferenceMap();
 
-    @Override
-    public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+    CollectingObjectReferenceVisitor(Pointer base) {
+        this.base = base;
     }
 
     @Override
-    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        int derivedOffset = NumUtil.safeToInt(objRef.rawValue());
-        result.markReferenceAtOffset(derivedOffset, derivedOffset - innerOffset, compressed);
-        return true;
+    public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        Pointer pos = firstObjRef;
+        Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+        while (pos.belowThan(end)) {
+            visitObjectReference(pos, compressed);
+            pos = pos.add(referenceSize);
+        }
+    }
+
+    private void visitObjectReference(Pointer objRef, boolean compressed) {
+        int offset = NumUtil.safeToInt(objRef.subtract(base).rawValue());
+        result.markReferenceAtOffset(offset, compressed);
     }
 }

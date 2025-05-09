@@ -2631,7 +2631,7 @@ public final class Meta extends ContextAccessImpl
     }
 
     @TruffleBoundary
-    public void throwIndexOutOfBoundsExceptionBoundary(String message, int index, int length) {
+    public EspressoException throwIndexOutOfBoundsExceptionBoundary(String message, int index, int length) {
         throw throwExceptionWithMessage(java_lang_IndexOutOfBoundsException, message + ": index=" + index + " length=" + length);
     }
 

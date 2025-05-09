@@ -70,7 +70,7 @@ public final class Target_java_lang_Module {
     public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni);
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/classfile/modules.cpp#L279-L478")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/classfile/modules.cpp#L279-L474")
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         ModuleNative.defineModule(module, isOpen, pns);
     }

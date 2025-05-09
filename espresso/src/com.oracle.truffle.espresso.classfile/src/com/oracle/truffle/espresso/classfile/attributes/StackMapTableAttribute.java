@@ -32,7 +32,20 @@ public class StackMapTableAttribute extends Attribute {
 
     public static final StackMapTableAttribute EMPTY = new StackMapTableAttribute(NAME, null);
 
+    private final byte[] data;
+
     public StackMapTableAttribute(Symbol<Name> name, byte[] data) {
-        super(name, data);
+        assert name == NAME;
+        this.data = data;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
+    }
+
+    @Override
+    public byte[] getData() {
+        return data;
     }
 }

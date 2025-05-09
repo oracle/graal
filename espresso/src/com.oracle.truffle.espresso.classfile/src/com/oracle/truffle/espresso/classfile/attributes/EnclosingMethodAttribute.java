@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -30,20 +31,30 @@ public final class EnclosingMethodAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = ParserNames.EnclosingMethod;
 
-    private final int classIndex;
-    private final int methodIndex;
+    private final char classIndex;
+    private final char nameAndTypeIndex;
 
-    public EnclosingMethodAttribute(Symbol<Name> name, int classIndex, int methodIndex) {
-        super(name, null);
-        this.classIndex = classIndex;
-        this.methodIndex = methodIndex;
+    public EnclosingMethodAttribute(Symbol<Name> name, int classIndex, int nameAndTypeIndex) {
+        assert name == NAME;
+        this.classIndex = (char) classIndex;
+        this.nameAndTypeIndex = (char) nameAndTypeIndex;
     }
 
-    public int getMethodIndex() {
-        return methodIndex;
+    /**
+     * {@link Tag#NAME_AND_TYPE CONSTANT_NameAndType_info} constant pool index representing the name
+     * and type of a method in the class referenced by the {@link #getClassIndex() class_index}
+     * attribute above.
+     */
+    public int getNameAndTypeIndex() {
+        return nameAndTypeIndex;
     }
 
     public int getClassIndex() {
         return classIndex;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

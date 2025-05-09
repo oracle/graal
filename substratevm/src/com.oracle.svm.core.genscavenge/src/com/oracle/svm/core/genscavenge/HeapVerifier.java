@@ -408,9 +408,8 @@ public class HeapVerifier {
         }
 
         @Override
-        public boolean visitObject(Object object) {
+        public void visitObject(Object object) {
             result &= verifyObject(object, aChunk, uChunk);
-            return true;
         }
     }
 
@@ -426,9 +425,17 @@ public class HeapVerifier {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+        public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+            Pointer pos = firstObjRef;
+            Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
+            while (pos.belowThan(end)) {
+                visitObjectReference(pos, compressed, holderObject);
+                pos = pos.add(referenceSize);
+            }
+        }
+
+        private void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             result &= verifyReference(holderObject, objRef, compressed);
-            return true;
         }
     }
 

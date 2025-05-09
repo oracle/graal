@@ -30,14 +30,23 @@ public final class ExceptionsAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = ParserNames.Exceptions;
 
-    private final int[] checkedExceptionsCPI;
+    private final char[] checkedExceptionsCPI;
 
-    public ExceptionsAttribute(Symbol<Name> name, int[] checkedExceptionsCPI) {
-        super(name, null);
+    public ExceptionsAttribute(Symbol<Name> name, char[] checkedExceptionsCPI) {
+        assert name == NAME;
         this.checkedExceptionsCPI = checkedExceptionsCPI;
     }
 
-    public int[] getCheckedExceptionsCPI() {
-        return checkedExceptionsCPI;
+    public int entryCount() {
+        return checkedExceptionsCPI.length;
+    }
+
+    public int entryAt(int index) {
+        return checkedExceptionsCPI[index];
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

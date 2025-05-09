@@ -185,9 +185,9 @@ public final class StoredContinuationAccess {
 
     @AlwaysInline("De-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
-    public static boolean walkReferences(StoredContinuation s, ObjectReferenceVisitor visitor) {
+    public static void walkReferences(StoredContinuation s, ObjectReferenceVisitor visitor) {
         if (!shouldWalkContinuation(s)) {
-            return true;
+            return;
         }
 
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
@@ -208,8 +208,6 @@ public final class StoredContinuationAccess {
                 CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
             }
         }
-
-        return true;
     }
 
     @AlwaysInline("De-virtualize calls to visitor.")

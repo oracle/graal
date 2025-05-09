@@ -67,7 +67,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 //                      for |x| in [23/64,3*2^7)
 // e^{-2*|x|}=2^{-k-f}*2^{-r} ~ 2^{-k}*(Tn+Dn)*(1+p)=(T0+D0)*(1+p)
 //
-// For |x| in [2^{-4},2^5):
+// For |x| in [2^{-4},22):
 //         2^{-r}-1 ~ p=c1*r+c2*r^2+..+c5*r^5
 //      Let R=1/(1+T0+p*T0), truncated to 35 significant bits
 //  R=1/(1+T0+D0+p*(T0+D0))*(1+eps), |eps|<2^{-33}
@@ -87,16 +87,16 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 //
 // For |x|<2^{-64}:  x is returned
 //
-// For |x|>=2^32: return +/-1
+// For |x|>=22: return +/-1
 //
 // Special cases:
 //  tanh(NaN) = quiet NaN, and raise invalid exception
-//  tanh(INF) = that INF
+//  tanh(+/-INF) = +/-1
 //  tanh(+/-0) = +/-0
 //
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_tanh.cpp#L30-L500",
-          sha1 = "5db3de8e1c558087ee3d89916fbcfa4531138f26")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c8bbcaf5de6982f673504a8dc766fb80bb6f0d07/src/hotspot/cpu/x86/stubGenerator_x86_64_tanh.cpp#L30-L499",
+          sha1 = "176c2b79553d5fc09ae3e24da215c27ff1b4db72")
 // @formatter:on
 public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
 
@@ -379,6 +379,13 @@ public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
         Label lB14 = new Label();
 
         masm.bind(lB12);
+        masm.pextrw(rcx, xmm0, 3);
+        masm.movl(rdx, 32768);
+        masm.andl(rdx, rcx);
+        masm.andl(rcx, 32767);
+        // Branch only if |x| >= 22
+        masm.cmplAndJcc(rcx, 16438, ConditionFlag.AboveEqual, l2TAGPACKET201, false);
+
         masm.movsd(xmm3, recordExternalAddress(crb, halfMask));
         masm.xorpd(xmm4, xmm4);
         masm.movsd(xmm1, recordExternalAddress(crb, l2e));
@@ -393,16 +400,12 @@ public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
         masm.movl(rax, 32768);
         masm.pinsrw(xmm4, rax, 3);
         masm.movsd(xmm6, recordExternalAddress(crb, shifter));
-        masm.pextrw(rcx, xmm0, 3);
         masm.andpd(xmm3, xmm0);
         masm.andnpd(xmm4, xmm0);
         masm.pshufd(xmm5, xmm4, 68);
-        masm.movl(rdx, 32768);
-        masm.andl(rdx, rcx);
-        masm.andl(rcx, 32767);
         masm.subl(rcx, 16304);
-        masm.cmpl(rcx, 144);
-        masm.jcc(ConditionFlag.AboveEqual, l2TAGPACKET001);
+        // Branch only if |x| is not in [2^{-4},22)
+        masm.cmplAndJcc(rcx, 134, ConditionFlag.AboveEqual, l2TAGPACKET001, false);
         masm.subsd(xmm4, xmm3);
         masm.mulsd(xmm3, xmm1);
         masm.mulsd(xmm2, xmm5);
@@ -489,8 +492,8 @@ public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
 
         masm.bind(l2TAGPACKET001);
         masm.addl(rcx, 960);
-        masm.cmpl(rcx, 1104);
-        masm.jcc(ConditionFlag.AboveEqual, l2TAGPACKET101);
+        // Branch only if |x| not in [2^{-64}, 2^{-4})
+        masm.cmplAndJcc(rcx, 1094, ConditionFlag.AboveEqual, l2TAGPACKET101, false);
         masm.movdqu(xmm2, recordExternalAddress(crb, pv));
         masm.pshufd(xmm1, xmm0, 68);
         masm.movdqu(xmm3, recordExternalAddress(crb, pvOff16));
@@ -511,11 +514,8 @@ public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
         masm.jmp(lB14);
 
         masm.bind(l2TAGPACKET101);
-        masm.addl(rcx, 15344);
-        masm.cmpl(rcx, 16448);
-        masm.jcc(ConditionFlag.AboveEqual, l2TAGPACKET201);
-        masm.cmpl(rcx, 16);
-        masm.jcc(ConditionFlag.Below, l2TAGPACKET301);
+        // Branch only if |x| is denormalized
+        masm.cmplAndJcc(rcx, 16, ConditionFlag.Below, l2TAGPACKET301, false);
         masm.xorpd(xmm2, xmm2);
         masm.movl(rax, 17392);
         masm.pinsrw(xmm2, rax, 3);
@@ -529,8 +529,8 @@ public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
         masm.jmp(lB14);
 
         masm.bind(l2TAGPACKET201);
-        masm.cmpl(rcx, 32752);
-        masm.jcc(ConditionFlag.AboveEqual, l2TAGPACKET401);
+        // Branch only if |x| is INF or NaN
+        masm.cmplAndJcc(rcx, 32752, ConditionFlag.AboveEqual, l2TAGPACKET401, false);
         masm.xorpd(xmm2, xmm2);
         masm.movl(rcx, 15344);
         masm.pinsrw(xmm2, rcx, 3);
@@ -550,8 +550,8 @@ public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
         masm.psrlq(xmm2, 20);
         masm.movdl(rcx, xmm2);
         masm.orl(rcx, rax);
-        masm.cmpl(rcx, 0);
-        masm.jcc(ConditionFlag.Equal, l2TAGPACKET501);
+        // Branch only if |x| is not NaN
+        masm.cmplAndJcc(rcx, 0, ConditionFlag.Equal, l2TAGPACKET501, false);
         masm.addsd(xmm0, xmm0);
 
         masm.bind(lB14);

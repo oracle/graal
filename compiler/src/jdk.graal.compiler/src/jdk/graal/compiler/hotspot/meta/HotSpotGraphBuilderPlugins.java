@@ -1467,6 +1467,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    receiver.get(true);
                     ValueNode aNotNull = b.nullCheckedValue(aIn);
                     ValueNode bNotNull = b.nullCheckedValue(bIn);
                     ValueNode rNotNull = b.nullCheckedValue(rOut);

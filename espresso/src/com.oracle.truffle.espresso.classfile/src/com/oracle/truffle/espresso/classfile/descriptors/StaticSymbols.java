@@ -63,7 +63,7 @@ public final class StaticSymbols {
     @SafeVarargs
     public final Symbol<Signature> putSignature(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         ByteSequence signatureBytes = SignatureSymbols.createSignature(returnType, parameterTypes);
-        ErrorUtil.guarantee(Validation.validSignatureDescriptor(signatureBytes, false), "invalid signature");
+        ErrorUtil.guarantee(Validation.validSignatureDescriptor(signatureBytes), "invalid signature");
         return getOrCreateSymbol(signatureBytes);
     }
 

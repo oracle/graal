@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.classfile.descriptors;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 
 /**
  * An immutable byte string (modified-UTF8) representing internal metadata in Espresso. Symbols are
@@ -125,6 +126,8 @@ public final class Symbol<T> extends ByteSequence {
 
     @SuppressWarnings("rawtypes") public static final Symbol[] EMPTY_ARRAY = new Symbol[0];
 
+    private byte validationCache;
+
     /**
      * Creates a new Symbol with the specified byte array and pre-computed hash code.
      *
@@ -194,5 +197,103 @@ public final class Symbol<T> extends ByteSequence {
             return this == that;
         }
         return super.equals(other);
+    }
+
+    // Validation
+
+    private static final byte VALID_CLASS_NAME = 0x01;
+    private static final byte VALID_METHOD_NAME = 0x02;
+    private static final byte VALID_FIELD_NAME = 0x04;
+    private static final byte VALID_SIGNATURE = 0x08;
+    private static final byte VALID_TYPE = 0x10;
+    private static final byte VALID_UTF8 = 0x20;
+
+    public Symbol<ModifiedUTF8> validate() throws ValidationException {
+        return validateUTF8().unsafeCast();
+    }
+
+    public Symbol<? extends ModifiedUTF8> validateUTF8() throws ValidationException {
+        if ((validationCache & VALID_UTF8) == 0) {
+            if (!Validation.validModifiedUTF8(this)) {
+                throw ValidationException.raise("Ill-formed modified-UTF8 entry");
+            }
+            validationCache |= VALID_UTF8;
+        }
+        return unsafeCast();
+    }
+
+    @SuppressWarnings("unchecked")
+    private <R> Symbol<R> unsafeCast() {
+        return (Symbol<R>) this;
+    }
+
+    public Symbol<Name> validateClassName() throws ValidationException {
+        validateUTF8();
+        if ((validationCache & VALID_CLASS_NAME) == 0) {
+            if (!Validation.validClassNameEntry(this)) {
+                throw ValidationException.raise("Invalid class name entry: " + this);
+            }
+            validationCache |= VALID_CLASS_NAME;
+        }
+        return unsafeCast();
+    }
+
+    public Symbol<Type> validateType(boolean allowVoid) throws ValidationException {
+        validateUTF8();
+        if ((validationCache & VALID_TYPE) == 0) {
+            if (!Validation.validTypeDescriptor(this, true)) {
+                throw ValidationException.raise("Invalid type descriptor: " + this);
+            }
+            validationCache |= VALID_TYPE;
+        }
+        if (!allowVoid && (this == ParserTypes._void)) {
+            throw ValidationException.raise("Invalid type descriptor (void not allowed)");
+        }
+        return unsafeCast();
+    }
+
+    public Symbol<Name> validateMethodName() throws ValidationException {
+        validateUTF8();
+        if ((validationCache & VALID_METHOD_NAME) == 0) {
+            if (!Validation.validMethodName(this)) {
+                throw ValidationException.raise("Invalid method name: " + this);
+            }
+            validationCache |= VALID_METHOD_NAME;
+        }
+        return unsafeCast();
+    }
+
+    public Symbol<Name> validateFieldName() throws ValidationException {
+        validateUTF8();
+        if ((validationCache & VALID_FIELD_NAME) == 0) {
+            if (!Validation.validUnqualifiedName(this)) {
+                throw ValidationException.raise("Invalid field name: " + this);
+            }
+            validationCache |= VALID_FIELD_NAME;
+        }
+        return unsafeCast();
+    }
+
+    public Symbol<Signature> validateSignature() throws ValidationException {
+        validateUTF8();
+        if ((validationCache & VALID_SIGNATURE) == 0) {
+            if (!Validation.validSignatureDescriptor(this)) {
+                throw ValidationException.raise("Invalid signature descriptor: " + this);
+            }
+            validationCache |= VALID_SIGNATURE;
+        }
+        return unsafeCast();
+    }
+
+    public int validateSignatureGetSlots() throws ValidationException {
+        validateUTF8();
+        int slots = Validation.validSignatureDescriptorGetSlots(this);
+        if (slots < 0) {
+            throw ValidationException.raise("Invalid signature descriptor: " + this);
+        }
+        if ((validationCache & VALID_CLASS_NAME) == 0) {
+            validationCache |= VALID_SIGNATURE;
+        }
+        return slots;
     }
 }

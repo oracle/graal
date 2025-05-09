@@ -183,7 +183,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         this.rawSignature = method.rawSignature;
         this.rawFlags = method.rawFlags;
         this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(),
+        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getParserMethod(),
                         method.getMethodVersion().poisonPill, split);
 
         try {
@@ -199,15 +199,15 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         this.isLeaf = method.isLeaf;
     }
 
-    Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
-        this(klassVersion, linkedMethod, linkedMethod.getRawSignature(), pool, linkedMethod.getFlags());
+    Method(ObjectKlass.KlassVersion klassVersion, ParserMethod parserMethod, RuntimeConstantPool pool) {
+        this(klassVersion, parserMethod, parserMethod.getSignature(), pool, parserMethod.getFlags());
     }
 
-    Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool, int rawFlags) {
+    Method(ObjectKlass.KlassVersion klassVersion, ParserMethod parserMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool, int rawFlags) {
         this.declaringKlass = klassVersion.getKlass();
         this.rawSignature = rawSignature;
         this.rawFlags = rawFlags;
-        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+        this.methodVersion = new MethodVersion(klassVersion, pool, parserMethod, false, (CodeAttribute) parserMethod.getAttribute(CodeAttribute.NAME));
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -238,8 +238,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getMethodVersion().pool;
     }
 
-    public LinkedMethod getLinkedMethod() {
-        return getMethodVersion().linkedMethod;
+    public ParserMethod getParserMethod() {
+        return getMethodVersion().parserMethod;
     }
 
     public CodeAttribute getCodeAttribute() {
@@ -256,7 +256,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         if (rawSignature != null) {
             return rawSignature;
         }
-        return getLinkedMethod().getRawSignature();
+        return getParserMethod().getSignature();
     }
 
     public Symbol<Type>[] getParsedSignature() {
@@ -274,7 +274,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public Attribute getAttribute(Symbol<Name> attrName) {
-        return getLinkedMethod().getAttribute(attrName);
+        return getParserMethod().getAttribute(attrName);
     }
 
     @Override
@@ -958,7 +958,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             }
         }
         assert Modifier.isNative(flags);
-        return new Method(declaringKlass.getKlassVersion(), getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool(), flags);
+        return new Method(declaringKlass.getKlassVersion(), getParserMethod(), polymorphicRawSignature, getRuntimeConstantPool(), flags);
     }
 
     public MethodHandleIntrinsicNode spawnIntrinsicNode(MethodHandleInvoker invoker) {
@@ -982,18 +982,17 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass) {
         // install the new method version immediately
-        LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(newKlass.getConstantPool(), klassVersion.getKlass());
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Names.Code);
         MethodVersion oldVersion = methodVersion;
-        methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
-        return new SharedRedefinitionContent(methodVersion, newLinkedMethod, runtimePool, newCodeAttribute);
+        methodVersion = oldVersion.replace(klassVersion, runtimePool, newMethod, newCodeAttribute);
+        return new SharedRedefinitionContent(methodVersion, newMethod, runtimePool, newCodeAttribute);
     }
 
     void redefine(ObjectKlass.KlassVersion klassVersion, SharedRedefinitionContent content) {
         // install the new method version immediately
         MethodVersion oldVersion = methodVersion;
-        methodVersion = oldVersion.replace(klassVersion, content.getPool(), content.getLinkedMethod(), content.codeAttribute);
+        methodVersion = oldVersion.replace(klassVersion, content.getPool(), content.getParserMethod(), content.codeAttribute);
     }
 
     MethodVersion swapMethodVersion(ObjectKlass.KlassVersion klassVersion) {
@@ -1004,7 +1003,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         // running quickened bytecode and we can't safely patch
         // the bytecodes back to the original.
         CodeAttribute newCodeAttribute = codeAttribute != null ? new CodeAttribute(codeAttribute) : null;
-        methodVersion = oldVersion.replace(klassVersion, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
+        methodVersion = oldVersion.replace(klassVersion, oldVersion.pool, oldVersion.parserMethod, newCodeAttribute);
         return methodVersion;
     }
 
@@ -1149,7 +1148,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Names.Signature);
         StaticObject guestGenericSignature = StaticObject.NULL;
         if (signatureAttribute != null) {
-            String sig = getConstantPool().symbolAtUnsafe(signatureAttribute.getSignatureIndex(), "signature").toString();
+            String sig = getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
             guestGenericSignature = meta.toGuestString(sig);
         }
 
@@ -1302,11 +1301,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             if (CompilerDirectives.isPartialEvaluationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            SignatureAttribute attr = (SignatureAttribute) getLinkedMethod().getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = (SignatureAttribute) getParserMethod().getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
-                genericSignature = getRuntimeConstantPool().symbolAtUnsafe(attr.getSignatureIndex()).toString();
+                genericSignature = getRuntimeConstantPool().utf8At(attr.getSignatureIndex(), "generic signature").toString();
             }
         }
         return genericSignature;
@@ -1597,7 +1596,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
-        private final LinkedMethod linkedMethod;
+        private final ParserMethod parserMethod;
         private final CodeAttribute codeAttribute;
         private final ExceptionsAttribute exceptionsAttribute;
 
@@ -1619,13 +1618,13 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
         @CompilationFinal private LivenessAnalysis livenessAnalysis;
 
-        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, boolean poisonPill,
+        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, ParserMethod parserMethod, boolean poisonPill,
                         CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
             this.pool = pool;
-            this.linkedMethod = linkedMethod;
+            this.parserMethod = parserMethod;
             this.codeAttribute = codeAttribute;
-            this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
+            this.exceptionsAttribute = (ExceptionsAttribute) parserMethod.getAttribute(ExceptionsAttribute.NAME);
             this.poisonPill = poisonPill;
             if (klassVersion.isInterface()) {
                 methodFlags |= METHOD_FLAGS_IS_INTERFACE_METHOD;
@@ -1682,9 +1681,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         public void initRefKind() {
-            if (Modifier.isStatic(linkedMethod.getFlags())) {
+            if (Modifier.isStatic(parserMethod.getFlags())) {
                 this.refKind = REF_invokeStatic;
-            } else if (Modifier.isPrivate(linkedMethod.getFlags()) || Names._init_.equals(linkedMethod.getName())) {
+            } else if (Modifier.isPrivate(parserMethod.getFlags()) || Names._init_.equals(parserMethod.getName())) {
                 this.refKind = REF_invokeSpecial;
             } else if (klassVersion.isInterface()) {
                 this.refKind = REF_invokeInterface;
@@ -1694,16 +1693,16 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             }
         }
 
-        public MethodVersion replace(ObjectKlass.KlassVersion version, RuntimeConstantPool constantPool, LinkedMethod newLinkedMethod, CodeAttribute newCodeAttribute) {
-            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, false, newCodeAttribute);
+        public MethodVersion replace(ObjectKlass.KlassVersion version, RuntimeConstantPool constantPool, ParserMethod newParserMethod, CodeAttribute newCodeAttribute) {
+            MethodVersion result = new MethodVersion(version, constantPool, newParserMethod, false, newCodeAttribute);
             // make sure the table indices are copied
             result.vtableIndex = vtableIndex;
             result.itableIndex = itableIndex;
             return result;
         }
 
-        public LinkedMethod getLinkedMethod() {
-            return linkedMethod;
+        public ParserMethod getParserMethod() {
+            return parserMethod;
         }
 
         @Override
@@ -1718,7 +1717,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         public Symbol<Name> getName() {
-            return linkedMethod.getName();
+            return parserMethod.getName();
         }
 
         public Symbol<Signature> getRawSignature() {
@@ -2055,11 +2054,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                     checkedExceptions = ObjectKlass.EMPTY_ARRAY;
                     return;
                 }
-                final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
-                ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
-                for (int i = 0; i < entries.length; ++i) {
+                int entryCount = exceptionsAttribute.entryCount();
+                ObjectKlass[] tmpchecked = new ObjectKlass[entryCount];
+                for (int i = 0; i < entryCount; ++i) {
                     // TODO(peterssen): Resolve and cache CP entries.
-                    tmpchecked[i] = (ObjectKlass) pool.resolvedKlassAt(declaringKlass, entries[i]);
+                    tmpchecked[i] = (ObjectKlass) pool.resolvedKlassAt(declaringKlass, exceptionsAttribute.entryAt(i));
                 }
                 checkedExceptions = tmpchecked;
             }
@@ -2115,13 +2114,13 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     static class SharedRedefinitionContent {
         private final MethodVersion version;
-        private final LinkedMethod linkedMethod;
+        private final ParserMethod parserMethod;
         private final RuntimeConstantPool pool;
         private final CodeAttribute codeAttribute;
 
-        SharedRedefinitionContent(MethodVersion version, LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+        SharedRedefinitionContent(MethodVersion version, ParserMethod parserMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
             this.version = version;
-            this.linkedMethod = linkedMethod;
+            this.parserMethod = parserMethod;
             this.pool = pool;
             this.codeAttribute = codeAttribute;
         }
@@ -2130,8 +2129,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return version;
         }
 
-        public LinkedMethod getLinkedMethod() {
-            return linkedMethod;
+        public ParserMethod getParserMethod() {
+            return parserMethod;
         }
 
         public RuntimeConstantPool getPool() {

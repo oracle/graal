@@ -33,11 +33,16 @@ public final class SourceDebugExtensionAttribute extends Attribute {
     private final String debugExtension;
 
     public SourceDebugExtensionAttribute(Symbol<Name> name, String debugExtension) {
-        super(name, null);
+        assert name == NAME;
         this.debugExtension = debugExtension;
     }
 
     public String getDebugExtension() {
         return debugExtension;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

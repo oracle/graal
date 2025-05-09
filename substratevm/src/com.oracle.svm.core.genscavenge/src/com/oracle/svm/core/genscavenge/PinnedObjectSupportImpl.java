@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -31,11 +33,13 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
-public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
+public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport implements InitialLayerOnlyImageSingleton {
     @Platforms(Platform.HOSTED_ONLY.class)
     public PinnedObjectSupportImpl() {
     }
@@ -61,5 +65,15 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
         } while (!pinnedObjectCount.logicCompareAndSwapInt(0, oldValue, oldValue + delta, NamedLocationIdentity.OFF_HEAP_LOCATION));
 
         assert oldValue < Integer.MAX_VALUE;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
     }
 }

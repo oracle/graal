@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -354,6 +355,14 @@ final class Target_java_lang_System {
     @Alias private static PrintStream out;
     @Alias private static PrintStream err;
     @Alias private static InputStream in;
+
+    /**
+     * Pulls in a native library unnecessarily. All natives are already substituted.
+     */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/native/libjava/System.c#L39-L53")
+    private static void registerNatives() {
+    }
 
     @Substitute
     private static void setIn(InputStream is) {

@@ -24,11 +24,9 @@ package com.oracle.truffle.espresso.constantpool;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.impl.Method;
 
-public abstract class ResolvedMethodRefConstant implements MethodRefConstant, Resolvable.ResolvedConstant {
+public abstract class ResolvedMethodRefConstant implements ResolvedConstant {
     private final Method resolved;
 
     ResolvedMethodRefConstant(Method resolved) {

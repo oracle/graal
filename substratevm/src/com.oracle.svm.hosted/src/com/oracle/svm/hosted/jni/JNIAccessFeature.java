@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -77,6 +78,9 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -219,7 +223,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private final class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
-                    implements RuntimeJNIAccessSupport {
+                    implements RuntimeJNIAccessSupport, LayeredImageSingleton {
 
         @Override
         public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
@@ -286,6 +290,16 @@ public class JNIAccessFeature implements Feature {
             } catch (NoSuchMethodException e) {
                 newNegativeMethodLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(Pair.create("<init>", parameterTypes));
             }
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+        }
+
+        @Override
+        public PersistFlags preparePersist(ImageSingletonWriter writer) {
+            return PersistFlags.NOTHING;
         }
     }
 
