@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -103,6 +104,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
@@ -226,7 +228,23 @@ public class JNIAccessFeature implements Feature {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
+            registerConditionalConfiguration(condition, (cnd) -> {
+                newClasses.add(clazz);
+
+                /*
+                 * All methods and fields that are registered for reflection, must be registered for
+                 * JNI access if declaring type is JNI accessible
+                 */
+                Executable[] executables = ((ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class)).getNotQueriedOnlyExecutables(clazz);
+                if (executables.length > 0) {
+                    register(cnd, false, executables);
+                }
+
+                Field[] fields = ((ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class)).getReflectiveAccessibleFields(clazz);
+                if (fields.length > 0) {
+                    register(cnd, false, fields);
+                }
+            });
         }
 
         @Override
@@ -523,6 +541,18 @@ public class JNIAccessFeature implements Feature {
     private static void addNegativeFieldLookup(Class<?> declaringClass, String fieldName, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, access);
         jniClass.addFieldIfAbsent(fieldName, d -> JNIAccessibleField.negativeFieldQuery(jniClass));
+    }
+
+    public Set<Class<?>> getJNIAccessibleTypes() {
+        return newClasses;
+    }
+
+    public Set<Executable> getJNIAccessibleMethods() {
+        return newMethods;
+    }
+
+    public Set<Field> getJNIAccessibleFields() {
+        return newFields.keySet();
     }
 
     @Override
