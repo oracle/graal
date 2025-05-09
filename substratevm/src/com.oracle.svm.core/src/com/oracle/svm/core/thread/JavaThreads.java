@@ -27,8 +27,6 @@ package com.oracle.svm.core.thread;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.security.AccessControlContext;
-import java.security.AccessController;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -355,14 +353,12 @@ public final class JavaThreads {
      * <li>No security manager: using the ContextClassLoader of the parent.</li>
      * </ul>
      */
-    @SuppressWarnings({"deprecation", "removal"}) // AccessController is deprecated starting JDK 17
     static void initializeNewThread(
                     Target_java_lang_Thread tjlt,
                     ThreadGroup groupArg,
                     Runnable target,
                     String name,
                     long stackSize,
-                    AccessControlContext acc,
                     boolean inheritThreadLocals) {
         if (name == null) {
             throw new NullPointerException("The name cannot be null");
@@ -385,10 +381,6 @@ public final class JavaThreads {
         initThreadFields(tjlt, group, target, stackSize, priority, daemon);
 
         PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
-
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
-        }
 
         initNewThreadLocalsAndLoader(tjlt, inheritThreadLocals, parent);
 

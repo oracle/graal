@@ -28,9 +28,8 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -38,9 +37,9 @@ import jdk.graal.compiler.core.common.SuppressFBWarnings;
 final class Target_java_util_concurrent_ForkJoinTask {
     @Alias private transient volatile Target_java_util_concurrent_ForkJoinTask_Aux aux;
 
-    @Alias @TargetElement(onlyWith = JDKLatest.class) volatile int status;
-    @Alias @TargetElement(onlyWith = JDKLatest.class) static int ABNORMAL;
-    @Alias @TargetElement(onlyWith = JDKLatest.class) static int THROWN;
+    @Alias volatile int status;
+    @Alias static int ABNORMAL;
+    @Alias static int THROWN;
 
     /**
      * Returns a rethrowable exception for this task, if available. The original method may attempt
@@ -52,17 +51,6 @@ final class Target_java_util_concurrent_ForkJoinTask {
      * by the original method.
      */
     @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private Throwable getThrowableException() {
-        Target_java_util_concurrent_ForkJoinTask_Aux a = aux;
-        return a != null ? a.ex : null;
-    }
-
-    /**
-     * JDK24 variant of the above.
-     */
-    @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     @SuppressWarnings("all")
     @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "Check for @TargetClass")
     private Throwable getException(boolean asExecutionException) {
@@ -87,6 +75,6 @@ final class Target_java_util_concurrent_ForkJoinTask_Aux {
     @Alias Throwable ex;
 }
 
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "InterruptibleTask", onlyWith = JDKLatest.class)
+@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "InterruptibleTask")
 final class Target_java_util_concurrent_ForkJoinTask_InterruptibleTask {
 }

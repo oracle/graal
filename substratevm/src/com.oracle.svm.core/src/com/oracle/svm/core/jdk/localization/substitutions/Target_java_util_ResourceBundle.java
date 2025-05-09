@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.util.Locale;
-import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -37,14 +36,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.loader.BootLoader;
-import sun.security.util.SecurityConstants;
 
 @TargetClass(java.util.ResourceBundle.class)
 @SuppressWarnings({"unused"})
@@ -134,29 +130,6 @@ final class Target_java_util_ResourceBundle {
             MissingResourceRegistrationUtils.missingResourceBundle(baseName);
         }
         return getBundleImpl(callerModule, unnamedModule, baseName, locale, control);
-    }
-
-    @Substitute
-    @SuppressWarnings({"removal", "deprecation"})
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private static ResourceBundle getBundleFromModule(Class<?> caller,
-                    Module module,
-                    String baseName,
-                    Locale locale,
-                    ResourceBundle.Control control) {
-        Objects.requireNonNull(module);
-        Module callerModule = getCallerModule(caller);
-        if (callerModule != module) {
-            SecurityManager sm = System.getSecurityManager();
-            if (sm != null) {
-                RuntimePermission getClassLoaderPermission = ReflectionUtil.readField(SecurityConstants.class, "GET_CLASSLOADER_PERMISSION", null);
-                sm.checkPermission(getClassLoaderPermission);
-            }
-        }
-        if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
-            MissingResourceRegistrationUtils.missingResourceBundle(baseName);
-        }
-        return getBundleImpl(callerModule, module, baseName, locale, control);
     }
 
     @Alias

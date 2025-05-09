@@ -32,7 +32,6 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
@@ -108,95 +107,76 @@ final class Target_jdk_internal_util_StaticProperty {
     private static String JAVA_LOCALE_USE_OLD_ISO_CODES;
 
     @Delete//
-    @TargetElement(onlyWith = JDKLatest.class)//
     private static String OS_NAME;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private static String OS_ARCH;
 
     @Delete//
-    @TargetElement(onlyWith = JDKLatest.class)//
     private static String OS_VERSION;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_REGION;
     // Checkstyle: resume
@@ -334,20 +314,17 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)//
     public static String osName() {
         return SystemPropertiesSupport.singleton().getInitialProperty("os.name");
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)//
     public static String osArch() {
         assert Objects.equals(OS_ARCH, SystemPropertiesSupport.singleton().getInitialProperty("os.arch"));
         return OS_ARCH;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)//
     public static String osVersion() {
         return SystemPropertiesSupport.singleton().getInitialProperty("os.version");
     }

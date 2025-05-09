@@ -31,7 +31,10 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 /**
  * Denotes the latest supported JDK version. It corresponds to the highest key in the
  * {@code JVMCI_MIN_VERSIONS} map in {@link jdk.graal.compiler.hotspot.JVMCIVersionCheck}.
+ *
+ * @deprecated SVM only supports a single JDK version, so this predicate is no longer useful.
  */
+@Deprecated(since = "25.0.0", forRemoval = true)
 public class JDKLatest implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {

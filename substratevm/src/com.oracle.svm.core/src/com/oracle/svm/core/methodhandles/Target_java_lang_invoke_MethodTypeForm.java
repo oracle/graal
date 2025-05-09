@@ -30,10 +30,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(className = "java.lang.invoke.MethodTypeForm")
 final class Target_java_lang_invoke_MethodTypeForm {
@@ -49,6 +47,5 @@ final class Target_java_lang_invoke_MethodTypeForm {
     private SoftReference<?>[] lambdaForms;
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    @TargetElement(onlyWith = JDKLatest.class) //
     private SoftReference<Target_java_lang_invoke_MemberName> interpretEntry;
 }

@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 import java.io.Closeable;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.WeakHashMap;
@@ -35,7 +34,6 @@ import java.util.WeakHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
@@ -52,11 +50,6 @@ final class Target_jdk_internal_loader_URLClassPath {
     /* The original locations of the .jar files are no longer available at run time. */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ArrayList.class)//
     private ArrayList<URL> path;
-
-    /* Reset acc to null, since contexts in image heap are replaced */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    @TargetElement(onlyWith = JDK21OrEarlier.class)//
-    private AccessControlContext acc;
 }
 
 @TargetClass(URLClassLoader.class)
