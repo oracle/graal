@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -43,6 +44,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -236,6 +238,9 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
 
     private Object forName0(String className, ClassLoader classLoader) {
         var conditional = knownClasses.get(className);
+        if (MetadataTracer.Options.MetadataTracingSupport.getValue() && conditional != null && MetadataTracer.singleton().enabled()) {
+            MetadataTracer.singleton().traceReflectionType(className);
+        }
         Object result = conditional == null ? null : conditional.getValue();
         if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
@@ -281,7 +286,16 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
                 break;
             }
         }
-        return conditionSet != null && conditionSet.satisfied();
+        if (conditionSet != null) {
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                ConfigurationType type = MetadataTracer.singleton().traceReflectionType(clazz.getName());
+                if (type != null) {
+                    type.setUnsafeAllocated();
+                }
+            }
+            return conditionSet.satisfied();
+        }
+        return false;
     }
 
     @Override

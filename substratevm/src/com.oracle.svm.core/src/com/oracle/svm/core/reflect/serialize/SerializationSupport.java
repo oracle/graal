@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
@@ -228,6 +229,9 @@ public class SerializationSupport implements SerializationRegistry {
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
 
         if (constructorAccessor != null) {
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                MetadataTracer.singleton().traceSerializationType(declaringClass.getName());
+            }
             return constructorAccessor;
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();

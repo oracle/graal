@@ -41,6 +41,8 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -52,6 +54,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
@@ -185,6 +188,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     public static Class<?> getClassObjectByName(CharSequence name) {
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
+            if (MetadataTracer.Options.MetadataTracingSupport.getValue() && clazz != null && MetadataTracer.singleton().enabled()) {
+                MetadataTracer.singleton().traceJNIType(convertFindClassNameToBinaryName(name.toString()));
+            }
             clazz = checkClass(clazz, name);
             if (clazz != null) {
                 return clazz.getClassObject();
@@ -192,6 +198,16 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
         }
         dump(true, "getClassObjectByName");
         return null;
+    }
+
+    /**
+     * FindClass's argument is either an internal class name (e.g., {@code pkg/sub/Class}) or an
+     * array type signature (e.g., {@code [Lpkg/sub/Class;}). Converts the argument to a regular
+     * binary name (e.g., {@code pkg.sub.Class}.
+     */
+    private static String convertFindClassNameToBinaryName(String name) {
+        String internalName = (name.charAt(0) != '[') ? ('L' + name + ';') : name;
+        return MetaUtil.internalNameToJava(internalName, true, true);
     }
 
     private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
@@ -277,6 +293,12 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
                 foundClass = true;
                 JNIAccessibleMethod method = clazz.getMethod(descriptor);
                 if (method != null) {
+                    if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                        ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
+                        if (clazzType != null) {
+                            clazzType.addMethod(descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+                        }
+                    }
                     return method;
                 }
             }
@@ -332,6 +354,12 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
                 foundClass = true;
                 JNIAccessibleField field = clazz.getField(name);
                 if (field != null && (field.isStatic() == isStatic || field.isNegative())) {
+                    if (MetadataTracer.Options.MetadataTracingSupport.getValue() && MetadataTracer.singleton().enabled()) {
+                        ConfigurationType clazzType = MetadataTracer.singleton().traceJNIType(classObject.getName());
+                        if (clazzType != null) {
+                            clazzType.addField(name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED, false);
+                        }
+                    }
                     return field;
                 }
             }
