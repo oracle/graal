@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
@@ -71,12 +70,9 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -227,6 +223,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
@@ -1104,30 +1101,13 @@ public class NativeImageGenerator {
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
-
-                var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-
-                Set<String> classesOrPackagesToIgnore = ignoredClassesOrPackagesForPreserve();
-                loader.classLoaderSupport.getClassesToPreserve().parallel()
-                                .filter(ClassInclusionPolicy::isClassIncludedBase)
-                                .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
-                                .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
-                for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
-                    RuntimeReflection.registerClassLookup(className);
-                }
+                PreserveOptionsSupport.registerPreservedClasses(loader.classLoaderSupport);
 
                 registerEntryPointStubs(entryPoints);
             }
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
-    }
-
-    private static Set<String> ignoredClassesOrPackagesForPreserve() {
-        Set<String> ignoredClassesOrPackages = new HashSet<>(SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet());
-        // GR-63360: Parsing of constant_ lambda forms fails
-        ignoredClassesOrPackages.add("java.lang.invoke.LambdaForm$Holder");
-        return Collections.unmodifiableSet(ignoredClassesOrPackages);
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
@@ -1785,10 +1765,11 @@ public class NativeImageGenerator {
     /**
      * These are legit elements from the JDK that have hotspot in their name.
      */
-    private static final Set<String> HOTSPOT_IN_NAME_EXCEPTIONS = Set.of(
+    private static final Set<String> CHECK_NAMING_EXCEPTIONS = Set.of(
                     "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
                     "sun.lwawt.macosx.CCustomCursor.fHotspot",
-                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()");
+                    "sun.lwawt.macosx.CCustomCursor.getHotSpot()",
+                    "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED");
 
     private static void checkName(BigBang bb, AnalysisMethod method, String format) {
         /*
@@ -1798,16 +1779,20 @@ public class NativeImageGenerator {
          * JDK internal types.
          */
         String lformat = format.toLowerCase(Locale.ROOT);
-        if (lformat.contains("hosted")) {
-            report(bb, format, method, "Hosted element used at run time: " + format + ".");
-        } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
-            if (!HOTSPOT_IN_NAME_EXCEPTIONS.contains(format)) {
-                report(bb, format, method, "Element with HotSpot in its name used at run time: " + format + System.lineSeparator() +
-                                "If this is a regular JDK value, and not a HotSpot element that was accidentally included, you can add it to the NativeImageGenerator.HOTSPOT_IN_NAME_EXCEPTIONS" +
-                                System.lineSeparator() +
-                                "If this is HotSpot element that was accidentally included find a way to exclude it from the image.");
+        if (!CHECK_NAMING_EXCEPTIONS.contains(format)) {
+            if (lformat.contains("hosted")) {
+                report(bb, format, method, "Hosted element used at run time: " + format + namingConventionsErrorMessageSuffix("hosted"));
+            } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
+                report(bb, format, method, "Element with HotSpot in its name used at run time: " + format + namingConventionsErrorMessageSuffix("HotSpot"));
             }
         }
+    }
+
+    private static String namingConventionsErrorMessageSuffix(String elementType) {
+        return """
+
+                        If this is a regular JDK value, and not a %s element that was accidentally included, you can add it to the NativeImageGenerator.CHECK_NAMING_EXCEPTIONS
+                        If this is a %s element that was accidentally included, find a way to exclude it from the image.""".formatted(elementType, elementType);
     }
 
     private static void report(BigBang bb, String key, AnalysisMethod method, String message) {
