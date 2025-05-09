@@ -171,6 +171,14 @@ public interface Feature {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterRegistrationAccess extends FeatureAccess {
+        /**
+         * Creates access for runtime registration. All registrations should happen in
+         * {@link Feature#afterRegistration}
+         *
+         */
+        ReflectionDynamicAccess createReflectionDynamicAccess();
+
+        ResourceDynamicAccess createResourceDynamicAccess();
     }
 
     /**

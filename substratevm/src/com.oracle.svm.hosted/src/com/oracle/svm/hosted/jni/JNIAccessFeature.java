@@ -51,8 +51,9 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -107,6 +108,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
@@ -211,12 +213,12 @@ public class JNIAccessFeature implements Feature {
         runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
-        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+        ConfigurationConditionResolver<RegistrationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(JNI_KEY, true, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<RegistrationCondition, Class<?>> parser = ConfigurationParserUtils.create(JNI_KEY, true, conditionResolver, runtimeSupport, null, null,
                         access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "JNI");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<RegistrationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, runtimeSupport, null, null,
                         access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
@@ -226,15 +228,31 @@ public class JNIAccessFeature implements Feature {
                     implements RuntimeJNIAccessSupport, LayeredImageSingleton {
 
         @Override
-        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+        public void register(RegistrationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
+            registerConditionalConfiguration(condition, (cnd) -> {
+                newClasses.add(clazz);
+
+                /*
+                 * All methods and fields that are registered for reflection, must be registered for
+                 * JNI access if declaring type is JNI accessible
+                 */
+                Executable[] executables = ((ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class)).getNotQueriedOnlyExecutables(clazz);
+                if (executables.length > 0) {
+                    register(cnd, false, executables);
+                }
+
+                Field[] fields = ((ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class)).getReflectiveAccessibleFields(clazz);
+                if (fields.length > 0) {
+                    register(cnd, false, fields);
+                }
+            });
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
+        public void register(RegistrationCondition condition, boolean queriedOnly, Executable... executables) {
             requireNonNull(executables, "executable");
             abortIfSealed();
             if (!queriedOnly) {
@@ -243,7 +261,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+        public void register(RegistrationCondition condition, boolean finalIsWritable, Field... fields) {
             requireNonNull(fields, "field");
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
@@ -257,7 +275,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+        public void registerClassLookup(RegistrationCondition condition, String typeName) {
             try {
                 register(condition, false, Class.forName(typeName));
             } catch (ClassNotFoundException e) {
@@ -266,7 +284,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName) {
+        public void registerFieldLookup(RegistrationCondition condition, Class<?> declaringClass, String fieldName) {
             try {
                 register(condition, false, declaringClass.getDeclaredField(fieldName));
             } catch (NoSuchFieldException e) {
@@ -275,7 +293,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        public void registerMethodLookup(RegistrationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
             try {
                 register(condition, false, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
@@ -284,7 +302,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+        public void registerConstructorLookup(RegistrationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
             try {
                 register(condition, false, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
@@ -537,6 +555,18 @@ public class JNIAccessFeature implements Feature {
     private static void addNegativeFieldLookup(Class<?> declaringClass, String fieldName, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, access);
         jniClass.addFieldIfAbsent(fieldName, d -> JNIAccessibleField.negativeFieldQuery(jniClass));
+    }
+
+    public Set<Class<?>> getJNIAccessibleTypes() {
+        return newClasses;
+    }
+
+    public Set<Executable> getJNIAccessibleMethods() {
+        return newMethods;
+    }
+
+    public Set<Field> getJNIAccessibleFields() {
+        return newFields.keySet();
     }
 
     @Override

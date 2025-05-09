@@ -37,7 +37,6 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBE
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
@@ -68,9 +67,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
@@ -95,6 +95,7 @@ import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
+import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -122,6 +123,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
     private final Map<Class<?>, Integer> enabledQueriesFlags = new ConcurrentHashMap<>();
     private final Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> registeredFields = new ConcurrentHashMap<>();
+    private final Set<Field> reflectiveAccessibleFields = new HashSet<>();
     private final Set<AnalysisField> hidingFields = ConcurrentHashMap.newKeySet();
     private final Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> registeredMethods = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, Object> methodAccessors = new ConcurrentHashMap<>();
@@ -148,7 +150,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<Method>> pendingRecordClasses;
 
-    record ConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    record ConditionalTask(RegistrationCondition condition, Consumer<RegistrationCondition> task) {
     }
 
     private final Set<ConditionalTask> pendingConditionalTasks = ConcurrentHashMap.newKeySet();
@@ -158,7 +160,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
 
-    ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
+    public ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
         this.annotationExtractor = annotationExtractor;
         pendingRecordClasses = !throwMissingRegistrationErrors() ? new ConcurrentHashMap<>() : null;
         classForNameSupport = ClassForNameSupport.currentLayer();
@@ -177,7 +179,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         this.analysisAccess = beforeAnalysisAccess;
     }
 
-    private void runConditionalInAnalysisTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+    private void runConditionalInAnalysisTask(RegistrationCondition condition, Consumer<RegistrationCondition> task) {
         if (sealed) {
             throw new UnsupportedFeatureException("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
@@ -199,14 +201,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
+    public void register(RegistrationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
         runConditionalInAnalysisTask(condition, (cnd) -> registerClass(cnd, clazz, unsafeInstantiated, true));
     }
 
     @Override
-    public void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerAllClassesQuery(RegistrationCondition condition, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_CLASSES_FLAG);
             try {
@@ -223,19 +224,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    /**
-     * Runtime conditions can only be used with type, so they are not valid here.
-     */
-    @SuppressWarnings("unused")
-    private static void guaranteeNotRuntimeConditionForQueries(ConfigurationCondition cnd, boolean queriedOnly) {
-        if (!TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
-            VMError.guarantee(!queriedOnly || cnd.isAlwaysTrue() || !cnd.isRuntimeChecked(), "Bulk queries can only be set with 'name' which does not allow run-time conditions.");
-        }
-    }
-
     @Override
-    public void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerAllDeclaredClassesQuery(RegistrationCondition condition, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_DECLARED_CLASSES_FLAG);
             try {
@@ -249,7 +239,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerClass(ConfigurationCondition condition, Class<?> clazz, boolean unsafeInstantiated, boolean allowForName) {
+    private void registerClass(RegistrationCondition condition, Class<?> clazz, boolean unsafeInstantiated, boolean allowForName) {
         if (shouldExcludeClass(clazz)) {
             return;
         }
@@ -285,12 +275,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t) {
+    public void registerClassLookupException(RegistrationCondition condition, String typeName, Throwable t) {
         runConditionalInAnalysisTask(condition, (cnd) -> classForNameSupport.registerExceptionForClass(cnd, typeName, t));
     }
 
     @Override
-    public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+    public void registerClassLookup(RegistrationCondition condition, String typeName) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             try {
                 registerClass(cnd, Class.forName(typeName, false, ClassLoader.getSystemClassLoader()), false, true);
@@ -303,8 +293,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerAllRecordComponentsQuery(RegistrationCondition condition, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_RECORD_COMPONENTS_FLAG);
             registerRecordComponents(clazz);
@@ -312,8 +301,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerAllPermittedSubclassesQuery(RegistrationCondition condition, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_PERMITTED_SUBCLASSES_FLAG);
             if (clazz.isSealed()) {
@@ -325,8 +313,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerAllNestMembersQuery(RegistrationCondition condition, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_NEST_MEMBERS_FLAG);
             for (Class<?> nestMember : clazz.getNestMembers()) {
@@ -338,8 +325,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerAllSignersQuery(RegistrationCondition condition, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_SIGNERS_FLAG);
             Object[] signers = clazz.getSigners();
@@ -352,14 +338,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
+    public void register(RegistrationCondition condition, boolean queriedOnly, Executable... executables) {
         requireNonNull(executables, "executable");
         runConditionalInAnalysisTask(condition, (cnd) -> registerMethods(cnd, queriedOnly, executables));
     }
 
     @Override
-    public void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, queriedOnly);
+    public void registerAllMethodsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             for (Class<?> current = clazz; current != null; current = current.getSuperclass()) {
                 setQueryFlag(current, ALL_METHODS_FLAG);
@@ -373,8 +358,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, queriedOnly);
+    public void registerAllDeclaredMethodsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_DECLARED_METHODS_FLAG);
             try {
@@ -386,8 +370,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, queriedOnly);
+    public void registerAllConstructorsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             for (Class<?> current = clazz; current != null; current = current.getSuperclass()) {
                 setQueryFlag(current, ALL_CONSTRUCTORS_FLAG);
@@ -401,8 +384,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, queriedOnly);
+    public void registerAllDeclaredConstructorsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_DECLARED_CONSTRUCTORS_FLAG);
             try {
@@ -413,13 +395,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerMethods(ConfigurationCondition cnd, boolean queriedOnly, Executable[] reflectExecutables) {
+    private void registerMethods(RegistrationCondition cnd, boolean queriedOnly, Executable[] reflectExecutables) {
         for (Executable reflectExecutable : reflectExecutables) {
             registerMethod(cnd, queriedOnly, reflectExecutable);
         }
     }
 
-    private void registerMethod(ConfigurationCondition cnd, boolean queriedOnly, Executable reflectExecutable) {
+    private void registerMethod(RegistrationCondition cnd, boolean queriedOnly, Executable reflectExecutable) {
         if (SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
             return;
         }
@@ -492,11 +474,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 return accessor;
             });
         }
+
+        /* Ensure that any method not registered as queriedOnly is registered as JNI-accessible */
+        Set<Executable> JNIAccessibleMethods = JNIAccessFeature.singleton().getJNIAccessibleMethods();
+        Set<Class<?>> JNIAccessibleClasses = JNIAccessFeature.singleton().getJNIAccessibleTypes();
+        if (!JNIAccessibleMethods.contains(reflectExecutable) && JNIAccessibleClasses.contains(declaringType.getJavaClass()) && !queriedOnly) {
+            ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(cnd, false, reflectExecutable);
+        }
     }
 
     @Override
-    public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerMethodLookup(RegistrationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             try {
                 registerMethod(cnd, true, declaringClass.getDeclaredMethod(methodName, parameterTypes));
@@ -510,8 +498,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
-        guaranteeNotRuntimeConditionForQueries(condition, true);
+    public void registerConstructorLookup(RegistrationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             try {
                 registerMethod(cnd, true, declaringClass.getDeclaredConstructor(parameterTypes));
@@ -525,18 +512,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+    public void register(RegistrationCondition condition, boolean finalIsWritable, Field... fields) {
         requireNonNull(fields, "field");
         runConditionalInAnalysisTask(condition, (cnd) -> registerFields(cnd, false, fields));
     }
 
     @Override
-    public void registerAllFields(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllFields(RegistrationCondition condition, Class<?> clazz) {
         registerAllFieldsQuery(condition, false, clazz);
     }
 
-    public void registerAllFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
-        guaranteeNotRuntimeConditionForQueries(condition, queriedOnly);
+    @Override
+    public void registerAllFieldsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             for (Class<?> current = clazz; current != null; current = current.getSuperclass()) {
                 setQueryFlag(current, ALL_FIELDS_FLAG);
@@ -550,11 +537,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllDeclaredFields(RegistrationCondition condition, Class<?> clazz) {
         registerAllDeclaredFieldsQuery(condition, false, clazz);
     }
 
-    public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
+    public void registerAllDeclaredFieldsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_DECLARED_FIELDS_FLAG);
             try {
@@ -565,13 +552,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerFields(ConfigurationCondition cnd, boolean queriedOnly, Field[] reflectFields) {
+    private void registerFields(RegistrationCondition cnd, boolean queriedOnly, Field[] reflectFields) {
         for (Field reflectField : reflectFields) {
             registerField(cnd, queriedOnly, reflectField);
         }
     }
 
-    private void registerField(ConfigurationCondition cnd, boolean queriedOnly, Field reflectField) {
+    private void registerField(RegistrationCondition cnd, boolean queriedOnly, Field reflectField) {
         if (SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
             return;
         }
@@ -619,11 +606,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             /* queryOnly methods are conditioned on the type itself */
             cndValue.getConditions().addCondition(cnd);
             registerTypesForField(analysisField, reflectField, false);
+            reflectiveAccessibleFields.add(reflectField);
+        }
+
+        /* Ensure that any field not registered as queriedOnly is registered as JNI-accessible */
+        Set<Field> JNIAccessibleFields = JNIAccessFeature.singleton().getJNIAccessibleFields();
+        Set<Class<?>> JNIAccessibleClasses = JNIAccessFeature.singleton().getJNIAccessibleTypes();
+        if (!JNIAccessibleFields.contains(reflectField) && JNIAccessibleClasses.contains(declaringClass.getJavaClass()) && !queriedOnly) {
+            ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(cnd, false, reflectField);
         }
     }
 
     @Override
-    public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName) {
+    public void registerFieldLookup(RegistrationCondition condition, Class<?> declaringClass, String fieldName) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             try {
                 registerField(cnd, false, declaringClass.getDeclaredField(fieldName));
@@ -648,9 +643,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Class<?> annotationClass = method.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
-            /* build-time condition as it is registered during analysis */
-            var condition = ConfigurationCondition.create(proxyClass, false);
-            register(condition, queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
+            register(RegistrationCondition.always(), queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
         } catch (NoSuchMethodException e) {
             /*
              * The annotation member is not present in the proxy class so we don't add it.
@@ -659,7 +652,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @SuppressWarnings("deprecation")
-    private void processAnnotationField(ConfigurationCondition cnd, Field field) {
+    private void processAnnotationField(RegistrationCondition cnd, Field field) {
         Class<?> annotationClass = field.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
@@ -949,7 +942,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerTypesForRecordComponent(RecordComponent recordComponent) {
         Method accessorOrNull = recordComponent.getAccessor();
         if (accessorOrNull != null) {
-            register(ConfigurationCondition.alwaysTrue(), true, accessorOrNull);
+            register(RegistrationCondition.always(), true, accessorOrNull);
         }
         registerTypesForAnnotations(recordComponent);
         registerTypesForTypeAnnotations(recordComponent);
@@ -1176,6 +1169,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return methodAccessors.get(method);
     }
 
+    public Executable[] getNotQueriedOnlyExecutables(Class<?> declaringType) {
+        return methodAccessors.keySet().stream().filter(analysisMethod -> analysisMethod.getDeclaringClass().getJavaClass().equals(declaringType)).map(AnalysisMethod::getJavaMethod)
+                        .collect(Collectors.toSet()).toArray(new Executable[0]);
+    }
+
+    public Field[] getReflectiveAccessibleFields(Class<?> declaringType) {
+        return reflectiveAccessibleFields.stream().filter(field -> field.getDeclaringClass().equals(declaringType)).collect(Collectors.toSet()).toArray(new Field[0]);
+    }
+
     @Override
     public Set<ResolvedJavaField> getHidingReflectionFields() {
         assert sealed;
@@ -1224,7 +1226,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
                 registerTypesForField(analysisField, reflectField, false);
                 if (analysisField.getDeclaringClass().isAnnotation()) {
-                    processAnnotationField(ConfigurationCondition.alwaysTrue(), reflectField);
+                    processAnnotationField(RegistrationCondition.always(), reflectField);
                 }
             }
         }
@@ -1351,7 +1353,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     public static class TestBackdoor {
         public static void registerField(ReflectionDataBuilder reflectionDataBuilder, boolean queriedOnly, Field field) {
-            reflectionDataBuilder.runConditionalInAnalysisTask(ConfigurationCondition.alwaysTrue(), (cnd) -> reflectionDataBuilder.registerField(cnd, queriedOnly, field));
+            reflectionDataBuilder.runConditionalInAnalysisTask(RegistrationCondition.always(), (cnd) -> reflectionDataBuilder.registerField(cnd, queriedOnly, field));
         }
     }
 }

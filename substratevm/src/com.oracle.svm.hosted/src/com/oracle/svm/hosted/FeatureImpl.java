@@ -50,8 +50,10 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
+import org.graalvm.nativeimage.hosted.ReflectionDynamicAccess;
+import org.graalvm.nativeimage.hosted.ResourceDynamicAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -191,6 +193,16 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public ReflectionDynamicAccess createReflectionDynamicAccess() {
+            return new ReflectionDynamicAccessImpl();
+        }
+
+        @Override
+        public ResourceDynamicAccess createResourceDynamicAccess() {
+            return new ResourceDynamicAccessImpl();
         }
     }
 
@@ -413,7 +425,7 @@ public class FeatureImpl {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
-            classForNameSupport.registerUnsafeAllocated(ConfigurationCondition.alwaysTrue(), aType.getJavaClass());
+            classForNameSupport.registerUnsafeAllocated(RegistrationCondition.always(), aType.getJavaClass());
         }
 
         @Override

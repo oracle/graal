@@ -41,7 +41,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -60,9 +60,9 @@ import jdk.graal.compiler.util.json.JsonParserException;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(String combinedFileKey, boolean combinedFileSchema,
-                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry,
-                    RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, ImageClassLoader imageClassLoader) {
+    public static ReflectionConfigurationParser<RegistrationCondition, Class<?>> create(String combinedFileKey, boolean combinedFileSchema,
+                    ConfigurationConditionResolver<RegistrationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry,
+                    RuntimeSerializationSupport<RegistrationCondition> serializationSupport, ImageClassLoader imageClassLoader) {
         return ReflectionConfigurationParser.create(combinedFileKey, combinedFileSchema, conditionResolver,
                         RegistryAdapter.create(registry, proxyRegistry, serializationSupport, imageClassLoader),
                         ConfigurationFiles.Options.getConfigurationParserOptions());
