@@ -1,0 +1,20 @@
+This is a daily development build of the Oracle product and is offered to you 
+as part of the development and testing process.  Oracle does not recommend 
+bundling this build with your products or otherwise using for any production 
+purpose. This build is offered to and received by you solely under the GraalVM 
+Free Terms and Conditions (GFTC), and is not governed by any other license 
+between you and Oracle, including without limitation the Oracle Master 
+Agreement.  The features and functionality of the product are subject to change 
+at any time and the existence of any features or functionality in this build 
+should not be relied upon in making purchasing decisions. The existence of 
+particular features or functionality in this build is not a commitment to 
+deliver any hardware, software or other material, or code, or functionality, 
+and you should not rely on the future availability of any feature or 
+functionality in the product.  The development, release, and timing of any 
+features or functionality for this product remain at the sole discretion of 
+Oracle. In the event you decide to provide any input to Oracle regarding the 
+product, you acknowledge that Oracle may use that input for any purpose, 
+including but not limited to incorporation or implementation of the input in 
+any Oracle product or service, and the display, marketing, sublicensing and 
+distribution of the input as incorporated or embedded in any product or service 
+distributed or offered by Oracle.
