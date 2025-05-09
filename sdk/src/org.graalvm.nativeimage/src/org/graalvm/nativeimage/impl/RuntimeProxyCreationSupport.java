@@ -44,4 +44,6 @@ import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 public interface RuntimeProxyCreationSupport {
     void addProxyClass(RegistrationCondition condition, Class<?>... interfaces);
+
+    Class<?> registerProxyClass(RegistrationCondition condition, Class<?>... interfaces);
 }
