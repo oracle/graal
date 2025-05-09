@@ -407,11 +407,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void register(RegistrationCondition condition, Class<?> serializationTargetClass) {
         abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
-            /*
-             * Register class for reflection as it is needed when the class-value itself is
-             * serialized.
-             */
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(condition, serializationTargetClass);
 
             if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
                 return;
@@ -427,9 +422,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(RegistrationCondition.always(), true, superclass);
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(RegistrationCondition.always(), superclass, "writeReplace");
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(RegistrationCondition.always(), superclass, "readResolve");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(cnd, true, superclass);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(cnd, superclass, "writeReplace");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(cnd, superclass, "readResolve");
                 }
 
                 registerForSerialization(cnd, serializationTargetClass);
