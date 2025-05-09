@@ -26,10 +26,8 @@
 package jdk.graal.compiler.lir.aarch64;
 
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -37,7 +35,6 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -85,10 +82,5 @@ public final class AArch64StringUTF16CompressOp extends AArch64ComplexVectorOp {
         masm.mov(32, len, asRegister(lenValue));
 
         AArch64EncodeArrayOp.emitEncodeArrayOp(masm, res, src, dst, len, vectorTemp, LIRGeneratorTool.CharsetName.ISO_8859_1);
-        if (JavaVersionUtil.JAVA_SPEC < 22) {
-            // legacy behavior: if (result != length) { result = 0; }
-            masm.cmp(32, res, asRegister(lenValue));
-            masm.csel(32, res, res, zr, AArch64Assembler.ConditionFlag.EQ);
-        }
     }
 }

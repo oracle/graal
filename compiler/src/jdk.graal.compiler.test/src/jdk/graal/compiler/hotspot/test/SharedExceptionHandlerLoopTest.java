@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.jdk23.test;
+package jdk.graal.compiler.hotspot.test;
 
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.Label;

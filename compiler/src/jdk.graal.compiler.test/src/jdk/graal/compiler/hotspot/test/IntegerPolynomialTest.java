@@ -23,7 +23,7 @@
  * questions.
  */
 
-package jdk.graal.compiler.hotspot.jdk23.test;
+package jdk.graal.compiler.hotspot.test;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -32,7 +32,6 @@ import java.util.Random;
 import org.junit.Test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import jdk.graal.compiler.test.AddExports;
 import jdk.vm.ci.code.InstalledCode;
 import sun.security.util.math.ImmutableIntegerModuloP;

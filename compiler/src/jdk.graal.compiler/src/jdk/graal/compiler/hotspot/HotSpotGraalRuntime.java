@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -47,6 +46,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationListenerProfiler;
 import jdk.graal.compiler.core.common.CompilerProfiler;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
@@ -66,7 +66,6 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
@@ -208,7 +207,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Serial("UseSerialGC"),
         Parallel("UseParallelGC"),
         G1("UseG1GC"),
-        Z(JavaVersionUtil.JAVA_SPEC > 21, true, flagIsSet("UseZGC")),
+        Z(true, true, flagIsSet("UseZGC")),
         Epsilon(true, true, flagIsSet("UseEpsilonGC")),
 
         // Unsupported GCs
