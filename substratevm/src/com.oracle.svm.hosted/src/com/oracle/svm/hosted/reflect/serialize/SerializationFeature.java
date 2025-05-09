@@ -428,9 +428,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, superclass);
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), superclass, "writeReplace");
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), superclass, "readResolve");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(cnd, true, superclass);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(cnd, superclass, "writeReplace");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(cnd, superclass, "readResolve");
                 }
 
                 registerForSerialization(cnd, serializationTargetClass);

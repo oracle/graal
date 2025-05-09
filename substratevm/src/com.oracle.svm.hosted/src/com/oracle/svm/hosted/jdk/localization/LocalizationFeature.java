@@ -81,6 +81,7 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -279,6 +280,7 @@ public class LocalizationFeature implements InternalFeature {
              */
             addProviders();
         }
+        this.imageClassLoader = ((AfterRegistrationAccessImpl) access).getImageClassLoader();
     }
 
     @Override
@@ -296,8 +298,6 @@ public class LocalizationFeature implements InternalFeature {
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
                         .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
-
-        this.imageClassLoader = access.getImageClassLoader();
     }
 
     /**
