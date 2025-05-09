@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import shutil
 import sys
 from abc import ABCMeta, abstractmethod
 from os import listdir, linesep
-from os.path import join, exists, isfile, basename, relpath, isdir, isabs, dirname
+from os.path import join, exists, isfile, basename, relpath, isdir, isabs, dirname, normpath
 from typing import Tuple
 
 import mx
@@ -380,6 +380,9 @@ class NativeImageBuildTask(mx.BuildTask):
             # native image build speed doesn't scale much after 12 (on my machine ^_^)
             max_parallelism = 12
         super().__init__(project, args, min(max_parallelism, mx.cpu_count()))
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([_path for _path, _ in self.subject.getArchivableResults()])
 
     def get_build_args(self):
         experimental_build_args = [
@@ -931,6 +934,49 @@ class ExtractedEngineResourcesBuildTask(mx.BuildTask):
         return f"roots: {', '.join(self.subject.root_components)}\nignored: {', '.join(self.subject.ignore_components)}"
 
 
+def _make_windows_link(link_target):
+    link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
+    with open(link_template_name, 'r') as template:
+        _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+        _template_subst.register_no_arg('target', normpath(link_target))
+        return _template_subst.substitute(template.read())
+
+
+class ToolchainToolDistribution(mx.LayoutDirDistribution):
+    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
+        self.tool_project = _require(kw_args, 'tool_project', suite, name)
+        self.tool_links = _require(kw_args, 'tool_links', suite, name)
+
+        layout = {
+            './': [{
+                "source_type": "dependency",
+                "dependency": self.tool_project,
+            }]
+        }
+
+        super().__init__(suite, name=name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, defaultBuild=defaultBuild)
+
+    def resolveDeps(self):
+        self.tool_project = mx.project(self.tool_project)
+        _, main_tool_name = next(self.tool_project.getArchivableResults(single=True))
+
+        def _add_link(name, target):
+            if mx.is_windows():
+                # ignore indirect symlinks on windows and link everything directly to the main tool
+                # otherwise we lose the original program name
+                self.layout[f'./{name}.cmd'] = f'string:{_make_windows_link(main_tool_name)}'
+            else:
+                self.layout[f'./{name}'] = f'link:{target}'
+
+        for tool in self.tool_links:
+            _add_link(tool, main_tool_name)
+            alt_names = self.tool_links[tool]
+            for alt_name in alt_names:
+                _add_link(alt_name, tool)
+
+        super().resolveDeps()
+
+
 if mx.is_windows():
     DeliverableArchiveSuper = mx.LayoutZIPDistribution
 else:
@@ -938,7 +984,7 @@ else:
 
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
-    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, **kw_args):
+    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
         enterprise_archive_name = _require(kw_args, 'enterprise_archive_name', suite, name)
@@ -959,11 +1005,16 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
             dist_name = 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
 
         layout = {
-            f'{dir_name}/': f'dependency:{standalone_dir_dist}/*'
+            f'{dir_name}/': {
+                "source_type": "dependency",
+                "dependency": standalone_dir_dist,
+                "path": "*",
+                "dereference": "never",
+            }
         }
         self.standalone_dir_dist = standalone_dir_dist
         maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
-        super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven)
+        super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
 
     def resolveDeps(self):

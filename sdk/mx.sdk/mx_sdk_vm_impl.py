@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -166,6 +166,8 @@ def registered_graalvm_components(stage1=False):
             components = dependencies[:]
             while components:
                 component = components.pop(0)
+                if component.final_stage_only and stage1:
+                    continue
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
@@ -495,11 +497,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             if _linkname != dest_base_name:
                 if mx.is_windows():
                     if _target.endswith('.exe') or _target.endswith('.cmd'):
-                        link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
-                        with open(link_template_name, 'r') as template:
-                            _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
-                            _template_subst.register_no_arg('target', normpath(_linkname))
-                            contents = _template_subst.substitute(template.read())
+                        contents = mx_sdk_vm_ng._make_windows_link(_linkname)
                         full_dest = _dest + dest_base_name[:-len('.exe')] + '.cmd'
                         _add(layout, full_dest, 'string:{}'.format(contents), _component)
                         return full_dest
@@ -2753,11 +2751,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                             link_target = relpath(launcher_dest, start=dirname(link_dest))
                             if mx.is_windows():
                                 if link_target.endswith('.exe') or link_target.endswith('.cmd'):
-                                    link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
-                                    with open(link_template_name, 'r') as template:
-                                        _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
-                                        _template_subst.register_no_arg('target', normpath(link_target))
-                                        contents = _template_subst.substitute(template.read())
+                                    contents = mx_sdk_vm_ng._make_windows_link(link_target)
                                     full_dest = link_dest[:-len('.exe')] + '.cmd'
                                     layout.setdefault(full_dest, []).append({
                                         'source_type': 'string',

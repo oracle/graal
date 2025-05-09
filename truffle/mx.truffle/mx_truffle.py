@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -1611,7 +1611,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 mx.add_argument('--polyglot-isolates', action='store', help='Comma-separated list of languages for which the polyglot isolate library should be built. Setting the value to `true` builds all polyglot isolate libraries.')
 
 
-class PolyglotIsolateProject(mx_sdk_vm_ng.LanguageLibraryProject):
+class PolyglotIsolateProject(mx_sdk_vm_ng.NativeImageLibraryProject):
     """
     A language library project dedicated to construct a language polyglot isolate library.
     Instances are created by register_polyglot_isolate_distributions when a language
