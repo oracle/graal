@@ -297,7 +297,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * Non-atomic write of a 64-bit constant to memory. Do not use if the address might be a
      * volatile field!
      */
-    public final void movlong(AMD64Address dst, long src) {
+    public final void movlong(AMD64Address dst, long src, boolean annotateImm) {
+        GraalError.guarantee(!annotateImm, "patching not implemented for 8-byte stores");
         if (NumUtil.isInt(src)) {
             emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.QWORD, dst, (int) src, false);
         } else {
@@ -1485,6 +1486,14 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         movl(dst, imm);
     }
 
+    public final void moveInt(Register dst, int imm, boolean annotateImm) {
+        if (!annotateImm) {
+            moveInt(dst, imm);
+        } else {
+            movl(dst, imm, true);
+        }
+    }
+
     public final void moveInt(AMD64Address dst, int imm) {
         if (imm == 0) {
             Register zeroValueRegister = getZeroValueRegister();
@@ -1494,6 +1503,14 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             }
         }
         movl(dst, imm);
+    }
+
+    public final void moveInt(AMD64Address dst, int imm, boolean annotateImm) {
+        if (!annotateImm) {
+            moveInt(dst, imm);
+        } else {
+            AMD64MIOp.MOV.emit(this, OperandSize.DWORD, dst, imm, true);
+        }
     }
 
     public final void moveIntSignExtend(Register result, int imm) {
