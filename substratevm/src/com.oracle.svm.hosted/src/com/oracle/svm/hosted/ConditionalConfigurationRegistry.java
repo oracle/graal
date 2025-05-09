@@ -69,9 +69,7 @@ public abstract class ConditionalConfigurationRegistry {
             } else {
                 beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), ((TypeReachabilityCondition) condition).getKey());
             }
-
         }
-
     }
 
     public void setAnalysisAccess(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {

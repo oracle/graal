@@ -51,6 +51,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
+import org.graalvm.nativeimage.hosted.ReflectionDynamicAccess;
+import org.graalvm.nativeimage.hosted.ResourceDynamicAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -191,6 +193,16 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public ReflectionDynamicAccess createReflectionDynamicAccess() {
+            return new ReflectionDynamicAccessImpl();
+        }
+
+        @Override
+        public ResourceDynamicAccess createResourceDynamicAccess() {
+            return new ResourceDynamicAccessImpl();
         }
     }
 
