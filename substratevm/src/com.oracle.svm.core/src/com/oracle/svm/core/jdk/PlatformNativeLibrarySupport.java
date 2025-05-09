@@ -88,7 +88,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "com_oracle_svm_core_jdk"
     };
 
-    private static final String[] defaultBuiltInPkgNativesBlocklist;
+    private static final ArrayList<String> defaultBuiltInPkgNativesBlocklist;
 
     static {
         ArrayList<String> blocklist = new ArrayList<>();
@@ -136,7 +136,21 @@ public abstract class PlatformNativeLibrarySupport {
                             "java_nio_MappedMemoryUtils_isLoaded0",
                             "java_nio_MappedMemoryUtils_force0");
         }
-        defaultBuiltInPkgNativesBlocklist = blocklist.toArray(new String[0]);
+        defaultBuiltInPkgNativesBlocklist = blocklist;
+    }
+
+    public static void addToPkgNativesBlocklist(String name) {
+        if (!defaultBuiltInPkgNativesBlocklist.contains(name)) {
+            defaultBuiltInPkgNativesBlocklist.add(name);
+        }
+    }
+
+    public static void removeFromPkgNativesBlocklist(String name) {
+        defaultBuiltInPkgNativesBlocklist.remove(name);
+    }
+
+    public static List<String> getPkgNativesBlocklist() {
+        return Collections.unmodifiableList(defaultBuiltInPkgNativesBlocklist);
     }
 
     public static PlatformNativeLibrarySupport singleton() {
