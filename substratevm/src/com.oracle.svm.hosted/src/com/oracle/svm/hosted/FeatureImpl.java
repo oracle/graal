@@ -47,10 +47,13 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.hosted.DynamicJNIAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.ReflectionDynamicAccess;
+import org.graalvm.nativeimage.hosted.ResourceDynamicAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -189,6 +192,21 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public ReflectionDynamicAccess getReflectionDynamicAccess() {
+            return new ReflectionDynamicAccessImpl();
+        }
+
+        @Override
+        public ResourceDynamicAccess getResourceDynamicAccess() {
+            return new ResourceDynamicAccessImpl();
+        }
+
+        @Override
+        public DynamicJNIAccess getDynamicJNIAccess() {
+            return new DynamicJNIAccessImpl();
         }
     }
 
