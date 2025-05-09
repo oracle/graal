@@ -2015,24 +2015,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             TruffleSafepoint.poll(this);
             if (CompilerDirectives.hasNextTier() && ++loopCount.value >= REPORT_LOOP_STRIDE) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
+                if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, REPORT_LOOP_STRIDE)) {
+                    livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
+                    Object osrResult;
+                    StoredWrapperNode storedWrapperNode = null;
+                    try {
+                        storedWrapperNode = storeWrapperNodeIfSet(frame, instrument);
+                        osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), null, frame);
+                    } catch (Throwable any) {
+                        // Has already been guest-handled in OSR. Shortcut out of the method.
+                        throw new EspressoOSRReturnException(any);
+                    } finally {
+                        restoreWrapperNode(frame, storedWrapperNode, instrument);
+                    }
+                    if (osrResult != null) {
+                        throw new EspressoOSRReturnException(osrResult);
+                    }
+                }
                 loopCount.value = 0;
-            }
-            if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
-                Object osrResult;
-                StoredWrapperNode storedWrapperNode = null;
-                try {
-                    storedWrapperNode = storeWrapperNodeIfSet(frame, instrument);
-                    osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), null, frame);
-                } catch (Throwable any) {
-                    // Has already been guest-handled in OSR. Shortcut out of the method.
-                    throw new EspressoOSRReturnException(any);
-                } finally {
-                    restoreWrapperNode(frame, storedWrapperNode, instrument);
-                }
-                if (osrResult != null) {
-                    throw new EspressoOSRReturnException(osrResult);
-                }
             }
         }
         livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);

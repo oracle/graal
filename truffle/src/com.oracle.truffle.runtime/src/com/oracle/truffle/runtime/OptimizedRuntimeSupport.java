@@ -51,6 +51,7 @@ import org.graalvm.polyglot.SandboxPolicy;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -151,11 +152,7 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleSafepoint.poll((Node) osrNode);
-        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        if (osrMetadata == null) {
-            osrMetadata = initializeBytecodeOSRMetadata(osrNode);
-        }
-
+        BytecodeOSRMetadata osrMetadata = getOrInitializeOSRMetadata(osrNode);
         // metadata can be disabled during initialization (above) or dynamically after
         // failed compilation.
         if (osrMetadata.isDisabled()) {
@@ -165,6 +162,33 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
         }
     }
 
+    @Override
+    public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode, int loopCountIncrement) {
+        CompilerAsserts.neverPartOfCompilation();
+        BytecodeOSRMetadata osrMetadata = getOrInitializeOSRMetadata(osrNode);
+        // metadata can be disabled during initialization (above) or dynamically after
+        // failed compilation.
+        if (osrMetadata.isDisabled()) {
+            return false;
+        } else {
+            return osrMetadata.incrementAndPoll(loopCountIncrement);
+        }
+    }
+
+    private static BytecodeOSRMetadata getOrInitializeOSRMetadata(BytecodeOSRNode osrNode) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        if (osrMetadata == null) {
+            osrMetadata = initializeBytecodeOSRMetadata(osrNode);
+        }
+        return osrMetadata;
+    }
+
+    /*
+     * While this method is not used for runtime compilation the TruffleBoundary is needed to
+     * support compilation in HostCompilerDirectives.inInterpreterFastPath and HostInlining
+     * semantics.
+     */
+    @TruffleBoundary
     private static BytecodeOSRMetadata initializeBytecodeOSRMetadata(BytecodeOSRNode osrNode) {
         Node node = (Node) osrNode;
         return node.atomic(() -> { // double checked locking

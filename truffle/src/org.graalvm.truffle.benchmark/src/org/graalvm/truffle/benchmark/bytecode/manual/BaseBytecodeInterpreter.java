@@ -95,14 +95,13 @@ abstract class BaseBytecodeInterpreter extends RootNode implements BytecodeOSRNo
         if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
             TruffleSafepoint.poll(this);
             LoopNode.reportLoopCount(this, 256);
-            loopCounter.count = 0;
-        }
-
-        if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-            Object osrResult = BytecodeOSRNode.tryOSR(this, (sp << 16) | nextBci, null, null, frame);
-            if (osrResult != null) {
-                return osrResult;
+            if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, 256)) {
+                Object osrResult = BytecodeOSRNode.tryOSR(this, (sp << 16) | nextBci, null, null, frame);
+                if (osrResult != null) {
+                    return osrResult;
+                }
             }
+            loopCounter.count = 0;
         }
 
         return null;

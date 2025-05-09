@@ -1151,6 +1151,8 @@ meth public java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFram
 meth public java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,long,java.lang.Object)
 meth public java.lang.Object[] storeParentFrameInArguments(com.oracle.truffle.api.frame.VirtualFrame)
 meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
+meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode,int)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,int,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,long,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int)
@@ -1705,7 +1707,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
