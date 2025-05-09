@@ -41,6 +41,8 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.hosted.reflect.StrictReflectionRegistry;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -251,9 +253,16 @@ public class AutomaticUnsafeTransformationSupport {
         NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
+        StrictReflectionRegistry reflectionRegistry = null;
+        SubstrateOptions.StrictReflectionMode strictReflectionMode = SubstrateOptions.StrictReflection.getValue();
+        if (strictReflectionMode == SubstrateOptions.StrictReflectionMode.Warn || strictReflectionMode == SubstrateOptions.StrictReflectionMode.Enforce) {
+            reflectionRegistry = new StrictReflectionRegistry(GraalAccess.getOriginalProviders(), loader);
+            plugins.appendMethodParsingPlugin(reflectionRegistry::analyzeMethod);
+        }
+
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
-                        ParsingReason.AutomaticUnsafeTransformation, fallbackFeature);
+                        ParsingReason.AutomaticUnsafeTransformation, fallbackFeature, reflectionRegistry);
 
         /*
          * Note: ConstantFoldLoadFieldPlugin should not be installed because it will disrupt

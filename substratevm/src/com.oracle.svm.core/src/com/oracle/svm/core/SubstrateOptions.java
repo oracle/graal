@@ -1426,4 +1426,18 @@ public class SubstrateOptions {
                      2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
                      3. All @TargetClass substitutions in classes loaded by the custom loader are processed.""")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
+
+    public enum StrictReflectionMode {
+        Disable,
+        Warn,
+        Enforce
+    }
+
+    @Option(help = """
+                    Select the mode for the strict, build-time analysis of reflective calls.
+                    Possible values are:",
+                     "Disable" (default): Disable the strict reflection mode and fall back to the optimization dependent analysis for inferrable reflective calls;
+                     "Warn": Fold both the reflective calls inferred with the strict mode analysis and the optimization dependant analysis, but print a warning for non-strict call folding;
+                     "Enforce": Fold only the reflective calls inferred by the strict analysis mode.""")//
+    public static final HostedOptionKey<StrictReflectionMode> StrictReflection = new HostedOptionKey<>(StrictReflectionMode.Disable);
 }
