@@ -198,6 +198,13 @@ class ToolsUnittestConfig(mx_unittest.MxUnittestConfig):
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
         vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
+        # The tools unittests use internals
+        mainClassArgs.extend(['-JUnitOpenPackages', 'com.oracle.truffle.tools.chromeinspector/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'com.oracle.truffle.tools.coverage/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'com.oracle.truffle.tools.dap/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.tools.insight/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.tools.insight.heap/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.tools.lsp/*=ALL-UNNAMED'])
         return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.register_unittest_config(ToolsUnittestConfig())
