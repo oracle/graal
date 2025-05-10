@@ -346,7 +346,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
         countCodepoints(asm, ret, vecArray, vecMask1, vecMask2, mask, tmp, vectorSize);
         // subtract the number of code points from target index.
         // if the result is negative, the target index must be in the current vector
-        asm.sublAndJcc(idx, tmp, Negative, tailMask, true);
+        asm.subl(idx, tmp);
+        asm.jccb(Negative, tailMask);
         // otherwise, continue the loop
         asm.sublAndJcc(len, vectorLength, NotZero, loop, true);
         asm.jmp(loopTail);
@@ -422,7 +423,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
         // process the last vector the same way the vector loop would
         countCodepoints(asm, ret, vecArray, vecMask1, vecMask2, mask, tmp, vectorSize);
         // subtract the number of code points from the target index
-        asm.sublAndJcc(idx, tmp, Positive, outOfBounds, false);
+        asm.subl(idx, tmp);
+        asm.jcc(Positive, outOfBounds);
         asm.jmp(tailMask);
 
         if (supportsAVX2AndYMM()) {
@@ -445,7 +447,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
         loadLessThan16IntoXMMOrdered(crb, asm, stride, arr, lengthTail, tmp, vecArray, vecTmp1, vecTmp2);
         countCodepoints(asm, ret, vecArray, vecMask1, vecMask2, mask, tmp, XMM);
         // subtract the number of code points from the target index
-        asm.sublAndJcc(idx, tmp, Negative, tailMask16, false);
+        asm.subl(idx, tmp);
+        asm.jcc(Negative, tailMask16);
         asm.jmpb(outOfBounds);
 
         // scalar loop
@@ -464,7 +467,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
                 asm.cmplAndJcc(tmp, 0x80, Equal, tailScalarLoopSkip, true);
                 // not a continuation byte -> decrease idx.
                 // if idx becomes negative, we found the target codepoint
-                asm.declAndJcc(idx, Negative, end, true);
+                asm.decl(idx);
+                asm.jccb(Negative, end);
                 asm.bind(tailScalarLoopSkip);
                 asm.incl(ret);
                 asm.declAndJcc(lengthTail, NotZero, tailScalarLoopHead, true);
@@ -477,7 +481,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
                 asm.cmplAndJcc(tmp, 0x37, Equal, tailScalarLoopSkip, true);
                 // not low surrogate -> decrease idx.
                 // if idx becomes negative, we found the target codepoint
-                asm.sublAndJcc(idx, 2, Negative, end, true);
+                asm.subl(idx, 2);
+                asm.jccb(Negative, end);
                 asm.bind(tailScalarLoopSkip);
                 asm.addl(ret, 2);
                 asm.sublAndJcc(lengthTail, 2, NotZero, tailScalarLoopHead, true);
@@ -557,7 +562,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
         asm.popcntl(tmp, mask);
         // add current negative index.
         // if the result is still negative, target index is in the lower half.
-        asm.addlAndJcc(tmp, idx, Positive, nextTail, true);
+        asm.addl(tmp, idx);
+        asm.jccb(Positive, nextTail);
         // get lower half of bitmask
         asm.andl(maskCopy, ~0 >>> (32 - (bits / 2)));
         // adjust result for lower half

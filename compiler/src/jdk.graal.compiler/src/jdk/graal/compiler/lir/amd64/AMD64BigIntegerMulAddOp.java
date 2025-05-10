@@ -183,7 +183,8 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         masm.shrl(tmp1, 2);
 
         masm.bind(lFirstLoop);
-        masm.sublAndJcc(tmp1, 1, ConditionFlag.Negative, lFirstLoopExit, true);
+        masm.decl(tmp1);
+        masm.jccb(ConditionFlag.Negative, lFirstLoopExit);
 
         masm.subl(len, 4);
         masm.subl(offset, 4);
@@ -255,8 +256,10 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         mulAdd128X32Loop(masm, out, in, offs, len, tmp1, tmp2, tmp3, tmp4, tmp5, rdxReg, raxReg);
 
         // Multiply the trailing in[] entry using 64 bit by 32 bit, if any
-        masm.declAndJcc(len, ConditionFlag.Negative, lCarry, true);
-        masm.declAndJcc(len, ConditionFlag.Negative, lLastIn, true);
+        masm.decl(len);
+        masm.jccb(ConditionFlag.Negative, lCarry);
+        masm.decl(len);
+        masm.jccb(ConditionFlag.Negative, lLastIn);
 
         masm.movq(op1, new AMD64Address(in, len, Stride.S4, 0));
         masm.rorq(op1, 32);

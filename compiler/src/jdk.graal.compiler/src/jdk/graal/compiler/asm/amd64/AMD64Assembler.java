@@ -6080,6 +6080,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.DWORD, dst, src);
     }
 
+    public final void xorl(Register dst, AMD64Address src) {
+        AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.DWORD, dst, src);
+    }
+
     public final void xorl(Register dst, int imm32) {
         AMD64BinaryArithmetic.XOR.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
     }
@@ -6109,6 +6113,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void xorq(Register dst, Register src) {
+        AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void xorq(Register dst, AMD64Address src) {
         AMD64BinaryArithmetic.XOR.rmOp.emit(this, OperandSize.QWORD, dst, src);
     }
 
