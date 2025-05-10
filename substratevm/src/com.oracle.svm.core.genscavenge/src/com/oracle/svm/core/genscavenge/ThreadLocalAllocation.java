@@ -275,7 +275,13 @@ public final class ThreadLocalAllocation {
             GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
             if (!GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(size)) {
-                /* Large arrays go into their own unaligned chunk. */
+                /*
+                 * Large arrays go into their own unaligned chunk. Only arrays and stored
+                 * continuations may be allocated in an unaligned chunk.
+                 */
+                int layoutEncoding = hub.getLayoutEncoding();
+                assert LayoutEncoding.isArray(layoutEncoding) || StoredContinuation.class.isAssignableFrom(DynamicHub.toClass(hub));
+
                 boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
                 tlabSize = UnalignedHeapChunk.getChunkSizeForObject(size);

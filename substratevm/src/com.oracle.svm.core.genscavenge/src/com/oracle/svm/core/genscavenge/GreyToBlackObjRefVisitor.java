@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -31,8 +33,8 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;
@@ -46,7 +48,7 @@ import jdk.graal.compiler.word.Word;
  * Since this visitor is used during collection, one instance of it is constructed during native
  * image generation.
  */
-final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
+public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectReferenceVisitor {
     private final Counters counters;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -60,7 +62,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
     @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
         Pointer pos = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
@@ -71,7 +73,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         assert !objRef.isNull();
         counters.noteObjRef();
@@ -98,13 +100,13 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
                 ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
-                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj, objRef);
                 return;
             }
 
             Object obj = p.toObjectNonNull();
             if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
-                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj, objRef);
                 return;
             }
 
@@ -120,7 +122,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
             // The reference will not be updated if a whole chunk is promoted. However, we still
             // might have to dirty the card.
-            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
+            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy, objRef);
         }
     }
 

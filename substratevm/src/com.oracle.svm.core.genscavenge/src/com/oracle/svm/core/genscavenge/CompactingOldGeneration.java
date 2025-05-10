@@ -148,8 +148,8 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override
@@ -350,7 +350,7 @@ final class CompactingOldGeneration extends OldGeneration {
     private void fixupImageHeapRoots(ImageHeapInfo info) {
         if (HeapImpl.usesImageHeapCardMarking()) {
             // Note that cards have already been cleaned and roots re-marked during the initial scan
-            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);
+            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, refFixupVisitor, false);
         } else {
             GCImpl.walkImageHeapRoots(info, fixupVisitor);
         }

@@ -87,7 +87,7 @@ public final class ImageHeapWalker {
         Pointer base = Heap.getHeap().getImageHeapStart();
         Pointer offset = current.subtract(base);
         UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapParameters.getAlignedHeapChunkAlignment())
-                        : offset.subtract(UnalignedHeapChunk.getObjectStartOffset());
+                        : offset.subtract(UnalignedHeapChunk.getOffsetForObject(current));
         HeapChunk.Header<?> currentChunk = (HeapChunk.Header<?>) chunkOffset.add(base);
 
         // Assumption: the order of chunks in their linked list is the same order as in memory,

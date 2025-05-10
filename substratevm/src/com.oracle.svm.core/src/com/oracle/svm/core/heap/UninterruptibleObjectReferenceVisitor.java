@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.heap;
 
-import java.util.List;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.image.ImageHeapObject;
+import org.graalvm.word.Pointer;
 
-interface ImageHeapChunkWriter {
-    void initializeAlignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
+import com.oracle.svm.core.Uninterruptible;
 
-    void enableRememberedSetForAlignedChunk(int chunkPosition, List<ImageHeapObject> objects);
-
-    void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, long objectSize);
-
-    void enableRememberedSetForUnalignedChunk(int chunkPosition, long objectSize);
+public interface UninterruptibleObjectReferenceVisitor extends ObjectReferenceVisitor {
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count);
 }
