@@ -200,7 +200,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         masm.bind(lFourthLoop);
         masm.jccb(ConditionFlag.CarryClear, lFourthLoopExit);
-        masm.sublAndJcc(zlen, 2, ConditionFlag.Negative, lFourthLoopExit, true);
+        masm.subl(zlen, 2);
+        masm.jccb(ConditionFlag.Negative, lFourthLoopExit);
         masm.addq(new AMD64Address(z, zlen, Stride.S4, 0), tmp1);
         masm.jmp(lFourthLoop);
         masm.bind(lFourthLoopExit);
@@ -235,7 +236,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         masm.bind(lFifthLoop);
         masm.decl(zidx);  // Use decl to preserve carry flag
-        masm.declAndJcc(zidx, ConditionFlag.Negative, lFifthLoopExit, true);
+        masm.decl(zidx);
+        masm.jccb(ConditionFlag.Negative, lFifthLoopExit);
 
         if (useBMI2Instructions(masm)) {
             masm.movq(value, new AMD64Address(z, zidx, Stride.S4, 0));
@@ -324,8 +326,10 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         }
 
         masm.bind(lThirdLoop);
-        masm.declAndJcc(len, ConditionFlag.Negative, lThirdLoopExit, true);
-        masm.declAndJcc(len, ConditionFlag.Negative, lLastX, true);
+        masm.decl(len);
+        masm.jccb(ConditionFlag.Negative, lThirdLoopExit);
+        masm.decl(len);
+        masm.jccb(ConditionFlag.Negative, lLastX);
 
         masm.movq(op1, new AMD64Address(x, len, Stride.S4, 0));
         masm.rorq(op1, 32);
