@@ -32,12 +32,13 @@ import jdk.graal.compiler.core.common.util.EventCounter.EventCounterMarker;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Utility class that allows the compiler to monitor compilations that take a very long time.
@@ -212,29 +213,89 @@ public final class CompilationAlarm implements AutoCloseable {
     /**
      * Signal the execution of the phase identified by {@code name} starts.
      */
-    public void enterPhase(CharSequence name) {
+    public void enterPhase(CharSequence name, StructuredGraph graph) {
         if (!isEnabled()) {
             return;
         }
-        PhaseTreeNode node = new PhaseTreeNode(name);
+        if (root == null) {
+            String identifier = null;
+            if (graph == null) {
+                identifier = "NULL_GRAPH";
+            } else if (graph.method() == null) {
+                // use graph.toString
+                identifier = graph.toString();
+            } else {
+                identifier = graph.method().format("%H.%n(%p)");
+            }
+            // if we do not have a method use the graph
+            root = new PhaseTreeNode(String.format("Root -> %s", identifier), graph);
+            currentNode = root;
+        } else {
+            assert currentNode != null : Assertions.errorMessage("Must have a current node if the root is non null", root);
+            handleIntermediateRoots(graph);
+        }
+
+        PhaseTreeNode node = new PhaseTreeNode(name, graph);
         node.parent = currentNode;
         node.startTimeNS = System.nanoTime();
+        if (graph != null) {
+            node.graphSizeBefore = graph.getNodeCount();
+        }
         currentNode.addChild(node);
         currentNode = node;
+    }
+
+    private void handleIntermediateRoots(StructuredGraph graph) {
+        // we only track intermediate roots if we have a graph
+        if (currentNode.graph != null && graph != null) {
+            if (graphMarksIntermediateRootEnd(graph)) {
+                while (graphMarksIntermediateRootEnd(graph)) {
+                    // Switching to a new graph, possibly a parent or sibling. Drop the current
+                    // subgraph.
+                    currentNode = currentNode.parent;
+                }
+            } else if (!currentNode.graph.equals(graph)) {
+                // Insert a new root node to distinguish the separate graph.
+                ResolvedJavaMethod method = graph.method();
+                PhaseTreeNode newRoot = new PhaseTreeIntermediateRoot(String.format("IntermediateRoot -> %s", method == null ? graph : method.format("%H.%n(%p)")), graph);
+                newRoot.parent = currentNode;
+                currentNode.addChild(newRoot);
+                currentNode = newRoot;
+            }
+        }
     }
 
     /**
      * Signal the execution of the phase identified by {@code name} is over.
      */
-    public void exitPhase(CharSequence name) {
+    public void exitPhase(CharSequence name, StructuredGraph graph) {
         if (!isEnabled()) {
             return;
+        }
+        while (graphMarksIntermediateRootEnd(graph)) {
+            // Switching to a new graph, possibly a parent or sibling. Drop the current
+            // subgraph.
+            currentNode = currentNode.parent;
         }
         assert currentNode.name.equals(name) : Assertions.errorMessage("Must see the same phase that was opened in the close operation", name, elapsedPhaseTreeAsString());
         setCurrentNodeDuration(name);
         currentNode.closed = true;
+        if (graph != null) {
+            currentNode.graphSizeAfter = graph.getNodeCount();
+        }
         currentNode.parent.durationNS += currentNode.durationNS;
         currentNode = currentNode.parent;
+    }
+
+    /**
+     * Potentially closes an intermediate root node in the phase tree.
+     *
+     * This method checks if the current phase tree node is an intermediate root and if so, closes
+     * it.
+     */
+    private boolean graphMarksIntermediateRootEnd(StructuredGraph graph) {
+        // use object equals instead to account for null graphs
+        return currentNode instanceof PhaseTreeIntermediateRoot && currentNode.graph != null && graph != null && !currentNode.graph.equals(graph);
     }
 
     private void setCurrentNodeDuration(CharSequence name) {
@@ -246,20 +307,19 @@ public final class CompilationAlarm implements AutoCloseable {
      * The phase tree root node during compilation. Special marker node to avoid null checking
      * logic.
      */
-    private PhaseTreeNode root = new PhaseTreeNode("Root");
+    private PhaseTreeNode root = null;
 
     /**
      * The current tree node to add children to. That is, the phase that currently runs in the
      * compiler.
      */
-    private PhaseTreeNode currentNode = root;
+    private PhaseTreeNode currentNode = null;
 
     /**
      * Tree data structure representing phase nesting and the respective wall clock time of each
      * phase.
      */
-    private class PhaseTreeNode {
-
+    private static class PhaseTreeNode {
         /**
          * Link to the parent node.
          */
@@ -276,7 +336,7 @@ public final class CompilationAlarm implements AutoCloseable {
         private int childIndex = 0;
 
         /**
-         * The name of this node, normally the {@link BasePhase#contractorName()}.
+         * The name of this node.
          */
         private final CharSequence name;
 
@@ -295,8 +355,25 @@ public final class CompilationAlarm implements AutoCloseable {
          */
         public boolean closed;
 
-        PhaseTreeNode(CharSequence name) {
+        /**
+         * Node count of the associated graph before application of {@code  this} phase.
+         */
+        private int graphSizeBefore;
+
+        /**
+         * Node count of the associated graph after application this {@code this} phase.
+         */
+        private int graphSizeAfter;
+
+        /**
+         * The graph associated with this phase when calling
+         * {@link #enterPhase(CharSequence, StructuredGraph)}.
+         */
+        private final StructuredGraph graph;
+
+        PhaseTreeNode(CharSequence name, StructuredGraph graph) {
             this.name = name;
+            this.graph = graph;
         }
 
         private void addChild(PhaseTreeNode child) {
@@ -314,13 +391,21 @@ public final class CompilationAlarm implements AutoCloseable {
 
         @Override
         public String toString() {
-            return name + "->" + TimeUnit.NANOSECONDS.toMillis(durationNS) + "ms elapsed [startMS=" + TimeUnit.NANOSECONDS.toMillis(startTimeNS) + "]";
+            return name + "->" + TimeUnit.NANOSECONDS.toMillis(durationNS) + "ms elapsed [startMS=" + TimeUnit.NANOSECONDS.toMillis(startTimeNS) + "] graphSizeBefore->After=[" + graphSizeBefore +
+                            "->" + graphSizeAfter + "]";
         }
 
     }
 
+    private static class PhaseTreeIntermediateRoot extends PhaseTreeNode {
+
+        PhaseTreeIntermediateRoot(CharSequence name, StructuredGraph graph) {
+            super(name, graph);
+        }
+    }
+
     private PhaseTreeNode cloneTree(PhaseTreeNode clonee, PhaseTreeNode parent) {
-        PhaseTreeNode clone = new PhaseTreeNode(clonee.name);
+        PhaseTreeNode clone = new PhaseTreeNode(clonee.name, clonee.graph);
         clone.parent = parent;
         if (clone.parent != null) {
             clone.parent.addChild(clone);
@@ -328,6 +413,8 @@ public final class CompilationAlarm implements AutoCloseable {
         clone.durationNS = clonee.durationNS;
         clone.startTimeNS = clonee.startTimeNS;
         clone.closed = clonee.closed;
+        clone.graphSizeBefore = clonee.graphSizeBefore;
+        clone.graphSizeAfter = clonee.graphSizeAfter;
         if (clonee.children != null) {
             for (int i = 0; i < clonee.childIndex; i++) {
                 cloneTree(clonee.children[i], clone);
@@ -345,6 +432,9 @@ public final class CompilationAlarm implements AutoCloseable {
      * Recursively print the phase tree represented by {@code node}.
      */
     private void printTree(String indent, StringBuilder sb, PhaseTreeNode node, boolean printRoot) {
+        if (root == null) {
+            return;
+        }
         sb.append(indent);
         if (!printRoot && node == root) {
             sb.append(node.name);
