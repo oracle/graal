@@ -61,14 +61,14 @@ public final class GraphState {
                     StageFlag.SAFEPOINTS_INSERTION,
                     StageFlag.GUARD_LOWERING,
                     StageFlag.MID_TIER_LOWERING,
-                    StageFlag.FSA,
-                    StageFlag.BARRIER_ADDITION);
+                    StageFlag.FSA);
     private static final EnumSet<StageFlag> LOW_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.LOW_TIER_LOWERING,
                     StageFlag.EXPAND_LOGIC,
                     StageFlag.ADDRESS_LOWERING,
                     StageFlag.REMOVE_OPAQUE_VALUES,
-                    StageFlag.FINAL_SCHEDULE);
+                    StageFlag.FINAL_SCHEDULE,
+                    StageFlag.BARRIER_ADDITION);
     private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.GUARD_LOWERING,
@@ -76,8 +76,7 @@ public final class GraphState {
                     StageFlag.SAFEPOINTS_INSERTION,
                     StageFlag.MID_TIER_LOWERING,
                     StageFlag.FSA,
-                    StageFlag.NODE_VECTORIZATION,
-                    StageFlag.BARRIER_ADDITION);
+                    StageFlag.NODE_VECTORIZATION);
 
     /**
      * This set of {@link StageFlag}s represents the stages a {@link StructuredGraph} initially

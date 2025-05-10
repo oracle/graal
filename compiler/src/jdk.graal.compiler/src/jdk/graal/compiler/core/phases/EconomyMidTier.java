@@ -30,7 +30,6 @@ import jdk.graal.compiler.phases.common.GuardLoweringPhase;
 import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
-import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 
 public class EconomyMidTier extends BaseTier<MidTierContext> {
@@ -44,6 +43,5 @@ public class EconomyMidTier extends BaseTier<MidTierContext> {
         appendPhase(new MidTierLoweringPhase(canonicalizer));
         appendPhase(new FrameStateAssignmentPhase());
         appendPhase(canonicalizer);
-        appendPhase(new WriteBarrierAdditionPhase());
     }
 }

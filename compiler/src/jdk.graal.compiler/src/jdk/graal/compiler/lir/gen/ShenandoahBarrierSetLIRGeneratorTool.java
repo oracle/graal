@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.amd64;
+package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.RegisterValue;
+import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-/**
- * AMD64 specific LIR generation for GC barriers.
- */
-public interface AMD64ReadBarrierSetLIRGenerator extends BarrierSetLIRGeneratorTool {
+public interface ShenandoahBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
+    Value emitLoadReferenceBarrier(LIRGeneratorTool tool, Value obj, Value address, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean narrow, boolean notNull);
 
-    /**
-     * Emit an atomic read-and-write instruction with any required GC barriers.
-     */
-    Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
+    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
 
-    /**
-     * Emit an atomic compare and swap with any required GC barriers.
-     */
-    void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue,
-                    BarrierType barrierType);
+    void emitCardBarrier(LIRGeneratorTool lirTool, Value address);
 }
