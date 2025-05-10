@@ -620,6 +620,12 @@ public final class VM extends NativeEnv {
 
     // endregion system
 
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsFinalizationEnabled() {
+        // TODO: implement '--finalization' flag.
+        return true;
+    }
+
     @VmImpl
     public static boolean JVM_IsPreviewEnabled(@Inject EspressoLanguage language) {
         return language.isPreviewEnabled();
@@ -1883,6 +1889,10 @@ public final class VM extends NativeEnv {
 
     private Symbol<Type> namePtrToInternal(TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
+        return nameToInternal(name);
+    }
+
+    public Symbol<Type> nameToInternal(String name) {
         Symbol<Type> type = null;
         if (name != null) {
             String internalName = name;
@@ -1909,10 +1919,24 @@ public final class VM extends NativeEnv {
                     boolean initialize,
                     int flags,
                     @JavaType(Object.class) StaticObject classData) {
+        Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         if (StaticObject.isNull(lookup)) {
             throw getMeta().throwExceptionWithMessage(getMeta().java_lang_InternalError, "Lookup class is null");
         }
         assert !getUncached().isNull(bufPtr);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
+        final byte[] bytes = new byte[len];
+        buf.get(bytes);
+
+        return lookupDefineClass(lookup, type, bytes, pd, initialize, flags, classData);
+    }
+
+    public StaticObject lookupDefineClass(
+                    StaticObject lookup,
+                    Symbol<Type> type, byte[] bytes, StaticObject pd,
+                    boolean initialize,
+                    int flags,
+                    StaticObject classData) {
         assert lookup.getMirrorKlass(getMeta()) instanceof ObjectKlass;
 
         boolean isNestMate = (flags & NESTMATE_CLASS) == NESTMATE_CLASS;
@@ -1941,11 +1965,6 @@ public final class VM extends NativeEnv {
                 throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, String.format("invalid flag 0x%x", flags));
             }
         }
-
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        final byte[] bytes = new byte[len];
-        buf.get(bytes);
-        Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         StaticObject loader = lookup.getMirrorKlass(getMeta()).getDefiningClassLoader();
 
         ObjectKlass k;
@@ -1979,6 +1998,10 @@ public final class VM extends NativeEnv {
         buf.get(bytes);
 
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
+        return defineClass(type, loader, pd, bytes);
+    }
+
+    public StaticObject defineClass(Symbol<Type> type, StaticObject loader, StaticObject pd, byte[] bytes) {
 
         StaticObject clazz;
         try {
@@ -2026,6 +2049,10 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @JavaType(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
+        return findClassFromBootLoader(name);
+    }
+
+    public StaticObject findClassFromBootLoader(String name) {
         if (name == null) {
             return StaticObject.NULL;
         }
@@ -2057,8 +2084,12 @@ public final class VM extends NativeEnv {
     public @JavaType(Class.class) StaticObject JVM_FindClassFromCaller(@Pointer TruffleObject namePtr,
                     boolean init, @JavaType(ClassLoader.class) StaticObject loader,
                     @JavaType(Class.class) StaticObject caller) {
-        Meta meta = getMeta();
         Symbol<Type> type = namePtrToInternal(namePtr);
+        return findClassFromCaller(type, init, loader, caller);
+    }
+
+    public StaticObject findClassFromCaller(Symbol<Type> type, boolean init, StaticObject loader, StaticObject caller) {
+        Meta meta = getMeta();
         Klass result;
         if (TypeSymbols.isPrimitive(type)) {
             result = null;
@@ -2077,7 +2108,7 @@ public final class VM extends NativeEnv {
             result = meta.resolveSymbolOrNull(type, loader, protectionDomain);
         }
         if (result == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, NativeUtils.interopPointerToString(namePtr));
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, type.toString());
         }
         if (init) {
             result.safeInitialize();
@@ -2126,6 +2157,7 @@ public final class VM extends NativeEnv {
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
     private static final AtomicLong libraryHandles = new AtomicLong(1);
+    private static final AtomicLong symbolHandles = new AtomicLong(1);
 
     public @Pointer TruffleObject getFunction(long handle) {
         return handle2Sym.get(handle);
@@ -2198,6 +2230,25 @@ public final class VM extends NativeEnv {
         }
     }
 
+    private static long getSymbolHandle(TruffleObject sym) {
+        try {
+            if (InteropLibrary.getUncached().isPointer(sym)) {
+                return InteropLibrary.getUncached().asPointer(sym);
+            } else {
+                // Try to force to a pointer.
+                InteropLibrary.getUncached().toNative(sym);
+                if (InteropLibrary.getUncached().isPointer(sym)) {
+                    return InteropLibrary.getUncached().asPointer(sym);
+                } else {
+                    // Not an actual pointer, cannot get its native handle, create a fake one.
+                    return symbolHandles.getAndIncrement();
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
     @VmImpl
     @TruffleBoundary
     public void JVM_UnloadLibrary(@Pointer TruffleObject libraryPtr) {
@@ -2207,6 +2258,7 @@ public final class VM extends NativeEnv {
             getLogger().severe("JVM_UnloadLibrary with unknown library (not loaded through JVM_LoadLibrary?): " + libraryPtr + " / " + Long.toHexString(nativeLibraryPtr));
         } else {
             getNativeAccess().unloadLibrary(library);
+            handle2Lib.remove(nativeLibraryPtr);
         }
     }
 
@@ -2216,18 +2268,24 @@ public final class VM extends NativeEnv {
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
+        return RawPointer.create(findLibraryEntry(nativePtr, name));
+    }
+
+    @TruffleBoundary
+    public long findLibraryEntry(long nativePtr, String name) {
         TruffleObject library = handle2Lib.get(nativePtr);
         if (library == null) {
             if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
                 library = getNativeAccess().loadDefaultLibrary();
                 if (library == null) {
                     getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported: " + name);
-                    return RawPointer.nullInstance();
+                    return 0;
                 }
-                handle2Lib.put(nativePtr, library);
+                TruffleObject previous = handle2Lib.putIfAbsent(nativePtr, library);
+                library = previous == null ? library : previous;
             } else {
-                getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + libraryPtr + " / " + Long.toHexString(nativePtr) + "): " + name);
-                return RawPointer.nullInstance();
+                getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + nativePtr + " / " + Long.toHexString(nativePtr) + "): " + name);
+                return 0;
             }
         }
         try {
@@ -2249,14 +2307,14 @@ public final class VM extends NativeEnv {
                 getLogger().finest("JVM_FindLibraryEntry(%s, %s) -> %s".formatted(libraryName, name, functionName));
             }
             if (function == null) {
-                return RawPointer.nullInstance(); // not found
+                return 0; // not found
             }
             if (!getUncached().isPointer(function)) {
                 getUncached().toNative(function);
             }
-            long handle = getUncached().asPointer(function);
+            long handle = getSymbolHandle(function);
             handle2Sym.put(handle, function);
-            return function;
+            return handle;
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -3894,7 +3952,9 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
-    public void JVM_InitStackTraceElementArray(@JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Object.class) StaticObject throwableOrBacktrace,
+    public void JVM_InitStackTraceElementArray(
+                    @JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Object.class) StaticObject throwableOrBacktrace,
+                    /*- Since JDK21: int depth, */
                     @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
@@ -3921,7 +3981,7 @@ public final class VM extends NativeEnv {
             try {
                 Object exceptionStackTrace = interop.getExceptionStackTrace(foreignException);
                 int stackSize = (int) interop.getArraySize(exceptionStackTrace);
-                if (elements.length(language) != stackSize) {
+                if (elements.length(language) < stackSize) {
                     profiler.profile(1);
                     throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
                 }
