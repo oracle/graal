@@ -73,6 +73,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64Move {
@@ -673,12 +674,20 @@ public class AArch64Move {
     static void const2reg(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, JavaConstant input) {
         JavaKind stackKind = input.getJavaKind().getStackKind();
         assert stackKind.isObject() || moveKind.getSizeInBytes() <= stackKind.getByteCount() : Assertions.errorMessageContext("stackKind", stackKind, "moveKind", moveKind);
+        // VMConstant is the marker interface for patched constants
+        boolean needsPatching = input instanceof VMConstant;
         switch (stackKind) {
             case Int:
-                masm.mov(result, input.asInt());
+                if (needsPatching) {
+                    crb.recordInlineDataInCode(input);
+                }
+                masm.mov(result, input.asInt(), needsPatching);
                 break;
             case Long:
-                masm.mov(result, input.asLong());
+                if (needsPatching) {
+                    crb.recordInlineDataInCode(input);
+                }
+                masm.mov(result, input.asLong(), needsPatching);
                 break;
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat()) && result.getRegisterCategory().equals(SIMD)) {
