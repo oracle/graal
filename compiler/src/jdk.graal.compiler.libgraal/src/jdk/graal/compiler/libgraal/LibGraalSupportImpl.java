@@ -56,7 +56,6 @@ import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -256,11 +255,8 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
             try {
                 return MethodHandles.lookup().findConstructor(Class.forName("jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope"), MethodType.methodType(void.class, boolean.class));
             } catch (ReflectiveOperationException e) {
-                if (JavaVersionUtil.JAVA_SPEC != 21) {
-                    throw new InternalError(e);
-                }
+                throw new InternalError(e);
             }
-            return null;
         }
 
         private final AutoCloseable impl;

@@ -22,36 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.jdk21.test;
+package jdk.graal.compiler.hotspot.preview.test;
 
-import java.lang.reflect.Method;
+import java.io.IOException;
 
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
+import jdk.graal.compiler.api.test.ModuleSupport;
+import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
+import jdk.graal.compiler.test.SubprocessUtil;
 
-public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
+public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
 
-    private static boolean contains(Object[] array, Object value) {
-        for (Object element : array) {
-            if (element == value) {
-                return true;
-            }
-        }
-        return false;
+    @Before
+    public void checkJavaAgent() {
+        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
     }
 
-    @SuppressWarnings("preview")
-    public static void testScopedValue() {
-        ScopedValue<Integer> scopedValue = ScopedValue.newInstance();
-        ScopedValue.where(scopedValue, 42).run(() -> {
-            scopedValue.get();
-            try {
-                Method get = Thread.class.getDeclaredMethod("scopedValueCache");
-                get.setAccessible(true);
-                Object[] cache = (Object[]) get.invoke(null);
-                assertTrue(contains(cache, scopedValue));
-            } catch (ReflectiveOperationException e) {
-                fail(e.getMessage());
-            }
-        });
+    public void testScopedValue() {
+        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
+        ScopedValueCacheTest.testScopedValue();
+
+        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
+        ScopedValueCacheTest.testScopedValue();
+    }
+
+    public void testBody() {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
+        testScopedValue();
+    }
+
+    @Test
+    public void testInSubprocess() throws IOException, InterruptedException {
+        SubprocessTest.launchSubprocess(getClass(), currentUnitTestName(), this::testBody, "--enable-preview");
     }
 }
