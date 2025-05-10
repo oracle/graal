@@ -24,21 +24,23 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
+import static jdk.graal.compiler.core.common.NumUtil.isByte;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 import java.util.function.IntConsumer;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -287,30 +289,41 @@ public class AMD64ControlFlow {
                 }
                 return;
             }
-            IntConsumer applyBeforeFusedPair = state == null ? null : pos -> crb.recordImplicitException(pos, state);
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
+            }
+            AMD64MIOp op = size == OperandSize.BYTE ? AMD64MIOp.TESTB : AMD64MIOp.TEST;
             if (isStackSlot(x)) {
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, (AMD64Address) crb.asAddress(x), y, false);
+                    masm.jcc(condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, (AMD64Address) crb.asAddress(x), y, false);
+                    masm.jcc(condition, trueDestination.label());
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, (AMD64Address) crb.asAddress(x), y, false);
+                    masm.jcc(condition.negate(), falseDestination.label());
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, (AMD64Address) crb.asAddress(x), y, false);
+                    masm.jcc(condition, trueDestination.label());
                     masm.jmp(falseDestination.label());
                 }
             } else {
                 AMD64AddressValue xAddress = (AMD64AddressValue) x;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, xAddress.toAddress(masm), y, false);
+                    masm.jcc(condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, xAddress.toAddress(masm), y, false);
+                    masm.jcc(condition, trueDestination.label());
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, xAddress.toAddress(masm), y, false);
+                    masm.jcc(condition.negate(), falseDestination.label());
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.testAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, applyBeforeFusedPair);
+                    op.emit(masm, size, xAddress.toAddress(masm), y, false);
+                    masm.jcc(condition, trueDestination.label());
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -459,12 +472,12 @@ public class AMD64ControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             final boolean inlineDataInCode = inlinedY != null;
-            IntConsumer applyBeforeFusedPair = null;
-            if (inlineDataInCode) {
-                applyBeforeFusedPair = pos -> crb.recordInlineDataInCode(inlinedY);
-            }
             if (isRegister(x)) {
                 assert state == null;
+                IntConsumer applyBeforeFusedPair = null;
+                if (inlineDataInCode) {
+                    applyBeforeFusedPair = pos -> crb.recordInlineDataInCode(inlinedY);
+                }
                 if (crb.isSuccessorEdge(trueDestination)) {
                     masm.cmpAndJcc(size, asRegister(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
                 } else if (crb.isSuccessorEdge(falseDestination)) {
@@ -478,33 +491,43 @@ public class AMD64ControlFlow {
                 }
                 return;
             }
+            if (inlineDataInCode) {
+                crb.recordInlineDataInCode(inlinedY);
+            }
             if (state != null) {
-                IntConsumer implicitException = pos -> crb.recordImplicitException(pos, state);
-                applyBeforeFusedPair = applyBeforeFusedPair == null ? implicitException : applyBeforeFusedPair.andThen(implicitException);
+                crb.recordImplicitException(masm.position(), state);
             }
             if (isStackSlot(x)) {
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, (AMD64Address) crb.asAddress(x), y, inlineDataInCode);
+                    masm.jcc(condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, (AMD64Address) crb.asAddress(x), y, inlineDataInCode);
+                    masm.jcc(condition, trueDestination.label());
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, (AMD64Address) crb.asAddress(x), y, inlineDataInCode);
+                    masm.jcc(condition.negate(), falseDestination.label());
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, (AMD64Address) crb.asAddress(x), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, (AMD64Address) crb.asAddress(x), y, inlineDataInCode);
+                    masm.jcc(condition, trueDestination.label());
                     masm.jmp(falseDestination.label());
                 }
             } else {
                 AMD64AddressValue xAddress = (AMD64AddressValue) x;
                 if (crb.isSuccessorEdge(trueDestination)) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, xAddress.toAddress(masm), y, inlineDataInCode);
+                    masm.jcc(condition.negate(), falseDestination.label());
                 } else if (crb.isSuccessorEdge(falseDestination)) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, xAddress.toAddress(masm), y, inlineDataInCode);
+                    masm.jcc(condition, trueDestination.label());
                 } else if (trueDestinationProbability < 0.5) {
-                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition.negate(), falseDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, xAddress.toAddress(masm), y, inlineDataInCode);
+                    masm.jcc(condition.negate(), falseDestination.label());
                     masm.jmp(trueDestination.label());
                 } else {
-                    masm.cmpAndJcc(size, xAddress.toAddress(masm), y, condition, trueDestination.label(), false, inlineDataInCode, applyBeforeFusedPair);
+                    CMP.getMIOpcode(size, isByte(y)).emit(masm, size, xAddress.toAddress(masm), y, inlineDataInCode);
+                    masm.jcc(condition, trueDestination.label());
                     masm.jmp(falseDestination.label());
                 }
             }
@@ -530,16 +553,19 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            Supplier<AMD64Address> applyBeforeConsumer = () -> (AMD64Address) crb.recordDataReferenceInCode(y, size.getBytes());
             if (crb.isSuccessorEdge(trueDestination)) {
-                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition.negate(), falseDestination.label());
+                CMP.getRMOpcode(size).emit(masm, size, asRegister(x), (AMD64Address) crb.recordDataReferenceInCode(y, size.getBytes()));
+                masm.jcc(condition.negate(), falseDestination.label());
             } else if (crb.isSuccessorEdge(falseDestination)) {
-                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition, trueDestination.label());
+                CMP.getRMOpcode(size).emit(masm, size, asRegister(x), (AMD64Address) crb.recordDataReferenceInCode(y, size.getBytes()));
+                masm.jcc(condition, trueDestination.label());
             } else if (trueDestinationProbability < 0.5) {
-                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition.negate(), falseDestination.label());
+                CMP.getRMOpcode(size).emit(masm, size, asRegister(x), (AMD64Address) crb.recordDataReferenceInCode(y, size.getBytes()));
+                masm.jcc(condition.negate(), falseDestination.label());
                 masm.jmp(trueDestination.label());
             } else {
-                masm.cmpAndJcc(size, asRegister(x), applyBeforeConsumer, condition, trueDestination.label());
+                CMP.getRMOpcode(size).emit(masm, size, asRegister(x), (AMD64Address) crb.recordDataReferenceInCode(y, size.getBytes()));
+                masm.jcc(condition, trueDestination.label());
                 masm.jmp(falseDestination.label());
             }
         }
