@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,21 @@ public abstract class ObjectHeader {
     public abstract long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase);
 
     public abstract Word encodeAsTLABObjectHeader(DynamicHub hub);
+
+    /**
+     * Compute an object header of a TLAB object from the offset of the {@link DynamicHub} from the
+     * heap base. This is similar to {@link #encodeAsTLABObjectHeader(DynamicHub)}, the difference
+     * is that the other method works at runtime with a {@link DynamicHub} object, while this method
+     * works at build time.
+     */
+    public abstract long encodeAsTLABObjectHeader(long hubOffsetFromHeapBase);
+
+    /**
+     * If we should constant-fold the header calculation when initializing new objects, this method
+     * returns the size of the header, else it returns -1. This method should be in sync with
+     * {@link #readHeaderFromObject(Object)}.
+     */
+    public abstract int constantHeaderSize();
 
     public abstract Word encodeAsUnmanagedObjectHeader(DynamicHub hub);
 

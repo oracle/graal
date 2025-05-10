@@ -165,6 +165,16 @@ public class WasmObjectHeader extends ObjectHeader {
     }
 
     @Override
+    public long encodeAsTLABObjectHeader(long hubOffsetFromHeapBase) {
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    @Override
+    public int constantHeaderSize() {
+        return -1;
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer extractPotentialDynamicHubFromHeader(Word header) {
         return (Pointer) clearBits(header);
