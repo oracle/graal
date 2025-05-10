@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.configure.config;
 
-import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
-import static com.oracle.svm.configure.ConfigurationParser.REFLECTION_KEY;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -52,9 +49,12 @@ import jdk.graal.compiler.phases.common.LazyValue;
 public class ConfigurationFileCollection {
 
     private final EnumSet<ConfigurationParserOption> parserOptions;
+    private final EnumSet<ConfigurationParserOption> jniParserOptions;
 
     public ConfigurationFileCollection() {
         this.parserOptions = EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION, ConfigurationParserOption.TREAT_ALL_TYPE_REACHABLE_CONDITIONS_AS_TYPE_REACHED);
+        this.jniParserOptions = parserOptions.clone();
+        jniParserOptions.add(ConfigurationParserOption.JNI_PARSER);
     }
 
     public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
@@ -158,12 +158,10 @@ public class ConfigurationFileCollection {
         return predefinedClassesConfigPaths;
     }
 
-    public TypeConfiguration loadJniConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
-        return loadTypeConfig(JNI_KEY, jniConfigPaths, exceptionHandler);
-    }
-
     public TypeConfiguration loadReflectConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
-        return loadTypeConfig(REFLECTION_KEY, reflectConfigPaths, exceptionHandler);
+        TypeConfiguration reflectConfig = loadTypeConfig(ConfigurationFile.REFLECTION, reflectConfigPaths, exceptionHandler);
+        TypeConfiguration jniConfig = loadTypeConfig(ConfigurationFile.JNI, jniConfigPaths, exceptionHandler);
+        return reflectConfig.copyAndMerge(jniConfig);
     }
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
@@ -195,15 +193,16 @@ public class ConfigurationFileCollection {
 
     public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, List<LazyValue<Path>> predefinedConfigClassDestinationDirs,
                     Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
-        return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadJniConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
+        return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
                         loadSerializationConfig(exceptionHandler),
                         loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler));
     }
 
-    private TypeConfiguration loadTypeConfig(String combinedFileKey, Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
-        TypeConfiguration configuration = new TypeConfiguration(combinedFileKey);
-        loadConfig(reachabilityMetadataPaths, configuration.createParser(true, parserOptions), exceptionHandler);
-        loadConfig(uris, configuration.createParser(false, parserOptions), exceptionHandler);
+    private TypeConfiguration loadTypeConfig(ConfigurationFile configurationKind, Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
+        TypeConfiguration configuration = new TypeConfiguration();
+        var specificParserOptions = configurationKind == ConfigurationFile.JNI ? jniParserOptions : parserOptions;
+        loadConfig(reachabilityMetadataPaths, configuration.createParser(true, specificParserOptions), exceptionHandler);
+        loadConfig(uris, configuration.createParser(false, specificParserOptions), exceptionHandler);
         return configuration;
     }
 

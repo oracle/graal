@@ -41,7 +41,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
@@ -49,6 +48,7 @@ import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ResourceConfigurationParser;
 import com.oracle.svm.configure.ResourcesRegistry;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.NativeImageResourcePathRepresentation;

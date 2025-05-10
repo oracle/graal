@@ -301,7 +301,8 @@ public final class AccessAdvisor {
     }
 
     public boolean shouldIgnoreResourceLookup(LazyValue<String> resource, EconomicMap<String, Object> entry) {
-        boolean result = Set.of("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator", "META-INF/services/java.lang.System$LoggerFinder").contains(resource.get());
+        boolean result = Set.of("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator", "META-INF/services/java.lang.System$LoggerFinder",
+                        "META-INF/services/jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory").contains(resource.get());
         if (result) {
             logIgnoredEntry("blocklisted resource", entry);
         }

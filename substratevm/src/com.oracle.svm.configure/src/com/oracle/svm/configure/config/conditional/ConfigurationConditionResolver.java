@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.configure.config.conditional;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.util.TypeResult;
 
 public interface ConfigurationConditionResolver<T> {
