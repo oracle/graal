@@ -83,6 +83,11 @@ public final class RuntimeConstantPool extends ConstantPool {
         return this.parserConstantPool;
     }
 
+    public void preResolveMethod(Method m, int idx) {
+        assert !m.getDeclaringKlass().isInterface();
+        resolvedConstants[idx] = new ResolvedClassMethodRefConstant(m);
+    }
+
     private ResolvedConstant outOfLockResolvedAt(ObjectKlass accessingKlass, int index) {
         ResolvedConstant c = resolvedConstants[index];
         if (c == null) {
