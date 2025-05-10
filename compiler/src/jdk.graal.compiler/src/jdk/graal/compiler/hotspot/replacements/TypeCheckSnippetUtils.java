@@ -59,7 +59,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.TypeCheckHints;
 import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -96,7 +95,7 @@ public class TypeCheckSnippetUtils {
     // @formatter:on
     static boolean checkSecondarySubType(KlassPointer t, KlassPointer s, boolean isTAlwaysAbstract, Counters counters) {
         // if (S.cache == T) return true
-        if ((JavaVersionUtil.JAVA_SPEC == 21 || (JavaVersionUtil.JAVA_SPEC >= 23 && useSecondarySupersCache(INJECTED_VMCONFIG))) &&
+        if (useSecondarySupersCache(INJECTED_VMCONFIG) &&
                         probability(FREQUENT_PROBABILITY, s.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t))) {
             counters.cacheHit.inc();
             return true;
@@ -108,7 +107,7 @@ public class TypeCheckSnippetUtils {
             return true;
         }
 
-        if (JavaVersionUtil.JAVA_SPEC == 21 || (JavaVersionUtil.JAVA_SPEC >= 23 && !useSecondarySupersTable(INJECTED_VMCONFIG))) {
+        if (!useSecondarySupersTable(INJECTED_VMCONFIG)) {
             Word secondarySupers = s.readWord(secondarySupersOffset(INJECTED_VMCONFIG), SECONDARY_SUPERS_LOCATION);
             int length = secondarySupers.readInt(metaspaceArrayLengthOffset(INJECTED_VMCONFIG), METASPACE_ARRAY_LENGTH_LOCATION);
             for (int i = 0; i < length; i++) {

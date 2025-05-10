@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -46,8 +45,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.NativeImageSupport;
-import jdk.graal.compiler.hotspot.CompilerConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageInfo;
@@ -62,10 +59,12 @@ import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.LibGraalSupport.HostedOnly;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.CompilerConfig;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
@@ -73,14 +72,10 @@ import jdk.graal.compiler.libgraal.truffle.LibGraalTruffleHostEnvironmentLookup;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.module.Modules;
-import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotModifiers;
-import jdk.vm.ci.services.JVMCIServiceLocator;
 
 /**
  * This feature builds the libgraal shared library (e.g., libjvmcicompiler.so on linux).
@@ -360,8 +355,6 @@ public final class LibGraalFeature implements Feature {
         RuntimeReflection.registerAllDeclaredClasses(Long.class);
         RuntimeReflection.register(lookupField(lookupClass("java.lang.Long$LongCache"), "cache"));
 
-        doLegacyJVMCIInitialization();
-
         GetCompilerConfig.Result configResult = GetCompilerConfig.from(libgraalJavaHome);
         for (var e : configResult.opens().entrySet()) {
             Module module = ModuleLayer.boot().findModule(e.getKey()).orElseThrow();
@@ -392,45 +385,6 @@ public final class LibGraalFeature implements Feature {
     private static void checkNodeClasses(EncodedSnippets encodedSnippets, String actual) {
         String expect = CompilerConfig.snippetNodeClassesToJSON(encodedSnippets);
         GraalError.guarantee(actual.equals(expect), "%n%s%n !=%n%s", actual, expect);
-    }
-
-    /**
-     * Initialization of JVMCI code that needs to be done for JDK versions that do not include
-     * JDK-8346781.
-     */
-    private void doLegacyJVMCIInitialization() {
-        if (!BeforeJDK8346781.VALUE) {
-            return;
-        }
-        try {
-            String rawArch = GraalServices.getSavedProperty("os.arch");
-            String arch = switch (rawArch) {
-                case "x86_64", "amd64" -> "AMD64";
-                case "aarch64" -> "aarch64";
-                case "riscv64" -> "riscv64";
-                default -> throw new GraalError("Unknown or unsupported arch: %s", rawArch);
-            };
-
-            ClassLoader cl = (ClassLoader) libgraalLoader;
-            Field cachedHotSpotJVMCIBackendFactoriesField = ObjectCopier.getField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
-            GraalError.guarantee(cachedHotSpotJVMCIBackendFactoriesField.get(null) == null, "Expect cachedHotSpotJVMCIBackendFactories to be null");
-            ServiceLoader<HotSpotJVMCIBackendFactory> load = ServiceLoader.load(HotSpotJVMCIBackendFactory.class, cl);
-            List<HotSpotJVMCIBackendFactory> backendFactories = load.stream()//
-                            .map(ServiceLoader.Provider::get)//
-                            .filter(s -> s.getArchitecture().equals(arch))//
-                            .toList();
-            cachedHotSpotJVMCIBackendFactoriesField.set(null, backendFactories);
-            GraalError.guarantee(backendFactories.size() == 1, "%s", backendFactories);
-
-            var jvmciServiceLocatorCachedLocatorsField = ObjectCopier.getField(JVMCIServiceLocator.class, "cachedLocators");
-            GraalError.guarantee(jvmciServiceLocatorCachedLocatorsField.get(null) == null, "Expect cachedLocators to be null");
-            Iterable<JVMCIServiceLocator> serviceLocators = ServiceLoader.load(JVMCIServiceLocator.class, cl);
-            List<JVMCIServiceLocator> cachedLocators = new ArrayList<>();
-            serviceLocators.forEach(cachedLocators::add);
-            jvmciServiceLocatorCachedLocatorsField.set(null, cachedLocators);
-        } catch (Throwable e) {
-            throw new GraalError(e);
-        }
     }
 
     @Override
