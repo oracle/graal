@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.heap.ReferenceInternals.getReferentFieldAddress;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -124,7 +125,7 @@ final class ReferenceObjectProcessing {
         Object refObject = referentAddr.toObjectNonNull();
         if (willSurviveThisCollection(refObject)) {
             // Either an object that got promoted without being moved or an object in the old gen.
-            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, refObject, getReferentFieldAddress(dr));
             return;
         }
         if (!softReferencesAreWeak && dr instanceof SoftReference) {
@@ -216,7 +217,7 @@ final class ReferenceObjectProcessing {
         }
         Object refObject = refPointer.toObjectNonNull();
         if (willSurviveThisCollection(refObject)) {
-            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, refObject, getReferentFieldAddress(dr));
             return true;
         }
         /*
