@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Objects;
 
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -50,6 +52,17 @@ public interface SnippetReflectionProvider {
      * @return a constant containing {@code object}
      */
     JavaConstant forObject(Object object);
+
+    /**
+     * Tries to create a {@link ValueNode} representing the content of the header of a newly created
+     * object. If there is no such constant, for example because the object header depends on the
+     * value of the heap base, which may be not available at build time, this method returns
+     * {@code null} and the header has to be calculated at runtime from the address of the type
+     * object.
+     */
+    default ValueNode forTLABObjectHeader(@SuppressWarnings("unused") Object hub, @SuppressWarnings("unused") StructuredGraph graph) {
+        return null;
+    }
 
     /**
      * Gets the object reference a given constant represents if it is of a given type. The constant
