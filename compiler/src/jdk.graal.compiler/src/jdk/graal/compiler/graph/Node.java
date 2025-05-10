@@ -548,6 +548,24 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Checks whether {@code this} has any usages of type {@code inputType}.
+     *
+     * @param inputType the type of usages to look for
+     */
+    public final boolean hasUsagesOfType(InputType inputType) {
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() == inputType) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Adds a given node to this node's {@linkplain #usages() usages}.
      *
      * @param node the node to add
@@ -1170,6 +1188,38 @@ public abstract class Node implements Cloneable, Formattable {
                     this.movUsageFromEndTo(i);
                     usageCount--;
                     continue usages;
+                }
+            }
+            i++;
+        }
+        if (hasNoUsages()) {
+            maybeNotifyZeroUsages(this);
+        }
+    }
+
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if the type of the use is in {@code inputTypes} and if {@code filter.test(n) == true}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public void replaceAtUsages(Node replacement, Predicate<Node> filter, InputType inputType) {
+        checkReplaceWith(replacement);
+        int i = 0;
+        int usageCount = this.getUsageCount();
+        if (usageCount == 0) {
+            return;
+        }
+        usages: while (i < usageCount) {
+            Node usage = this.getUsageAt(i);
+            if (filter.test(usage)) {
+                for (Position pos : usage.inputPositions()) {
+                    if (pos.getInputType() == inputType && pos.get(usage) == this) {
+                        replaceAtUsagePos(replacement, usage, pos);
+                        this.movUsageFromEndTo(i);
+                        usageCount--;
+                        continue usages;
+                    }
                 }
             }
             i++;

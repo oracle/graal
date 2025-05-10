@@ -88,6 +88,7 @@ import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.SpinWaitNode;
 import jdk.graal.compiler.nodes.StateSplit;
@@ -720,7 +721,8 @@ public class StandardGraphBuilderPlugins {
         jdkInternalMiscUnsafe.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray0", false));
     }
 
-    private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, JavaKind[] supportedJavaKinds,
+    private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix,
+                    JavaKind[] supportedJavaKinds,
                     MemoryOrderMode... memoryOrders) {
         for (JavaKind kind : supportedJavaKinds) {
             Class<?> javaClass = getJavaClass(kind);
@@ -787,7 +789,8 @@ public class StandardGraphBuilderPlugins {
                     r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, putName, Receiver.class, Object.class, long.class, javaClass));
                     // Volatile object-based accesses
                     r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, getName + "Volatile", Receiver.class, Object.class, long.class));
-                    r.register(new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, putName + "Volatile", Receiver.class, Object.class, long.class, javaClass));
+                    r.register(new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, putName + "Volatile", Receiver.class, Object.class, long.class,
+                                    javaClass));
                     // Ordered object-based accesses
                     if (sunMiscUnsafe) {
                         if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
@@ -1546,11 +1549,13 @@ public class StandardGraphBuilderPlugins {
             return nodeConstructor.create(ConstantNode.forLong(0L, graph), OFF_HEAP_LOCATION);
         }
 
-        private void setAccessNodeResult(FixedWithNextNode node, GraphBuilderContext b) {
+        private FixedWithNextNode setAccessNodeResult(FixedWithNextNode node, GraphBuilderContext b) {
             if (returnKind != JavaKind.Void) {
                 b.addPush(returnKind, node);
+                return node;
             } else {
                 b.add(node);
+                return node;
             }
         }
 
@@ -1582,8 +1587,8 @@ public class StandardGraphBuilderPlugins {
                 FixedWithNextNode[] accessNodes = new FixedWithNextNode[]{objectAccess, memoryAccess};
 
                 LogicNode condition = graph.addOrUniqueWithInputs(IsNullNode.create(value));
-                // We do not know the probability of this being a native memory or object, thus we
-                // inject 0.5. We still inject it to ensure no code verifying profiles reports
+                // We do not know the probability of this being a native memory or object, thus
+                // we inject 0.5. We still inject it to ensure no code verifying profiles reports
                 // missing ones.
                 BranchProbabilityData probability = BranchProbabilityData.injected(0.5, true);
                 IfNode ifNode = b.add(new IfNode(condition, memoryAccess, objectAccess, probability));
@@ -1616,6 +1621,7 @@ public class StandardGraphBuilderPlugins {
                 }
                 b.setStateAfter(merge);
             }
+
         }
     }
 
@@ -1651,7 +1657,10 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             // Note that non-ordered raw accesses can be turned into floatable field accesses.
-            UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
+            UnsafeNodeConstructor unsafeNodeConstructor = (obj, loc) -> {
+                RawLoadNode rl = new RawLoadNode(obj, offset, unsafeAccessKind, loc, memoryOrder);
+                return rl;
+            };
             createUnsafeAccess(object, b, unsafeNodeConstructor, RawLoadNode.class);
             return true;
         }
@@ -1691,7 +1700,10 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get(true);
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, memoryOrder), RawStoreNode.class);
+            createUnsafeAccess(object, b, (obj, loc) -> {
+                RawStoreNode store = new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, memoryOrder);
+                return store;
+            }, RawStoreNode.class);
             return true;
         }
     }
@@ -1846,6 +1858,15 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerGraalDirectivesPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, GraalDirectives.class);
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("safepoint") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.append(new SafepointNode());
+                return true;
+            }
+        });
+
         r.register(new DeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false, "deoptimize"));
         r.register(new DeoptimizePlugin(snippetReflection, InvalidateReprofile, TransferToInterpreter, false, "deoptimizeAndInvalidate"));
         r.register(new DeoptimizePlugin(snippetReflection, null, null, null,

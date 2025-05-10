@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
@@ -73,6 +74,10 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(Throwable.class))));
+    }
+
+    public ExceptionObjectNode(Stamp s) {
+        super(TYPE, s);
     }
 
     @Override
