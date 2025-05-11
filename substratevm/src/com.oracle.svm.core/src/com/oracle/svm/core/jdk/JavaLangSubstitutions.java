@@ -32,7 +32,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
-import java.security.Permission;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
@@ -41,7 +40,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -71,6 +69,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -216,7 +215,6 @@ final class Target_java_lang_StringUTF16 {
 final class Target_java_lang_Throwable {
 
     @Alias //
-    @TargetElement(onlyWith = JDKLatest.class) //
     @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
     static boolean jfrTracing = false;
 
@@ -426,37 +424,6 @@ final class Target_java_lang_System {
 
     @Alias
     private static native void checkKey(String key);
-
-    /**
-     * Force System.Never in case it was set at build time via the `-Djava.security.manager=allow`
-     * passed to the image builder.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
-    @TargetElement(onlyWith = JDK21OrEarlier.class) private static int allowSecurityManager = 1;
-
-    /**
-     * We do not support the {@link SecurityManager} so this method must throw a
-     * {@link SecurityException} when 'java.security.manager' is set to anything but
-     * <code>disallow</code>.
-     * 
-     * @see System#setSecurityManager(SecurityManager)
-     * @see SecurityManager
-     */
-    @Substitute
-    @SuppressWarnings({"removal", "javadoc"})
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private static void setSecurityManager(SecurityManager sm) {
-        if (sm != null) {
-            /* Read the property collected at isolate creation as that is what happens on the JVM */
-            String smp = SystemPropertiesSupport.singleton().getInitialProperty("java.security.manager");
-            if (smp != null && !smp.equals("disallow")) {
-                throw new SecurityException("Setting the SecurityManager is not supported by Native Image");
-            } else {
-                throw new UnsupportedOperationException(
-                                "The Security Manager is deprecated and will be removed in a future release");
-            }
-        }
-    }
 }
 
 final class NotAArch64 implements BooleanSupplier {
@@ -708,15 +675,6 @@ final class Target_jdk_internal_loader_BootLoader {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
-    // Checkstyle: resume
-}
-
-@TargetClass(value = jdk.internal.logger.LoggerFinderLoader.class)
-final class Target_jdk_internal_logger_LoggerFinderLoader {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = true)//
-    @TargetElement(onlyWith = JDK21OrEarlier.class)//
-    static Permission READ_PERMISSION;
     // Checkstyle: resume
 }
 

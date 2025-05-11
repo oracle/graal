@@ -31,12 +31,10 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 import jdk.jfr.internal.Repository;
 
-@TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDKLatest.class})
+@TargetClass(value = Repository.class, onlyWith = HasJfrSupport.class)
 @SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_Repository {
 
@@ -60,25 +58,7 @@ public final class Target_jdk_jfr_internal_Repository {
     }
 }
 
-@TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
-@SuppressWarnings("unused")
-final class Target_jdk_jfr_internal_Repository_JDK21 {
-    @Alias //
-    private Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation;
-
-    @Alias //
-    public native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation) throws IOException;
-
-    @Substitute
-    synchronized void ensureRepository() throws Exception {
-        if (baseLocation == null) {
-            Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 path = Target_jdk_jfr_internal_SecuritySupport_JDK21.getPathInProperty("java.io.tmpdir", null);
-            setBasePath(path);
-        }
-    }
-}
-
-@TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = {HasJfrSupport.class, JDKLatest.class})
+@TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_util_Utils {
     @Alias
     public static native Path getPathInProperty(String prop, String subPath);

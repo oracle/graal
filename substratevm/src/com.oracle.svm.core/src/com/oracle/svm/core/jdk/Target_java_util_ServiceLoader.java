@@ -26,14 +26,12 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Constructor;
-import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
 /**
  * Disable the module based iteration in favour of classpath based iteration. See
@@ -42,9 +40,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 @TargetClass(value = java.util.ServiceLoader.class)
 final class Target_java_util_ServiceLoader {
     @Alias Class<?> service;
-
-    @TargetElement(onlyWith = JDK21OrEarlier.class)//
-    @Alias AccessControlContext acc;
 
     @Alias
     static native void fail(Class<?> service, String msg);

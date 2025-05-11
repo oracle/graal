@@ -56,7 +56,6 @@ final class Target_jdk_internal_vm_vector_VectorSupport {
      * Substitutes the native method with a constant string defined at build time.
      */
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     public static String getCPUFeatures() {
         return Helper_jdk_internal_vm_vector_VectorSupport.getCPUFeatures();
     }
