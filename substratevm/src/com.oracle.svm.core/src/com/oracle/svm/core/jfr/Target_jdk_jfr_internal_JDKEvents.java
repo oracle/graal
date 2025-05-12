@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,20 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.function.Function;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.jfr.events.ActiveRecordingEvent;
+import jdk.jfr.events.ActiveSettingEvent;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class Name_jdk_jfr_internal_JDKEvents_helper implements Function<TargetClass, String> {
+@TargetClass(value = jdk.jfr.internal.JDKEvents.class, onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_internal_JDKEvents {
 
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            return "jdk.jfr.internal.JDKEvents";
-        } else {
-            return "jdk.jfr.internal.instrument.JDKEvents";
-        }
-    }
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    private static Class<?>[] eventClasses = {
+                    ActiveSettingEvent.class,
+                    ActiveRecordingEvent.class
+    };
 }

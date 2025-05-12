@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -40,9 +39,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
-import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.JVMSupport;
 
 /**
@@ -66,40 +63,10 @@ public final class JfrJdkCompatibility {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void createNativeJFR() {
         try {
-            if (JavaVersionUtil.JAVA_SPEC >= 22) {
-                Method createJFR = ReflectionUtil.lookupMethod(JVMSupport.class, "createJFR");
-                createJFR.invoke(null);
-            } else {
-                Method createNativeJFR = ReflectionUtil.lookupMethod(JVM.class, "createNativeJFR");
-                createNativeJFR.invoke(getJVMOrNull());
-            }
+            Method createJFR = ReflectionUtil.lookupMethod(JVMSupport.class, "createJFR");
+            createJFR.invoke(null);
         } catch (ReflectiveOperationException | ClassCastException e) {
             throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void retransformClasses(Class<?>[] classes) {
-        try {
-            // call JVM.retransformClasses(classes)
-            Method retransformClasses = ReflectionUtil.lookupMethod(JVM.class, "retransformClasses", Class[].class);
-            retransformClasses.invoke(getJVMOrNull(), (Object) classes);
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    /**
-     * Gets a {@link JVM} object or {@code null} in case of JDK 22+, where the methods of
-     * {@link JVM} are static (JDK-8310661).
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static JVM getJVMOrNull() throws IllegalAccessException, InvocationTargetException {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            return null;
-        } else {
-            Method getJVM = ReflectionUtil.lookupMethod(JVM.class, "getJVM");
-            return (JVM) getJVM.invoke(null);
         }
     }
 }

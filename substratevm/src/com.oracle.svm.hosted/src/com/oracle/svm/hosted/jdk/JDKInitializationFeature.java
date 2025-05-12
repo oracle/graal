@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -46,7 +46,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -239,9 +238,7 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.initializeAtRunTime("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            rci.initializeAtRunTime("jdk.internal.markdown.MarkdownTransformer", "Contains a static field with a DocTreeScanner which is initialized at run time");
-        }
+        rci.initializeAtRunTime("jdk.internal.markdown.MarkdownTransformer", "Contains a static field with a DocTreeScanner which is initialized at run time");
 
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization
