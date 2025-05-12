@@ -33,9 +33,6 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -44,7 +41,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -56,7 +52,9 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -803,27 +801,5 @@ class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
         }
 
         return !isPrivileged;
-    }
-
-    @NeverInline("Starting a stack walk in the caller frame")
-    @SuppressWarnings({"deprecation"}) // deprecated starting JDK 17
-    public static AccessControlContext getFromStack() {
-        StackAccessControlContextVisitor visitor = new StackAccessControlContextVisitor();
-        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), visitor);
-        Target_java_security_AccessControlContext wrapper;
-
-        if (visitor.localArray.isEmpty()) {
-            if (visitor.isPrivileged && visitor.privilegedContext == null) {
-                return null;
-            }
-            wrapper = new Target_java_security_AccessControlContext(null, visitor.privilegedContext);
-        } else {
-            ProtectionDomain[] context = visitor.localArray.toArray(new ProtectionDomain[visitor.localArray.size()]);
-            wrapper = new Target_java_security_AccessControlContext(context, visitor.privilegedContext);
-        }
-
-        wrapper.isPrivileged = visitor.isPrivileged;
-        wrapper.isAuthorized = true;
-        return SubstrateUtil.cast(wrapper, AccessControlContext.class);
     }
 }

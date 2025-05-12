@@ -30,21 +30,13 @@ import java.lang.ref.ReferenceQueue;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(ReferenceQueue.class)
 final class Target_java_lang_ref_ReferenceQueue<T> {
     // Checkstyle: stop
     @Alias //
-    @TargetElement(onlyWith = JDKLatest.class) //
     static Target_java_lang_ref_ReferenceQueue<Object> NULL_QUEUE;
     // CheckStyle: resume
-
-    @Alias //
-    @TargetElement(onlyWith = JDK21OrEarlier.class) //
-    static Target_java_lang_ref_ReferenceQueue<Object> NULL;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     volatile Reference<? extends T> head;

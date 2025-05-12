@@ -32,7 +32,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 /**
  * Substitution to initialize {@link #catalog} at build time.
@@ -45,14 +44,14 @@ import com.oracle.svm.core.jdk.JDKLatest;
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
  */
-@TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder", onlyWith = JDKLatest.class)
+@TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder")
 public final class Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
     public static Target_javax_xml_catalog_Catalog JDKCATALOG;
 }
 
-@TargetClass(className = "javax.xml.catalog.Catalog", onlyWith = JDKLatest.class)
+@TargetClass(className = "javax.xml.catalog.Catalog")
 final class Target_javax_xml_catalog_Catalog {
 }
 

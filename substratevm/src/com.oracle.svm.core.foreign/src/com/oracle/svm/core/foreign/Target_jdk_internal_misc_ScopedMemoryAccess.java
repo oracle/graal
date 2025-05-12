@@ -33,9 +33,6 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
@@ -99,7 +96,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @Target_jdk_internal_misc_ScopedMemoryAccess_Scoped
-    @TargetElement(onlyWith = JDKLatest.class)
     @AlwaysInline("Safepoints must be visible in caller")
     public void loadInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -120,7 +116,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @Target_jdk_internal_misc_ScopedMemoryAccess_Scoped
-    @TargetElement(onlyWith = JDKLatest.class)
     @AlwaysInline("Safepoints must be visible in caller")
     public boolean isLoadedInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -142,7 +137,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @Target_jdk_internal_misc_ScopedMemoryAccess_Scoped
-    @TargetElement(onlyWith = JDKLatest.class)
     @AlwaysInline("Safepoints must be visible in caller")
     public void unloadInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, long address, boolean isSync, long size) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -165,7 +159,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @SuppressWarnings("static-method")
     @Substitute
     @Target_jdk_internal_misc_ScopedMemoryAccess_Scoped
-    @TargetElement(onlyWith = JDKLatest.class)
     @AlwaysInline("Safepoints must be visible in caller")
     public void forceInternal(MemorySessionImpl session, MappedMemoryUtilsProxy mappedUtils, FileDescriptor fd, long address, boolean isSync, long index, long length) {
         SubstrateForeignUtil.checkIdentity(mappedUtils, Target_java_nio_MappedMemoryUtils.PROXY);
@@ -202,22 +195,13 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
     @SuppressWarnings("static-method")
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     void closeScope0(Target_jdk_internal_foreign_MemorySessionImpl session, @SuppressWarnings("unused") Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
         new SyncCloseScopeOperation(session).enqueue();
-    }
-
-    @SuppressWarnings("static-method")
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    boolean closeScope0(Target_jdk_internal_foreign_MemorySessionImpl session) {
-        new SyncCloseScopeOperation(session).enqueue();
-        return true;
     }
 }
 
 @Retention(RetentionPolicy.RUNTIME)
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$Scoped", onlyWith = {JDKLatest.class, ForeignAPIPredicates.Enabled.class})
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$Scoped", onlyWith = ForeignAPIPredicates.Enabled.class)
 @interface Target_jdk_internal_misc_ScopedMemoryAccess_Scoped {
 
 }
