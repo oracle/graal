@@ -123,9 +123,9 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
     @Alive({COMPOSITE}) private AMD64AddressValue loadAddress;
 
     public AMD64HotSpotShenandoahLoadRefBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                                                  AllocatableValue result, AllocatableValue object, AMD64AddressValue loadAddress,
-                                                  ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
-                                                  AllocatableValue tmp, AllocatableValue tmp2, boolean notNull) {
+                    AllocatableValue result, AllocatableValue object, AMD64AddressValue loadAddress,
+                    ForeignCallLinkage callTarget, ShenandoahLoadRefBarrierNode.ReferenceStrength strength,
+                    AllocatableValue tmp, AllocatableValue tmp2, boolean notNull) {
         super(TYPE);
         this.providers = providers;
         this.config = config;

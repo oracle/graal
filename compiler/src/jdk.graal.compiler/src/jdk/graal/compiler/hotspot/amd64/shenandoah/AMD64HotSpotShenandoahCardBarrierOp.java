@@ -44,7 +44,7 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-public class AMD64HotSpotShenandoahCardBarrierOp  extends AMD64LIRInstruction {
+public class AMD64HotSpotShenandoahCardBarrierOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HotSpotShenandoahCardBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotShenandoahCardBarrierOp.class);
     private final GraalHotSpotVMConfig config;
     private final HotSpotProviders providers;
