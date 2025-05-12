@@ -2039,6 +2039,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private static native Class<?> toClass(Type o);
 
+    @KeepOriginal
+    private native int getClassFileVersion();
+
+    @KeepOriginal
+    private native int getClassFileVersion0();
+
     @Substitute
     private ClassRepository getGenericInfo() {
         if (companion.genericInfo == null) {
