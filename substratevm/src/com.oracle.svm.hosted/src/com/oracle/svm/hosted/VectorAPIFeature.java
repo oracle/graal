@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.core.jdk;
-
-import java.util.function.BooleanSupplier;
+package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.VectorAPIEnabled;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 
-public final class VectorAPIEnabled implements BooleanSupplier {
-
-    public static boolean getValue() {
-        return SubstrateOptions.VectorAPISupport.getValue();
-    }
+@AutomaticallyRegisteredFeature
+public class VectorAPIFeature implements InternalFeature {
 
     @Override
-    public boolean getAsBoolean() {
-        return getValue();
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (VectorAPIEnabled.getValue()) {
+            throw UserError.abort("Option '%s' is still experimental and currently only works with Oracle GraalVM. Please use Oracle GraalVM to use it.",
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.VectorAPISupport, "+"));
+        }
     }
 }
