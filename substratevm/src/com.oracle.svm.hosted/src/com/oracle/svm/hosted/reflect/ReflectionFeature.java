@@ -42,9 +42,9 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -52,13 +52,13 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -295,11 +295,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         var conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
         reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
         ProxyRegistry proxyRegistry = ImageSingletons.lookup(ProxyRegistry.class);
-        RuntimeSerializationSupport<ConfigurationCondition> serializationSupport = RuntimeSerializationSupport.singleton();
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(REFLECTION_KEY, true, conditionResolver, reflectionData, proxyRegistry,
+        RuntimeSerializationSupport<RegistrationCondition> serializationSupport = RuntimeSerializationSupport.singleton();
+        ReflectionConfigurationParser<RegistrationCondition, Class<?>> parser = ConfigurationParserUtils.create(REFLECTION_KEY, true, conditionResolver, reflectionData, proxyRegistry,
                         serializationSupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, reflectionData, proxyRegistry,
+        ReflectionConfigurationParser<RegistrationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, reflectionData, proxyRegistry,
                         serializationSupport, access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
@@ -310,7 +310,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
-            ClassForNameSupport.currentLayer().registerNegativeQuery(ConfigurationCondition.alwaysTrue(), primitiveClass.getName());
+            ClassForNameSupport.currentLayer().registerNegativeQuery(RegistrationCondition.always(), primitiveClass.getName());
         }
 
         access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);

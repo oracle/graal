@@ -51,7 +51,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.word.PointerBase;
 
@@ -211,12 +211,12 @@ public class JNIAccessFeature implements Feature {
         runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
-        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+        ConfigurationConditionResolver<RegistrationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(JNI_KEY, true, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<RegistrationCondition, Class<?>> parser = ConfigurationParserUtils.create(JNI_KEY, true, conditionResolver, runtimeSupport, null, null,
                         access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "JNI");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<RegistrationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, runtimeSupport, null, null,
                         access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
@@ -226,7 +226,7 @@ public class JNIAccessFeature implements Feature {
                     implements RuntimeJNIAccessSupport, LayeredImageSingleton {
 
         @Override
-        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+        public void register(RegistrationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
@@ -234,7 +234,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
+        public void register(RegistrationCondition condition, boolean queriedOnly, Executable... executables) {
             requireNonNull(executables, "executable");
             abortIfSealed();
             if (!queriedOnly) {
@@ -243,7 +243,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+        public void register(RegistrationCondition condition, boolean finalIsWritable, Field... fields) {
             requireNonNull(fields, "field");
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
@@ -257,7 +257,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+        public void registerClassLookup(RegistrationCondition condition, String typeName) {
             try {
                 register(condition, false, Class.forName(typeName));
             } catch (ClassNotFoundException e) {
@@ -266,7 +266,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName) {
+        public void registerFieldLookup(RegistrationCondition condition, Class<?> declaringClass, String fieldName) {
             try {
                 register(condition, false, declaringClass.getDeclaredField(fieldName));
             } catch (NoSuchFieldException e) {
@@ -275,7 +275,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        public void registerMethodLookup(RegistrationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
             try {
                 register(condition, false, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
@@ -284,7 +284,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+        public void registerConstructorLookup(RegistrationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
             try {
                 register(condition, false, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {

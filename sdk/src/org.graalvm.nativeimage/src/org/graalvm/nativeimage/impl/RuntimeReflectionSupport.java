@@ -44,38 +44,39 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
-    void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllMethodsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz);
 
-    void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredMethodsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz);
 
-    void registerAllFields(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllConstructorsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz);
 
-    void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredConstructorsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz);
 
-    void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllClassesQuery(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredClassesQuery(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllFields(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredFields(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllRecordComponentsQuery(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllPermittedSubclassesQuery(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllNestMembersQuery(RegistrationCondition condition, Class<?> clazz);
 
-    void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllSignersQuery(RegistrationCondition condition, Class<?> clazz);
 
-    void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t);
+    void registerClassLookupException(RegistrationCondition condition, String typeName, Throwable t);
 
-    default void registerClassFully(ConfigurationCondition condition, Class<?> clazz) {
+    default void registerClassFully(RegistrationCondition condition, Class<?> clazz) {
         register(condition, false, clazz);
 
         // GR-62143 Register all fields is very slow.

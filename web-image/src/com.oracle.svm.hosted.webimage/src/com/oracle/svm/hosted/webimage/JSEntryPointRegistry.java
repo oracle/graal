@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 /**
@@ -47,13 +47,13 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     public final Set<Executable> entryPoints = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Override
-    public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+    public void register(RegistrationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
         // Do nothing for types
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
-        if (!ConfigurationCondition.alwaysTrue().equals(condition)) {
+    public void register(RegistrationCondition condition, boolean queriedOnly, Executable... methods) {
+        if (!RegistrationCondition.always().equals(condition)) {
             System.err.println("Conditional specification in entry points configuration is not supported and is ignored");
         }
 
@@ -65,27 +65,27 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     }
 
     @Override
-    public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+    public void register(RegistrationCondition condition, boolean finalIsWritable, Field... fields) {
         System.err.println("The specification for fields in entry points configuration is not supported and is ignored.");
     }
 
     @Override
-    public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+    public void registerClassLookup(RegistrationCondition condition, String typeName) {
 
     }
 
     @Override
-    public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName) {
+    public void registerFieldLookup(RegistrationCondition condition, Class<?> declaringClass, String fieldName) {
 
     }
 
     @Override
-    public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+    public void registerMethodLookup(RegistrationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
 
     }
 
     @Override
-    public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+    public void registerConstructorLookup(RegistrationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
 
     }
 }

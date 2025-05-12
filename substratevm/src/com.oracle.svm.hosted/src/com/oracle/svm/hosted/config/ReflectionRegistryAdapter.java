@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.config;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -41,9 +41,9 @@ import com.oracle.svm.util.TypeResult;
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
     private final ProxyRegistry proxyRegistry;
-    private final RuntimeSerializationSupport<ConfigurationCondition> serializationSupport;
+    private final RuntimeSerializationSupport<RegistrationCondition> serializationSupport;
 
-    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
+    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<RegistrationCondition> serializationSupport,
                     ImageClassLoader classLoader) {
         super(reflectionSupport, classLoader);
         this.reflectionSupport = reflectionSupport;
@@ -52,7 +52,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerType(ConfigurationCondition condition, Class<?> type) {
+    public void registerType(RegistrationCondition condition, Class<?> type) {
         super.registerType(condition, type);
         if (Proxy.isProxyClass(type)) {
             proxyRegistry.accept(condition, Arrays.stream(type.getInterfaces()).map(Class::getTypeName).toList());
@@ -60,7 +60,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+    public TypeResult<Class<?>> resolveType(RegistrationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
         TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives);
         if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
@@ -72,67 +72,67 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerPublicClasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerPublicClasses(RegistrationCondition condition, Class<?> type) {
         reflectionSupport.registerAllClassesQuery(condition, type);
     }
 
     @Override
-    public void registerDeclaredClasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerDeclaredClasses(RegistrationCondition condition, Class<?> type) {
         reflectionSupport.registerAllDeclaredClassesQuery(condition, type);
     }
 
     @Override
-    public void registerRecordComponents(ConfigurationCondition condition, Class<?> type) {
+    public void registerRecordComponents(RegistrationCondition condition, Class<?> type) {
         reflectionSupport.registerAllRecordComponentsQuery(condition, type);
     }
 
     @Override
-    public void registerPermittedSubclasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerPermittedSubclasses(RegistrationCondition condition, Class<?> type) {
         reflectionSupport.registerAllPermittedSubclassesQuery(condition, type);
     }
 
     @Override
-    public void registerNestMembers(ConfigurationCondition condition, Class<?> type) {
+    public void registerNestMembers(RegistrationCondition condition, Class<?> type) {
         reflectionSupport.registerAllNestMembersQuery(condition, type);
     }
 
     @Override
-    public void registerSigners(ConfigurationCondition condition, Class<?> type) {
+    public void registerSigners(RegistrationCondition condition, Class<?> type) {
         reflectionSupport.registerAllSignersQuery(condition, type);
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerPublicFields(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         ((ReflectionDataBuilder) reflectionSupport).registerAllFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerDeclaredFields(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         ((ReflectionDataBuilder) reflectionSupport).registerAllDeclaredFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerPublicMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerPublicMethods(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         reflectionSupport.registerAllMethodsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerDeclaredMethods(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         reflectionSupport.registerAllDeclaredMethodsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerPublicConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerPublicConstructors(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         reflectionSupport.registerAllConstructorsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+    public void registerDeclaredConstructors(RegistrationCondition condition, boolean queriedOnly, Class<?> type) {
         reflectionSupport.registerAllDeclaredConstructorsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerAsSerializable(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAsSerializable(RegistrationCondition condition, Class<?> clazz) {
         serializationSupport.register(condition, clazz);
     }
 }

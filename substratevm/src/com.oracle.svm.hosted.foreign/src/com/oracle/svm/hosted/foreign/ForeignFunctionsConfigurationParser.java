@@ -51,7 +51,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.configure.ConfigurationParser;
@@ -126,10 +126,10 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         try {
             if (forUpcall) {
                 var options = parseUpcallOptions(optionsMap);
-                accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, options.toArray());
+                accessSupport.registerForUpcall(RegistrationCondition.always(), descriptor, options.toArray());
             } else {
                 var options = parseDowncallOptions(optionsMap, descriptor);
-                accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options.toArray());
+                accessSupport.registerForDowncall(RegistrationCondition.always(), descriptor, options.toArray());
             }
         } catch (IllegalArgumentException e) {
             handleRegistrationError(e, map);
@@ -195,7 +195,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
             var optionsMap = asMap(map.get("options", EconomicMap.emptyMap()), "options must be a map");
             try {
                 var options = parseUpcallOptions(optionsMap);
-                accessSupport.registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), pair.getRight(), pair.getLeft(), options.toArray());
+                accessSupport.registerForDirectUpcall(RegistrationCondition.always(), pair.getRight(), pair.getLeft(), options.toArray());
             } catch (IllegalArgumentException e) {
                 handleRegistrationError(e, map);
             }
