@@ -60,7 +60,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -414,16 +413,6 @@ public final class JavaThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Object getCurrentThreadLockHelper() {
         return toTarget(Thread.currentThread()).lockHelper;
-    }
-
-    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        assert JavaVersionUtil.JAVA_SPEC <= 21 : "blockedOn in newer JDKs uses safe disableSuspendAndPreempt";
-
-        if (isCurrentThreadVirtual()) {
-            VirtualThreadHelper.blockedOn(b);
-        } else {
-            PlatformThreads.blockedOn(b);
-        }
     }
 
     /**

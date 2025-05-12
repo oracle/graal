@@ -32,8 +32,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 @Platforms({Platform.WINDOWS.class, Platform.LINUX.class})
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
@@ -42,11 +40,8 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
         if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
-                            "jio_snprintf");
-            if (JavaVersionUtil.JAVA_SPEC > 21) {
-                jniRegistrationSupport.addJvmShimExports(
-                                "JVM_IsStaticallyLinked");
-            }
+                            "jio_snprintf",
+                            "JVM_IsStaticallyLinked");
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_CallMethodByName",
                             "JNU_CallStaticMethodByName",
