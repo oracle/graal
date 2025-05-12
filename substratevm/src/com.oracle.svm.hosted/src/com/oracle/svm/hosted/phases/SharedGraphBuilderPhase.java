@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.svm.hosted.substitute.SubstitutionType;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
@@ -180,6 +181,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         private static final Class<?> SCOPED_SUBSTRATE_ANNOTATION;
         private static final Executable SESSION_EXCEPTION_HANDLER_METHOD;
         private static final Class<?> MAPPED_MEMORY_UTILS_PROXY_CLASS;
+        private static final Class<?> ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS;
 
         static {
             SCOPED_SUBSTRATE_ANNOTATION = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.foreign.Target_jdk_internal_misc_ScopedMemoryAccess_Scoped");
@@ -188,6 +190,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                             ? ReflectionUtil.lookupMethod(substrateForeignUtilClass, "sessionExceptionHandler", MemorySessionImpl.class, Object.class, long.class)
                             : null;
             MAPPED_MEMORY_UTILS_PROXY_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.access.foreign.MappedMemoryUtilsProxy");
+            ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.foreign.AbstractMemorySegmentImpl");
         }
 
         protected List<ValueNode> scopedMemorySessions;
@@ -420,12 +423,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             assert method != null;
             final ResolvedJavaType sessionType = ((AnalysisType) metaAccess.lookupJavaType(MemorySessionImpl.class)).getWrapped();
             assert sessionType != null;
+            final ResolvedJavaType abstractSegmentImpl = ((AnalysisType) metaAccess.lookupJavaType(ABSTRACT_MEMORY_SEGMENT_IMPL_CLASS)).getWrapped();
+            assert abstractSegmentImpl != null;
             final ResolvedJavaType baseType = ((AnalysisType) metaAccess.lookupJavaType(Object.class)).getWrapped();
             assert baseType != null;
             final ResolvedJavaType offsetType = ((AnalysisType) metaAccess.lookupJavaType(long.class)).getWrapped();
             assert offsetType != null;
             final ResolvedJavaType utilsType = ((AnalysisType) metaAccess.lookupJavaType(MAPPED_MEMORY_UTILS_PROXY_CLASS)).getWrapped();
             assert utilsType != null;
+            final ResolvedJavaType classType = ((SubstitutionType) ((AnalysisType) metaAccess.lookupJavaType(Class.class)).getWrapped()).getOriginal();
+            assert classType != null;
 
             Parameter[] p = method.getParameters();
             if (!p[0].getType().equals(sessionType)) {
@@ -464,11 +471,43 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             } else {
                 // 1 session case
                 ValueNode session = graph.getParameter(pIndex++);
-                ValueNode base = graph.getParameter(pIndex++);
-                ValueNode offset = graph.getParameter(pIndex++);
-                SessionCheck check = new SessionCheck(session, base, offset);
-                verifySession(sessionType, baseType, offsetType, check, metaAccess);
-                return List.of(check);
+                if (p[1].getType().equals(classType)) {
+                    // example with a vmClass -
+                    // storeIntoMemorySegmentScopedInternal(MemorySessionImpl session,
+                    // Class<? extends V> vmClass, Class<E> e, int length,V v,
+                    // AbstractMemorySegmentImpl msp, long offset,
+
+                    /*
+                     * For all patterns involving a vmClass the following holds: session is always
+                     * p[0], and vmClass is always p[1]. However, in between we can have Class<E> e,
+                     * int length, V v, M m then msp, offset, M m, S s, offsetInRange etc.
+                     * 
+                     * We always map AbstractMemorySegmentImpl msp to base and offset to offset
+                     * (which always comes after). There can be arguments after offset which we
+                     * ignore. And we skip all arguments between vmClass and msp. So any arg between
+                     * vmClass and msp can be skipped.
+                     *
+                     * If any of these invariants stops holding the verifySession call below will
+                     * fail hard and we will be noticed of new/changed API.
+                     */
+                    while (!p[pIndex].getType().equals(abstractSegmentImpl)) {
+                        pIndex++;
+                    }
+
+                    // use msp as base and offset as offset
+                    ValueNode base = graph.getParameter(pIndex++); // use msp
+                    ValueNode offset = graph.getParameter(pIndex++);
+
+                    SessionCheck check = new SessionCheck(session, base, offset);
+                    verifySession(sessionType, baseType, offsetType, check, metaAccess);
+                    return List.of(check);
+                } else {
+                    ValueNode base = graph.getParameter(pIndex++);
+                    ValueNode offset = graph.getParameter(pIndex++);
+                    SessionCheck check = new SessionCheck(session, base, offset);
+                    verifySession(sessionType, baseType, offsetType, check, metaAccess);
+                    return List.of(check);
+                }
             }
         }
 
