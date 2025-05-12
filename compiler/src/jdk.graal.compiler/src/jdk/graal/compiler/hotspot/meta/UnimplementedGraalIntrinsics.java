@@ -86,15 +86,6 @@ public final class UnimplementedGraalIntrinsics {
 
     public UnimplementedGraalIntrinsics(Architecture arch) {
         add(toBeInvestigated,
-                        // JDK-8349721: Add aarch64 intrinsics for ML-KEM
-                        // JDK-8351412: Add AVX-512 intrinsics for ML-KEM
-                        "com/sun/crypto/provider/ML_KEM.implKyber12To16([BI[SI)I",
-                        "com/sun/crypto/provider/ML_KEM.implKyberAddPoly([S[S[S)I",
-                        "com/sun/crypto/provider/ML_KEM.implKyberAddPoly([S[S[S[S)I",
-                        "com/sun/crypto/provider/ML_KEM.implKyberBarrettReduce([S)I",
-                        "com/sun/crypto/provider/ML_KEM.implKyberInverseNtt([S[S)I",
-                        "com/sun/crypto/provider/ML_KEM.implKyberNtt([S[S)I",
-                        "com/sun/crypto/provider/ML_KEM.implKyberNttMult([S[S[S[S)I",
                         // JDK-8307513: C2: intrinsify Math.max(long,long) and
                         // Math.min(long,long)
                         "java/lang/Math.max(JJ)J",

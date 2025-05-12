@@ -540,6 +540,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long stubDilithiumMontMulByConstant = getFieldValue("StubRoutines::_dilithiumMontMulByConstant", Long.class, "address");
     public final long stubDilithiumDecomposePoly = getFieldValue("StubRoutines::_dilithiumDecomposePoly", Long.class, "address");
 
+    public final long stubKyberNtt = getFieldValue("StubRoutines::_kyberNtt", Long.class, "address");
+    public final long stubKyberInverseNtt = getFieldValue("StubRoutines::_kyberInverseNtt", Long.class, "address");
+    public final long stubKyberNttMult = getFieldValue("StubRoutines::_kyberNttMult", Long.class, "address");
+    public final long stubKyberAddPoly2 = getFieldValue("StubRoutines::_kyberAddPoly_2", Long.class, "address");
+    public final long stubKyberAddPoly3 = getFieldValue("StubRoutines::_kyberAddPoly_3", Long.class, "address");
+    public final long stubKyber12To16 = getFieldValue("StubRoutines::_kyber12To16", Long.class, "address");
+    public final long stubKyberBarrettReduce = getFieldValue("StubRoutines::_kyberBarrettReduce", Long.class, "address");
+
     // Allocation stubs that return null when allocation fails
     public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
     public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null");
