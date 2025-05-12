@@ -1016,12 +1016,33 @@ else:
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
     def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
+        # required
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
         enterprise_archive_name = _require(kw_args, 'enterprise_archive_name', suite, name)
 
+        # required but optional for compatibility and when the default *_dist_name are not good enough
+        language_id = kw_args.pop('language_id', None)
+
+        # optional, derived from *_archive_name by default. Best left as default to avoid extra folder when extracting with some GUIs.
         community_dir_name = kw_args.pop('community_dir_name', None)
         enterprise_dir_name = kw_args.pop('enterprise_dir_name', None)
+
+        # optional, the internal legacy distribution names for uploading, prefer setting language_id where possible
+        community_dist_name = kw_args.pop('community_dist_name', None)
+        enterprise_dist_name = kw_args.pop('enterprise_dist_name', None)
+
+        if language_id:
+            # Example community dist names:
+            # JS_NATIVE_STANDALONE_SVM_JAVA25 (native standalone)
+            # JS_JAVA_STANDALONE_SVM_JAVA25 (jvm standalone)
+            assert '_NATIVE_' in standalone_dir_dist or '_JVM_' in standalone_dir_dist, f"Cannot find out whether {standalone_dir_dist} is a Native or JVM standalone, it should include _NATIVE_ or _JVM_"
+            is_jvm = '_JVM_' in standalone_dir_dist
+            jdk_version = get_bootstrap_graalvm_jdk_version().parts[0]
+            if not community_dist_name:
+                community_dist_name = f"{language_id.upper()}_{'JAVA' if is_jvm else 'NATIVE'}_STANDALONE_SVM_JAVA{jdk_version}"
+            if not enterprise_dist_name:
+                enterprise_dist_name = f"{language_id.upper()}_{'JAVA' if is_jvm else 'NATIVE'}_STANDALONE_SVM_SVMEE_JAVA{jdk_version}"
 
         path_substitutions = mx_subst.SubstitutionEngine(mx_subst.path_substitutions)
         path_substitutions.register_no_arg('version', _suite.release_version)
@@ -1030,10 +1051,10 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
 
         if is_enterprise():
             dir_name = enterprise_dir_name or f'{enterprise_archive_name}-<version>-<graalvm_os>-<arch>'
-            dist_name = 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
+            dist_name = enterprise_dist_name or 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
         else:
             dir_name = community_dir_name or f'{community_archive_name}-<version>-<graalvm_os>-<arch>'
-            dist_name = 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
+            dist_name = community_dist_name or 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
 
         layout = {
             f'{dir_name}/': {
