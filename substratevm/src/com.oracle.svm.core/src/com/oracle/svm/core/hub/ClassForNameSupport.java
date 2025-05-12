@@ -34,7 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
@@ -78,11 +78,11 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerClass(Class<?> clazz) {
-        registerClass(ConfigurationCondition.alwaysTrue(), clazz);
+        registerClass(RegistrationCondition.always(), clazz);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerClass(RegistrationCondition condition, Class<?> clazz) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
@@ -134,7 +134,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
-                    ConfigurationCondition additionalCondition) {
+                    RegistrationCondition additionalCondition) {
         if (existingConditionalValue == null) {
             return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition), newValue);
         } else {
@@ -145,12 +145,12 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerExceptionForClass(ConfigurationCondition condition, String className, Throwable t) {
+    public void registerExceptionForClass(RegistrationCondition condition, String className, Throwable t) {
         updateCondition(condition, className, t);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerNegativeQuery(ConfigurationCondition condition, String className) {
+    public void registerNegativeQuery(RegistrationCondition condition, String className) {
         /*
          * If the class is not accessible by the builder class loader, but was already registered
          * through registerClass(Class<?>), we don't overwrite the actual class or exception.
@@ -159,7 +159,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerUnsafeAllocated(RegistrationCondition condition, Class<?> clazz) {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
             var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition));
@@ -169,7 +169,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         }
     }
 
-    private void updateCondition(ConfigurationCondition condition, String className, Object value) {
+    private void updateCondition(RegistrationCondition condition, String className, Object value) {
         synchronized (knownClasses) {
             var runtimeConditions = knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
             if (runtimeConditions != null) {
