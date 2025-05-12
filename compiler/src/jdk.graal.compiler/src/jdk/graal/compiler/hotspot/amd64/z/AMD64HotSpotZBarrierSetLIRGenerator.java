@@ -376,11 +376,11 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
 
     @Override
     public Variable emitBarrieredLoad(LIRGeneratorTool tool,
-                                      LIRKind kind,
-                                      Value address,
-                                      LIRFrameState state,
-                                      MemoryOrderMode memoryOrder,
-                                      BarrierType barrierType) {
+                    LIRKind kind,
+                    Value address,
+                    LIRFrameState state,
+                    MemoryOrderMode memoryOrder,
+                    BarrierType barrierType) {
         if (kind.getPlatformKind().getVectorLength() == 1) {
             GraalError.guarantee(kind.getPlatformKind() == AMD64Kind.QWORD, "ZGC only uses uncompressed oops: %s", kind);
 
