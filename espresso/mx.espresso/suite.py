@@ -273,7 +273,7 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Wall"],
+                        "cflags": ["-g", "-O3", "-Wall"],
                     },
                 },
                 "linux-musl": {
@@ -301,7 +301,7 @@ suite = {
             "os_arch": {
                 "linux": {
                     "<others>": {
-                        "cflags" : ["-g", "-fPIC", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+                        "cflags" : ["-g", "-O3", "-fPIC", "-Wall", "-Werror", "-D_GNU_SOURCE"],
                         "ldflags": [
                             "-Wl,-soname,libeden.so",
                         ],
@@ -367,7 +367,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Wall"],
+                        "cflags": ["-g", "-O3", "-Wall"],
                     },
                 }
             },
