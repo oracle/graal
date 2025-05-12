@@ -34,15 +34,13 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_JVM_ChunkRotationMonitor;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_management_HiddenWait;
 
 import jdk.graal.compiler.word.Word;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifierTid, long timeout, boolean timedOut) {
-        if (HasJfrSupport.get() && obj != null && !Target_jdk_jfr_internal_JVM_ChunkRotationMonitor.class.equals(obj.getClass()) &&
-                        !Target_jdk_jfr_internal_management_HiddenWait.class.equals(obj.getClass())) {
+        if (HasJfrSupport.get() && obj != null && !Target_jdk_jfr_internal_management_HiddenWait.class.equals(obj.getClass())) {
             emit0(startTicks, obj, notifierTid, timeout, timedOut);
         }
     }
