@@ -31,7 +31,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
@@ -40,8 +39,11 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
@@ -121,7 +123,7 @@ public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 class LinuxPhysicalMemorySupportFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(PhysicalMemorySupport.class)) {
+        if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(PhysicalMemorySupport.class)) {
             ImageSingletons.add(PhysicalMemorySupport.class, new LinuxPhysicalMemorySupportImpl());
         }
     }

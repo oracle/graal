@@ -55,12 +55,12 @@ public final class ParserKlass {
     /**
      * Unresolved constant pool, only trivial entries (with no resolution involved) are computed.
      */
-    private final ImmutableConstantPool pool;
+    private final ParserConstantPool pool;
 
     private final int thisKlassIndex;
     private final long hiddenKlassId;
 
-    public ParserKlass(ImmutableConstantPool pool,
+    public ParserKlass(ParserConstantPool pool,
                     int flags,
                     Symbol<Name> name,
                     Symbol<Type> type,
@@ -112,7 +112,7 @@ public final class ParserKlass {
         return superInterfaces;
     }
 
-    public ImmutableConstantPool getConstantPool() {
+    public ParserConstantPool getConstantPool() {
         return pool;
     }
 

@@ -83,6 +83,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
+import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
@@ -909,12 +910,12 @@ public final class GCImpl implements GC {
          * difference after references to the runtime heap were nulled, which is assumed to be rare.
          */
         boolean clean = completeCollection;
-        walkDirtyImageHeapChunkRoots(info, greyToBlackObjectVisitor, clean);
+        walkDirtyImageHeapChunkRoots(info, greyToBlackObjectVisitor, greyToBlackObjRefVisitor, clean);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void walkDirtyImageHeapChunkRoots(ImageHeapInfo info, UninterruptibleObjectVisitor visitor, boolean clean) {
-        RememberedSet.get().walkDirtyObjects(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk(), visitor, clean);
+    static void walkDirtyImageHeapChunkRoots(ImageHeapInfo info, UninterruptibleObjectVisitor visitor, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
+        RememberedSet.get().walkDirtyObjects(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk(), visitor, refVisitor, clean);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -963,7 +964,7 @@ public final class GCImpl implements GC {
              * Walk old generation looking for dirty cards, and within those for old-to-young
              * pointers. Promote any referenced young objects.
              */
-            HeapImpl.getHeapImpl().getOldGeneration().blackenDirtyCardRoots(greyToBlackObjectVisitor);
+            HeapImpl.getHeapImpl().getOldGeneration().blackenDirtyCardRoots(greyToBlackObjectVisitor, greyToBlackObjRefVisitor);
         } finally {
             blackenDirtyCardRootsTimer.stop();
         }

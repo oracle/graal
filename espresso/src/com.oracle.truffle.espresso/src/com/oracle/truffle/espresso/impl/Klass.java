@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
@@ -82,6 +83,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNode;
+import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethodNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
@@ -94,7 +97,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
-import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
@@ -177,13 +179,14 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
                         @Bind Node node,
                         @Cached @Shared InlinedBranchProfile error,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
-            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), node, error, lib, language);
+            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), InteropUnwrapNodeGen.getUncached(), node, error, lib, language);
         }
 
         @Specialization
         static Object readMember(Klass receiver, String member,
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Bind Node node,
                         @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary lib,
@@ -194,7 +197,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             if (field != null) {
                 Object result = field.get(receiver.tryInitializeAndGetStatics());
                 if (result instanceof StaticObject) {
-                    result = InteropUtils.unwrap(language, (StaticObject) result, meta);
+                    result = unwrapNode.execute(result);
                 }
                 return result;
             }
@@ -868,7 +871,8 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @Override
     public abstract @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader();
 
-    public abstract ConstantPool getConstantPool();
+    @Override
+    public abstract RuntimeConstantPool getConstantPool();
 
     public final JavaKind getJavaKind() {
         return (this instanceof PrimitiveKlass)
@@ -1847,7 +1851,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @Override
     public JDWPConstantPool getJDWPConstantPool() {
         ConstantPool pool = getConstantPool();
-        return new JDWPConstantPool(pool.length(), pool.getRawBytes());
+        return new JDWPConstantPool(pool.length(), pool.toRawBytes());
     }
 
     @Override

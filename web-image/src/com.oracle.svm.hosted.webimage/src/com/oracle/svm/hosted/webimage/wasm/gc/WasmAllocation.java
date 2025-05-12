@@ -809,21 +809,18 @@ public final class WasmAllocation {
         }
     }
 
-    public static boolean walkObjects(ObjectVisitor visitor) {
+    public static void walkObjects(ObjectVisitor visitor) {
         Pointer currentBlock = MemoryLayout.getAllocatorBase();
         while (currentBlock.belowThan(MemoryLayout.getAllocatorTop())) {
             BlockHeader header = StackValue.get(BlockHeader.class);
             readBlockHeader(currentBlock, header);
 
             if (header.getIsObject()) {
-                if (!visitor.visitObject(getInnerPointer(currentBlock).toObjectNonNull())) {
-                    return false;
-                }
+                visitor.visitObject(getInnerPointer(currentBlock).toObjectNonNull());
             }
 
             currentBlock = getNextBlock(currentBlock, header);
         }
-        return true;
     }
 
     /**

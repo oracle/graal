@@ -37,8 +37,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -58,19 +56,11 @@ public final class JfrJdkCompatibility {
     }
 
     public static String makeFilename(Recording recording) {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            return Target_jdk_jfr_internal_JVMSupport.makeFilename(recording);
-        } else {
-            return Target_jdk_jfr_internal_Utils.makeFilename(recording);
-        }
+        return Target_jdk_jfr_internal_JVMSupport.makeFilename(recording);
     }
 
     public static String formatTimespan(Duration dValue, String separation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            return Target_jdk_jfr_internal_util_ValueFormatter.formatTimespan(dValue, separation);
-        } else {
-            return Target_jdk_jfr_internal_Utils.formatTimespan(dValue, separation);
-        }
+        return Target_jdk_jfr_internal_util_ValueFormatter.formatTimespan(dValue, separation);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -114,21 +104,7 @@ public final class JfrJdkCompatibility {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = {JDK21OrEarlier.class, HasJfrSupport.class})
-final class Target_jdk_jfr_internal_Utils {
-    @Substitute
-    public static String makeFilename(Recording recording) {
-        return JfrFilenameUtil.makeFilename(recording);
-    }
-
-    @Alias
-    public static native String formatTimespan(Duration dValue, String separation);
-
-    @Alias
-    public static native String formatDateTime(LocalDateTime time);
-}
-
-@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_JVMSupport {
     @Substitute
     public static String makeFilename(Recording recording) {
@@ -136,7 +112,7 @@ final class Target_jdk_jfr_internal_JVMSupport {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
@@ -156,9 +132,6 @@ final class JfrFilenameUtil {
 
     private static String getFormatDateTime() {
         LocalDateTime now = LocalDateTime.now();
-        if (JavaVersionUtil.JAVA_SPEC >= 24) {
-            return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
-        }
-        return Target_jdk_jfr_internal_Utils.formatDateTime(now);
+        return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
     }
 }

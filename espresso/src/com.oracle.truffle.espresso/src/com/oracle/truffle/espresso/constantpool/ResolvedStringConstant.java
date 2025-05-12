@@ -22,13 +22,12 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
-public class ResolvedStringConstant implements StringConstant, Resolvable.ResolvedConstant {
+public class ResolvedStringConstant implements ResolvedConstant {
     private final @JavaType(String.class) StaticObject resolved;
 
     ResolvedStringConstant(@JavaType(String.class) StaticObject resolved) {
@@ -39,5 +38,10 @@ public class ResolvedStringConstant implements StringConstant, Resolvable.Resolv
     @Override
     public @JavaType(String.class) StaticObject value() {
         return resolved;
+    }
+
+    @Override
+    public Tag tag() {
+        return Tag.STRING;
     }
 }

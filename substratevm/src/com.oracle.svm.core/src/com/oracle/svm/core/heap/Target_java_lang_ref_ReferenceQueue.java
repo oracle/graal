@@ -33,7 +33,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(ReferenceQueue.class)
 final class Target_java_lang_ref_ReferenceQueue<T> {
-    @Alias static Target_java_lang_ref_ReferenceQueue<Object> NULL;
+    // Checkstyle: stop
+    @Alias //
+    static Target_java_lang_ref_ReferenceQueue<Object> NULL_QUEUE;
+    // CheckStyle: resume
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     volatile Reference<? extends T> head;

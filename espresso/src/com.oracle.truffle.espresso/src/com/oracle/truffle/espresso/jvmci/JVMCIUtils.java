@@ -25,12 +25,11 @@ package com.oracle.truffle.espresso.jvmci;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.constantpool.ResolvedConstant;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -76,11 +75,12 @@ public final class JVMCIUtils {
         }
     }
 
-    public static Klass findObjectType(ClassConstant classConstant, RuntimeConstantPool pool, boolean resolve, Meta meta) {
-        if (classConstant instanceof Resolvable.ResolvedConstant resolved) {
-            return (Klass) resolved.value();
+    public static Klass findObjectType(int classIndex, RuntimeConstantPool pool, boolean resolve, Meta meta) {
+        ResolvedConstant resolvedConstant = pool.peekResolvedOrNull(classIndex, meta);
+        if (resolvedConstant != null) {
+            return (Klass) resolvedConstant.value();
         }
-        Symbol<Name> name = ((ClassConstant.ImmutableClassConstant) classConstant).getName(pool);
+        Symbol<Name> name = pool.className(classIndex);
         Symbol<Type> type;
         if (resolve) {
             type = meta.getTypes().fromClassNameEntry(name);

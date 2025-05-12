@@ -56,6 +56,9 @@ import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
+
 _suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
@@ -83,6 +86,10 @@ def get_jdk(forBuild=False):
         return mx.get_jdk(tag='jvmci')
     else:
         return mx.get_jdk()
+
+# Called from suite.py
+def graalwasm_standalone_deps():
+    return mx_truffle.resolve_truffle_dist_names()
 
 #
 # Gate runners.

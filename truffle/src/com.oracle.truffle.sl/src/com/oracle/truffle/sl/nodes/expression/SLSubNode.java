@@ -42,10 +42,16 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -69,26 +75,51 @@ public abstract class SLSubNode extends SLBinaryNode {
     }
 
     @Specialization(replaces = "doLong")
-    @TruffleBoundary
     public static SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
-        return new SLBigInteger(left.getValue().subtract(right.getValue()));
+        BigInteger castLeft = left.getValue();
+        BigInteger castRight = right.getValue();
+        BigInteger result = subBoundary(castLeft, castRight);
+        return new SLBigInteger(result);
     }
 
-    @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
-    @TruffleBoundary
-    public static SLBigInteger doInteropBigInteger(Object left, Object right,
-                    @CachedLibrary("left") InteropLibrary leftLibrary,
-                    @CachedLibrary("right") InteropLibrary rightLibrary) {
-        try {
-            return new SLBigInteger(leftLibrary.asBigInteger(left).subtract(rightLibrary.asBigInteger(right)));
-        } catch (UnsupportedMessageException e) {
-            throw shouldNotReachHere(e);
-        }
+    @TruffleBoundary(allowInlining = true)
+    private static BigInteger subBoundary(BigInteger castLeft, BigInteger castRight) {
+        return castLeft.subtract(castRight);
     }
 
     @Fallback
-    public static Object typeError(Object left, Object right, @Bind Node node) {
-        throw SLException.typeError(node, "-", left, right);
+    @HostCompilerDirectives.InliningCutoff
+    public static Object doFallback(Object left, Object right,
+                    @Cached SlowPathNode fallback,
+                    @Bind Node node) {
+        return fallback.execute(node, left, right);
+    }
+
+    @GenerateInline(false)
+    @GenerateUncached
+    public abstract static class SlowPathNode extends Node {
+
+        abstract Object execute(Node node, Object left, Object right);
+
+        @Specialization(guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
+        @SuppressWarnings("unused")
+        static SLBigInteger doInteropBigInteger(Node node, Object left, Object right,
+                        @CachedLibrary("left") InteropLibrary leftLibrary,
+                        @CachedLibrary("right") InteropLibrary rightLibrary) {
+            try {
+                BigInteger castLeft = leftLibrary.asBigInteger(left);
+                BigInteger castRight = rightLibrary.asBigInteger(right);
+                BigInteger result = subBoundary(castLeft, castRight);
+                return new SLBigInteger(result);
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
+        }
+
+        @Fallback
+        static Object typeError(Node node, Object left, Object right) {
+            throw SLException.typeError(node, "-", left, right);
+        }
     }
 
 }

@@ -302,9 +302,13 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * @param bci this must be {@link BytecodeFrame#AFTER_BCI}
      */
     public FrameState(int bci, ValueNode returnValueOrExceptionObject) {
-        this(null, null, bci, 0, returnValueOrExceptionObject.getStackKind().getSlotCount(), 0, returnValueOrExceptionObject instanceof ExceptionObjectNode ? StackState.Rethrow : StackState.BeforePop,
+        this(bci, returnValueOrExceptionObject, null, true);
+    }
+
+    public FrameState(int bci, ValueNode returnValueOrExceptionObject, Bytecode code, boolean checkBCI) {
+        this(null, code, bci, 0, returnValueOrExceptionObject.getStackKind().getSlotCount(), 0, returnValueOrExceptionObject instanceof ExceptionObjectNode ? StackState.Rethrow : StackState.BeforePop,
                         true, null, null);
-        assert (bci == BytecodeFrame.AFTER_BCI && !rethrowException()) || (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && rethrowException()) : Assertions.errorMessage(bci);
+        assert !checkBCI || (bci == BytecodeFrame.AFTER_BCI && !rethrowException()) || (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && rethrowException()) : Assertions.errorMessage(bci);
         ValueNode[] stack = {returnValueOrExceptionObject};
         this.values = new NodeInputList<>(this, stack);
     }
@@ -568,7 +572,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     ValueNode pushedValue,
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
         assert pushedValue != null;
-        assert pushedValue.getStackKind() == popKind : Assertions.errorMessage(pushedValue, popKind, this);
+        assert pushedValue.getStackKind() == pushedSlotKind : Assertions.errorMessage(pushedValue, popKind, this);
         return duplicateModified(graph(), bci, stackState, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
     }
 

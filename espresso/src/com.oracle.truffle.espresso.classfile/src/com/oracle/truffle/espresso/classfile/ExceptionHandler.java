@@ -34,10 +34,10 @@ public final class ExceptionHandler {
 
     public static final ExceptionHandler[] EMPTY_ARRAY = new ExceptionHandler[0];
 
-    private final int startBCI;
-    private final int endBCI;
-    private final int handlerBCI;
-    private final int catchTypeCPI;
+    private final char startBCI;
+    private final char endBCI;
+    private final char handlerBCI;
+    private final char catchTypeCPI;
     private final Symbol<Type> catchType;
 
     /**
@@ -50,10 +50,10 @@ public final class ExceptionHandler {
      * @param catchType the type caught by this exception handler
      */
     public ExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, Symbol<Type> catchType) {
-        this.startBCI = startBCI;
-        this.endBCI = endBCI;
-        this.handlerBCI = catchBCI;
-        this.catchTypeCPI = catchTypeCPI;
+        this.startBCI = (char) startBCI;
+        this.endBCI = (char) endBCI;
+        this.handlerBCI = (char) catchBCI;
+        this.catchTypeCPI = (char) catchTypeCPI;
         this.catchType = catchType;
     }
 
@@ -124,7 +124,8 @@ public final class ExceptionHandler {
 
     @Override
     public String toString() {
-        return "ExceptionHandler<startBCI=" + startBCI + ", endBCI=" + endBCI + ", handlerBCI=" + handlerBCI + ", catchTypeCPI=" + catchTypeCPI + ", catchType=" + catchType + ">";
+        return "ExceptionHandler<startBCI=" + getStartBCI() + ", endBCI=" + getEndBCI() + ", handlerBCI=" + getHandlerBCI() + ", catchTypeCPI=" + getCatchType() + ", catchType=" + getCatchType() +
+                        ">";
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -286,6 +286,20 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             result = result.or(UNALIGNED_BIT);
         }
         return result;
+    }
+
+    @Override
+    public long encodeAsTLABObjectHeader(long hubOffsetFromHeapBase) {
+        assert SubstrateOptions.SpawnIsolates.getValue();
+        return hubOffsetFromHeapBase << numReservedExtraHubBits;
+    }
+
+    @Override
+    public int constantHeaderSize() {
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            return -1;
+        }
+        return getReferenceSize();
     }
 
     /** Clear the object header bits from a header. */

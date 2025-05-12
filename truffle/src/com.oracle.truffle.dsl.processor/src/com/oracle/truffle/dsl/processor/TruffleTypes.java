@@ -166,6 +166,7 @@ public class TruffleTypes {
     public static final String TruffleLanguage_Name = "com.oracle.truffle.api.TruffleLanguage";
     public static final String TruffleLanguageProvider_Name = "com.oracle.truffle.api.provider.TruffleLanguageProvider";
     public static final String TruffleLanguage_Registration_Name = "com.oracle.truffle.api.TruffleLanguage.Registration";
+    public static final String TruffleSafepoint_Name = "com.oracle.truffle.api.TruffleSafepoint";
     public static final String TruffleStackTraceElement_Name = "com.oracle.truffle.api.TruffleStackTraceElement";
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
     public static final String TruffleOptionDescriptors_Name = "com.oracle.truffle.api.TruffleOptionDescriptors";
@@ -226,6 +227,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleLanguage_LanguageReference = c.getDeclaredType(TruffleLanguage_LanguageReference_Name);
     public final DeclaredType TruffleLanguageProvider = c.getDeclaredType(TruffleLanguageProvider_Name);
     public final DeclaredType TruffleLanguage_Registration = c.getDeclaredType(TruffleLanguage_Registration_Name);
+    public final DeclaredType TruffleSafepoint = c.getDeclaredType(TruffleSafepoint_Name);
     public final DeclaredType TruffleStackTraceElement = c.getDeclaredType(TruffleStackTraceElement_Name);
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
     public final DeclaredType TruffleOptionDescriptors = c.getDeclaredType(TruffleOptionDescriptors_Name);

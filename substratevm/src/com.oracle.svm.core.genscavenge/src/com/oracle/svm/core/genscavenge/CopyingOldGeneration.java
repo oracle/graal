@@ -65,8 +65,9 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return getFromSpace().walkObjects(visitor) && getToSpace().walkObjects(visitor);
+    public void walkObjects(ObjectVisitor visitor) {
+        getFromSpace().walkObjects(visitor);
+        getToSpace().walkObjects(visitor);
     }
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
@@ -158,8 +159,8 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override

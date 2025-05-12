@@ -52,9 +52,8 @@ public final class PodReferenceMapDecoder {
     @DuplicatedInNativeCode
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean walkOffsetsFromPointer(Pointer baseAddress, int layoutEncoding, ObjectReferenceVisitor visitor, Object obj) {
+    public static void walkOffsetsFromPointer(Pointer baseAddress, int layoutEncoding, ObjectReferenceVisitor visitor, Object obj) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
 
         UnsignedWord refOffset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);
         UnsignedWord mapOffset = getReferenceMapOffset(obj, layoutEncoding);
@@ -66,22 +65,17 @@ public final class PodReferenceMapDecoder {
             gap = toUnsignedInt(baseAddress.readByte(mapOffset));
             nrefs = toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
 
-            for (int i = 0; i < nrefs; i++) {
-                if (!callVisitor(baseAddress, visitor, obj, isCompressed, refOffset)) {
-                    return false;
-                }
-                refOffset = refOffset.add(referenceSize);
-            }
-            refOffset = refOffset.add(referenceSize * gap);
+            Pointer firstObjRef = baseAddress.add(refOffset);
+            callVisitor(firstObjRef, visitor, obj, nrefs);
+            refOffset = refOffset.add(referenceSize * (nrefs + gap));
         } while (gap != 0 || nrefs == 0xff);
-
-        return true;
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(Pointer baseAddress, ObjectReferenceVisitor visitor, Object obj, boolean isCompressed, UnsignedWord refOffset) {
-        return visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj);
+    private static void callVisitor(Pointer firstObjRef, ObjectReferenceVisitor visitor, Object obj, int count) {
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        visitor.visitObjectReferences(firstObjRef, true, referenceSize, obj, count);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

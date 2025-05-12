@@ -617,6 +617,13 @@ public final class EspressoOptions {
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
+    @Option(help = "Enable use of a custom Espresso implementation of boot libraries, which allows for not entering native code.\\n" +
+                    "For example, this will replace the usual 'libjava'. Missing implementations will thus fail with 'UnsatifiedLinkError'.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
+
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

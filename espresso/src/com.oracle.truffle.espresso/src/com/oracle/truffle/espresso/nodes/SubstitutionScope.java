@@ -122,7 +122,7 @@ final class SubstitutionScope implements TruffleObject {
             // For a 0 index, give an empty name.
             String name;
             if (entry.getNameIndex() != 0) {
-                name = method.getConstantPool().symbolAtUnsafe(entry.getNameIndex(), "parameter name").toString();
+                name = method.getConstantPool().utf8At(entry.getNameIndex(), "parameter name").toString();
             } else {
                 name = "";
             }

@@ -877,7 +877,8 @@ JNIEXPORT void JNICALL JVM_ReportFinalizationComplete(JNIEnv *env, jobject final
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsFinalizationEnabled(JNIEnv *env) {
-  return JNI_TRUE;
+  IMPLEMENTED(JVM_IsFinalizationEnabled);
+  return (*getEnv())->JVM_IsFinalizationEnabled(env);
 }
 
 JNIEXPORT jint JNICALL JVM_DTraceGetVersion(JNIEnv *env) {

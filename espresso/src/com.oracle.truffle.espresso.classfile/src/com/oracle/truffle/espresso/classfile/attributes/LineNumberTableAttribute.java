@@ -46,7 +46,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
     private int lastLine = -1;
 
     public LineNumberTableAttribute(Symbol<Name> name, char[] entries) {
-        super(name, null);
+        assert name == NAME;
         assert entries.length % 2 == 0;
         this.bciToLineEntries = entries;
     }
@@ -142,5 +142,10 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
         public int size() {
             return length();
         }
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

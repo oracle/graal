@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,8 @@ import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -91,6 +93,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
@@ -99,6 +102,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -131,6 +135,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 
@@ -722,13 +727,26 @@ public abstract class NativeImage extends AbstractImage {
                 int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
                 baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
             }
-        } else if (target instanceof ConstantReference) {
-            // Direct object reference in code that must be patched (not a linker relocation)
-            JavaConstant constant = (JavaConstant) ((ConstantReference) target).getConstant();
-            long address = heap.getConstantInfo(constant).getOffset();
-            int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
-            long targetValue = address >>> encShift;
-            assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
+        } else if (target instanceof ConstantReference cr) {
+            JavaConstant constant = (JavaConstant) cr.getConstant();
+            long targetValue;
+            if (constant.getJavaKind() == JavaKind.Object) {
+                // Direct object reference in code that must be patched (not a linker relocation)
+                long address = heap.getConstantInfo(constant).getOffset();
+                int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
+                targetValue = address >>> encShift;
+                assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
+            } else {
+                // The value of the hub pointer in the header of an object
+                VMError.guarantee(constant instanceof TLABObjectHeaderConstant, "must be an EncodedHubPointerConstant: %s", constant);
+                TLABObjectHeaderConstant hpc = (TLABObjectHeaderConstant) constant;
+                ImageHeapInstance hub = hpc.hub();
+                long hubOffsetFromHeapBase = heap.getConstantInfo(hub).getOffset();
+                VMError.guarantee(hubOffsetFromHeapBase != 0, "hub must be non-null: %s", hub);
+                targetValue = Heap.getHeap().getObjectHeader().encodeAsTLABObjectHeader(hubOffsetFromHeapBase);
+                VMError.guarantee(hpc.getJavaKind() == JavaKind.Long || NumUtil.isUInt(targetValue), "constant does not fit %d", targetValue);
+            }
+
             ByteBuffer bufferBytes = buffer.getByteBuffer();
             if (arch instanceof AMD64) {
                 assert (info.getRelocationKind() == RelocationKind.DIRECT_4) || (info.getRelocationKind() == RelocationKind.DIRECT_8);
@@ -921,6 +939,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
+        DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
 
         public static NativeTextSectionImpl factory(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
             return codeCache.getTextSectionImpl(relocatableBuffer, objectFile, codeCache);
@@ -993,6 +1012,7 @@ public abstract class NativeImage extends AbstractImage {
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
                     defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, ImageLayerBuildingSupport.buildingSharedLayer(), pair.getRight());
+                    watchdog.recordActivity();
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -1016,6 +1036,7 @@ public abstract class NativeImage extends AbstractImage {
                             defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.compilationResultFor(method));
                         }
                     }
+                    watchdog.recordActivity();
                 }
 
                 // Write the text contents.

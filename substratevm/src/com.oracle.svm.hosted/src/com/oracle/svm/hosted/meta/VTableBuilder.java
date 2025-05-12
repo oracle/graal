@@ -430,8 +430,8 @@ public final class VTableBuilder {
             if (type.isArray()) {
                 type.closedTypeWorldVTable = objectClass.closedTypeWorldVTable;
             }
-            if (type.closedTypeWorldVTable == null) {
-                assert type.isInterface() || type.isPrimitive();
+            if (type.closedTypeWorldVTable == null || type.closedTypeWorldVTable.length == 0) {
+                assert type.isInterface() || type.isPrimitive() || type.closedTypeWorldVTable.length == 0;
                 type.closedTypeWorldVTable = HostedMethod.EMPTY_ARRAY;
             }
 

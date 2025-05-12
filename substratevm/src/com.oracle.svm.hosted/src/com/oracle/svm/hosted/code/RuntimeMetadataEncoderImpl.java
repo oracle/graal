@@ -720,7 +720,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private static HostedType[] getParameterTypes(HostedMethod method) {
-        HostedType[] parameterTypes = new HostedType[method.getSignature().getParameterCount(false)];
+        int len = method.getSignature().getParameterCount(false);
+        HostedType[] parameterTypes = len == 0 ? HostedType.EMPTY_ARRAY : new HostedType[len];
         for (int i = 0; i < parameterTypes.length; ++i) {
             parameterTypes[i] = method.getSignature().getParameterType(i);
         }
@@ -737,7 +738,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private static HostedType[] getExceptionTypes(MetaAccessProvider metaAccess, Executable reflectMethod) {
         Class<?>[] exceptionClasses = reflectMethod.getExceptionTypes();
-        HostedType[] exceptionTypes = new HostedType[exceptionClasses.length];
+        HostedType[] exceptionTypes = exceptionClasses.length == 0 ? HostedType.EMPTY_ARRAY : new HostedType[exceptionClasses.length];
         for (int i = 0; i < exceptionClasses.length; ++i) {
             exceptionTypes[i] = (HostedType) metaAccess.lookupJavaType(exceptionClasses[i]);
         }

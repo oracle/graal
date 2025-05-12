@@ -28,7 +28,6 @@ from typing import Iterable
 import sys
 import os
 import re
-import pdb
 
 import gdb
 import gdb.types
@@ -1186,6 +1185,7 @@ class SVMCommandDebugPrettyPrinting(gdb.Command):
     def invoke(self, arg: str, from_tty: bool) -> None:
         trace(f'<SVMCommandDebugPrettyPrinting> - invoke({arg})')
         command = "gdb.execute('print {}')".format(arg.replace("'", "\\'"))
+        import pdb
         pdb.run(command)
 
 

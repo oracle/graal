@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.io.Serial;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
@@ -204,9 +205,10 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
+    public void walkObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("must only be executed at a safepoint");
-        return walkImageHeapObjects(visitor) && walkCollectedHeapObjects(visitor);
+        walkImageHeapObjects(visitor);
+        walkCollectedHeapObjects(visitor);
     }
 
     /** Tear down the heap and release its memory. */
@@ -340,14 +342,28 @@ public final class HeapImpl extends Heap {
 
         ArrayList<Class<?>> list = new ArrayList<>(dynamicHubCount);
         for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-            ImageHeapWalker.walkRegions(info, new ClassListBuilderVisitor(list.size() + info.dynamicHubCount, list));
+            collectDynamicHubs(info, list);
         }
 
         VMError.guarantee(dynamicHubCount == list.size(), "Found fewer DynamicHubs in the image heap than expected.");
         return list;
     }
 
+    private static void collectDynamicHubs(ImageHeapInfo info, ArrayList<Class<?>> list) {
+        try {
+            ClassListBuilderVisitor visitor = new ClassListBuilderVisitor(list.size() + info.dynamicHubCount, list);
+            ImageHeapWalker.walkRegions(info, visitor);
+        } catch (FoundAllHubsException ignored) {
+        }
+    }
+
+    /**
+     * Iterates over the image heap parts that may contain dynamic hubs. After collecting all
+     * dynamic hubs were collected, this visitor throws a {@link FoundAllHubsException}.
+     */
     private static class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
+        private static final FoundAllHubsException FOUND_ALL_HUBS_EXCEPTION = new FoundAllHubsException();
+
         private final int dynamicHubCount;
         private final List<Class<?>> list;
 
@@ -357,21 +373,32 @@ public final class HeapImpl extends Heap {
         }
 
         @Override
-        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+        public <T> void visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
             if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
-                return access.visitObjects(region, this);
+                access.visitObjects(region, this);
             }
-            return true;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Allocation is fine: this method traverses only the image heap.")
-        public boolean visitObject(Object o) {
+        public void visitObject(Object o) {
             if (o instanceof Class<?>) {
                 list.add((Class<?>) o);
-                return list.size() != dynamicHubCount;
+                if (list.size() == dynamicHubCount) {
+                    throw FOUND_ALL_HUBS_EXCEPTION;
+                }
             }
-            return true;
+        }
+    }
+
+    private static final class FoundAllHubsException extends RuntimeException {
+        @Serial private static final long serialVersionUID = 1L;
+
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            /* No stacktrace needed. */
+            return this;
         }
     }
 
@@ -458,24 +485,26 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public boolean walkImageHeapObjects(ObjectVisitor visitor) {
+    public void walkImageHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
         if (visitor == null) {
-            return true;
+            return;
         }
+
         for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-            if (!ImageHeapWalker.walkImageHeapObjects(info, visitor)) {
-                return false;
-            }
+            ImageHeapWalker.walkImageHeapObjects(info, visitor);
         }
-        return !AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkObjects(visitor);
+        if (AuxiliaryImageHeap.isPresent()) {
+            AuxiliaryImageHeap.singleton().walkObjects(visitor);
+        }
     }
 
     @Override
-    public boolean walkCollectedHeapObjects(ObjectVisitor visitor) {
+    public void walkCollectedHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
         ThreadLocalAllocation.disableAndFlushForAllThreads();
-        return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
+        getYoungGeneration().walkObjects(visitor);
+        getOldGeneration().walkObjects(visitor);
     }
 
     @Override

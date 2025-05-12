@@ -26,6 +26,8 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -46,9 +48,12 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
-import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -78,7 +83,7 @@ import jdk.vm.ci.aarch64.AArch64;
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.
  */
-public abstract class VMThreads implements RuntimeOnlyImageSingleton {
+public abstract class VMThreads implements InitialLayerOnlyImageSingleton {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static VMThreads singleton() {
@@ -671,6 +676,11 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
         return false;
     }
 
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
     private static class DetachAllExternallyStartedThreadsExceptCurrentOperation extends JavaVMOperation {
         DetachAllExternallyStartedThreadsExceptCurrentOperation() {
             super(VMOperationInfos.get(DetachAllExternallyStartedThreadsExceptCurrentOperation.class, "Detach all externally started threads except current", SystemEffect.SAFEPOINT));
@@ -1054,7 +1064,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
     public interface OSThreadId extends PointerBase {
     }
 
-    public static class ThreadLookup {
+    public static class ThreadLookup implements InitialLayerOnlyImageSingleton {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public ComparableWord getThreadIdentifier() {
             return VMThreads.singleton().getCurrentOSThreadId();
@@ -1064,14 +1074,19 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
         public boolean matchesThread(IsolateThread thread, ComparableWord identifier) {
             return OSThreadIdTL.get(thread).equal(identifier);
         }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+        }
     }
 }
 
 @AutomaticallyRegisteredFeature
-class ThreadLookupFeature implements InternalFeature {
+class ThreadLookupFeature implements InternalFeature, FeatureSingleton {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(VMThreads.ThreadLookup.class)) {
+        if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(VMThreads.ThreadLookup.class)) {
             ImageSingletons.add(VMThreads.ThreadLookup.class, new VMThreads.ThreadLookup());
         }
     }

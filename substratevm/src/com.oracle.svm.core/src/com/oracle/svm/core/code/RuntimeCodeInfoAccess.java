@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -47,6 +46,8 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * This class contains methods that only make sense for runtime compiled code.
@@ -153,8 +154,8 @@ public final class RuntimeCodeInfoAccess {
      * Walks all strong references in a {@link CodeInfo} object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkStrongReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
-        return NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor, CodeInfoImpl.FIRST_STRONGLY_REFERENCED_OBJFIELD, CodeInfoImpl.STRONGLY_REFERENCED_OBJFIELD_COUNT);
+    public static void walkStrongReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
+        NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor, CodeInfoImpl.FIRST_STRONGLY_REFERENCED_OBJFIELD, CodeInfoImpl.STRONGLY_REFERENCED_OBJFIELD_COUNT);
     }
 
     /**
@@ -162,21 +163,17 @@ public final class RuntimeCodeInfoAccess {
      */
     @DuplicatedInNativeCode
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkWeakReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
+    public static void walkWeakReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         CodeInfoImpl impl = cast(info);
-        boolean continueVisiting = true;
-        continueVisiting = continueVisiting &&
-                        NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
+        NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
         if (CodeInfoAccess.isAliveState(impl.getState())) {
-            continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
-                            impl.getCodeConstantsReferenceMapEncoding(), impl.getCodeConstantsReferenceMapIndex(), visitor, null);
+            CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(), impl.getCodeConstantsReferenceMapEncoding(), impl.getCodeConstantsReferenceMapIndex(), visitor, null);
         }
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectConstants(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getClasses(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getMemberNames(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getOtherStrings(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getDeoptimizationObjectConstants(), visitor);
-        return continueVisiting;
+        NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectConstants(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(impl.getClasses(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(impl.getMemberNames(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(impl.getOtherStrings(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(impl.getDeoptimizationObjectConstants(), visitor);
     }
 
     /**
@@ -184,22 +181,16 @@ public final class RuntimeCodeInfoAccess {
      * and/or {@link #walkWeakReferences} instead.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkTether(CodeInfo info, ObjectReferenceVisitor visitor) {
-        Pointer address = NonmovableArrays.addressOf(cast(info).getObjectFields(), CodeInfoImpl.TETHER_OBJFIELD);
-        return callVisitor(visitor, address);
-    }
-
-    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer address) {
-        return visitor.visitObjectReference(address, true, null);
+    public static void walkTether(CodeInfo info, ObjectReferenceVisitor visitor) {
+        NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor, CodeInfoImpl.TETHER_OBJFIELD, 1);
     }
 
     /**
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
-    public static boolean walkObjectFields(CodeInfo info, ObjectReferenceVisitor visitor) {
-        return NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor);
+    public static void walkObjectFields(CodeInfo info, ObjectReferenceVisitor visitor) {
+        NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor);
     }
 
     public static CodeInfo allocateMethodInfo() {

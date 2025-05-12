@@ -23,11 +23,13 @@
 package com.oracle.truffle.espresso.ffi;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -71,6 +73,15 @@ public interface NativeAccess {
     @Pointer
     TruffleObject loadDefaultLibrary();
 
+    @TruffleBoundary
+    default String mapLibraryName(String libname) {
+        return System.mapLibraryName(libname);
+    }
+
+    default boolean isBuiltIn(@SuppressWarnings("unused") String libname) {
+        return false;
+    }
+
     /**
      * Similar to dlclose. Uses the native mechanism to close, or rather decrement the reference
      * count to a native library obtained using {@link #loadLibrary(Path)}.
@@ -78,8 +89,14 @@ public interface NativeAccess {
     void unloadLibrary(@Pointer TruffleObject library);
 
     default @Pointer TruffleObject loadLibrary(List<Path> searchPaths, String shortName, boolean notFoundIsFatal) {
+        if (isBuiltIn(shortName)) {
+            TruffleObject library = loadLibrary(Paths.get(shortName));
+            if (library != null) {
+                return library;
+            }
+        }
         for (Path path : searchPaths) {
-            Path libPath = path.resolve(System.mapLibraryName(shortName));
+            Path libPath = path.resolve(mapLibraryName(shortName));
             @Pointer
             TruffleObject library = loadLibrary(libPath.toAbsolutePath());
             if (library != null) {

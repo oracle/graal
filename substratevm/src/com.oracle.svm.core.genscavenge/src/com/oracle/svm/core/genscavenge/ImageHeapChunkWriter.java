@@ -33,7 +33,7 @@ interface ImageHeapChunkWriter {
 
     void enableRememberedSetForAlignedChunk(int chunkPosition, List<ImageHeapObject> objects);
 
-    void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
+    void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, long objectSize);
 
-    void enableRememberedSetForUnalignedChunk(int chunkPosition);
+    void enableRememberedSetForUnalignedChunk(int chunkPosition, long objectSize);
 }

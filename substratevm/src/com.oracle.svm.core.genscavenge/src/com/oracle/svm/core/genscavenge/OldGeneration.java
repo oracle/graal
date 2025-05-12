@@ -46,7 +46,7 @@ public abstract class OldGeneration extends Generation {
     abstract void beginPromotion(boolean incrementalGc);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    abstract void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor);
+    abstract void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract boolean scanGreyObjects(boolean incrementalGc);

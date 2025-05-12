@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -98,8 +97,8 @@ public abstract class ClassInfo {
 
                 ObjectKlass objectKlass = (ObjectKlass) klass;
                 ConstantPool pool = klass.getConstantPool();
-                NameAndTypeConstant nmt = pool.nameAndTypeAt(objectKlass.getEnclosingMethod().getMethodIndex());
-                enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
+                int nameAndTypeIndex = objectKlass.getEnclosingMethod().getNameAndTypeIndex();
+                enclosing.append(pool.nameAndTypeName(nameAndTypeIndex)).append(";").append(pool.nameAndTypeDescriptor(nameAndTypeIndex));
             }
         }
         // find all currently loaded direct inner classes and create class infos
@@ -162,8 +161,8 @@ public abstract class ClassInfo {
 
                 ConstantPool pool = parserKlass.getConstantPool();
                 EnclosingMethodAttribute attr = (EnclosingMethodAttribute) parserKlass.getAttribute(EnclosingMethodAttribute.NAME);
-                NameAndTypeConstant nmt = pool.nameAndTypeAt(attr.getMethodIndex());
-                enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
+                int nameAndTypeIndex = attr.getNameAndTypeIndex();
+                enclosing.append(pool.nameAndTypeName(nameAndTypeIndex)).append(";").append(pool.nameAndTypeDescriptor(nameAndTypeIndex));
             }
         }
 

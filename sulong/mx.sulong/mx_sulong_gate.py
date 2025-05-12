@@ -38,8 +38,6 @@ from mx_gate import Task, add_gate_runner, add_gate_argument
 import mx_sulong_suite_constituents
 import mx_sulong_unittest
 
-import mx_sdk_vm
-
 _suite = mx.suite('sulong')
 
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
@@ -169,11 +167,11 @@ def _sulong_gate_runner(args, tasks):
 
     if standaloneMode == "native":
         with Task('Build Native LLVM Standalone', tasks, tags=['standalone']) as t:
-            if t: mx.command_function('build')(['--dependencies', f'LLVM_NATIVE_STANDALONE_SVM_JAVA{mx_sdk_vm.base_jdk_version()}'])
+            if t: mx.command_function('build')(['--dependencies', f'SULONG_NATIVE_STANDALONE'])
 
     if standaloneMode == "jvm":
         with Task('Build Java LLVM Standalone', tasks, tags=['standalone']) as t:
-            if t: mx.command_function('build')(['--dependencies', f'LLVM_JAVA_STANDALONE_SVM_JAVA{mx_sdk_vm.base_jdk_version()}'])
+            if t: mx.command_function('build')(['--dependencies', f'SULONG_JVM_STANDALONE'])
 
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])

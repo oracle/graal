@@ -38,8 +38,6 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.core.common.NativeImageSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -57,6 +55,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
@@ -94,6 +93,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -107,6 +107,8 @@ import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -117,6 +119,7 @@ import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FullInfopointNode;
@@ -165,6 +168,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.WordCastNode;
+import jdk.internal.foreign.MemorySessionImpl;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
@@ -195,6 +199,7 @@ public class SubstrateGraphBuilderPlugins {
                     boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
+        registerArenaPlugins(plugins);
         registerSystemPlugins(plugins);
         registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(plugins);
@@ -216,6 +221,21 @@ public class SubstrateGraphBuilderPlugins {
             registerAESPlugins(plugins, replacements, architecture);
             registerArraysSupportPlugins(plugins, replacements, architecture);
         }
+    }
+
+    private static void registerArenaPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, ArenaIntrinsics.class);
+        r.register(new RequiredInlineOnlyInvocationPlugin("checkArenaValidInScope", MemorySessionImpl.class, Object.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode session, ValueNode ptrOne, ValueNode ptrTwo) {
+                b.setIsParsingScopedMemoryMethod(session);
+                MemoryArenaValidInScopeNode result = new MemoryArenaValidInScopeNode(session, new FieldLocationIdentity(b.getMetaAccess().lookupJavaField(MemoryArenaValidInScopeNode.STATE_FIELD)));
+                b.addPush(JavaKind.Long, result);
+                result.addScopeAssociatedValue(ptrOne);
+                result.addScopeAssociatedValue(ptrTwo);
+                return true;
+            }
+        });
     }
 
     private static void registerSerializationPlugins(ImageClassLoader loader, InvocationPlugins plugins, ParsingReason reason) {
@@ -529,8 +549,7 @@ public class SubstrateGraphBuilderPlugins {
              */
             return b.getSnippetReflection().asObject(Class[].class, originalArrayNode.asJavaConstant());
 
-        } else if (originalArrayNode instanceof AllocatedObjectNode && StampTool.isAlwaysArray(originalArrayNode)) {
-            AllocatedObjectNode allocatedObjectNode = (AllocatedObjectNode) originalArrayNode;
+        } else if (originalArrayNode instanceof AllocatedObjectNode allocatedObjectNode && StampTool.isAlwaysArray(originalArrayNode)) {
             if (!allocatedObjectNode.getVirtualObject().type().equals(b.getMetaAccess().lookupJavaType(Class[].class))) {
                 /* Not allocating a Class[] array. */
                 return null;
@@ -560,13 +579,12 @@ public class SubstrateGraphBuilderPlugins {
             }
             throw VMError.shouldNotReachHere("Must have found the virtual object");
 
-        } else if (originalArrayNode instanceof NewArrayNode) {
+        } else if (originalArrayNode instanceof NewArrayNode newArray) {
             /*
              * Find the elements written to the array. If the array length is a constant, all
              * written elements are constants and all array elements are filled then return the
              * array elements.
              */
-            NewArrayNode newArray = (NewArrayNode) originalArrayNode;
             if (!newArray.elementType().equals(b.getMetaAccess().lookupJavaType(Class.class))) {
                 /* Not allocating a Class[] array. */
                 return null;
@@ -588,8 +606,7 @@ public class SubstrateGraphBuilderPlugins {
              */
             Class<?>[] result = new Class<?>[newArrayLength];
             FixedNode successor = unwrapNode(newArray.next());
-            while (successor instanceof StoreIndexedNode) {
-                StoreIndexedNode store = (StoreIndexedNode) successor;
+            while (successor instanceof StoreIndexedNode store) {
                 if (getDeoptProxyOriginalValue(store.array()).equals(newArray)) {
                     if (!store.index().isJavaConstant()) {
                         return null;
@@ -863,14 +880,11 @@ public class SubstrateGraphBuilderPlugins {
             /* A NullPointerException will be thrown at run time for this call. */
             return false;
         }
-        if (isSunMiscUnsafe && (targetField.getDeclaringClass().isRecord() || targetField.getDeclaringClass().isHidden())) {
-            /*
-             * sun.misc.Unsafe performs a few more checks than jdk.internal.misc.Unsafe to
-             * explicitly disallow hidden classes and records.
-             */
-            return false;
-        }
-        return true;
+        /*
+         * sun.misc.Unsafe performs a few more checks than jdk.internal.misc.Unsafe to explicitly
+         * disallow hidden classes and records.
+         */
+        return !isSunMiscUnsafe || (!targetField.getDeclaringClass().isRecord() && !targetField.getDeclaringClass().isHidden());
     }
 
     private static boolean processStaticFieldBase(GraphBuilderContext b, Receiver receiver, Field targetField, boolean isSunMiscUnsafe) {

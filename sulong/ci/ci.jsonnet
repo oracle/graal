@@ -39,6 +39,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/regex/**",
         "<graal>/java-benchmarks/**",
       ] + (if standalone then [
+        # tools suite (included in standalone)
+        "<graal>/tools/**",
         # substratevm and its dependencies
         "<graal>/substratevm/**",
         # vm and its dependencies
@@ -56,21 +58,21 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     run+: [
       ["mx", "build", "--dependencies", "SULONG_TEST"],
       ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_BOOTSTRAP_TOOLCHAIN", "ToolchainAPITest"],
-      ["mx", "--env", "toolchain-only", "build"],
-      ["set-export", "SULONG_BOOTSTRAP_GRAALVM", ["mx", "--quiet", "--no-warning", "--env", "toolchain-only", "graalvm-home"]],
-      ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=GRAALVM_TOOLCHAIN_ONLY", "ToolchainAPITest"],
+      ["mx", "--env", "ce-llvm-standalones", "build", "--dependencies", "SULONG_JVM_STANDALONE"],
+      ["set-export", "SULONG_BOOTSTRAP_STANDALONE", ["mx", "--quiet", "--no-warning", "--env", "ce-llvm-standalones", "path", "--output", "SULONG_JVM_STANDALONE"]],
+      ["mx", "unittest", "--verbose", "-Dsulongtest.toolchainPathPattern=SULONG_JVM_STANDALONE", "ToolchainAPITest"],
     ],
   },
 
   regular_builds:: [
     $.sulong + $.gate(style=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-fullbuild-jdk-latest-linux-amd64" },
-    $.sulong + $.gate(standalone=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64" },
+    $.sulong + $.gate(standalone=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64" },
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-linux-amd64", timelimit: "45:00" },
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-linux-amd64", timelimit: "45:00" },
 
     $.sulong + $.gate() + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["ram16gb"] },
 
-    $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-linux-amd64" },
+    $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTags) + { name: "gate-sulong-basic-nwcc-llvm-jdk-latest-linux-amd64" },
 
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk-latest-linux-aarch64", timelimit: "30:00" },
 

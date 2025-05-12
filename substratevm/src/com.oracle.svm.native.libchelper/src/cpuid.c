@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -718,6 +718,12 @@ void determineCPUFeatures(CPUFeatures* features) {
 #ifndef HWCAP_PACA
 #define HWCAP_PACA          (1L << 30)
 #endif
+#ifndef HWCAP_FPHP
+#define HWCAP_FPHP          (1L << 9)
+#endif
+#ifndef HWCAP_ASIMDHP
+#define HWCAP_ASIMDHP       (1L << 10)
+#endif
 #ifndef HWCAP2_SVE2
 #define HWCAP2_SVE2         (1L << 1)
 #endif
@@ -755,6 +761,8 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fDMB_ATOMICS = 0;
   features->fPACA = !!(auxv & HWCAP_PACA);
   features->fSVEBITPERM = !!(auxv2 & HWCAP2_SVEBITPERM);
+  features->fFPHP = !!(auxv & HWCAP_FPHP);
+  features->fASIMDHP = !!(auxv & HWCAP_ASIMDHP);
 
   //checking for features signaled in another way
 

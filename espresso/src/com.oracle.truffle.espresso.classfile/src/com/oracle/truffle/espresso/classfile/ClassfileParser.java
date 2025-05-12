@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.MODULE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.PACKAGE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
@@ -57,6 +58,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -82,24 +84,6 @@ import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.InterfaceMethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.InvalidConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.LongConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
@@ -107,6 +91,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNam
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserSignatures;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
@@ -199,7 +184,7 @@ public final class ClassfileParser {
 
     private final boolean verifiable;
 
-    private ImmutableConstantPool pool;
+    private ParserConstantPool pool;
     private final boolean validate;
 
     private ClassfileParser(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden,
@@ -385,24 +370,31 @@ public final class ClassfileParser {
         return badConstantSeen != null;
     }
 
+    private static int catInt(int hi, int lo) {
+        return (hi << 16) | (lo & 0xFFFF);
+    }
+
     /**
      * Parses a constant pool from a class file.
      */
-    private ImmutableConstantPool parseConstantPool() throws ValidationException {
+    private ParserConstantPool parseConstantPool() throws ValidationException {
         final int length = stream.readU2();
         if (length < 1) {
             throw classFormatError("Invalid constant pool size (" + length + ")");
         }
         int rawPoolStartPosition = stream.getPosition();
-        ImmutablePoolConstant[] entries = new ImmutablePoolConstant[length];
-        entries[0] = InvalidConstant.VALUE;
+        byte[] tags = new byte[length];
+        int[] entries = new int[length];
+        tags[0] = ConstantPool.CONSTANT_Invalid;
+        List<Symbol<?>> incrementalSymbols = new ArrayList<>();
 
         int i = 1;
         while (i < length) {
             final int tagByte = stream.readU1();
+            tags[i] = (byte) tagByte;
             final Tag tag = Tag.fromValue(tagByte);
             if (tag == null) {
-                throw ValidationException.raise("Invalid constant pool entry type at index " + i);
+                throw ValidationException.raise("Invalid constant pool entry tag at index " + i);
             }
             // check version for the tag except for module/package entries which must cause NDCFE
             if (!tag.isValidForVersion(getMajorVersion()) && tag != MODULE && tag != PACKAGE) {
@@ -411,64 +403,66 @@ public final class ClassfileParser {
             switch (tag) {
                 case CLASS: {
                     int classNameIndex = stream.readU2();
-                    entries[i] = ClassConstant.create(classNameIndex);
+                    entries[i] = classNameIndex;
                     break;
                 }
                 case STRING: {
-                    int index = stream.readU2();
-                    if (index == 0 || index >= length) {
+                    int utf8Index = stream.readU2();
+                    if (utf8Index == 0 || utf8Index >= length) {
                         throw ValidationException.raise("Invalid String constant index " + (i - 1));
                     }
-                    entries[i] = StringConstant.create(index);
+                    entries[i] = utf8Index;
                     break;
                 }
                 case FIELD_REF: {
                     int classIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = FieldRefConstant.create(classIndex, nameAndTypeIndex);
+                    entries[i] = catInt(classIndex, nameAndTypeIndex);
                     break;
                 }
                 case METHOD_REF: {
                     int classIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = ClassMethodRefConstant.create(classIndex, nameAndTypeIndex);
+                    entries[i] = catInt(classIndex, nameAndTypeIndex);
                     break;
                 }
                 case INTERFACE_METHOD_REF: {
                     int classIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = InterfaceMethodRefConstant.create(classIndex, nameAndTypeIndex);
+                    entries[i] = catInt(classIndex, nameAndTypeIndex);
                     break;
                 }
                 case NAME_AND_TYPE: {
                     int nameIndex = stream.readU2();
-                    int typeIndex = stream.readU2();
-                    entries[i] = NameAndTypeConstant.create(nameIndex, typeIndex);
+                    int descriptorIndex = stream.readU2();
+                    entries[i] = catInt(nameIndex, descriptorIndex);
                     break;
                 }
                 case INTEGER: {
-                    entries[i] = IntegerConstant.create(stream.readS4());
+                    entries[i] = stream.readS4();
                     break;
                 }
                 case FLOAT: {
-                    entries[i] = FloatConstant.create(stream.readFloat());
+                    entries[i] = Float.floatToRawIntBits(stream.readFloat());
                     break;
                 }
                 case LONG: {
-                    entries[i] = LongConstant.create(stream.readS8());
+                    entries[i] = stream.readS4();
                     ++i;
                     try {
-                        entries[i] = InvalidConstant.VALUE;
+                        entries[i] = stream.readS4();
+                        tags[i] = ConstantPool.CONSTANT_Invalid;
                     } catch (ArrayIndexOutOfBoundsException e) {
                         throw ValidationException.raise("Invalid long constant index " + (i - 1));
                     }
                     break;
                 }
                 case DOUBLE: {
-                    entries[i] = DoubleConstant.create(stream.readDouble());
+                    entries[i] = stream.readS4();
                     ++i;
                     try {
-                        entries[i] = InvalidConstant.VALUE;
+                        entries[i] = stream.readS4();
+                        tags[i] = ConstantPool.CONSTANT_Invalid;
                     } catch (ArrayIndexOutOfBoundsException e) {
                         throw ValidationException.raise("Invalid double constant index " + (i - 1));
                     }
@@ -479,26 +473,32 @@ public final class ClassfileParser {
                     // A new symbol is spawned (copy) only if doesn't already exists.
                     UTF8_ENTRY_COUNT.inc();
                     ByteSequence bytes = stream.readByteSequenceUTF();
-                    entries[i] = parsingContext.getOrCreateUtf8Constant(bytes);
+                    Symbol<? extends ModifiedUTF8> utf8 = parsingContext.getOrCreateUtf8(bytes);
+                    if (utf8 == null) {
+                        throw ValidationException.raise("Invalid modified UTF-8 index " + i);
+                    }
+                    int symbolIndex = incrementalSymbols.size();
+                    incrementalSymbols.add(utf8);
+                    entries[i] = symbolIndex;
                     break;
                 }
                 case METHODHANDLE: {
                     checkInvokeDynamicSupport(tag);
                     int refKind = stream.readU1();
                     int refIndex = stream.readU2();
-                    entries[i] = MethodHandleConstant.create(refKind, refIndex);
+                    entries[i] = catInt(refKind, refIndex);
                     break;
                 }
                 case METHODTYPE: {
                     checkInvokeDynamicSupport(tag);
-                    entries[i] = MethodTypeConstant.create(stream.readU2());
+                    entries[i] = stream.readU2();
                     break;
                 }
                 case DYNAMIC: {
                     checkDynamicConstantSupport(tag);
                     int bootstrapMethodAttrIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = DynamicConstant.create(bootstrapMethodAttrIndex, nameAndTypeIndex);
+                    entries[i] = catInt(bootstrapMethodAttrIndex, nameAndTypeIndex);
                     updateMaxBootstrapMethodAttrIndex(bootstrapMethodAttrIndex);
                     break;
                 }
@@ -506,7 +506,7 @@ public final class ClassfileParser {
                     checkInvokeDynamicSupport(tag);
                     int bootstrapMethodAttrIndex = stream.readU2();
                     int nameAndTypeIndex = stream.readU2();
-                    entries[i] = InvokeDynamicConstant.create(bootstrapMethodAttrIndex, nameAndTypeIndex);
+                    entries[i] = catInt(bootstrapMethodAttrIndex, nameAndTypeIndex);
                     updateMaxBootstrapMethodAttrIndex(bootstrapMethodAttrIndex);
                     break;
                 }
@@ -519,30 +519,30 @@ public final class ClassfileParser {
         }
         int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        ImmutableConstantPool constantPool = new ImmutableConstantPool(entries, majorVersion, minorVersion, rawPoolLength);
+        Symbol<?>[] symbols = incrementalSymbols.toArray(Symbol<?>[]::new);
+        ParserConstantPool constantPool = new ParserConstantPool(tags, entries, symbols, majorVersion, minorVersion);
 
         if (hasSeenBadConstant()) {
             return constantPool;
         }
 
-        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched/hidden class
-        // is meaningless anyway.
-        assert sameRawPool(constantPool, stream, rawPoolStartPosition, rawPoolLength);
-
         // Validation
         if (validate) {
             try (DebugCloseable handlers = VALIDATION.scope(parsingContext.getTimers())) {
-                for (int j = 1; j < constantPool.length(); ++j) {
-                    entries[j].validate(constantPool);
-                }
+                constantPool.validate();
             }
         }
+
+        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched/hidden class
+        // is meaningless anyway. Raw bytes comparison must be done after validation to avoid
+        // assertion errors.
+        assert sameRawPool(constantPool, stream, rawPoolStartPosition, rawPoolLength);
 
         return constantPool;
     }
 
     private static boolean sameRawPool(ConstantPool constantPool, ClassfileStream stream, int rawPoolStartPosition, int rawPoolLength) {
-        return Arrays.equals(constantPool.getRawBytes(), stream.getByteRange(rawPoolStartPosition, rawPoolLength));
+        return Arrays.equals(constantPool.toRawBytes(), stream.getByteRange(rawPoolStartPosition, rawPoolLength));
     }
 
     private ParserKlass parseClassImpl() throws ValidationException {
@@ -585,7 +585,7 @@ public final class ClassfileParser {
         // this class
         int thisKlassIndex = stream.readU2();
 
-        Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
+        Symbol<Name> thisKlassName = pool.className(thisKlassIndex);
 
         final boolean isInterface = Modifier.isInterface(classFlags);
 
@@ -651,7 +651,7 @@ public final class ClassfileParser {
         }
         stream.readU2(); // access flags
         int thisKlassIndex = stream.readU2();
-        return pool.classAt(thisKlassIndex).getName(pool);
+        return pool.className(thisKlassIndex);
     }
 
     private ParserMethod[] parseMethods(boolean isInterface) throws ValidationException {
@@ -833,37 +833,37 @@ public final class ClassfileParser {
                 if (runtimeVisibleAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
                 }
-                return runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return runtimeVisibleAnnotations = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(RUNTIME_VISIBLE_TYPE_ANNOTATIONS) && attributeName.equals(ParserNames.RuntimeVisibleTypeAnnotations)) {
                 if (runtimeVisibleTypeAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
                 }
-                return runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return runtimeVisibleTypeAnnotations = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(RUNTIME_INVISIBLE_ANNOTATIONS) && attributeName.equals(ParserNames.RuntimeInvisibleAnnotations)) {
                 if (runtimeInvisibleAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
                 }
-                return runtimeInvisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return runtimeInvisibleAnnotations = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(RUNTIME_INVISIBLE_TYPE_ANNOTATIONS) && attributeName.equals(ParserNames.RuntimeInvisibleTypeAnnotations)) {
                 if (runtimeInvisibleTypeAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
                 }
-                return runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return runtimeInvisibleTypeAnnotations = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(RUNTIME_INVISIBLE_PARAMETER_ANNOTATIONS) && attributeName.equals(ParserNames.RuntimeVisibleParameterAnnotations)) {
                 if (runtimeVisibleParameterAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeVisibleParameterAnnotations attribute");
                 }
-                return runtimeVisibleParameterAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return runtimeVisibleParameterAnnotations = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(RUNTIME_INVISIBLE_PARAMETER_ANNOTATIONS) && attributeName.equals(ParserNames.RuntimeInvisibleParameterAnnotations)) {
                 if (runtimeInvisibleParameterAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeVisibleParameterAnnotations attribute");
                 }
-                return runtimeInvisibleParameterAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return runtimeInvisibleParameterAnnotations = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(ANNOTATION_DEFAULT) && attributeName.equals(ParserNames.AnnotationDefault)) {
                 if (annotationDefault != null) {
                     throw classFormatError("Duplicate AnnotationDefault attribute");
                 }
-                return annotationDefault = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                return annotationDefault = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(SIGNATURE) && attributeName.equals(ParserNames.Signature)) {
                 if (parsingContext.getJavaVersion().java9OrLater() && signature != null) {
                     throw classFormatError("Duplicate AnnotationDefault attribute");
@@ -894,7 +894,7 @@ public final class ClassfileParser {
                 };
             }
 
-            Attribute attribute = new Attribute(ParserNames.RuntimeVisibleAnnotations, data);
+            Attribute attribute = Attribute.createRaw(ParserNames.RuntimeVisibleAnnotations, data);
             runtimeVisibleAnnotations = attribute;
             return new RuntimeVisibleAnnotationsAttribute(attribute, flags);
         }
@@ -904,9 +904,8 @@ public final class ClassfileParser {
             int count = subStream.readU2();
             for (int j = 0; j < count; j++) {
                 int typeIndex = parseAnnotation(subStream);
-                Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
                 // Validation of the type is done at runtime by guest java code.
-                Symbol<Type> annotType = constant.unsafeSymbolValue();
+                Symbol<?> annotType = pool.utf8At(typeIndex, "annotation type");
                 if (ParserTypes.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                     flags |= ACC_LAMBDA_FORM_COMPILED;
                 } else if (ParserTypes.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
@@ -933,9 +932,8 @@ public final class ClassfileParser {
             int count = subStream.readU2();
             for (int j = 0; j < count; j++) {
                 int typeIndex = parseAnnotation(subStream);
-                Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
                 // Validation of the type is done at runtime by guest java code.
-                Symbol<Type> annotType = constant.unsafeSymbolValue();
+                Symbol<?> annotType = pool.utf8At(typeIndex, "annotation type");
                 if (ParserTypes.jdk_internal_vm_annotation_Stable.equals(annotType)) {
                     flags |= ACC_STABLE;
                 }
@@ -944,6 +942,7 @@ public final class ClassfileParser {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private ParserMethod parseMethod(boolean isInterface) throws ValidationException {
         int methodFlags = stream.readU2();
         int nameIndex = stream.readU2();
@@ -960,7 +959,7 @@ public final class ClassfileParser {
         try (DebugCloseable closeable = METHOD_INIT.scope(parsingContext.getTimers())) {
 
             try (DebugCloseable nameCheck = NAME_CHECK.scope(parsingContext.getTimers())) {
-                name = validateMethodName(pool.utf8At(nameIndex, "method name"), true);
+                name = validateMethodName(pool.utf8At(nameIndex, "method name"));
 
                 if (name.equals(ParserNames._clinit_)) {
                     // Class and interface initialization methods (3.9) are called
@@ -1006,10 +1005,14 @@ public final class ClassfileParser {
                  * Obtain slot number for the signature. Forces a validation, but better in startup
                  * than going twice through the sequence, once for validation, once for slots.
                  */
-                int slots = pool.utf8At(signatureIndex).validateSignatureGetSlots(isInit || isClinit);
+                int slots = pool.utf8At(signatureIndex).validateSignatureGetSlots();
 
-                assert Validation.validSignatureDescriptor(pool.symbolAtUnsafe(signatureIndex));
-                signature = pool.symbolAtUnsafe(signatureIndex, "method descriptor");
+                assert Validation.validSignatureDescriptor(pool.utf8At(signatureIndex));
+                signature = (Symbol<Signature>) pool.utf8At(signatureIndex, "method descriptor");
+
+                if ((isInit || isClinit) && !SignatureSymbols.returnsVoid(signature)) {
+                    throw ValidationException.raise("Invalid <init>/<clinit> signature, expected void return type: " + signature);
+                }
 
                 if (isClinit && majorVersion >= JAVA_7_VERSION) {
                     // Checks clinit takes no arguments.
@@ -1041,7 +1044,7 @@ public final class ClassfileParser {
 
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.symbolAtUnsafe(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = (Symbol<Name>) pool.utf8At(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
             if (attributeName.equals(ParserNames.Code)) {
@@ -1058,7 +1061,7 @@ public final class ClassfileParser {
                 methodAttributes[i] = checkedExceptions = parseExceptions(attributeName);
             } else if (attributeName.equals(ParserNames.Synthetic)) {
                 methodFlags |= ACC_SYNTHETIC;
-                methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
+                methodAttributes[i] = checkedExceptions = Attribute.SYNTHETIC;
             } else if (majorVersion >= JAVA_1_5_VERSION) {
                 if (attributeName.equals(ParserNames.RuntimeVisibleAnnotations)) {
                     RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Method);
@@ -1071,10 +1074,10 @@ public final class ClassfileParser {
                     methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
-                    methodAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                    methodAttributes[i] = attr == null ? Attribute.createRaw(attributeName, stream.readByteArray(attributeSize)) : attr;
                 }
             } else {
-                methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                methodAttributes[i] = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             }
 
             final int distance = stream.getPosition() - startPosition;
@@ -1154,9 +1157,9 @@ public final class ClassfileParser {
             default:
                 throw classFormatError("Invalid annotation tag: " + tag);
         }
-
     }
 
+    @SuppressWarnings("unchecked")
     private Attribute[] parseClassAttributes() throws ValidationException {
         int attributeCount = stream.readU2();
         if (attributeCount == 0) {
@@ -1181,7 +1184,7 @@ public final class ClassfileParser {
         final Attribute[] classAttributes = spawnAttributesArray(attributeCount);
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.symbolAtUnsafe(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = (Symbol<Name>) pool.utf8At(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
             if (attributeName.equals(ParserNames.SourceFile)) {
@@ -1196,7 +1199,7 @@ public final class ClassfileParser {
                 classAttributes[i] = sourceDebugExtensionAttribute = parseSourceDebugExtensionAttribute(attributeName, attributeSize);
             } else if (attributeName.equals(ParserNames.Synthetic)) {
                 classFlags |= ACC_SYNTHETIC;
-                classAttributes[i] = new Attribute(attributeName, null);
+                classAttributes[i] = Attribute.SYNTHETIC;
             } else if (attributeName.equals(ParserNames.InnerClasses)) {
                 if (innerClasses != null) {
                     throw classFormatError("Duplicate InnerClasses attribute");
@@ -1245,11 +1248,11 @@ public final class ClassfileParser {
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
-                    classAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                    classAttributes[i] = attr == null ? Attribute.createRaw(attributeName, stream.readByteArray(attributeSize)) : attr;
                 }
             } else {
                 // stream.skip(attributeSize);
-                classAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                classAttributes[i] = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             }
 
             if (attributeSize != stream.getPosition() - startPosition) {
@@ -1332,8 +1335,8 @@ public final class ClassfileParser {
                 throw classFormatError("Invalid local variable table attribute entry: start_pc + length out of bounds: " + (bci + length));
             }
 
-            Utf8Constant poolName = pool.utf8At(nameIndex);
-            Utf8Constant typeNameOrSignature = pool.utf8At(descIndex);
+            Symbol<?> poolName = pool.utf8At(nameIndex);
+            Symbol<?> typeNameOrSignature = pool.utf8At(descIndex);
 
             int extraSlot = 0;
             if (!isLVTT) {
@@ -1350,7 +1353,7 @@ public final class ClassfileParser {
             locals[i] = new Local(
                             validateFieldName(poolName),
                             isLVTT ? null : validateType(typeNameOrSignature, false),
-                            isLVTT ? typeNameOrSignature.unsafeSymbolValue() : null,
+                            isLVTT ? typeNameOrSignature : null,
                             bci, bci + length - 1, slot);
 
         }
@@ -1381,7 +1384,7 @@ public final class ClassfileParser {
     private ExceptionsAttribute parseExceptions(Symbol<Name> name) {
         assert ParserNames.Exceptions.equals(name);
         int entryCount = stream.readU2();
-        int[] entries = new int[entryCount];
+        char[] entries = new char[entryCount];
         for (int i = 0; i < entryCount; ++i) {
             int index = stream.readU2();
             if (index >= pool.length()) {
@@ -1393,7 +1396,7 @@ public final class ClassfileParser {
             if (pool.tagAt(index) != Tag.CLASS) {
                 throw classFormatError("Invalid exception_index_table: not a CONSTANT_Class_info structure.");
             }
-            entries[i] = index;
+            entries[i] = (char) index;
         }
         return new ExceptionsAttribute(name, entries);
     }
@@ -1460,7 +1463,7 @@ public final class ClassfileParser {
 
             Symbol<Name> innerClassName = null;
             if (innerClassIndex != 0) {
-                innerClassName = pool.classAt(innerClassIndex).getName(pool);
+                innerClassName = pool.className(innerClassIndex);
             }
 
             for (int j = 0; j < i; ++j) {
@@ -1475,7 +1478,7 @@ public final class ClassfileParser {
                                     // compare by name instead.
                                     (innerClassIndex != 0 &&
                                                     otherInnerClassInfo.innerClassIndex != 0 &&
-                                                    innerClassName.equals(pool.classAt(otherInnerClassInfo.innerClassIndex).getName(pool)))) {
+                                                    innerClassName.equals(pool.className(otherInnerClassInfo.innerClassIndex)))) {
                         duplicateInnerClass = true;
                     }
                 }
@@ -1488,10 +1491,15 @@ public final class ClassfileParser {
                             ? "Duplicate inner_class_info_index (class names)"
                             : "Cycle detected";
             parsingContext.getLogger().log(() -> cause + " in InnerClassesAttribute, in class " + classType);
-            return new InnerClassesAttribute(name, new InnerClassesAttribute.Entry[0]);
+            return InnerClassesAttribute.EMPTY;
         }
 
-        return new InnerClassesAttribute(name, innerClassInfos);
+        long[] packedEntries = new long[innerClassInfos.length];
+        for (int i = 0; i < packedEntries.length; ++i) {
+            packedEntries[i] = innerClassInfos[i].pack();
+        }
+
+        return new InnerClassesAttribute(name, packedEntries);
     }
 
     int findInnerClassIndexEntry(InnerClassesAttribute.Entry[] entries, Symbol<Name> innerClassName) {
@@ -1502,7 +1510,8 @@ public final class ClassfileParser {
             }
             // The same class can be referenced by two different CP indices, compare by name
             // instead.
-            if (innerClassName == pool.classAt(entry.innerClassIndex).getName(pool)) {
+            Symbol<Name> otherClassName = pool.className(entry.innerClassIndex);
+            if (innerClassName == otherClassName) {
                 return i;
             }
         }
@@ -1522,7 +1531,7 @@ public final class ClassfileParser {
                 if (v == 0) {
                     break;
                 }
-                int index = findInnerClassIndexEntry(entries, pool.classAt(v).getName(pool));
+                int index = findInnerClassIndexEntry(entries, pool.className(v));
                 if (index < 0) { // no edge found
                     break;
                 }
@@ -1549,7 +1558,7 @@ public final class ClassfileParser {
 
     private NestHostAttribute parseNestHostAttribute(Symbol<Name> attributeName) throws ValidationException {
         int hostClassIndex = stream.readU2();
-        pool.classAt(hostClassIndex).validate(pool);
+        pool.validateConstantAt(hostClassIndex, Tag.CLASS);
         return new NestHostAttribute(attributeName, hostClassIndex);
     }
 
@@ -1559,7 +1568,7 @@ public final class ClassfileParser {
         int[] classes = new int[numberOfClasses];
         for (int i = 0; i < numberOfClasses; i++) {
             int pos = stream.readU2();
-            pool.classAt(pos).validate(pool);
+            pool.validateConstantAt(pos, Tag.CLASS);
             classes[i] = pos;
         }
         return new NestMembersAttribute(attributeName, classes);
@@ -1577,7 +1586,7 @@ public final class ClassfileParser {
         char[] classes = new char[numberOfClasses];
         for (int i = 0; i < numberOfClasses; i++) {
             int pos = stream.readU2();
-            pool.classAt(pos).validate(pool);
+            pool.validateConstantAt(pos, CLASS);
             classes[i] = (char) pos;
         }
         return new PermittedSubclassesAttribute(attributeName, classes);
@@ -1598,15 +1607,16 @@ public final class ClassfileParser {
         return new RecordAttribute(recordAttributeName, components);
     }
 
+    @SuppressWarnings("unchecked")
     private Attribute[] parseRecordComponentAttributes() throws ValidationException {
         final int size = stream.readU2();
         Attribute[] componentAttributes = new Attribute[size];
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
         for (int j = 0; j < size; j++) {
-            final Symbol<Name> attributeName = pool.symbolAtUnsafe(stream.readU2(), "attribute name");
+            final Symbol<Name> attributeName = (Symbol<Name>) pool.utf8At(stream.readU2(), "attribute name");
             final int attributeSize = stream.readS4();
             Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
-            componentAttributes[j] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+            componentAttributes[j] = attr == null ? Attribute.createRaw(attributeName, stream.readByteArray(attributeSize)) : attr;
         }
         return componentAttributes;
     }
@@ -1623,25 +1633,31 @@ public final class ClassfileParser {
         }
 
         if (innerClassIndex != 0 || parsingContext.getJavaVersion().java9OrLater()) {
-            pool.classAt(innerClassIndex).validate(pool);
+            pool.validateConstantAt(innerClassIndex, Tag.CLASS);
         }
         if (outerClassIndex != 0) {
-            pool.classAt(outerClassIndex).validate(pool);
+            pool.validateConstantAt(outerClassIndex, Tag.CLASS);
         }
         if (innerNameIndex != 0) {
             // Gradle (the build tool) generates classes with innerNameIndex -> empty string.
             // HotSpot does not validates the class name, only that it is a valid UTF-8 constant.
-            pool.utf8At(innerNameIndex).validate(pool); // .validateClassName();
+            pool.validateConstantAt(innerNameIndex, Tag.UTF8); // .validateClassName();
         }
         return new InnerClassesAttribute.Entry(innerClassIndex, outerClassIndex, innerNameIndex, innerClassAccessFlags);
     }
 
     private EnclosingMethodAttribute parseEnclosingMethodAttribute(Symbol<Name> name) {
         int classIndex = stream.readU2();
-        int methodIndex = stream.readU2();
-        return new EnclosingMethodAttribute(name, classIndex, methodIndex);
+        // Otherwise, the value of the method_index item must be a valid index into the
+        // constant_pool table.
+        // The constant_pool entry at that index must be a CONSTANT_NameAndType_info structure
+        // (4.4.6) representing the name and type of a method in the class referenced by the
+        // class_index attribute above.
+        int nameAndTypeIndex = stream.readU2();
+        return new EnclosingMethodAttribute(name, classIndex, nameAndTypeIndex);
     }
 
+    @SuppressWarnings("unchecked")
     private CodeAttribute parseCodeAttribute(Symbol<Name> name) throws ValidationException {
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
@@ -1673,7 +1689,7 @@ public final class ClassfileParser {
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName;
-            attributeName = pool.symbolAtUnsafe(attributeNameIndex, "attribute name");
+            attributeName = (Symbol<Name>) pool.utf8At(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
 
@@ -1692,7 +1708,7 @@ public final class ClassfileParser {
             } else {
                 Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                 // stream.skip(attributeSize);
-                codeAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                codeAttributes[i] = attr == null ? Attribute.createRaw(attributeName, stream.readByteArray(attributeSize)) : attr;
             }
 
             if (attributeSize != stream.getPosition() - startPosition) {
@@ -1704,7 +1720,7 @@ public final class ClassfileParser {
             validateLocalTables(codeAttributes);
         }
 
-        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
+        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes);
     }
 
     private void validateLocalTables(Attribute[] codeAttributes) {
@@ -1751,7 +1767,7 @@ public final class ClassfileParser {
             int catchTypeIndex = stream.readU2();
             Symbol<Type> catchType = null;
             if (catchTypeIndex != 0) {
-                catchType = parsingContext.getOrCreateTypeFromName(pool.classAt(catchTypeIndex).getName(pool));
+                catchType = parsingContext.getOrCreateTypeFromName(pool.className(catchTypeIndex));
             }
             entries[i] = new ExceptionHandler(startPc, endPc, handlerPc, catchTypeIndex, catchType);
         }
@@ -1791,6 +1807,7 @@ public final class ClassfileParser {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private ParserField parseField(boolean isInterface) throws ValidationException {
         int fieldFlags = stream.readU2();
         int nameIndex = stream.readU2();
@@ -1811,7 +1828,7 @@ public final class ClassfileParser {
 
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.symbolAtUnsafe(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = (Symbol<Name>) pool.utf8At(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
             if (isStatic && attributeName.equals(ParserNames.ConstantValue)) {
@@ -1822,8 +1839,8 @@ public final class ClassfileParser {
                 if (constantValue.getConstantValueIndex() == 0) {
                     throw classFormatError("Invalid ConstantValue index");
                 }
-                PoolConstant entry = pool.at(constantValue.getConstantValueIndex(), "constant value index");
-                boolean isValid = switch (entry.tag()) {
+                Tag tag = pool.tagAt(constantValue.getConstantValueIndex());
+                boolean isValid = switch (tag) {
                     case INTEGER -> TypeSymbols.getJavaKind(descriptor).isStackInt();
                     case FLOAT -> descriptor == ParserTypes._float;
                     case LONG -> descriptor == ParserTypes._long;
@@ -1836,7 +1853,7 @@ public final class ClassfileParser {
                 }
             } else if (attributeName.equals(ParserNames.Synthetic)) {
                 fieldFlags |= ACC_SYNTHETIC;
-                fieldAttributes[i] = new Attribute(attributeName, null);
+                fieldAttributes[i] = Attribute.SYNTHETIC;
             } else if (majorVersion >= JAVA_1_5_VERSION) {
                 if (attributeName.equals(ParserNames.RuntimeVisibleAnnotations)) {
                     RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Field);
@@ -1845,11 +1862,11 @@ public final class ClassfileParser {
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
-                    fieldAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+                    fieldAttributes[i] = attr == null ? Attribute.createRaw(attributeName, stream.readByteArray(attributeSize)) : attr;
                 }
             } else {
                 // stream.skip(attributeSize);
-                fieldAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                fieldAttributes[i] = Attribute.createRaw(attributeName, stream.readByteArray(attributeSize));
             }
 
             if (attributeSize != stream.getPosition() - startPosition) {
@@ -1930,7 +1947,7 @@ public final class ClassfileParser {
             }
             return null;
         }
-        return parsingContext.getOrCreateTypeFromName(pool.classAt(index).getName(pool));
+        return parsingContext.getOrCreateTypeFromName(pool.className(index));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -1942,7 +1959,7 @@ public final class ClassfileParser {
         Symbol<Type>[] interfaces = new Symbol[interfaceCount];
         for (int i = 0; i < interfaceCount; i++) {
             int interfaceIndex = stream.readU2();
-            Symbol<Name> interfaceName = pool.classAt(interfaceIndex).getName(pool);
+            Symbol<Name> interfaceName = pool.className(interfaceIndex);
             Symbol<Type> interfaceType = parsingContext.getOrCreateTypeFromName(interfaceName);
             if (interfaceType == null) {
                 throw classFormatError(classType + " contains invalid superinterface name: " + interfaceName);
@@ -1996,44 +2013,53 @@ public final class ClassfileParser {
 
     // Encoding (Modified UTF8)
 
-    private Symbol<? extends ModifiedUTF8> validateEncoding(Utf8Constant utf8Constant) throws ValidationException {
+    @SuppressWarnings("unchecked")
+    private Symbol<? extends ModifiedUTF8> validateEncoding(Symbol<?> symbol) throws ValidationException {
         if (!validate) {
-            return utf8Constant.unsafeSymbolValue();
+            assert Validation.validModifiedUTF8(symbol);
+            return (Symbol<? extends ModifiedUTF8>) symbol;
         }
-        return utf8Constant.validateUTF8();
+        return symbol.validateUTF8();
     }
 
     // Names
 
-    private Symbol<Name> validateFieldName(Utf8Constant utf8Constant) throws ValidationException {
+    @SuppressWarnings("unchecked")
+    private Symbol<Name> validateFieldName(Symbol<?> symbol) throws ValidationException {
         if (!validate) {
-            return utf8Constant.unsafeSymbolValue();
+            assert Validation.validUnqualifiedName(symbol);
+            return (Symbol<Name>) symbol;
         }
-        return utf8Constant.validateFieldName();
+        return symbol.validateFieldName();
     }
 
-    private Symbol<Name> validateMethodName(Utf8Constant utf8Constant, boolean allowClinit) throws ValidationException {
+    @SuppressWarnings("unchecked")
+    private Symbol<Name> validateMethodName(Symbol<?> symbol) throws ValidationException {
         if (!validate) {
-            return utf8Constant.unsafeSymbolValue();
+            assert Validation.validMethodName(symbol);
+            return (Symbol<Name>) symbol;
         }
-        return utf8Constant.validateMethodName(allowClinit);
+        return symbol.validateMethodName();
     }
 
-    @SuppressWarnings("unused")
-    private Symbol<Name> validateClassName(Utf8Constant utf8Constant) throws ValidationException {
+    @SuppressWarnings({"unused", "unchecked"})
+    private Symbol<Name> validateClassName(Symbol<?> symbol) throws ValidationException {
         if (!validate) {
-            return utf8Constant.unsafeSymbolValue();
+            assert Validation.validClassNameEntry(symbol);
+            return (Symbol<Name>) symbol;
         }
-        return utf8Constant.validateClassName();
+        return symbol.validateClassName();
     }
 
     // Types
 
-    private Symbol<Type> validateType(Utf8Constant utf8Constant, boolean allowVoid) throws ValidationException {
+    @SuppressWarnings("unchecked")
+    private Symbol<Type> validateType(Symbol<?> symbol, boolean allowVoid) throws ValidationException {
         if (!validate) {
-            return utf8Constant.unsafeSymbolValue();
+            assert Validation.validTypeDescriptor(symbol, allowVoid);
+            return (Symbol<Type>) symbol;
         }
-        return utf8Constant.validateType(allowVoid);
+        return symbol.validateType(allowVoid);
     }
 
     // endregion Validation (throwing) methods

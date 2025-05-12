@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,6 +52,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
@@ -65,6 +67,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 @AutomaticallyRegisteredFeature
 public class HeapDumpFeature implements InternalFeature {
+    private boolean isDataFieldReachable;
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         /*
@@ -96,11 +100,19 @@ public class HeapDumpFeature implements InternalFeature {
     }
 
     @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        Field dataField = ReflectionUtil.lookupField(HeapDumpMetadata.class, "data");
+        isDataFieldReachable = access.isReachable(dataField);
+    }
+
+    @Override
     public void afterCompilation(Feature.AfterCompilationAccess access) {
-        AfterCompilationAccessImpl accessImpl = (AfterCompilationAccessImpl) access;
-        byte[] metadata = encodeMetadata(accessImpl.getTypes());
-        HeapDumpMetadata.singleton().setData(metadata);
-        access.registerAsImmutable(metadata);
+        if (isDataFieldReachable) {
+            AfterCompilationAccessImpl accessImpl = (AfterCompilationAccessImpl) access;
+            byte[] metadata = encodeMetadata(accessImpl.getTypes());
+            HeapDumpMetadata.singleton().setData(metadata);
+            access.registerAsImmutable(metadata);
+        }
     }
 
     /**

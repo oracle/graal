@@ -96,7 +96,6 @@ import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribut
 import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
@@ -621,6 +620,12 @@ public final class VM extends NativeEnv {
 
     // endregion system
 
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsFinalizationEnabled() {
+        // TODO: implement '--finalization' flag.
+        return true;
+    }
+
     @VmImpl
     public static boolean JVM_IsPreviewEnabled(@Inject EspressoLanguage language) {
         return language.isPreviewEnabled();
@@ -1048,20 +1053,21 @@ public final class VM extends NativeEnv {
         ObjectKlass instanceKlass = (ObjectKlass) klass;
         InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
 
-        if (innerClasses == null || innerClasses.entries().length == 0) {
+        if (innerClasses == null || innerClasses.entryCount() == 0) {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
 
         RuntimeConstantPool pool = instanceKlass.getConstantPool();
         List<Klass> innerKlasses = new ArrayList<>();
 
-        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+        for (int i = 0; i < innerClasses.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
             if (entry.innerClassIndex != 0 && entry.outerClassIndex != 0) {
                 // Check to see if the name matches the class we're looking for
                 // before attempting to find the class.
-                Symbol<Name> outerDescriptor = pool.classAt(entry.outerClassIndex).getName(pool);
+                Symbol<Name> outerDescriptor = pool.className(entry.outerClassIndex);
 
-                // Check decriptors/names before resolving.
+                // Check descriptors/names before resolving.
                 if (outerDescriptor.equals(instanceKlass.getName())) {
                     Klass outerKlass = pool.resolvedKlassAt(instanceKlass, entry.outerClassIndex);
                     if (outerKlass == instanceKlass) {
@@ -1100,10 +1106,10 @@ public final class VM extends NativeEnv {
         // Throws an exception if outer klass has not declared k as an inner klass
         // We need evidence that each klass knows about the other, or else
         // the system could allow a spoof of an inner class to gain access rights.
-
-        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+        for (int i = 0; i < innerClasses.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
             if (entry.innerClassIndex != 0) {
-                Symbol<Name> innerDescriptor = pool.classAt(entry.innerClassIndex).getName(pool);
+                Symbol<Name> innerDescriptor = pool.className(entry.innerClassIndex);
                 // Check decriptors/names before resolving.
                 if (innerDescriptor.equals(klass.getName())) {
                     Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
@@ -1133,6 +1139,7 @@ public final class VM extends NativeEnv {
         return outerKlass.mirror();
     }
 
+    @SuppressWarnings("unchecked")
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_GetSimpleBinaryName(@JavaType(Class.class) StaticObject self) {
         Klass k = self.getMirrorKlass(getMeta());
@@ -1145,14 +1152,16 @@ public final class VM extends NativeEnv {
         if (inner == null) {
             return StaticObject.NULL;
         }
-        for (InnerClassesAttribute.Entry entry : inner.entries()) {
+        for (int i = 0; i < inner.entryCount(); i++) {
+            InnerClassesAttribute.Entry entry = inner.entryAt(i);
             int innerClassIndex = entry.innerClassIndex;
             if (innerClassIndex != 0) {
-                if (pool.classAt(innerClassIndex).getName(pool) == klass.getName() && pool.resolvedKlassAt(klass, innerClassIndex) == k) {
+                if (pool.className(innerClassIndex) == klass.getName() && pool.resolvedKlassAt(klass, innerClassIndex) == k) {
                     if (entry.innerNameIndex == 0) {
                         break;
                     } else {
-                        Symbol<Name> innerName = pool.symbolAtUnsafe(entry.innerNameIndex);
+                        // Cast is safe-ish
+                        Symbol<Name> innerName = (Symbol<Name>) pool.utf8At(entry.innerNameIndex, "inner class name");
                         return getMeta().toGuestString(innerName);
                     }
                 }
@@ -1166,7 +1175,7 @@ public final class VM extends NativeEnv {
         if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
             SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Names.Signature);
             if (signature != null) {
-                String sig = klass.getConstantPool().symbolAtUnsafe(signature.getSignatureIndex(), "signature").toString();
+                String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex()).toString();
                 return getMeta().toGuestString(sig);
             }
         }
@@ -1237,11 +1246,11 @@ public final class VM extends NativeEnv {
 
             vm.setArrayObject(language, enclosingKlass.mirror(), 0, arr);
 
-            int methodIndex = enclosingMethodAttr.getMethodIndex();
-            if (methodIndex != 0) {
-                NameAndTypeConstant nmt = pool.nameAndTypeAt(methodIndex);
-                StaticObject name = meta.toGuestString(nmt.getName(pool));
-                StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
+            // Not a method, but a NameAndType entry.
+            int nameAndTypeIndex = enclosingMethodAttr.getNameAndTypeIndex();
+            if (nameAndTypeIndex != 0) {
+                StaticObject name = meta.toGuestString(pool.nameAndTypeName(nameAndTypeIndex));
+                StaticObject desc = meta.toGuestString(pool.nameAndTypeDescriptor(nameAndTypeIndex));
 
                 vm.setArrayObject(language, name, 1, arr);
                 vm.setArrayObject(language, desc, 2, arr);
@@ -1252,12 +1261,13 @@ public final class VM extends NativeEnv {
         return StaticObject.NULL;
     }
 
+    @SuppressWarnings("unchecked")
     public static StaticObject toGuestComponent(RecordAttribute.RecordComponentInfo recordInfo, Meta meta, ObjectKlass klass) {
         assert meta.getJavaVersion().java16OrLater();
         RuntimeConstantPool pool = klass.getConstantPool();
         StaticObject component = meta.java_lang_reflect_RecordComponent.allocateInstance(meta.getContext());
-        Symbol<Name> nameSymbol = pool.symbolAtUnsafe(recordInfo.getNameIndex());
-        Symbol<Type> typeSymbol = pool.symbolAtUnsafe(recordInfo.getDescriptorIndex());
+        Symbol<Name> nameSymbol = (Symbol<Name>) pool.utf8At(recordInfo.getNameIndex());
+        Symbol<Type> typeSymbol = (Symbol<Type>) pool.utf8At(recordInfo.getDescriptorIndex());
         Symbol<Signature> signature = meta.getSignatures().makeRaw(typeSymbol);
         meta.java_lang_reflect_RecordComponent_clazz.setObject(component, klass.mirror());
         meta.java_lang_reflect_RecordComponent_name.setObject(component, meta.toGuestString(nameSymbol));
@@ -1271,7 +1281,7 @@ public final class VM extends NativeEnv {
         // Find and set generic signature
         SignatureAttribute genericSignatureAttribute = (SignatureAttribute) recordInfo.getAttribute(SignatureAttribute.NAME);
         meta.java_lang_reflect_RecordComponent_signature.setObject(component,
-                        genericSignatureAttribute != null ? meta.toGuestString(pool.symbolAtUnsafe(genericSignatureAttribute.getSignatureIndex())) : StaticObject.NULL);
+                        genericSignatureAttribute != null ? meta.toGuestString(pool.utf8At(genericSignatureAttribute.getSignatureIndex())) : StaticObject.NULL);
 
         // Find and set annotations
         doAnnotation(recordInfo, component, Names.RuntimeVisibleAnnotations, meta.java_lang_reflect_RecordComponent_annotations, meta);
@@ -1826,7 +1836,7 @@ public final class VM extends NativeEnv {
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.CLASS, meta, profiler);
-        return ((RuntimeConstantPool) jcpool.getMirrorKlass(getMeta()).getConstantPool()).resolvedKlassAt(null, index).mirror();
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedKlassAt(null, index).mirror();
     }
 
     @VmImpl(isJni = true)
@@ -1848,7 +1858,7 @@ public final class VM extends NativeEnv {
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.STRING, meta, profiler);
-        return ((RuntimeConstantPool) jcpool.getMirrorKlass(getMeta()).getConstantPool()).resolvedStringAt(index);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedStringAt(index);
     }
 
     @VmImpl(isJni = true)
@@ -1856,7 +1866,7 @@ public final class VM extends NativeEnv {
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.UTF8, meta, profiler);
-        return getMeta().toGuestString(jcpool.getMirrorKlass(getMeta()).getConstantPool().symbolAtUnsafe(index).toString());
+        return getMeta().toGuestString(jcpool.getMirrorKlass(getMeta()).getConstantPool().utf8At(index).toString());
     }
 
     @VmImpl(isJni = true)
@@ -1879,6 +1889,10 @@ public final class VM extends NativeEnv {
 
     private Symbol<Type> namePtrToInternal(TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
+        return nameToInternal(name);
+    }
+
+    public Symbol<Type> nameToInternal(String name) {
         Symbol<Type> type = null;
         if (name != null) {
             String internalName = name;
@@ -1905,10 +1919,24 @@ public final class VM extends NativeEnv {
                     boolean initialize,
                     int flags,
                     @JavaType(Object.class) StaticObject classData) {
+        Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         if (StaticObject.isNull(lookup)) {
             throw getMeta().throwExceptionWithMessage(getMeta().java_lang_InternalError, "Lookup class is null");
         }
         assert !getUncached().isNull(bufPtr);
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
+        final byte[] bytes = new byte[len];
+        buf.get(bytes);
+
+        return lookupDefineClass(lookup, type, bytes, pd, initialize, flags, classData);
+    }
+
+    public StaticObject lookupDefineClass(
+                    StaticObject lookup,
+                    Symbol<Type> type, byte[] bytes, StaticObject pd,
+                    boolean initialize,
+                    int flags,
+                    StaticObject classData) {
         assert lookup.getMirrorKlass(getMeta()) instanceof ObjectKlass;
 
         boolean isNestMate = (flags & NESTMATE_CLASS) == NESTMATE_CLASS;
@@ -1937,11 +1965,6 @@ public final class VM extends NativeEnv {
                 throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, String.format("invalid flag 0x%x", flags));
             }
         }
-
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        final byte[] bytes = new byte[len];
-        buf.get(bytes);
-        Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         StaticObject loader = lookup.getMirrorKlass(getMeta()).getDefiningClassLoader();
 
         ObjectKlass k;
@@ -1975,6 +1998,10 @@ public final class VM extends NativeEnv {
         buf.get(bytes);
 
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
+        return defineClass(type, loader, pd, bytes);
+    }
+
+    public StaticObject defineClass(Symbol<Type> type, StaticObject loader, StaticObject pd, byte[] bytes) {
 
         StaticObject clazz;
         try {
@@ -2022,6 +2049,10 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @JavaType(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
+        return findClassFromBootLoader(name);
+    }
+
+    public StaticObject findClassFromBootLoader(String name) {
         if (name == null) {
             return StaticObject.NULL;
         }
@@ -2053,8 +2084,12 @@ public final class VM extends NativeEnv {
     public @JavaType(Class.class) StaticObject JVM_FindClassFromCaller(@Pointer TruffleObject namePtr,
                     boolean init, @JavaType(ClassLoader.class) StaticObject loader,
                     @JavaType(Class.class) StaticObject caller) {
-        Meta meta = getMeta();
         Symbol<Type> type = namePtrToInternal(namePtr);
+        return findClassFromCaller(type, init, loader, caller);
+    }
+
+    public StaticObject findClassFromCaller(Symbol<Type> type, boolean init, StaticObject loader, StaticObject caller) {
+        Meta meta = getMeta();
         Klass result;
         if (TypeSymbols.isPrimitive(type)) {
             result = null;
@@ -2073,7 +2108,7 @@ public final class VM extends NativeEnv {
             result = meta.resolveSymbolOrNull(type, loader, protectionDomain);
         }
         if (result == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, NativeUtils.interopPointerToString(namePtr));
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, type.toString());
         }
         if (init) {
             result.safeInitialize();
@@ -2122,6 +2157,7 @@ public final class VM extends NativeEnv {
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
     private static final AtomicLong libraryHandles = new AtomicLong(1);
+    private static final AtomicLong symbolHandles = new AtomicLong(1);
 
     public @Pointer TruffleObject getFunction(long handle) {
         return handle2Sym.get(handle);
@@ -2194,6 +2230,25 @@ public final class VM extends NativeEnv {
         }
     }
 
+    private static long getSymbolHandle(TruffleObject sym) {
+        try {
+            if (InteropLibrary.getUncached().isPointer(sym)) {
+                return InteropLibrary.getUncached().asPointer(sym);
+            } else {
+                // Try to force to a pointer.
+                InteropLibrary.getUncached().toNative(sym);
+                if (InteropLibrary.getUncached().isPointer(sym)) {
+                    return InteropLibrary.getUncached().asPointer(sym);
+                } else {
+                    // Not an actual pointer, cannot get its native handle, create a fake one.
+                    return symbolHandles.getAndIncrement();
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
     @VmImpl
     @TruffleBoundary
     public void JVM_UnloadLibrary(@Pointer TruffleObject libraryPtr) {
@@ -2203,6 +2258,7 @@ public final class VM extends NativeEnv {
             getLogger().severe("JVM_UnloadLibrary with unknown library (not loaded through JVM_LoadLibrary?): " + libraryPtr + " / " + Long.toHexString(nativeLibraryPtr));
         } else {
             getNativeAccess().unloadLibrary(library);
+            handle2Lib.remove(nativeLibraryPtr);
         }
     }
 
@@ -2212,18 +2268,24 @@ public final class VM extends NativeEnv {
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
+        return RawPointer.create(findLibraryEntry(nativePtr, name));
+    }
+
+    @TruffleBoundary
+    public long findLibraryEntry(long nativePtr, String name) {
         TruffleObject library = handle2Lib.get(nativePtr);
         if (library == null) {
             if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
                 library = getNativeAccess().loadDefaultLibrary();
                 if (library == null) {
                     getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported: " + name);
-                    return RawPointer.nullInstance();
+                    return 0;
                 }
-                handle2Lib.put(nativePtr, library);
+                TruffleObject previous = handle2Lib.putIfAbsent(nativePtr, library);
+                library = previous == null ? library : previous;
             } else {
-                getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + libraryPtr + " / " + Long.toHexString(nativePtr) + "): " + name);
-                return RawPointer.nullInstance();
+                getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + nativePtr + " / " + Long.toHexString(nativePtr) + "): " + name);
+                return 0;
             }
         }
         try {
@@ -2245,14 +2307,14 @@ public final class VM extends NativeEnv {
                 getLogger().finest("JVM_FindLibraryEntry(%s, %s) -> %s".formatted(libraryName, name, functionName));
             }
             if (function == null) {
-                return RawPointer.nullInstance(); // not found
+                return 0; // not found
             }
             if (!getUncached().isPointer(function)) {
                 getUncached().toNative(function);
             }
-            long handle = getUncached().asPointer(function);
+            long handle = getSymbolHandle(function);
             handle2Sym.put(handle, function);
-            return function;
+            return handle;
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -3302,7 +3364,7 @@ public final class VM extends NativeEnv {
                 // For a 0 index, give an empty name.
                 StaticObject guestName;
                 if (entry.getNameIndex() != 0) {
-                    guestName = meta.toGuestString(method.getConstantPool().symbolAtUnsafe(entry.getNameIndex(), "parameter name").toString());
+                    guestName = meta.toGuestString(method.getConstantPool().utf8At(entry.getNameIndex(), "parameter name").toString());
                 } else {
                     guestName = getJavaVersion().java9OrLater() ? StaticObject.NULL : meta.toGuestString("");
                 }
@@ -3890,7 +3952,9 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
-    public void JVM_InitStackTraceElementArray(@JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Object.class) StaticObject throwableOrBacktrace,
+    public void JVM_InitStackTraceElementArray(
+                    @JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Object.class) StaticObject throwableOrBacktrace,
+                    /*- Since JDK21: int depth, */
                     @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
@@ -3917,7 +3981,7 @@ public final class VM extends NativeEnv {
             try {
                 Object exceptionStackTrace = interop.getExceptionStackTrace(foreignException);
                 int stackSize = (int) interop.getArraySize(exceptionStackTrace);
-                if (elements.length(language) != stackSize) {
+                if (elements.length(language) < stackSize) {
                     profiler.profile(1);
                     throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
                 }

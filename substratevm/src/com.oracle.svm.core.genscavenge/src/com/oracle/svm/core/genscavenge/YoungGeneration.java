@@ -83,22 +83,15 @@ public final class YoungGeneration extends Generation {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
+    public void walkObjects(ObjectVisitor visitor) {
         /* Flush the thread-local allocation data. */
         ThreadLocalAllocation.disableAndFlushForAllThreads();
 
-        if (!getEden().walkObjects(visitor)) {
-            return false;
-        }
+        getEden().walkObjects(visitor);
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            if (!survivorFromSpaces[i].walkObjects(visitor)) {
-                return false;
-            }
-            if (!survivorToSpaces[i].walkObjects(visitor)) {
-                return false;
-            }
+            survivorFromSpaces[i].walkObjects(visitor);
+            survivorToSpaces[i].walkObjects(visitor);
         }
-        return true;
     }
 
     @Override

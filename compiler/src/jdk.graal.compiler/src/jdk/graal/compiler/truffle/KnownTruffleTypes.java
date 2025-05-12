@@ -39,7 +39,6 @@ import java.util.Set;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -218,23 +217,16 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
         Throwable_jfrTracing = getThrowableJFRTracingField(metaAccess);
     }
 
-    private static boolean throwableUsesJFRTracing() {
-        return JavaVersionUtil.JAVA_SPEC >= 22;
-    }
-
     private static ResolvedJavaField getThrowableJFRTracingField(MetaAccessProvider metaAccess) {
-        if (throwableUsesJFRTracing()) {
-            ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
-            for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
-                if (staticField.getName().equals("jfrTracing") &&
-                                staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
-                    return staticField;
-                }
+        ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
+        for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
+            if (staticField.getName().equals("jfrTracing") &&
+                            staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
+                return staticField;
             }
-            throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 and must be present. " +
-                            "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
         }
-        return null;
+        throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 and must be present. " +
+                        "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
     }
 
     private ResolvedJavaType[] createSkippedExceptionTypes() {

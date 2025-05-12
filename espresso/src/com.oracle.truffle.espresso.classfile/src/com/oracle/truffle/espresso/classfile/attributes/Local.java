@@ -58,20 +58,18 @@ public final class Local implements LocalRef {
     public static final Local[] EMPTY_ARRAY = new Local[0];
 
     private final Symbol<Name> name;
-    private final Symbol<Type> type;
-    private final Symbol<?> typeSignature;
+    private final Symbol<?> typeOrDesc;
     private final char startBci;
     private final char endBci;
     private final char slot;
 
-    public Local(Symbol<Name> name, Symbol<Type> type, Symbol<?> typeSignature, int startBci, int endBci, int slot) {
-        assert type != null || typeSignature != null;
+    public Local(Symbol<Name> name, Symbol<Type> type, Symbol<?> typeDesc, int startBci, int endBci, int slot) {
+        assert type != null || typeDesc != null;
         this.name = name;
         this.startBci = (char) startBci;
         this.endBci = (char) endBci;
         this.slot = (char) slot;
-        this.type = type;
-        this.typeSignature = typeSignature;
+        this.typeOrDesc = type != null ? type : typeDesc;
     }
 
     public int getStartBCI() {
@@ -86,12 +84,15 @@ public final class Local implements LocalRef {
         return name;
     }
 
-    public Symbol<Type> getType() {
-        return type;
+    public Symbol<?> getTypeOrDesc() {
+        return typeOrDesc;
     }
 
     public JavaKind getJavaKind() {
-        return type == null ? JavaKind.Object : TypeSymbols.getJavaKind(type);
+        if (TypeSymbols.isPrimitive(typeOrDesc)) {
+            return JavaKind.fromPrimitiveOrVoidTypeChar((char) typeOrDesc.byteAt(0));
+        }
+        return JavaKind.Object;
     }
 
     public int getSlot() {
@@ -112,17 +113,17 @@ public final class Local implements LocalRef {
             return false;
         }
         Local that = (Local) obj;
-        return this.name.equals(that.name) && this.startBci == that.startBci && this.endBci == that.endBci && this.slot == that.slot && this.type.equals(that.type);
+        return this.name.equals(that.name) && this.startBci == that.startBci && this.endBci == that.endBci && this.slot == that.slot && this.typeOrDesc.equals(that.typeOrDesc);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, type, startBci, endBci, slot);
+        return Objects.hash(name, typeOrDesc, startBci, endBci, slot);
     }
 
     @Override
     public String toString() {
-        return "LocalImpl<name=" + name + ", type=" + type + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
+        return "Local<name=" + getName() + ", type=" + getTypeOrDesc() + ", startBci=" + getStartBCI() + ", endBci=" + getEndBCI() + ", slot=" + getSlot() + ">";
     }
 
     @Override
@@ -132,10 +133,6 @@ public final class Local implements LocalRef {
 
     @Override
     public String getTypeAsString() {
-        // Keep compatibility with the old behavior.
-        if (type == null) {
-            return typeSignature.toString();
-        }
-        return type.toString();
+        return typeOrDesc.toString();
     }
 }

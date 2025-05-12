@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
@@ -149,23 +150,35 @@ public class TruffleInvocationPlugins {
                     }
                 }
 
-                ValueNode loadNode = isTrustedImmutable(b, object);
+                ValueNode loadNode = object;
+                if (Options.TruffleTrustedFinalFrameFields.getValue(b.getOptions())) {
+                    loadNode = castTrustedFinalFrameField(b, object);
+                }
                 b.addPush(JavaKind.Object, PiNode.create(loadNode, piStamp, valueAnchorNode));
                 return true;
             }
         });
     }
 
-    private static ValueNode isTrustedImmutable(GraphBuilderContext b, ValueNode object) {
-        ValueNode loadNode = object;
-        if (loadNode instanceof LoadFieldNode cast && canBeImmutable(cast.field())) {
-            loadNode = b.add(LoadFieldNode.createOverrideImmutable(cast));
+    private static ValueNode castTrustedFinalFrameField(GraphBuilderContext b, ValueNode object) {
+        ValueNode result = object;
+        if (object instanceof LoadFieldNode loadField && canBeImmutable(loadField.object(), loadField.field())) {
+            result = b.add(LoadFieldNode.createOverrideImmutable(loadField));
         }
-        return loadNode;
+        return result;
     }
 
-    private static boolean canBeImmutable(ResolvedJavaField field) {
+    /**
+     * Try to decide if a field of an object is immutable during the execution of the current
+     * compilation unit. This allows us to mark the load from that field as immutable, which enables
+     * more aggressive folding and hoisting. This method should return {@code true} only if it is
+     * guaranteed that the field is immutable, else it must return {@code false}. This method is
+     * only used for a very limited amount of cases, so we can ignore shenanigans such as
+     * {@code Unsafe} accesses, reflection, or an object escapes before assigning its final fields.
+     */
+    private static boolean canBeImmutable(ValueNode holder, ResolvedJavaField field) {
         if (field.isStatic()) {
+            // Static final fields are constant-folded already, so we don't care
             return false;
         }
         if (!field.isFinal()) {
@@ -177,7 +190,20 @@ public class TruffleInvocationPlugins {
              */
             return false;
         }
-        return true;
+        // A final field is immutable if its holder object is initialized before the start of the
+        // execution of the current compilation unit.
+        if (holder instanceof ParameterNode param) {
+            // One such case is if the holder object is a parameter that is passed into the current
+            // compilation unit (except if the parameter is the first one of a constructor).
+            return param.index() != 0 || !param.graph().method().isConstructor();
+        }
+        if (holder instanceof LoadFieldNode loadField) {
+            // Another case is if the holder object is also an immutable load. Then, it should be
+            // initialized before being stored into its holder; which, in turns, is initialized
+            // before the start of the execution of the current compilation unit.
+            return canBeImmutable(loadField.object(), loadField.field());
+        }
+        return false;
     }
 
     private static void registerBytecodePlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -200,7 +226,7 @@ public class TruffleInvocationPlugins {
 
                 TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
                 Stamp piStamp = StampFactory.object(type, true);
-                b.addPush(JavaKind.Object, PiNode.create(isTrustedImmutable(b, object), piStamp, null));
+                b.addPush(JavaKind.Object, PiNode.create(castTrustedFinalFrameField(b, object), piStamp, null));
 
                 return true;
             }

@@ -1207,6 +1207,11 @@ public abstract class Accessor {
          * @param osrNode the node which can be on-stack replaced
          * @return result if OSR was performed, or {@code null}.
          */
+        public abstract boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode, int count);
+
+        /*
+         * To be removed after deprecation expired.
+         */
         public abstract boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode);
 
         public abstract Object tryBytecodeOSR(BytecodeOSRNode osrNode, long target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame);

@@ -22,15 +22,17 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 public final class InnerClassesAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = ParserNames.InnerClasses;
+
+    public static InnerClassesAttribute EMPTY = new InnerClassesAttribute(NAME, new long[0]);
 
     public static class Entry {
         public final int innerClassIndex;
@@ -44,20 +46,39 @@ public final class InnerClassesAttribute extends Attribute {
             this.innerNameIndex = innerNameIndex;
             this.innerClassAccessFlags = innerClassAccessFlags;
         }
+
+        public static Entry unpack(long packedEntry) {
+            return new Entry((int) (packedEntry & 0xFFFF),
+                            (int) ((packedEntry >>> 16) & 0xFFFF),
+                            (int) ((packedEntry >>> 32) & 0xFFFF),
+                            (int) ((packedEntry >>> 48) & 0xFFFF));
+        }
+
+        public long pack() {
+            return ((innerClassIndex & 0xFFFF)) |
+                            ((long) (outerClassIndex & 0xFFFF) << 16) |
+                            ((long) (innerNameIndex & 0xFFFF) << 32) |
+                            ((long) (innerClassAccessFlags & 0xFFFF) << 48);
+        }
     }
 
-    @CompilationFinal(dimensions = 1) private final Entry[] entries;
+    @CompilationFinal(dimensions = 1) private final long[] packedEntries;
 
-    /**
-     * Trust the caller to not modify it.
-     */
-    public Entry[] entries() {
-        return entries;
+    public int entryCount() {
+        return packedEntries.length;
     }
 
-    public InnerClassesAttribute(Symbol<Name> name, Entry[] entries) {
-        super(name, null);
-        assert NAME.equals(name);
-        this.entries = entries;
+    public Entry entryAt(int index) {
+        return Entry.unpack(packedEntries[index]);
+    }
+
+    public InnerClassesAttribute(Symbol<Name> name, long[] packedEntries) {
+        assert name == NAME;
+        this.packedEntries = packedEntries;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

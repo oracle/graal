@@ -145,7 +145,7 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a55ccd267cdfbb7a52c0647fa3b2f93b36b1805f/src/hotspot/cpu/x86/assembler_x86.cpp#L208-L242",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/765cef45465806e53f11fa7d92b9c184899b0932/src/hotspot/cpu/x86/assembler_x86.cpp#L208-L242",
               sha1 = "7e213e437f5d3e7740874d69457de4ffebbee1c5")
     // @formatter:on
     @Override

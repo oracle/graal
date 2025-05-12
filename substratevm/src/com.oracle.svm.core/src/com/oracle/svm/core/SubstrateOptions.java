@@ -1426,4 +1426,13 @@ public class SubstrateOptions {
                      2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
                      3. All @TargetClass substitutions in classes loaded by the custom loader are processed.""")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
+
+    @Option(help = "Flag indicating if the code checking for closed arenas should print to stdout when it sees an exception.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> PrintClosedArenaUponThrow = new HostedOptionKey<>(false);
+
+    @Fold
+    public static boolean printClosedArenaUponThrow() {
+        return PrintClosedArenaUponThrow.getValue();
+    }
+
 }

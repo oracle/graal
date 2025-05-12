@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.core.handles;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.impl.ObjectHandlesSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 
 @AutomaticallyRegisteredImageSingleton(ObjectHandlesSupport.class)
-class ObjectHandlesSupportImpl implements ObjectHandlesSupport {
+class ObjectHandlesSupportImpl implements ObjectHandlesSupport, InitialLayerOnlyImageSingleton {
     final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl();
 
     @Override
@@ -41,5 +45,20 @@ class ObjectHandlesSupportImpl implements ObjectHandlesSupport {
     @Override
     public ObjectHandles createHandles() {
         return new ObjectHandlesImpl();
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        /*
+         * In some cases object instances are accessed during code initialized at buildtime.
+         * However, when this is done, one must be very careful to ensure analysis sees all changes
+         * made to these objects.
+         */
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
     }
 }

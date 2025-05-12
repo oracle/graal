@@ -79,6 +79,9 @@ public final class BytecodeOSRMetadata {
     // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
+    // Biggest index of 2 used for OSR_POLL_INTERVAL
+    public static final int OSR_POLL_SHIFT = 10;
+
     /**
      * Default original stage for bytecode OSR compilation. In this stage,
      * {@link #incrementAndPoll() polling} will succeed only after a {@link #backEdgeCount backedge}
@@ -316,6 +319,15 @@ public final class BytecodeOSRMetadata {
         int newBackEdgeCount = ++backEdgeCount; // Omit overflow check; OSR should trigger long
                                                 // before overflow happens
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
+    }
+
+    public boolean incrementAndPoll(int loopCountIncrement) {
+        int oldBackEdgeCount = this.backEdgeCount;
+        // with custom loop increments we need to expect overflows
+        int newBackEdgeCount = Math.max(1, oldBackEdgeCount + loopCountIncrement);
+        this.backEdgeCount = newBackEdgeCount;
+        return newBackEdgeCount >= osrThreshold && //
+                        (oldBackEdgeCount >>> OSR_POLL_SHIFT) < (newBackEdgeCount >>> OSR_POLL_SHIFT);
     }
 
     /**

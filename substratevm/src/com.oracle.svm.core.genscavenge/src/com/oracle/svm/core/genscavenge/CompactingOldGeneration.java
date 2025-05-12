@@ -148,8 +148,8 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override
@@ -166,7 +166,7 @@ final class CompactingOldGeneration extends OldGeneration {
             }
             GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
             do {
-                visitor.visitObjectInline(markStack.pop());
+                visitor.visitObject(markStack.pop());
             } while (!markStack.isEmpty());
         }
         return true;
@@ -350,7 +350,7 @@ final class CompactingOldGeneration extends OldGeneration {
     private void fixupImageHeapRoots(ImageHeapInfo info) {
         if (HeapImpl.usesImageHeapCardMarking()) {
             // Note that cards have already been cleaned and roots re-marked during the initial scan
-            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);
+            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, refFixupVisitor, false);
         } else {
             GCImpl.walkImageHeapRoots(info, fixupVisitor);
         }
@@ -362,7 +362,7 @@ final class CompactingOldGeneration extends OldGeneration {
         while (uChunk.isNonNull()) {
             UnalignedHeapChunk.UnalignedHeader next = HeapChunk.getNext(uChunk);
             Pointer objPointer = UnalignedHeapChunk.getObjectStart(uChunk);
-            Object obj = objPointer.toObject();
+            Object obj = objPointer.toObjectNonNull();
             if (ObjectHeaderImpl.isMarked(obj)) {
                 ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
                 RememberedSet.get().clearRememberedSet(uChunk);
@@ -447,8 +447,8 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    public boolean walkObjects(ObjectVisitor visitor) {
-        return space.walkObjects(visitor);
+    public void walkObjects(ObjectVisitor visitor) {
+        space.walkObjects(visitor);
     }
 
     @Override

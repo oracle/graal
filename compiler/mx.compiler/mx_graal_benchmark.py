@@ -33,7 +33,7 @@ import mx_benchmark
 import mx_sdk_benchmark
 from mx_benchmark import DataPoints
 from mx_sdk_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite, SpecJvm2008BenchmarkSuite
-from mx_sdk_benchmark import JvmciJdkVm, SUCCESSFUL_STAGE_PATTERNS, Stage
+from mx_sdk_benchmark import JvmciJdkVm, SUCCESSFUL_STAGE_PATTERNS
 
 _suite = mx.suite('compiler')
 
@@ -259,20 +259,8 @@ class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_be
         :class:`mx_benchmark.JMHJsonRule`) will produce datapoints at every stage, based on results from a previous
         stage.
         """
-        if self.is_native_mode(bm_suite_args) and not self.stages_info.fallback_mode:
-            # At this point, the StagesInfo class may not have all the information yet, in that case we rely on the
-            # requested stage. But if this function is called later again when it is fully set up, we have to use the
-            # effective stage instead.
-            # This is important so that the JMH parsing rule is only enabled when the stage actually ran (if it is
-            # skipped, it would otherwise pick up a previous result file)
-            if self.stages_info.is_set_up:
-                current_stage = self.stages_info.effective_stage
-            else:
-                current_stage = self.stages_info.requested_stage
-
-            if current_stage not in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]:
-                return None
-
+        if self.is_native_mode(bm_suite_args) and not self.stages_info.fallback_mode and self.stages_info.current_stage.is_image():
+            return None
         return super().get_jmh_result_file(bm_suite_args)
 
     def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:

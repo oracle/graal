@@ -43,9 +43,9 @@ public final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
     }
 
     @Override
-    public boolean visitCode(CodeInfo codeInfo) {
+    public void visitCode(CodeInfo codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
-            return true;
+            return;
         }
 
         /*
@@ -54,6 +54,5 @@ public final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
          */
         RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, visitor);
         RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, visitor);
-        return true;
     }
 }

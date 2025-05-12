@@ -66,7 +66,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbols;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
-import com.oracle.truffle.espresso.classfile.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
@@ -115,7 +115,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public static final String FILE_EXTENSION = ".class";
 
-    @CompilationFinal private Utf8ConstantTable utf8Constants;
+    @CompilationFinal private Utf8Symbols utf8Symbols;
     @CompilationFinal private NameSymbols nameSymbols;
     @CompilationFinal private TypeSymbols typeSymbols;
     @CompilationFinal private SignatureSymbols signatureSymbols;
@@ -145,6 +145,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean whiteBoxEnabled;
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
+    @CompilationFinal private boolean useEspressoLibs;
     // endregion Options
 
     // region Allocation
@@ -179,7 +180,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         // during startup.
         int initialSymbolTableCapacity = 1 << 16;
         Symbols symbols = Symbols.fromExisting(EspressoSymbols.SYMBOLS.freeze(), initialSymbolTableCapacity);
-        this.utf8Constants = new Utf8ConstantTable(symbols, initialSymbolTableCapacity);
+        this.utf8Symbols = new Utf8Symbols(symbols);
         this.nameSymbols = new NameSymbols(symbols);
         this.typeSymbols = new TypeSymbols(symbols);
         this.signatureSymbols = new SignatureSymbols(symbols, typeSymbols);
@@ -250,6 +251,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case compact -> new CompactGuestFieldOffsetStrategy();
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
+        this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -303,7 +305,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     private void extractDataFrom(EspressoLanguage other) {
         javaVersion = other.javaVersion;
-        utf8Constants = other.getUtf8ConstantTable();
+        utf8Symbols = other.getUtf8Symbols();
         nameSymbols = other.getNames();
         typeSymbols = other.getTypes();
         signatureSymbols = other.getSignatures();
@@ -339,7 +341,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -429,13 +432,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                                         "Use the \"" + ID + "\" language bindings to load guest Java classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }
 
-    public Utf8ConstantTable getUtf8ConstantTable() {
-        return utf8Constants;
-    }
-
     @Override
     public NameSymbols getNames() {
         return nameSymbols;
+    }
+
+    public Utf8Symbols getUtf8Symbols() {
+        return utf8Symbols;
     }
 
     @Override
@@ -563,6 +566,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean isJVMCIEnabled() {
         return internalJvmciEnabled;
+    }
+
+    public boolean useEspressoLibs() {
+        return useEspressoLibs;
     }
 
     public EspressoLanguageCache getLanguageCache() {

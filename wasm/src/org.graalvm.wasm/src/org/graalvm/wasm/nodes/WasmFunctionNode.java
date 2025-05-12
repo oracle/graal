@@ -174,7 +174,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * Copies a function node with instrumentation enabled in the <code>bytecode</code>. This should
      * only be called by {@link WasmInstrumentableFunctionNode} when an instrument attaches and the
      * bytecode needs to be rewritten to include instrumentation instructions.
-     * 
+     *
      * @param node The existing {@link WasmFunctionNode} used for copying most information
      * @param bytecode The instrumented bytecode
      * @param notifyFunction The callback used by {@link Bytecode#NOTIFY} instructions to inform
@@ -388,16 +388,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     TruffleSafepoint.poll(this);
                     if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                         LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
-                        backEdgeCounter.count = 0;
-                    }
-                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
-                        if (result != null) {
-                            if (backEdgeCounter.count > 0) {
-                                LoopNode.reportLoopCount(this, backEdgeCounter.count);
+                        if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, REPORT_LOOP_STRIDE)) {
+                            Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
+                            if (result != null) {
+                                if (backEdgeCounter.count > 0) {
+                                    LoopNode.reportLoopCount(this, backEdgeCounter.count);
+                                }
+                                return result;
                             }
-                            return result;
                         }
+                        backEdgeCounter.count = 0;
                     }
                     break;
                 }

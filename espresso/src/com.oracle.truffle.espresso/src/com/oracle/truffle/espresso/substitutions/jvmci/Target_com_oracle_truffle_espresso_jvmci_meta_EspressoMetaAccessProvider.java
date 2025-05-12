@@ -31,6 +31,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -155,6 +156,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
     }
 
     static StaticObject toJVMCIUnresolvedType(ByteSequence symbol, DirectCallNode unresolvedTypeConstructor, EspressoContext context, Meta meta) {
+        assert Validation.validTypeDescriptor(symbol, true);
         assert (symbol.byteAt(0) == 'L' && symbol.byteAt(symbol.length() - 1) == ';') || symbol.byteAt(0) == '[' : symbol;
         StaticObject result = meta.jvmci.UnresolvedJavaType.allocateInstance(context);
         unresolvedTypeConstructor.call(result, meta.toGuestString(symbol));

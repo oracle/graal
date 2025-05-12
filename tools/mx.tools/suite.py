@@ -370,6 +370,7 @@ suite = {
                   "org.graalvm.polyglot",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -431,6 +432,7 @@ suite = {
                   "org.graalvm.collections",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": [
                 "org.graalvm.tools.insight",
                 "com.oracle.truffle.tools.agentscript"
@@ -467,6 +469,7 @@ suite = {
                   "org.graalvm.polyglot",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": [
                 "org.graalvm.tools.insight.heap"
             ],
@@ -538,6 +541,7 @@ suite = {
                   "org.graalvm.polyglot",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
             ],
@@ -597,6 +601,7 @@ suite = {
                   "org.graalvm.polyglot",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": [
                 "com.oracle.truffle.tools.coverage",
             ],
@@ -658,6 +663,7 @@ suite = {
                   "org.graalvm.polyglot",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": [
                 "com.oracle.truffle.tools.dap",
             ],
@@ -724,6 +730,7 @@ suite = {
             "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "org.graalvm.tools.api.lsp",
+            "useModulePath" : True,
             "dependencies": ["org.graalvm.tools.api.lsp"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -746,6 +753,7 @@ suite = {
                   "org.graalvm.truffle",
                 ],
             },
+            "useModulePath" : True,
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
                 "org.graalvm.tools.lsp"

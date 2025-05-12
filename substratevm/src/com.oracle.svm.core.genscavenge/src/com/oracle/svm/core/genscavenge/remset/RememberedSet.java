@@ -31,6 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -38,6 +39,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.BarrierSetProvider;
+import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
@@ -58,8 +60,26 @@ public interface RememberedSet extends BarrierSetProvider {
     /** Returns the header size of aligned chunks. */
     UnsignedWord getHeaderSizeOfAlignedChunk();
 
-    /** Returns the header size of unaligned chunks. */
-    UnsignedWord getHeaderSizeOfUnalignedChunk();
+    /** Returns the header size of an unaligned chunk for a given object size. */
+    UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize);
+
+    /** Sets the object start offset in the unaligned chunk. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void setObjectStartOffsetOfUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectStartOffset);
+
+    /** Sets the object start offset in the unaligned chunk. */
+    void setObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk, UnsignedWord objectStartOffset);
+
+    /**
+     * Get the object start offset of an unaligned chunk. If possible, use
+     * {@link #getOffsetForObjectInUnalignedChunk(Pointer)} instead, as that method is faster.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    UnsignedWord getObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk);
+
+    /** Get the object start offset of this object in its unaligned chunk. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    UnsignedWord getOffsetForObjectInUnalignedChunk(Pointer objPtr);
 
     /**
      * Enables remembered set tracking for an aligned chunk and its objects. Must be called when
@@ -73,7 +93,7 @@ public interface RememberedSet extends BarrierSetProvider {
      * adding a new chunk to the image heap or old generation.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);
+    void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectSize);
 
     /**
      * Enables remembered set tracking for an aligned chunk and its objects. Must be called when
@@ -126,7 +146,17 @@ public interface RememberedSet extends BarrierSetProvider {
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void dirtyCardForUnalignedObject(Object object, boolean verifyOnly);
+    void dirtyCardForUnalignedObject(Object object, Pointer address, boolean verifyOnly);
+
+    /**
+     * Marks a range within an array object as dirty. May only be called for objects for which
+     * remembered set tracking is enabled. This tells the GC that the object may contain references
+     * to another generation (from old generation to young generation, or from image heap to runtime
+     * heap).
+     */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void dirtyCardRangeForUnalignedObject(Object object, Pointer startAddress, Pointer endAddress);
 
     /**
      * Marks the {@code holderObject} as dirty if needed according to the location of
@@ -135,7 +165,7 @@ public interface RememberedSet extends BarrierSetProvider {
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void dirtyCardIfNecessary(Object holderObject, Object object);
+    void dirtyCardIfNecessary(Object holderObject, Object object, Pointer objRef);
 
     /**
      * If remembered set tracking is enabled for the given object, this method ensures that all
@@ -149,7 +179,8 @@ public interface RememberedSet extends BarrierSetProvider {
      * linked lists} of aligned and unaligned chunks.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor, boolean clean);
+    void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor,
+                    UninterruptibleObjectReferenceVisitor refVisitor, boolean clean);
 
     /**
      * Verify the remembered set for an aligned chunk and all its linked-list successors.
@@ -166,4 +197,10 @@ public interface RememberedSet extends BarrierSetProvider {
      * including) another unaligned chunk.
      */
     boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk);
+
+    /**
+     * Checks if an object uses precise card marking. This method does <em>not</em> check the
+     * remembered set bit or if the object has actually any references.
+     */
+    boolean usePreciseCardMarking(Object obj);
 }

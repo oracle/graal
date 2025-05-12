@@ -43,6 +43,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 public class HostedField extends HostedElement implements OriginalFieldProvider, SharedField, WrappedJavaField {
 
+    static final int LOC_UNMATERIALIZED_STATIC_CONSTANT = -10;
+
+    public static final HostedField[] EMPTY_ARRAY = new HostedField[0];
+
     public final AnalysisField wrapped;
 
     private final HostedType holder;
@@ -50,8 +54,6 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     protected int location;
     private int installedLayerNum;
-
-    static final int LOC_UNMATERIALIZED_STATIC_CONSTANT = -10;
 
     public HostedField(AnalysisField wrapped, HostedType holder, HostedType type) {
         this.wrapped = wrapped;

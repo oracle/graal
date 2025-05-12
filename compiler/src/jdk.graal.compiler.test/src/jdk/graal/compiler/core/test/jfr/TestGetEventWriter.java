@@ -29,7 +29,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -38,7 +37,6 @@ import org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.test.SubprocessTest;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.test.AddExports;
 import jdk.jfr.Event;
 import jdk.jfr.Recording;
@@ -82,7 +80,6 @@ public class TestGetEventWriter extends SubprocessTest {
 
     @Test
     public void test() throws IOException, InterruptedException {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC > 21);
         String[] args;
         if (isJFRAvailable()) {
             args = new String[0];

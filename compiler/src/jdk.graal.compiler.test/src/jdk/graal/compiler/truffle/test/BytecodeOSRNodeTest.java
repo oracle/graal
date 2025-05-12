@@ -816,7 +816,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     // must never happen
                     return 41;
                 }
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
                         return result;
@@ -864,7 +864,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     loopIterations++;
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return result;
@@ -897,7 +897,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return OSR_IN_FIRST_LOOP;
@@ -908,7 +908,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < 2 * numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < 2 * numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return OSR_IN_SECOND_LOOP;
@@ -977,7 +977,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         int partial = frame.getInt(localSlot);
                         frame.setInt(localSlot, i + partial);
                         if (i + 1 < numIterations) { // back-edge will be taken
-                            if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                            if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                                 Object result = BytecodeOSRNode.tryOSR(this, FIRST_LOOP_TARGET, null, null, frame);
                                 if (result != null) {
                                     return OSR_IN_FIRST_LOOP;
@@ -991,7 +991,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         double partial = frame.getDouble(localSlot);
                         frame.setDouble(localSlot, i + partial);
                         if (i + 1 < numIterations) { // back-edge will be taken
-                            if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                            if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                                 Object result = BytecodeOSRNode.tryOSR(this, SECOND_LOOP_TARGET, null, null, frame);
                                 if (result != null) {
                                     return OSR_IN_SECOND_LOOP;
@@ -1018,7 +1018,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             for (int i = 0; i < numIterations; i++) {
                 CompilerAsserts.neverPartOfCompilation();
                 if (i + 1 < numIterations) { // back-edge will be taken
-                    if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                    if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                         Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                         if (result != null) {
                             return result;
@@ -1045,7 +1045,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return result;
@@ -1125,7 +1125,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     return foo + bar;
                 }
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, new InterpreterState(2 * foo, 2 * bar), null, frame);
                     if (result != null) {
                         return result;
@@ -1151,7 +1151,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
                 }
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, () -> {
                         callbackInvoked = true;
                     }, frame);
@@ -1175,7 +1175,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     frame.setInt(indexSlot, i);
                     checkStackTrace(i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return result;
@@ -1294,7 +1294,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     frame.setInt(indexSlot, i);
                     checkCallerFrame();
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return result;
@@ -1345,7 +1345,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
                 }
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
                         return result;
@@ -1424,7 +1424,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public Object executeLoop(VirtualFrame frame) {
             // This node only terminates in compiled code.
             while (true) {
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
                         checkOSRState(frame);
@@ -1539,7 +1539,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public Object executeLoop(VirtualFrame frame) {
             // This node only terminates in compiled code.
             while (true) {
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
                         checkOSRState(frame);
@@ -1840,7 +1840,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
-                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                     Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                     if (result != null) {
                         return result;
@@ -1951,7 +1951,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         if (value != 0) {
                             int target = bci + bytecodes[bci + 2];
                             if (target < bci) { // back-edge
-                                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                                if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                                     Object result = BytecodeOSRNode.tryOSR(this, target, null, null, frame);
                                     if (result != null) {
                                         return result;
@@ -2049,7 +2049,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     loopIterations++;
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return result;
@@ -2135,7 +2135,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             try {
                 for (int i = (int) target; i < numIterations; i++) {
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             long osrState = (target & 0xFFFFFFFF00000000L) | (i & 0xFFFFFFFFL);
                             Object result = BytecodeOSRNode.tryOSR(this, osrState, null, null, frame);
                             if (result != null) {
@@ -2170,7 +2170,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             try {
                 for (int i = (int) target; i < numIterations; i++) {
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, i, null, null, frame);
                             if (result != null) {
                                 return result;
@@ -2213,7 +2213,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             try {
                 for (long i = target; i < numIterations; i++) {
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        if (BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                             Object result = BytecodeOSRNode.tryOSR(this, i, null, null, frame);
                             if (result != null) {
                                 return result;

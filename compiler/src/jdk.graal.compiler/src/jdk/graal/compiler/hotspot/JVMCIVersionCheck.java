@@ -54,15 +54,14 @@ public final class JVMCIVersionCheck {
      * default/fallback entry.
      */
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
-                    "21", Map.of(DEFAULT_VENDOR_ENTRY, createLegacyVersion(23, 1, 33)),
                     "25", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("25+20", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+20", 1)));
+                                    "Oracle Corporation", createLabsJDKVersion("25+21", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+21", 1)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
      */
-    private static final int JAVA_MIN_RELEASE = 21;
+    private static final int JAVA_MIN_RELEASE = 25;
 
     /**
      * Convenience factory for the current version scheme that only uses the JDK version and the

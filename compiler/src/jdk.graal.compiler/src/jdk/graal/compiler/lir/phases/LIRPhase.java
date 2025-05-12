@@ -36,7 +36,6 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -115,7 +114,7 @@ public abstract class LIRPhase<C> {
         DebugContext debug = lirGenRes.getLIR().getDebug();
         CharSequence name = getName();
         try (DebugContext.Scope s = debug.scope(name, this)) {
-            try (CompilerPhaseScope cps = debug.enterCompilerPhase(name);
+            try (CompilerPhaseScope cps = debug.enterCompilerPhase(name, null);
                             DebugCloseable a = timer.start(debug);
                             DebugCloseable c = memUseTracker.start(debug)) {
                 run(target, lirGenRes, context);

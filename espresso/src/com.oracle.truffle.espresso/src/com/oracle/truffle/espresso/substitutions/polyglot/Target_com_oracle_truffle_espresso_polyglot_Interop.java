@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,6 +62,7 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
+import com.oracle.truffle.espresso.nodes.interop.InteropUnwrapNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInternalTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
@@ -109,14 +110,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
-        }
-
-        /*
-         * This method is used to unwrap an espresso object prior to leaving espresso. Conversion to
-         * boxed primitive host values will occur.
-         */
-        static Object unwrap(EspressoLanguage language, StaticObject object, Meta meta) {
-            return com.oracle.truffle.espresso.runtime.InteropUtils.unwrap(language, object, meta);
         }
 
         /*
@@ -1206,14 +1199,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached(inline = false) BranchProfile exceptionProfile,
                         @Cached InlinedConditionProfile isForeignProfile) {
             try {
                 if (isForeignProfile.profile(node, receiver.isForeignObject())) {
                     // Write to foreign array, full unwrap.
                     EspressoLanguage language = EspressoLanguage.get(node);
-                    Meta meta = EspressoContext.get(node).getMeta();
-                    interop.writeArrayElement(InteropUtils.unwrapForeign(language, receiver), index, InteropUtils.unwrap(language, value, meta));
+                    interop.writeArrayElement(InteropUtils.unwrapForeign(language, receiver), index, unwrapNode.execute(value));
                 } else {
                     // Do not throw away the types if the receiver is an Espresso object.
                     interop.writeArrayElement(receiver, index, value);
@@ -1988,6 +1981,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedBranchProfile exceptionProfile,
                         @Cached InlinedConditionProfile isForeignProfile) {
             assert InteropLibrary.getUncached().isString(member);
@@ -1995,8 +1989,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 if (isForeignProfile.profile(node, receiver.isForeignObject())) {
                     EspressoLanguage language = EspressoLanguage.get(node);
-                    Meta meta = EspressoContext.get(node).getMeta();
-                    interop.writeMember(InteropUtils.unwrapForeign(language, receiver), hostMember, InteropUtils.unwrap(language, value, meta));
+                    interop.writeMember(InteropUtils.unwrapForeign(language, receiver), hostMember, unwrapNode.execute(value));
                 } else {
                     // Preserve the value type.
                     interop.writeMember(receiver, hostMember, value);
@@ -3755,10 +3748,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedConditionProfile isForeignProfile) {
             if (isForeignProfile.profile(this, receiver.isForeignObject())) {
                 EspressoLanguage language = getLanguage();
-                return interop.isHashEntryReadable(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
+                return interop.isHashEntryReadable(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
             } else {
                 // Preserve Java types.
                 return interop.isHashEntryReadable(receiver, key);
@@ -3800,6 +3794,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
                         @Cached InlinedConditionProfile isForeignProfile) {
@@ -3808,7 +3803,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 EspressoContext context = EspressoContext.get(node);
                 if (isForeignProfile.profile(node, receiver.isForeignObject())) {
                     EspressoLanguage language = EspressoLanguage.get(node);
-                    result = interop.readHashValue(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, context.getMeta()));
+                    result = interop.readHashValue(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
                 } else {
                     result = interop.readHashValue(receiver, key);
                 }
@@ -3851,16 +3846,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
                         @Cached InlinedConditionProfile isForeignProfile) {
             try {
                 EspressoContext context = EspressoContext.get(node);
-                Meta meta = context.getMeta();
                 if (isForeignProfile.profile(node, receiver.isForeignObject())) {
                     EspressoLanguage language = EspressoLanguage.get(node);
-                    Object unwrappedDefaultValue = InteropUtils.unwrap(language, defaultValue, meta);
-                    Object result = interop.readHashValueOrDefault(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, meta), unwrappedDefaultValue);
+                    Object unwrappedDefaultValue = unwrapNode.execute(defaultValue);
+                    Object result = interop.readHashValueOrDefault(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key), unwrappedDefaultValue);
                     // If the unwrapped default value was returned, preserve the original type.
                     if (result == unwrappedDefaultValue) {
                         return defaultValue;
@@ -3898,10 +3893,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedConditionProfile isForeignProfile) {
             if (isForeignProfile.profile(this, receiver.isForeignObject())) {
                 EspressoLanguage language = getLanguage();
-                return interop.isHashEntryModifiable(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
+                return interop.isHashEntryModifiable(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
             } else {
                 // Preserve Java types.
                 return interop.isHashEntryModifiable(receiver, key);
@@ -3931,10 +3927,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedConditionProfile isForeignProfile) {
             if (isForeignProfile.profile(this, receiver.isForeignObject())) {
                 EspressoLanguage language = getLanguage();
-                return interop.isHashEntryInsertable(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
+                return interop.isHashEntryInsertable(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
             } else {
                 // Preserve Java types.
                 return interop.isHashEntryInsertable(receiver, key);
@@ -3960,10 +3957,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedConditionProfile isForeignProfile) {
             if (isForeignProfile.profile(this, receiver.isForeignObject())) {
                 EspressoLanguage language = getLanguage();
-                return interop.isHashEntryWritable(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
+                return interop.isHashEntryWritable(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
             } else {
                 // Preserve Java types.
                 return interop.isHashEntryWritable(receiver, key);
@@ -4011,14 +4009,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached(inline = false) BranchProfile exceptionProfile,
                         @Cached InlinedConditionProfile isForeignProfile) {
-            EspressoContext context = EspressoContext.get(node);
-            Meta meta = context.getMeta();
             try {
                 if (isForeignProfile.profile(node, receiver.isForeignObject())) {
                     EspressoLanguage language = EspressoLanguage.get(node);
-                    interop.writeHashEntry(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, meta), InteropUtils.unwrap(language, value, meta));
+                    interop.writeHashEntry(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key), unwrapNode.execute(value));
                 } else {
                     // Preserve Java types.
                     interop.writeHashEntry(receiver, key, value);
@@ -4027,6 +4024,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(node, e);
             } catch (AbstractTruffleException ex) {
+                EspressoContext context = EspressoContext.get(node);
                 throw handleAbstractTruffleException(exceptionInterop, context, lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
@@ -4053,10 +4051,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedConditionProfile isForeignProfile) {
             if (isForeignProfile.profile(this, receiver.isForeignObject())) {
                 EspressoLanguage language = getLanguage();
-                return interop.isHashEntryRemovable(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
+                return interop.isHashEntryRemovable(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
             } else {
                 // Preserve Java types.
                 return interop.isHashEntryRemovable(receiver, key);
@@ -4098,13 +4097,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached(inline = false) BranchProfile exceptionProfile,
                         @Cached InlinedConditionProfile isForeignProfile) {
             try {
                 if (isForeignProfile.profile(node, receiver.isForeignObject())) {
                     EspressoLanguage language = EspressoLanguage.get(node);
-                    interop.removeHashEntry(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, EspressoContext.get(node).getMeta()));
+                    interop.removeHashEntry(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
                 } else {
                     // Preserve Java types.
                     interop.removeHashEntry(receiver, key);
@@ -4137,10 +4137,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InteropUnwrapNode unwrapNode,
                         @Cached InlinedConditionProfile isForeignProfile) {
             if (isForeignProfile.profile(this, receiver.isForeignObject())) {
                 EspressoLanguage language = getLanguage();
-                return interop.isHashEntryExisting(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
+                return interop.isHashEntryExisting(InteropUtils.unwrapForeign(language, receiver), unwrapNode.execute(key));
             } else {
                 // Preserve Java types.
                 return interop.isHashEntryExisting(receiver, key);
@@ -4304,16 +4305,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static Object[] doEspressoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind Node node) {
+                        @Bind Node node,
+                        @Cached InteropUnwrapNode unwrapNode) {
             EspressoLanguage language = EspressoLanguage.get(node);
             Object[] rawArgs = arguments.unwrap(language);
             if (rawArgs.length == 0) {
                 return EMPTY_ARRAY;
             }
             Object[] hostArgs = new Object[rawArgs.length];
-            Meta meta = EspressoContext.get(node).getMeta();
             for (int i = 0; i < rawArgs.length; ++i) {
-                hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i], meta);
+                hostArgs[i] = unwrapNode.execute(rawArgs[i]);
             }
             return hostArgs;
         }
@@ -4326,17 +4327,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object[].class) StaticObject arguments,
                         @Cached(inline = false) GetArraySize getArraySize,
                         @Cached(inline = false) ReadArrayElement readArrayElement,
-                        @Bind Node node) {
-            EspressoLanguage language = EspressoLanguage.get(node);
+                        @Cached InteropUnwrapNode unwrapNode) {
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
             if (argsLength == 0) {
                 return EMPTY_ARRAY;
             }
             Object[] hostArgs = new Object[argsLength];
-            Meta meta = EspressoContext.get(node).getMeta();
             for (int i = 0; i < argsLength; ++i) {
                 StaticObject elem = readArrayElement.execute(arguments, i);
-                hostArgs[i] = unwrapArguments ? InteropUtils.unwrap(language, elem, meta) : elem;
+                hostArgs[i] = unwrapArguments ? unwrapNode.execute(elem) : elem;
             }
             return hostArgs;
         }

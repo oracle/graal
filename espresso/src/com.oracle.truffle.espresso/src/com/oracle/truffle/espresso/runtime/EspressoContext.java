@@ -81,6 +81,7 @@ import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
+import com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
@@ -93,6 +94,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -194,6 +196,8 @@ public final class EspressoContext
     @CompilationFinal private NativeAccess nativeAccess;
     @CompilationFinal private JNIHandles handles;
     // endregion VM
+
+    @CompilationFinal private TruffleIO truffleIO = null;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -378,13 +382,21 @@ public final class EspressoContext
         return nativeAccess;
     }
 
+    public TruffleIO getTruffleIO() {
+        EspressoError.guarantee(getLanguage().useEspressoLibs(), "Accessing TruffleIO while espresso-libs are disabled.");
+        return truffleIO;
+    }
+
     @SuppressWarnings("try")
     private void spawnVM() throws ContextPatchingException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
 
             long initStartTimeNanos = System.nanoTime();
 
-            this.nativeAccess = spawnNativeAccess();
+            nativeAccess = spawnNativeAccess();
+            if (getLanguage().useEspressoLibs()) {
+                nativeAccess = new EspressoLibsNativeAccess(this, nativeAccess);
+            }
             initVmProperties();
 
             // Find guest java version
@@ -446,6 +458,9 @@ public final class EspressoContext
 
             this.interpreterToVM = new InterpreterToVM(this);
             this.lazyCaches = new LazyContextCaches(this);
+            if (language.useEspressoLibs()) {
+                this.truffleIO = new TruffleIO(this);
+            }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 initializeKnownClass(Types.java_lang_Object);

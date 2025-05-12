@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap.dump;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -53,6 +52,7 @@ import com.oracle.svm.core.util.coder.NativeCoder;
 import com.oracle.svm.core.util.coder.Pack200Coder;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Provides access to the encoded heap dump metadata that was prepared at image build-time.
@@ -434,7 +434,7 @@ public class HeapDumpMetadata {
         }
 
         @Override
-        public boolean visitObject(Object o) {
+        public void visitObject(Object o) {
             if (o instanceof DynamicHub hub) {
                 ClassInfo classInfo = HeapDumpMetadata.singleton().getClassInfo(hub.getTypeID());
                 assert classInfo.getHub() == null;
@@ -442,7 +442,6 @@ public class HeapDumpMetadata {
                 classInfo.setSerialNum(++classSerialNum);
                 classInfo.setInstanceFieldsDumpSize(-1);
             }
-            return true;
         }
     }
 }

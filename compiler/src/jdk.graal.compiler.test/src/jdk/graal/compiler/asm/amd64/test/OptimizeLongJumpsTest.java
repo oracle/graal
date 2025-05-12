@@ -99,7 +99,7 @@ public class OptimizeLongJumpsTest extends GraalCompilerTest {
              * Why using a loop: The optimization is considered successful, if there are fewer
              * jmp/jcc instructions compared to the unoptimized code. To assert this condition,
              * checkCode counts long jump / jcc opcodes in the raw code byte arrays. Thus, under
-             * rare circumstances, bytes from constants, displacements, etc can "look" like the
+             * rare circumstances, bytes from constants, displacements, etc. can "look" like the
              * opcodes we are searching for which can lead to false counts. If the success condition
              * does not hold, we redo the code emits trying to rule out false positives and only
              * fail if the success condition does not hold repeatedly.
@@ -111,10 +111,13 @@ public class OptimizeLongJumpsTest extends GraalCompilerTest {
             codeOptimized = getCode(graphOptimized.method(), graphOptimized, true, true, optionsOptimized);
             Object resultOptimized = codeOptimized.executeVarargs(params);
 
-            assertTrue(String.format("Optimized code should behave identically! Result (default): %d | Result (optimized): %d", resultDefault, resultOptimized), resultDefault.equals(resultOptimized));
+            assertTrue(String.format("Optimized code should behave identically! Result (default): %s | Result (optimized): %s", resultDefault, resultOptimized), resultDefault.equals(resultOptimized));
             if (checkCode(codeDefault, codeOptimized)) {
                 return;
             }
+
+            graphDefault = parseEager(method, AllowAssumptions.NO, optionsDefault);
+            graphOptimized = parseEager(method, AllowAssumptions.NO, optionsOptimized);
         }
         fail(String.format("Optimized code should have fewer long jumps!\n\tDefault code: %s\n\tOptimized code: %s", byteArrayToHexArray(codeDefault.getCode()),
                         byteArrayToHexArray(codeOptimized.getCode())));

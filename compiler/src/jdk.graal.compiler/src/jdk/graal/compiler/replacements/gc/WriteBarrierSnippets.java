@@ -62,7 +62,7 @@ public abstract class WriteBarrierSnippets {
         }
     }
 
-    protected static Word getPointerToFirstArrayElement(Word address, long length, int elementStride) {
+    public static Word getPointerToFirstArrayElement(Word address, long length, int elementStride) {
         long result = address.rawValue();
         if (probability(NOT_LIKELY_PROBABILITY, elementStride < 0)) {
             // the address points to the place after the last array element
@@ -71,7 +71,7 @@ public abstract class WriteBarrierSnippets {
         return Word.unsigned(result);
     }
 
-    protected static Word getPointerToLastArrayElement(Word address, long length, int elementStride) {
+    public static Word getPointerToLastArrayElement(Word address, long length, int elementStride) {
         long result = address.rawValue();
         if (probability(NOT_LIKELY_PROBABILITY, elementStride < 0)) {
             // the address points to the place after the last array element

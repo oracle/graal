@@ -115,6 +115,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> RESOLVED_METHODS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "resolvedMethods");
 
+    public static final AnalysisType[] EMPTY_ARRAY = new AnalysisType[0];
+
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
     private final String qualifiedName;
@@ -360,7 +362,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             }
             result.add(universe.lookup(originalType));
         }
-        return result.toArray(new AnalysisType[result.size()]);
+        return result.toArray(AnalysisType.EMPTY_ARRAY);
     }
 
     public AnalysisType getArrayClass(int dim) {

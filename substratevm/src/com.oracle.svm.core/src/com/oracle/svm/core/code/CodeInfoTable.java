@@ -151,7 +151,7 @@ public class CodeInfoTable {
     }
 
     /** Note that this method is only called for regular frames but not for deoptimized frames. */
-    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, ObjectReferenceVisitor visitor) {
+    public static void visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, ObjectReferenceVisitor visitor) {
         counters().visitObjectReferencesCount.inc();
 
         /*
@@ -169,7 +169,7 @@ public class CodeInfoTable {
         if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
             throw fatalErrorNoReferenceMap(sp, ip, info);
         }
-        return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
+        CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fail.", calleeMustBe = false)

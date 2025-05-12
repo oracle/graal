@@ -64,6 +64,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.dsl.Bind;
@@ -79,6 +80,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -247,6 +249,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Option(help = "Use the SL interpreter implemented using the Truffle Bytecode DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> UseBytecode = new OptionKey<>(false);
 
+    @Option(help = "Prints the AST or bytecode after parsing.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> PrintParsed = new OptionKey<>(false);
+
     @Option(help = "Forces the bytecode interpreter to only use the CACHED or UNCACHED tier. Useful for testing and reproducing bugs.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<BytecodeTier> ForceBytecodeTier = new OptionKey<>(null,
                     new OptionType<>("bytecodeTier", (s) -> {
@@ -263,6 +268,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                     }));
 
     private boolean useBytecode;
+    private boolean printParsed;
     private BytecodeTier forceBytecodeTier;
 
     public SLLanguage() {
@@ -272,6 +278,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
+        printParsed = PrintParsed.getValue(env.getOptions());
         useBytecode = UseBytecode.getValue(env.getOptions());
         forceBytecodeTier = ForceBytecodeTier.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
@@ -418,8 +425,24 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         Map<TruffleString, RootCallTarget> targets;
         if (useBytecode) {
             targets = SLBytecodeParser.parseSL(this, source);
+
         } else {
             targets = SLNodeParser.parseSL(this, source);
+        }
+
+        if (printParsed) {
+            for (var entry : targets.entrySet()) {
+                RootNode rootNode = entry.getValue().getRootNode();
+                String dump;
+                if (useBytecode) {
+                    dump = ((BytecodeRootNode) rootNode).dump();
+                } else {
+                    dump = NodeUtil.printCompactTreeToString(rootNode);
+                }
+                PrintStream out = new PrintStream(SLContext.get(null).getEnv().out());
+                out.println(dump);
+                out.flush();
+            }
         }
 
         if (TRACE_INSTRUMENTATION_TREE) {

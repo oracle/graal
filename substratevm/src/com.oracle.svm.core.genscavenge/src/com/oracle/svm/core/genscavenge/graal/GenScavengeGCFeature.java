@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
@@ -60,7 +59,9 @@ import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
@@ -100,7 +101,9 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, new HeapImpl());
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
-        ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
+        }
 
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());

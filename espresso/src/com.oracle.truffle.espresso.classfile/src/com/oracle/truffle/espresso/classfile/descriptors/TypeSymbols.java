@@ -159,6 +159,15 @@ public final class TypeSymbols {
     }
 
     @TruffleBoundary
+    public Symbol<Type> fromDescriptorString(String desc) {
+        JavaKind kind = JavaKind.fromTypeString(desc);
+        if (kind.isPrimitive()) {
+            return TypeSymbols.forPrimitive(kind);
+        }
+        return fromClassGetName(desc);
+    }
+
+    @TruffleBoundary
     public Symbol<Type> fromClassGetName(String className) {
         String internalName = internalFromClassName(className);
         ByteSequence byteSequence = ByteSequence.create(internalName);

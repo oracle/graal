@@ -444,36 +444,29 @@ public final class NonmovableArrays {
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
+    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
-            return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
+            walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
         }
-        return true;
     }
 
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
+    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
         if (array.isNonNull()) {
             assert startIndex >= 0 && count <= lengthOf(array) - startIndex;
             int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             assert refSize == (1 << readElementShift(array));
-            Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
-            for (int i = 0; i < count; i++) {
-                if (!callVisitor(visitor, p)) {
-                    return false;
-                }
-                p = p.add(refSize);
-            }
+            Pointer firstObjRef = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
+            callVisitor(visitor, firstObjRef, refSize, count);
         }
-        return true;
     }
 
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer p) {
-        return visitor.visitObjectReference(p, true, null);
+    private static void callVisitor(ObjectReferenceVisitor visitor, Pointer firstObjRef, int referenceSize, int count) {
+        visitor.visitObjectReferences(firstObjRef, true, referenceSize, null, count);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

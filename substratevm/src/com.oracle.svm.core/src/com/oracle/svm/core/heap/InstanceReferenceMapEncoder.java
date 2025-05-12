@@ -40,7 +40,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
  * <li>entryCount entries with the following format:
  * <ul>
  * <li>int offset - the offset where a reference is located</li>
- * <li>uint referenceCount - the number of adjacent references that are located at the offset</li>
+ * <li>int referenceCount - the number of adjacent references that are located at the offset</li>
  * </ul>
  * </li>
  * </ul>
@@ -112,6 +112,6 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
     private void encodeRun(int offset, int refsCount) {
         assert offset >= 0 && refsCount >= 0;
         writeBuffer.putS4(offset);
-        writeBuffer.putU4(refsCount);
+        writeBuffer.putS4(refsCount);
     }
 }

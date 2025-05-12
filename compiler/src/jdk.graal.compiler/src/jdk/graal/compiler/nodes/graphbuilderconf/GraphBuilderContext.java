@@ -28,6 +28,8 @@ import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionCh
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 
+import java.util.List;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -71,6 +73,7 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.internal.misc.ScopedMemoryAccess;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -594,5 +597,23 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      */
     default boolean currentBlockCatchesOOME() {
         return false;
+    }
+
+    /**
+     * Iff this parsing context is processing a method that is annotated with
+     * {@link ScopedMemoryAccess} saves the associated session object.
+     *
+     * @param scopedMemorySession the currently parsed session of this context
+     */
+    default void setIsParsingScopedMemoryMethod(ValueNode scopedMemorySession) {
+        // nothing to do
+    }
+
+    /**
+     * Determines if the current parsing context has set any scoped memory access that needs to be
+     * handled.
+     */
+    default List<ValueNode> getScopedMemorySessions() {
+        return null;
     }
 }

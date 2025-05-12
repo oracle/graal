@@ -93,11 +93,11 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                 Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p, header);
                 objSize = LayoutEncoding.getSizeFromObjectWithoutOptionalIdHashFieldInGC(forwardedObj);
             } else {
-                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObject());
+                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
             }
 
             if (ObjectHeaderImpl.isMarkedHeader(header)) {
-                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObject());
+                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObjectNonNull());
 
                 /*
                  * Adding the optional identity hash field would increase an object's size, so we

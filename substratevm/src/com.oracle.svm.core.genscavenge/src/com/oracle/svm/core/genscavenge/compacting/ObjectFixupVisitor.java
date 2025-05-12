@@ -30,14 +30,13 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 /** Visits surviving objects before compaction to update their references. */
 public final class ObjectFixupVisitor implements UninterruptibleObjectVisitor {
@@ -50,21 +49,14 @@ public final class ObjectFixupVisitor implements UninterruptibleObjectVisitor {
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
-    public boolean visitObjectInline(Object obj) {
+    public void visitObject(Object obj) {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         if (probability(SLOW_PATH_PROBABILITY, hub.isReferenceInstanceClass())) {
             // update Target_java_lang_ref_Reference.referent
             Reference<?> dr = (Reference<?>) obj;
-            refFixupVisitor.visitObjectReferenceInline(ReferenceInternals.getReferentFieldAddress(dr), 0, true, dr);
+            int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+            refFixupVisitor.visitObjectReferences(ReferenceInternals.getReferentFieldAddress(dr), true, referenceSize, dr, 1);
         }
         InteriorObjRefWalker.walkObjectInline(obj, refFixupVisitor);
-        return true;
-    }
-
-    @Override
-    @NeverInline("Non-performance critical version")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
-    public boolean visitObject(Object o) {
-        throw VMError.shouldNotReachHere("for performance reasons");
     }
 }

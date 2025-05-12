@@ -140,6 +140,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode, int count) {
+            return false;
+        }
+
+        @Override
         public Object tryBytecodeOSR(BytecodeOSRNode osrNode, long target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
             return null;
         }

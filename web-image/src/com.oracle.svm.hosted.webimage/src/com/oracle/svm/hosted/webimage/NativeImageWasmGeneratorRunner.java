@@ -26,15 +26,11 @@ package com.oracle.svm.hosted.webimage;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 
@@ -74,60 +70,11 @@ import jdk.graal.compiler.options.OptionValues;
  */
 public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
 
-    public static final String BACKEND_ARG = "-H:Backend(@[^=]*)?=.*";
-
     /**
      * @param args Hosted and runtime options
      */
     public static void main(String[] args) {
-        List<String> arguments = Arrays.asList(args);
-        arguments = extractDriverArguments(arguments);
-
-        CompilerBackend backend;
-        if (WebImageOptions.isNativeImageBackend()) {
-            // Under native-image, selection of the Web Image backend is not allowed
-            backend = CompilerBackend.WASMGC;
-        } else {
-            backend = extractBackend(arguments);
-        }
-
-        // installNativeImageClassLoader uses this property to create the platform instance.
-        System.setProperty(Platform.PLATFORM_PROPERTY_NAME, backend.platform.getName());
-        new NativeImageWasmGeneratorRunner().start(arguments.toArray(String[]::new));
-    }
-
-    /**
-     * Extracts the {@link NativeImageWasmGeneratorRunner#BACKEND_ARG} argument as a
-     * {@link CompilerBackend} from the list of arguments.
-     *
-     * @param arguments The list of arguments. The backend argument will be removed from the list if
-     *            specified.
-     * @return The appropriate compiler backend for the given arguments or
-     *         {@link CompilerBackend#JS} if none was specified
-     */
-    public static CompilerBackend extractBackend(List<String> arguments) {
-        Iterator<String> it = arguments.iterator();
-
-        while (it.hasNext()) {
-            String param = it.next();
-
-            if (param.matches(BACKEND_ARG)) {
-                it.remove();
-                String[] parts = param.split("=", 2);
-                if (parts.length != 2) {
-                    throw new IllegalArgumentException(BACKEND_ARG + " needs an argument");
-                }
-                String backendName = parts[1].toUpperCase(Locale.ROOT);
-                try {
-                    return CompilerBackend.valueOf(backendName);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("No backend with name " + backendName + " exists", e);
-                }
-            }
-        }
-
-        // Use JS backend by default
-        return CompilerBackend.JS;
+        new NativeImageWasmGeneratorRunner().start(args);
     }
 
     /**
@@ -142,7 +89,16 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         List<String> names = new ArrayList<>();
 
         for (OptionDescriptor value : allHostedOptions.getValues()) {
-            if (!value.getDeclaringClass().getPackageName().contains("webimage") || WebImageOptions.DebugOptions.DumpProvidedHostedOptionsAndExit == value.getOptionKey()) {
+            if (!value.getDeclaringClass().getPackageName().contains("webimage")) {
+                continue;
+            }
+
+            if (WebImageOptions.DebugOptions.DumpProvidedHostedOptionsAndExit == value.getOptionKey()) {
+                continue;
+            }
+
+            // Do not print the Backend option, it's not available in the svm-wasm macro
+            if (WebImageOptions.Backend == value.getOptionKey()) {
                 continue;
             }
 

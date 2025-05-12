@@ -24,23 +24,27 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ReservedRegisters;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.ReservedRegisters;
-
-@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLowerable {
+@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1, allowedUsageTypes = InputType.Memory)
+public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLowerable, SingleMemoryKill {
     public static final NodeClass<WriteCurrentVMThreadNode> TYPE = NodeClass.create(WriteCurrentVMThreadNode.class);
 
     @Input protected ValueNode value;
@@ -58,4 +62,13 @@ public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLo
 
     @NodeIntrinsic
     public static native void writeCurrentVMThread(IsolateThread value);
+
+    /**
+     * Kill memory to keep memory accesses that use this register as a base from floating across
+     * changes of this register.
+     */
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
+    }
 }

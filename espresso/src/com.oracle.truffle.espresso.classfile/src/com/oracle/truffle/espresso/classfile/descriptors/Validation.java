@@ -83,19 +83,19 @@ public final class Validation {
     }
 
     /**
-     * Method names are further constrained so that, with the exception of the special method names
-     * <init> and <clinit> (&sect;2.9), they must not contain the ASCII characters < or > (that is,
-     * left angle bracket or right angle bracket).
+     * Method names are further constrained so that, except the special method names <init> and
+     * <clinit> (&sect;2.9), they must not contain the ASCII characters < or > (that is, left angle
+     * bracket or right angle bracket).
      *
      * Does not check that the byte sequence is well-formed modified-UTF8 string.
      */
-    public static boolean validMethodName(ByteSequence bytes, boolean allowClinit) {
+    public static boolean validMethodName(ByteSequence bytes) {
         if (bytes.length() == 0) {
             return false;
         }
         char first = (char) bytes.byteAt(0);
         if (first == '<') {
-            return bytes.contentEquals(ParserNames._init_) || (allowClinit && bytes.contentEquals(ParserNames._clinit_));
+            return bytes.contentEquals(ParserNames._init_) || bytes.contentEquals(ParserNames._clinit_);
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
@@ -236,11 +236,7 @@ public final class Validation {
     }
 
     public static boolean validSignatureDescriptor(ByteSequence bytes) {
-        return validSignatureDescriptor(bytes, false);
-    }
-
-    public static boolean validSignatureDescriptor(ByteSequence bytes, boolean isInitOrClinit) {
-        return validSignatureDescriptorGetSlots(bytes, isInitOrClinit) >= 0;
+        return validSignatureDescriptorGetSlots(bytes) >= 0;
     }
 
     private static final int INVALID_SIGNATURE = -1;
@@ -254,7 +250,7 @@ public final class Validation {
      *     SignatureDescriptor: ( {FieldDescriptor} ) TypeDescriptor
      * </pre>
      */
-    public static int validSignatureDescriptorGetSlots(ByteSequence bytes, boolean isInitOrClinit) {
+    public static int validSignatureDescriptorGetSlots(ByteSequence bytes) {
         if (bytes.length() < 3) { // shortest descriptor e.g. ()V
             return INVALID_SIGNATURE;
         }
@@ -319,11 +315,7 @@ public final class Validation {
         }
         assert bytes.byteAt(index) == ')';
         // Validate return type.
-        if (isInitOrClinit) {
-            return (bytes.byteAt(index + 1) == 'V' && bytes.length() == index + 2) ? slots : INVALID_SIGNATURE;
-        } else {
-            return (validTypeDescriptor(bytes.subSequence(index + 1), true)) ? slots : INVALID_SIGNATURE;
-        }
+        return (validTypeDescriptor(bytes.subSequence(index + 1), true)) ? slots : INVALID_SIGNATURE;
     }
 
     private static boolean validPrimitiveChar(byte ch) {
@@ -344,5 +336,37 @@ public final class Validation {
 
     public static boolean validModifiedUTF8(ByteSequence bytes) {
         return ModifiedUTF8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
+    }
+
+    // TODO(peterssen): JVMLS may be stricter.
+    public static boolean validPackageName(ByteSequence bytes) {
+        return validDotQualifiedName(bytes);
+    }
+
+    // TODO(peterssen): JVMLS may be stricter.
+    public static boolean validModuleName(ByteSequence bytes) {
+        return validDotQualifiedName(bytes);
+    }
+
+    private static boolean validDotQualifiedName(ByteSequence bytes) {
+        if (bytes.length() == 0) {
+            return false;
+        }
+        if (bytes.byteAt(0) == '.') {
+            return false;
+        }
+        int prev = 0;
+        int i = 0;
+        while (i < bytes.length()) {
+            while (i < bytes.length() && bytes.byteAt(i) != '.') {
+                ++i;
+            }
+            if (!validUnqualifiedName(bytes.subSequence(prev, i))) {
+                return false;
+            }
+            prev = i + 1;
+            ++i;
+        }
+        return prev != bytes.length();
     }
 }

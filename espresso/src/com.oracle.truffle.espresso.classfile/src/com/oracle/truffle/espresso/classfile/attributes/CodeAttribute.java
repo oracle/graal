@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile.attributes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
@@ -32,10 +31,8 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 public final class CodeAttribute extends Attribute {
     public static final Symbol<Name> NAME = ParserNames.Code;
 
-    private final int majorVersion;
-
-    private final int maxStack;
-    private final int maxLocals;
+    private final char maxStack;
+    private final char maxLocals;
 
     @CompilationFinal(dimensions = 1) //
     private final byte[] originalCode; // no bytecode patching
@@ -46,19 +43,17 @@ public final class CodeAttribute extends Attribute {
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
-    public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes, int majorVersion) {
-        super(name, null);
-        this.maxStack = maxStack;
-        this.maxLocals = maxLocals;
+    public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes) {
+        assert name == NAME;
+        this.maxStack = (char) maxStack;
+        this.maxLocals = (char) maxLocals;
         this.originalCode = code;
         this.exceptionHandlerEntries = exceptionHandlerEntries;
         this.attributes = attributes;
-        this.majorVersion = majorVersion;
     }
 
     public CodeAttribute(CodeAttribute copy) {
-        this(copy.getName(), copy.getMaxStack(), copy.getMaxLocals(), copy.getOriginalCode(), copy.getExceptionHandlers(), copy.attributes,
-                        copy.getMajorVersion());
+        this(copy.getName(), copy.getMaxStack(), copy.getMaxLocals(), copy.getOriginalCode(), copy.getExceptionHandlers(), copy.attributes);
     }
 
     public int getMaxStack() {
@@ -125,11 +120,8 @@ public final class CodeAttribute extends Attribute {
         return lnt.getLineNumber(bci);
     }
 
-    public boolean useStackMaps() {
-        return majorVersion >= ClassfileParser.JAVA_6_VERSION;
-    }
-
-    public int getMajorVersion() {
-        return majorVersion;
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

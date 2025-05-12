@@ -105,11 +105,11 @@ final class DiffVersionLoadHelper {
 
     Field maybeHiddenfield(ObjectKlass klass) {
         if (name == null || type == null) {
-            throw EspressoError.shouldNotReachHere();
+            return null;
         }
         Field f = klass.lookupDeclaredField(name, type);
         if (f == null) {
-            return klass.requireHiddenField(name);
+            return klass.lookupHiddenField(name);
         }
         return f;
     }

@@ -24,12 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.core.common.util.AbstractTypeReader;
-import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.FrameAccess;
@@ -39,27 +35,31 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
+import jdk.graal.compiler.core.common.util.AbstractTypeReader;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.word.Word;
+
 @DuplicatedInNativeCode
 public class CodeReferenceMapDecoder {
 
     /**
      * Walk the reference map encoding from a Pointer, applying a visitor to each Object reference.
      *
-     * @param baseAddress A Pointer to a collections of primitives and Object references.
+     * @param baseAddress A Pointer to a collection of primitives and Object references.
      * @param referenceMapEncoding The encoding for the Object references in the collection.
      * @param referenceMapIndex The start index for the particular reference map in the encoding.
      * @param visitor The visitor to be applied to each Object reference.
      * @param holderObject The object containing the reference, or {@code null} if the reference is
      *            not part of an object (which it is in case of a stack reference).
-     * @return false if any of the visits returned false, true otherwise.
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor, Object holderObject) {
+    public static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor,
+                    Object holderObject) {
         assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
-        UnsignedWord uncompressedSize = Word.unsigned(FrameAccess.uncompressedReferenceSize());
-        UnsignedWord compressedSize = Word.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
+        int uncompressedSize = FrameAccess.uncompressedReferenceSize();
+        int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
 
         Pointer objRef = (Pointer) baseAddress;
         long idx = referenceMapIndex;
@@ -117,21 +117,11 @@ public class CodeReferenceMapDecoder {
 
             objRef = objRef.add(Word.unsigned(gap));
             boolean compressed = (count < 0);
-            UnsignedWord refSize = compressed ? compressedSize : uncompressedSize;
+            int refSize = compressed ? compressedSize : uncompressedSize;
             count = (count < 0) ? -count : count;
 
             if (derived) {
-                /*
-                 * To correctly relocate a derived pointer, we need to know the value pointed to by
-                 * the base reference and the derived reference before either one is relocated. This
-                 * allows us to compute the inner offset, i.e. how much into the actual object does
-                 * the derived reference point to.
-                 */
-                Pointer basePtr = baseAddress.isNull() ? objRef : objRef.readWord(0);
-
-                if (!callVisitObjectReferenceInline(visitor, objRef, 0, compressed, holderObject)) {
-                    return false;
-                }
+                callVisitObjectReferencesInline(visitor, objRef, compressed, refSize, holderObject, 1);
 
                 /* count in this case is the number of derived references for this base pointer */
                 for (long d = 0; d < count; d++) {
@@ -156,27 +146,15 @@ public class CodeReferenceMapDecoder {
                     } else {
                         derivedRef = objRef.subtract(Word.unsigned(-refOffset).multiply(refSize));
                     }
-
-                    Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);
-                    long innerOffsetRaw = derivedPtr.subtract(basePtr).rawValue();
-                    int innerOffset = (int) innerOffsetRaw;
-                    assert innerOffset == innerOffsetRaw;
-
-                    if (!callVisitObjectReferenceInline(visitor, derivedRef, innerOffset, compressed, holderObject)) {
-                        return false;
-                    }
+                    callVisitDerivedReferenceInline(visitor, objRef, derivedRef, holderObject);
                 }
                 objRef = objRef.add(refSize);
             } else {
-                for (long c = 0; c < count; c += 1) {
-                    if (!callVisitObjectReferenceInline(visitor, objRef, 0, compressed, holderObject)) {
-                        return false;
-                    }
-                    objRef = objRef.add(refSize);
-                }
+                assert (int) count == count;
+                callVisitObjectReferencesInline(visitor, objRef, compressed, refSize, holderObject, (int) count);
+                objRef = objRef.add(Word.unsigned(count).multiply(refSize));
             }
         }
-        return true;
     }
 
     /** Uninterruptible duplicate of {@link AbstractTypeReader#decodeSign}. */
@@ -187,7 +165,13 @@ public class CodeReferenceMapDecoder {
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
-    private static boolean callVisitObjectReferenceInline(ObjectReferenceVisitor visitor, Pointer derivedRef, int innerOffset, boolean compressed, Object holderObject) {
-        return visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, holderObject);
+    private static void callVisitObjectReferencesInline(ObjectReferenceVisitor visitor, Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        visitor.visitObjectReferences(firstObjRef, compressed, referenceSize, holderObject, count);
+    }
+
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static void callVisitDerivedReferenceInline(ObjectReferenceVisitor visitor, Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
+        visitor.visitDerivedReference(baseObjRef, derivedObjRef, holderObject);
     }
 }

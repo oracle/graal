@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
@@ -31,18 +31,18 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 public class RecordAttribute extends Attribute {
     public static final Symbol<Name> NAME = ParserNames.Record;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final RecordComponentInfo[] components;
 
     public RecordAttribute(Symbol<Name> name, RecordComponentInfo[] components) {
-        super(name, null);
+        assert name == NAME;
         this.components = components;
     }
 
     public static class RecordComponentInfo {
         final char name;
         final char descriptor;
-        @CompilerDirectives.CompilationFinal(dimensions = 1)//
+        @CompilationFinal(dimensions = 1) //
         final Attribute[] attributes;
 
         public char getNameIndex() {
@@ -69,10 +69,10 @@ public class RecordAttribute extends Attribute {
         }
 
         public boolean isSame(RecordComponentInfo otherComponent, ConstantPool pool, ConstantPool otherPool) {
-            if (pool.at(name).isSame(otherPool.at(otherComponent.name), pool, otherPool)) {
+            if (pool.isSame(name, otherComponent.name, otherPool)) {
                 return false;
             }
-            if (pool.at(descriptor).isSame(otherPool.at(otherComponent.descriptor), pool, otherPool)) {
+            if (pool.isSame(descriptor, otherComponent.descriptor, otherPool)) {
                 return false;
             }
             // Since HotSpot says that it's OK if a record component's annotations were changed,
@@ -107,5 +107,10 @@ public class RecordAttribute extends Attribute {
             }
         }
         return true;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

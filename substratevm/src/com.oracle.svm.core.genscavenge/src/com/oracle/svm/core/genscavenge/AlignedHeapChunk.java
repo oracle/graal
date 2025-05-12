@@ -144,14 +144,14 @@ public final class AlignedHeapChunk {
         return objectPointer.subtract(objectsStart);
     }
 
-    static boolean walkObjects(AlignedHeader that, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFrom(that, getObjectsStart(that), visitor);
+    static void walkObjects(AlignedHeader that, ObjectVisitor visitor) {
+        HeapChunk.walkObjectsFrom(that, getObjectsStart(that), visitor);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean walkObjectsFromInline(AlignedHeader that, Pointer start, ObjectVisitor visitor) {
-        return HeapChunk.walkObjectsFromInline(that, start, visitor);
+    static void walkObjectsFromInline(AlignedHeader that, Pointer start, GreyToBlackObjectVisitor visitor) {
+        HeapChunk.walkObjectsFromInline(that, start, visitor);
     }
 
     @Fold

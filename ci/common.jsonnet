@@ -112,7 +112,7 @@ local common_json = import "../common.json";
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
-    "windows-jdk-latest": { packages+: { "devkit:VS2022-17.6.5+1": "==0" }},
+    "windows-jdk-latest": { packages+: { "devkit:VS2022-17.13.2+1": "==0" }},
     "windows-jdkLatest": self["windows-jdk-latest"],
     "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},

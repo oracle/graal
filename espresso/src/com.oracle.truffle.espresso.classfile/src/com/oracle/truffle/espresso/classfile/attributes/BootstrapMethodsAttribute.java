@@ -63,11 +63,16 @@ public final class BootstrapMethodsAttribute extends Attribute {
     private final Entry[] entries;
 
     public BootstrapMethodsAttribute(Symbol<Name> name, Entry[] entries) {
-        super(name, null);
+        assert name == NAME;
         this.entries = entries;
     }
 
     public Entry at(int index) {
         return entries[index];
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

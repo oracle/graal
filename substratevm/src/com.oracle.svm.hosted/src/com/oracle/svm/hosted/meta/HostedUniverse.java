@@ -355,7 +355,7 @@ public class HostedUniverse implements Universe {
     }
 
     public HostedType[] optionalLookup(JavaType... javaTypes) {
-        HostedType[] result = new HostedType[javaTypes.length];
+        HostedType[] result = new HostedType[javaTypes.length]; // EMPTY_ARRAY failing here
         for (int i = 0; i < javaTypes.length; ++i) {
             result[i] = optionalLookup(javaTypes[i]);
             if (result[i] == null) {
@@ -421,7 +421,7 @@ public class HostedUniverse implements Universe {
     }
 
     public HostedMethod[] lookup(JavaMethod[] inputs) {
-        HostedMethod[] result = new HostedMethod[inputs.length];
+        HostedMethod[] result = new HostedMethod[inputs.length]; // EMPTY_ARRAY failing here
         for (int i = 0; i < result.length; i++) {
             result[i] = lookup(inputs[i]);
         }

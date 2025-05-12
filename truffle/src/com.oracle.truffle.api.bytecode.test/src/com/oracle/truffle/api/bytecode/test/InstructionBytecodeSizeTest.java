@@ -73,7 +73,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class InstructionBytecodeSizeTest {
 
-    private static final int CACHED_INSTRUCTION_SIZE = 31;
+    private static final int CACHED_INSTRUCTION_SIZE = 29;
     private static final int UNCACHED_INSTRUCTION_SIZE = 29;
 
     // !Important: Keep these in sync with BytecodeDSLNodeFactory!

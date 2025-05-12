@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle;
 
 import java.net.URI;
-import java.nio.Buffer;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -46,17 +45,14 @@ import jdk.graal.compiler.graph.SourceLanguagePosition;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -71,14 +67,11 @@ import jdk.graal.compiler.replacements.InlineDuringParsingPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -466,38 +459,9 @@ public abstract class PartialEvaluator {
     }
 
     protected void appendParsingNodePlugins(Plugins plugins) {
-        if (JavaVersionUtil.JAVA_SPEC < 19) {
-            ResolvedJavaType memorySegmentProxyType = config.types().MemorySegmentProxy;
-            for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods(false)) {
-                if (m.getName().equals("scope")) {
-                    appendMemorySegmentScopePlugin(plugins, m);
-                }
-            }
-        }
         if (types.Throwable_jfrTracing != null) {
             appendJFRTracingPlugin(plugins);
         }
-    }
-
-    /**
-     * The calls to MemorySegmentProxy.scope() (JDK 17) or Scoped.sessionImpl() (JDK 19) from
-     * {@link Buffer} are problematic for Truffle because they would remain as non-inlineable
-     * invokes after PE. Because these are virtual calls, we can also not use a
-     * {@link InvocationPlugin} during PE to intrinsify the invoke to a deoptimization. Therefore,
-     * we already do the intrinsification during bytecode parsing using a {@link NodePlugin},
-     * because that is also invoked for virtual calls.
-     */
-    private static void appendMemorySegmentScopePlugin(Plugins plugins, ResolvedJavaMethod scopeMethod) {
-        plugins.appendNodePlugin(new NodePlugin() {
-            @Override
-            public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                if (scopeMethod.equals(method) && !b.needsExplicitException()) {
-                    b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));
-                    return true;
-                }
-                return false;
-            }
-        });
     }
 
     /**

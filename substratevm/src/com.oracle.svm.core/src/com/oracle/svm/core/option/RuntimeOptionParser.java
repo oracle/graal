@@ -25,6 +25,7 @@
 package com.oracle.svm.core.option;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -39,6 +40,9 @@ import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.layeredimagesingleton.DuplicableImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.properties.RuntimeSystemPropertyParser;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -55,7 +59,7 @@ import jdk.graal.compiler.options.OptionValues;
  * There is no requirement to use this class, you can also implement your own option parsing and
  * then set the values of options manually.
  */
-public final class RuntimeOptionParser {
+public final class RuntimeOptionParser implements DuplicableImageSingleton {
 
     /**
      * The suggested prefix for all VM options available in an application based on Substrate VM.
@@ -219,5 +223,15 @@ public final class RuntimeOptionParser {
 
     public Iterable<OptionDescriptor> getDescriptors() {
         return options.getValues();
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
+    }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        return PersistFlags.NOTHING;
     }
 }

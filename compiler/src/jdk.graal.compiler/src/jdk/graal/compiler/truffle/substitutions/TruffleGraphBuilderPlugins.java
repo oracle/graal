@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -150,6 +150,8 @@ public class TruffleGraphBuilderPlugins {
         public static final OptionKey<Boolean> TruffleTrustedNonNullCast = new OptionKey<>(true);
         @Option(help = "Whether Truffle trusted type casts are enabled.", type = OptionType.Debug) //
         public static final OptionKey<Boolean> TruffleTrustedTypeCast = new OptionKey<>(true);
+        @Option(help = "Whether Truffle frame field reads are trusted final.", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> TruffleTrustedFinalFrameFields = new OptionKey<>(true);
 
     }
 

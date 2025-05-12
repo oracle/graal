@@ -53,6 +53,7 @@ import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -455,18 +456,18 @@ public final class DebugContext implements AutoCloseable {
      *         object whose {@link CompilerPhaseScope#close()} method must be called when the phase
      *         ends
      */
-    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName) {
-        CompilationAlarm.current().enterPhase(phaseName);
+    public CompilerPhaseScope enterCompilerPhase(CharSequence phaseName, StructuredGraph graph) {
+        CompilationAlarm.current().enterPhase(phaseName, graph);
         if (compilationListener != null) {
             return new DecoratingCompilerPhaseScope(() -> {
-                CompilationAlarm.current().exitPhase(phaseName);
+                CompilationAlarm.current().exitPhase(phaseName, graph);
             }, enterCompilerPhase(() -> phaseName));
         }
         return new CompilerPhaseScope() {
 
             @Override
             public void close() {
-                CompilationAlarm.current().exitPhase(phaseName);
+                CompilationAlarm.current().exitPhase(phaseName, graph);
             }
         };
     }

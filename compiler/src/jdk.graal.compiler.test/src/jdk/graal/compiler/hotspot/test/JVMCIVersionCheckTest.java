@@ -48,10 +48,10 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
 
     private static final String[] JDK_VERSIONS = {
                     null,
-                    "21",
-                    "21+3",
-                    "21.0.1+3",
-                    "21-ea+11-790"
+                    "99",
+                    "99+3",
+                    "99.0.1+3",
+                    "99-ea+11-790"
     };
 
     static final Map<String, String> PROPS;
@@ -124,7 +124,7 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
     public void test01() {
         String legacyPrefix = version.toString().startsWith("jvmci") ? "prefix-" : "";
         String javaVmVersion = legacyPrefix + version.toString() + "Suffix";
-        String javaSpecVersion = "21";
+        String javaSpecVersion = "99";
         var props = createTestProperties(javaSpecVersion, javaVmVersion, null);
         var jvmciMinVersions = Map.of(
                         javaSpecVersion, Map.of(JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY, minVersion));
