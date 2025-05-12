@@ -82,6 +82,7 @@ import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.MemberEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
@@ -118,17 +119,22 @@ class CVTypeSectionBuilder {
             log("buildType() type %s(%s) is known %s", typeEntry.getTypeName(), "typeEntry.typeKind().name()", typeRecord);
         } else {
             log("buildType() %s %s size=%d - begin", "typeEntry.typeKind().name()", typeEntry.getTypeName(), typeEntry.getSize());
-            if (typeEntry instanceof PrimitiveTypeEntry) {
-                typeRecord = types.getExistingType(typeEntry);
-            } else if (typeEntry instanceof HeaderTypeEntry headerTypeEntry) {
-                /*
-                 * The bits at the beginning of an Object: contains pointer to DynamicHub.
-                 */
-                assert typeEntry.getTypeName().equals(OBJ_HEADER_NAME);
-                typeRecord = buildStructureTypeEntry(headerTypeEntry);
-            } else if (typeEntry instanceof ClassEntry || typeEntry instanceof ArrayTypeEntry || typeEntry instanceof ForeignStructTypeEntry) {
-                // TODO continue treat foreign types as interfaces/classes but fix this later
-                typeRecord = buildStructureTypeEntry((StructureTypeEntry) typeEntry);
+            switch (typeEntry) {
+                case PrimitiveTypeEntry primitiveTypeEntry -> typeRecord = getPrimitiveTypeEntry(primitiveTypeEntry);
+                case PointerToTypeEntry pointerToTypeEntry -> typeRecord = buildPointerToTypeEntry(pointerToTypeEntry);
+                case HeaderTypeEntry headerTypeEntry -> {
+                    /*
+                     * The bits at the beginning of an Object: contains pointer to DynamicHub.
+                     */
+                    assert typeEntry.getTypeName().equals(OBJ_HEADER_NAME);
+                    typeRecord = buildStructureTypeEntry(headerTypeEntry);
+                }
+                case StructureTypeEntry structureTypeEntry ->
+                    // typeEntry is either ArrayTypeEntry, ClassEntry, or ForeignStructTypeEntry
+                    // TODO continue treat foreign types as interfaces/classes but fix this later
+                    typeRecord = buildStructureTypeEntry(structureTypeEntry);
+                default -> {
+                }
             }
         }
         assert typeRecord != null;
@@ -207,6 +213,65 @@ class CVTypeSectionBuilder {
             }
             return fieldListRecord;
         }
+    }
+
+    private CVTypeRecord getPrimitiveTypeEntry(final PrimitiveTypeEntry typeEntry) {
+        // Check if we have already seen this primitive type
+        CVTypeRecord primitiveType = types.getExistingType(typeEntry);
+        if (primitiveType != null) {
+            return primitiveType;
+        }
+
+        /*
+         * Primitive types are pre-defined and do not get written out to the typeInfo section. We
+         * may need to fetch the correct sequence numbers for foreign primitives
+         */
+        short typeId;
+        short pointerTypeId;
+        int size = typeEntry.getSize();
+        if (typeEntry.isNumericFloat()) {
+            assert size == 4 || size == 8;
+            if (size == 4) {
+                typeId = T_REAL32;
+                pointerTypeId = T_64PREAL32;
+            } else {
+                typeId = T_REAL64;
+                pointerTypeId = T_64PREAL64;
+            }
+        } else {
+            assert typeEntry.isNumericInteger();
+            assert size == 1 || size == 2 || size == 4 || size == 8;
+            if (size == 1) {
+                typeId = T_INT1;
+                pointerTypeId = T_64PINT1;
+            } else if (size == 2) {
+                typeId = T_INT2;
+                pointerTypeId = T_64PINT2;
+            } else if (size == 4) {
+                typeId = T_INT4;
+                pointerTypeId = T_64PINT4;
+            } else {
+                typeId = T_INT8;
+                pointerTypeId = T_64PINT8;
+            }
+
+            if (typeEntry.isUnsigned()) {
+                // signed/unsigned differs by the LSB for 'Real int' types
+                typeId++;
+                pointerTypeId++;
+            }
+        }
+
+        types.definePrimitiveType(typeEntry.getTypeName(), typeId, size, pointerTypeId);
+        return types.getExistingType(typeEntry);
+    }
+
+    private CVTypeRecord buildPointerToTypeEntry(final PointerToTypeEntry typeEntry) {
+        CVTypeRecord pointedToType = buildType(typeEntry.getPointerTo());
+        CVTypeRecord pointerType = addTypeRecord(new CVTypeRecord.CVTypePointerRecord(pointedToType.getSequenceNumber(), CVTypeRecord.CVTypePointerRecord.NORMAL_64));
+
+        types.typeNameMap.put(typeEntry.getTypeName(), pointerType);
+        return pointerType;
     }
 
     private CVTypeRecord buildStructureTypeEntry(final StructureTypeEntry typeEntry) {
