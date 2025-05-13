@@ -58,6 +58,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.ClassFileFormatVersion;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -2039,9 +2040,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private static native Class<?> toClass(Type o);
 
-    @KeepOriginal
-    private native int getClassFileVersion();
-
     @Substitute
     private ClassRepository getGenericInfo() {
         if (companion.genericInfo == null) {
@@ -2399,6 +2397,13 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         Constructor<?> ctor = Helper_jdk_internal_reflect_ReflectionFactory.newConstructorWithAccessor(this, constructorToCall, acc);
         ctor.setAccessible(true);
         return ctor;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDKLatest.class)
+    private ClassFileFormatVersion classFileFormatVersion(Class<?> cl) {
+        /* We don't have this information for our classes. */
+        return null;
     }
 
 }
