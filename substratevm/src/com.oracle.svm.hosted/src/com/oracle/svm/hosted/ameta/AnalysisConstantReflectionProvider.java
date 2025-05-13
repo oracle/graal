@@ -49,7 +49,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.Constant;
@@ -95,7 +95,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         } else if (constant.isNull()) {
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
-        } else if (constant instanceof RelocatableConstant) {
+        } else if (constant instanceof PatchedWordConstant) {
             /* Kind of a primitive constant, so it does not have an identity hash code. */
             return null;
         }
@@ -200,7 +200,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
     }
 
     private static boolean isExpectedJavaConstant(JavaConstant value) {
-        return value.isNull() || value.getJavaKind().isPrimitive() || value instanceof RelocatableConstant || value instanceof ImageHeapConstant;
+        return value.isNull() || value.getJavaKind().isPrimitive() || value instanceof PatchedWordConstant || value instanceof ImageHeapConstant;
     }
 
     @Override

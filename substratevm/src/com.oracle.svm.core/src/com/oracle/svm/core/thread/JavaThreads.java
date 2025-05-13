@@ -27,8 +27,6 @@ package com.oracle.svm.core.thread;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.security.AccessControlContext;
-import java.security.AccessController;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -62,7 +60,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -355,14 +352,12 @@ public final class JavaThreads {
      * <li>No security manager: using the ContextClassLoader of the parent.</li>
      * </ul>
      */
-    @SuppressWarnings({"deprecation", "removal"}) // AccessController is deprecated starting JDK 17
     static void initializeNewThread(
                     Target_java_lang_Thread tjlt,
                     ThreadGroup groupArg,
                     Runnable target,
                     String name,
                     long stackSize,
-                    AccessControlContext acc,
                     boolean inheritThreadLocals) {
         if (name == null) {
             throw new NullPointerException("The name cannot be null");
@@ -385,10 +380,6 @@ public final class JavaThreads {
         initThreadFields(tjlt, group, target, stackSize, priority, daemon);
 
         PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
-
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
-        }
 
         initNewThreadLocalsAndLoader(tjlt, inheritThreadLocals, parent);
 
@@ -422,16 +413,6 @@ public final class JavaThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Object getCurrentThreadLockHelper() {
         return toTarget(Thread.currentThread()).lockHelper;
-    }
-
-    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        assert JavaVersionUtil.JAVA_SPEC <= 21 : "blockedOn in newer JDKs uses safe disableSuspendAndPreempt";
-
-        if (isCurrentThreadVirtual()) {
-            VirtualThreadHelper.blockedOn(b);
-        } else {
-            PlatformThreads.blockedOn(b);
-        }
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,8 @@ import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -91,6 +93,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
@@ -132,6 +135,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 
@@ -657,15 +661,24 @@ public abstract class NativeImage extends AbstractImage {
 
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
-        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
-        boolean injectedNotCompiled = false;
-        if (!target.isCompiled() && !target.isCompiledInPriorLayer()) {
-            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
-            injectedNotCompiled = true;
-        }
+        HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
+        boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
+        HostedMethod target = getMethodPointerTargetMethod(metaAccess, hMethod);
 
         assert checkMethodPointerRelocationKind(info);
         relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer, injectedNotCompiled);
+    }
+
+    private static boolean isInjectedNotCompiled(HostedMethod target) {
+        return !target.isCompiled() && !target.isCompiledInPriorLayer();
+    }
+
+    static HostedMethod getMethodPointerTargetMethod(HostedMetaAccess metaAccess, ResolvedJavaMethod method) {
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : metaAccess.getUniverse().lookup(method);
+        if (isInjectedNotCompiled(target)) {
+            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        }
+        return target;
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -723,13 +736,26 @@ public abstract class NativeImage extends AbstractImage {
                 int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
                 baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
             }
-        } else if (target instanceof ConstantReference) {
-            // Direct object reference in code that must be patched (not a linker relocation)
-            JavaConstant constant = (JavaConstant) ((ConstantReference) target).getConstant();
-            long address = heap.getConstantInfo(constant).getOffset();
-            int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
-            long targetValue = address >>> encShift;
-            assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
+        } else if (target instanceof ConstantReference cr) {
+            JavaConstant constant = (JavaConstant) cr.getConstant();
+            long targetValue;
+            if (constant.getJavaKind() == JavaKind.Object) {
+                // Direct object reference in code that must be patched (not a linker relocation)
+                long address = heap.getConstantInfo(constant).getOffset();
+                int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
+                targetValue = address >>> encShift;
+                assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
+            } else {
+                // The value of the hub pointer in the header of an object
+                VMError.guarantee(constant instanceof TLABObjectHeaderConstant, "must be an EncodedHubPointerConstant: %s", constant);
+                TLABObjectHeaderConstant hpc = (TLABObjectHeaderConstant) constant;
+                ImageHeapInstance hub = hpc.hub();
+                long hubOffsetFromHeapBase = heap.getConstantInfo(hub).getOffset();
+                VMError.guarantee(hubOffsetFromHeapBase != 0, "hub must be non-null: %s", hub);
+                targetValue = Heap.getHeap().getObjectHeader().encodeAsTLABObjectHeader(hubOffsetFromHeapBase);
+                VMError.guarantee(hpc.getJavaKind() == JavaKind.Long || NumUtil.isUInt(targetValue), "constant does not fit %d", targetValue);
+            }
+
             ByteBuffer bufferBytes = buffer.getByteBuffer();
             if (arch instanceof AMD64) {
                 assert (info.getRelocationKind() == RelocationKind.DIRECT_4) || (info.getRelocationKind() == RelocationKind.DIRECT_8);

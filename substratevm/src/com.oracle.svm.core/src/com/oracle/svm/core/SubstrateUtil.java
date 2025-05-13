@@ -30,7 +30,6 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -90,26 +89,12 @@ public class SubstrateUtil {
         };
     }
 
-    /*
-     * [GR-55515]: Accessing isTerminal() reflectively only for 21 JDK compatibility. After dropping
-     * JDK 21, use it directly.
-     */
-    private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
-
     private static boolean isTTY() {
         Console console = System.console();
         if (console == null) {
             return false;
         }
-        if (IS_TERMINAL_METHOD != null) {
-            try {
-                return (boolean) IS_TERMINAL_METHOD.invoke(console);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new Error(e);
-            }
-        } else {
-            return true;
-        }
+        return console.isTerminal();
     }
 
     public static boolean isNonInteractiveTerminal() {

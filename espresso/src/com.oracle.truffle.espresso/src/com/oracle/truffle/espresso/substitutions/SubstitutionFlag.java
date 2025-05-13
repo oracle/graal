@@ -53,6 +53,12 @@ public final class SubstitutionFlag {
      */
     public static final byte InlineInBytecode = 0b00000010;
 
+    /**
+     * Whether the given library entry implementation needs to have its method signature mangled for
+     * registration. This can happen if a class has overloaded native methods.
+     */
+    public static final byte needsSignatureMangle = 0b00000100;
+
     private SubstitutionFlag() {
     }
 }

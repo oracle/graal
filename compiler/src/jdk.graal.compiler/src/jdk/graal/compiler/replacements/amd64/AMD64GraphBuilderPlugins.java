@@ -82,7 +82,6 @@ import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
@@ -189,9 +188,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "sin", SIN);
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
-        if (JavaVersionUtil.JAVA_SPEC >= 24) {
-            registerUnaryMath(r, "tanh", TANH);
-        }
+        registerUnaryMath(r, "tanh", TANH);
 
         registerFMA(r, arch);
         registerMinMax(r, arch);
@@ -503,7 +500,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
 
         });
-        r.register(new InvocationPlugin(JavaVersionUtil.JAVA_SPEC == 21 ? "indexOfCharUnsafe" : "indexOfChar", byte[].class, int.class, int.class, int.class) {
+        r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static java.util.Map.entry;
 
@@ -248,7 +249,6 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Names.HIDDEN_TREGEX_SEARCH_FROM_BACKUP),
                                         new HiddenField(Names.HIDDEN_TREGEX_MATCHING_MODE_BACKUP)
                         }),
-
                         entry(Types.com_oracle_truffle_espresso_polyglot_TypeLiteral, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_INTERNAL_TYPE)}),
                         entry(Types.org_graalvm_continuations_ContinuationImpl, new HiddenField[]{
@@ -265,7 +265,15 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_OBJECT_CONSTANT)
-                        }));
+                        }),
+                        entry(Types.sun_nio_fs_TrufflePath, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_TRUFFLE_FILE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
+                        }),
+                        entry(Types.java_util_zip_CRC32, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_CRC32, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
+                        })
+        //
+        );
 
         private final Symbol<Name> name;
         private final Symbol<Type> type;

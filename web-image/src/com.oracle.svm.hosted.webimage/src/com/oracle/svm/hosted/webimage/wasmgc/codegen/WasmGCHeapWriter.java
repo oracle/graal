@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -64,7 +64,7 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
-import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.ActiveElements;
@@ -739,8 +739,8 @@ public class WasmGCHeapWriter {
      */
     private Instruction getArgumentForValue(JavaConstant value) {
         Instruction arg;
-        if (value instanceof RelocatableConstant relocatableConstant) {
-            if (relocatableConstant.getPointer() instanceof MethodPointer methodPointer) {
+        if (value instanceof PatchedWordConstant patchedConstant) {
+            if (patchedConstant.getWord() instanceof MethodPointer methodPointer) {
                 arg = Instruction.Relocation.forConstant(new SubstrateMethodPointerConstant(methodPointer));
             } else {
                 throw VMError.shouldNotReachHere("Pointers to memory should not appear in the WasmGC image heap: " + value);
@@ -835,7 +835,7 @@ public class WasmGCHeapWriter {
     private Instruction createHubVtableArray(ImageHeapInstance instance) {
         WasmId.ArrayType vtableFieldType = providers.knownIds().vtableFieldType;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
-        CFunctionPointer[] vtable = (CFunctionPointer[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
+        WordBase[] vtable = (WordBase[]) heap.readInlinedField(dynamicHubLayout.vTableField, instance);
 
         int vtableLength = vtable.length;
 

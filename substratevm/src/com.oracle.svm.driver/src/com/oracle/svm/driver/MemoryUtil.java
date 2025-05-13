@@ -27,7 +27,6 @@ package com.oracle.svm.driver;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -40,11 +39,9 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.ExitStatus;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.NativeImageError;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.jfr.internal.JVM;
 
 class MemoryUtil {
     private static final long KiB_TO_BYTES = 1024L;
@@ -65,23 +62,6 @@ class MemoryUtil {
      * Deliberately use GB (not GiB) to stay well below 32GiB when relative maximum is calculated.
      */
     private static final long MAX_HEAP_BYTES = 32_000_000_000L;
-
-    private static final Method IS_CONTAINERIZED_METHOD;
-    private static final Object IS_CONTAINERIZED_RECEIVER;
-
-    static {
-        IS_CONTAINERIZED_METHOD = ReflectionUtil.lookupMethod(jdk.jfr.internal.JVM.class, "isContainerized");
-        if (JavaVersionUtil.JAVA_SPEC == 21) { // non-static
-            var jvmField = ReflectionUtil.lookupField(jdk.jfr.internal.JVM.class, "jvm");
-            try {
-                IS_CONTAINERIZED_RECEIVER = jvmField.get(null);
-            } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        } else {
-            IS_CONTAINERIZED_RECEIVER = null; // static
-        }
-    }
 
     public static List<String> determineMemoryFlags(NativeImage.HostFlags hostFlags) {
         List<String> flags = new ArrayList<>();
@@ -170,15 +150,7 @@ class MemoryUtil {
         if (!OS.LINUX.isCurrent()) {
             return false;
         }
-        /*
-         * [GR-55515]: Accessing isContainerized() reflectively only for 21 JDK compatibility
-         * (non-static vs static method). After dropping JDK 21, use it directly.
-         */
-        try {
-            return (boolean) IS_CONTAINERIZED_METHOD.invoke(IS_CONTAINERIZED_RECEIVER);
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        return JVM.isContainerized();
     }
 
     private static double getAvailableMemorySize() {

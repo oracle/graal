@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.BelowEqual;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbx;
 import static jdk.vm.ci.amd64.AMD64.rcx;
@@ -31,7 +32,6 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.BelowEqual;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -41,7 +41,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -272,8 +271,7 @@ public final class AMD64MD5Op extends AMD64LIRInstruction {
             masm.addq(buf, 64);
             masm.addl(ofs, 64);
             masm.movl(rsi, ofs);
-            masm.cmpl(rsi, limit);
-            masm.jcc(BelowEqual, loop0);
+            masm.cmplAndJcc(rsi, limit, BelowEqual, loop0, false);
             masm.movl(rax, rsi); // return ofs
         }
     }

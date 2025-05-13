@@ -159,8 +159,8 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
+    void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
+        RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -1611,7 +1611,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 mx.add_argument('--polyglot-isolates', action='store', help='Comma-separated list of languages for which the polyglot isolate library should be built. Setting the value to `true` builds all polyglot isolate libraries.')
 
 
-class PolyglotIsolateProject(mx_sdk_vm_ng.LanguageLibraryProject):
+class PolyglotIsolateProject(mx_sdk_vm_ng.NativeImageLibraryProject):
     """
     A language library project dedicated to construct a language polyglot isolate library.
     Instances are created by register_polyglot_isolate_distributions when a language
@@ -1653,7 +1653,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           os.path.join(self.out_dir, 'libffi-3.4.6'),
+                                                           os.path.join(self.out_dir, 'libffi-3.4.8'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_STATIC_BUILD'])
@@ -1690,7 +1690,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  os.path.join(self.out_dir, 'libffi-build'),
-                                                 os.path.join(self.out_dir, 'libffi-3.4.6'))
+                                                 os.path.join(self.out_dir, 'libffi-3.4.8'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic']

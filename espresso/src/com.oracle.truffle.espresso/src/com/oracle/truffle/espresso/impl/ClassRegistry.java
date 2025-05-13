@@ -439,6 +439,9 @@ public abstract class ClassRegistry {
         if (info.isAnonymousClass() && info.patches != null) {
             patchAnonymousClass(klass.getConstantPool(), info.patches);
         }
+        if (ConstantPoolPatcher.shouldPatchPool(type, context)) {
+            ConstantPoolPatcher.patchConstantPool(context, type, klass.getConstantPool());
+        }
 
         if (info.addedToRegistry()) {
             registerKlass(klass, type, beforeRetransformBytes);

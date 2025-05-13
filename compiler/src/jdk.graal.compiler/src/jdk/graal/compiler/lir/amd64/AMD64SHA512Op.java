@@ -356,7 +356,8 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
         sha512AVX2OneRoundAndSchedule(masm, xmm7, xmm4, xmm5, xmm6, c, d, e, f, g, h, a, b, 2);
         sha512AVX2OneRoundAndSchedule(masm, xmm7, xmm4, xmm5, xmm6, b, c, d, e, f, g, h, a, 3);
 
-        masm.subqAndJcc(new AMD64Address(rsp, OFFSET_SRND), 1, NotEqual, labelLoop1, false);
+        masm.decq(new AMD64Address(rsp, OFFSET_SRND));
+        masm.jcc(NotEqual, labelLoop1);
 
         masm.movslq(new AMD64Address(rsp, OFFSET_SRND), 2);
 
@@ -381,7 +382,8 @@ public final class AMD64SHA512Op extends AMD64LIRInstruction {
         masm.vmovdqu(xmm4, xmm6);
         masm.vmovdqu(xmm5, xmm7);
 
-        masm.subqAndJcc(new AMD64Address(rsp, OFFSET_SRND), 1, NotEqual, labelLoop2, false);
+        masm.decq(new AMD64Address(rsp, OFFSET_SRND));
+        masm.jcc(NotEqual, labelLoop2);
 
         addmq(masm, 8 * 0, regCTX, a);
         addmq(masm, 8 * 1, regCTX, b);

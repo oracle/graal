@@ -48,15 +48,10 @@ public class PLTGOTPointerRelocationProvider extends MethodPointerRelocationProv
         this.pltSectionSupport = HostedPLTGOTConfiguration.singleton().getPLTSectionSupport();
     }
 
-    private boolean hasPLTStub(HostedMethod target, boolean isStaticallyResolved) {
-        return !isStaticallyResolved && shouldMarkRelocationToPLTStub.test(target);
-    }
-
     @Override
     public void markMethodPointerRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target, long addend,
                     MethodPointer methodPointer, boolean isInjectedNotCompiled) {
-        boolean isStaticallyResolved = methodPointer.isAbsolute();
-        if (hasPLTStub(target, isStaticallyResolved)) {
+        if (methodPointer.permitsRewriteToPLT() && shouldMarkRelocationToPLTStub.test(target)) {
             pltSectionSupport.markRelocationToPLTStub(section, offset, relocationKind, target, addend);
         } else {
             super.markMethodPointerRelocation(section, offset, relocationKind, target, addend, methodPointer, isInjectedNotCompiled);

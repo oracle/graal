@@ -25,13 +25,8 @@
 package com.oracle.svm.core.jdk;
 
 import java.security.AccessControlContext;
-import java.security.ProtectionDomain;
 import java.util.ArrayDeque;
 import java.util.Objects;
-
-import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * Stack for storing AccessControlContexts. Used in conjunction with
@@ -91,21 +86,5 @@ class PrivilegedStack {
 
     public static int length() {
         return getStack().size();
-    }
-}
-
-@SuppressWarnings({"unused"})
-public class AccessControllerUtil {
-
-    /**
-     * Instance that is used to mark contexts that were disallowed in
-     * {@code AccessControlContextReplacerFeature.replaceAccessControlContext()} If this marker is
-     * passed to {@code AccessController.doPrivileged()} a runtime error will be thrown.
-     */
-    public static final AccessControlContext DISALLOWED_CONTEXT_MARKER;
-
-    static {
-        DISALLOWED_CONTEXT_MARKER = JavaVersionUtil.JAVA_SPEC > 21 ? null
-                        : ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(AccessControlContext.class, ProtectionDomain[].class, boolean.class), new ProtectionDomain[0], true);
     }
 }

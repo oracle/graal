@@ -142,8 +142,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // of the mark word.
     public final int lockingMode = getFlag("LockingMode", Integer.class);
 
-    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22);
-    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22);
+    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class);
+    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class);
 
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
@@ -209,7 +209,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // word. This runtime optimization is guarded by the flag UseCompactObjectHeaders. It depends
     // on compressed class pointers, meaning that if useCompactObjectHeaders is true,
     // useCompressedClassPointers is certainly true.
-    public final boolean useCompactObjectHeaders = getFlag("UseCompactObjectHeaders", Boolean.class, false, JDK >= 24);
+    public final boolean useCompactObjectHeaders = getFlag("UseCompactObjectHeaders", Boolean.class);
 
     public final long narrowOopBase = getFieldValue("CompilerToVM::Data::Universe_narrow_oop_base", Long.class, "address");
     public final int narrowOopShift = getFieldValue("CompilerToVM::Data::Universe_narrow_oop_shift", Integer.class, "int");
@@ -219,7 +219,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return (int) (Math.log(objectAlignment) / Math.log(2));
     }
 
-    public final int narrowKlassSize = getFieldValue("CompilerToVM::Data::sizeof_narrowKlass", Integer.class, "int");
     public final long narrowKlassBase = getFieldValue("CompilerToVM::Data::Universe_narrow_klass_base", Long.class, "address");
     public final int narrowKlassShift = getFieldValue("CompilerToVM::Data::Universe_narrow_klass_shift", Integer.class, "int");
 
@@ -231,22 +230,21 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
 
-    public final boolean useSecondarySupersCache = getFlag("UseSecondarySupersCache", Boolean.class, true, JDK >= 23);
-    public final boolean useSecondarySupersTable = getFlag("UseSecondarySupersTable", Boolean.class, true, JDK >= 23);
+    public final boolean useSecondarySupersCache = getFlag("UseSecondarySupersCache", Boolean.class);
+    public final boolean useSecondarySupersTable = getFlag("UseSecondarySupersTable", Boolean.class);
 
     public final int superCheckOffsetOffset = getFieldOffset("Klass::_super_check_offset", Integer.class, "juint");
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
-    public final int klassHashSlotOffset = getFieldOffset("Klass::_hash_slot", Integer.class, "uint8_t", 0, JDK >= 23);
-    public final int klassBitmapOffset = getFieldOffset("Klass::_secondary_supers_bitmap", Integer.class, "uintx", 0, JDK >= 24);
+    public final int klassHashSlotOffset = getFieldOffset("Klass::_hash_slot", Integer.class, "uint8_t");
+    public final int klassBitmapOffset = getFieldOffset("Klass::_secondary_supers_bitmap", Integer.class, "uintx");
 
     // JDK-8186777
     public final int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
-    public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint", -1, JDK == 21);
     public final int klassAccessFlagsOffset = getFieldOffset("Klass::_access_flags", Integer.class, "AccessFlags");
-    public final int klassMiscFlagsOffset = getFieldOffset("Klass::_misc_flags._flags", Integer.class, "u1", 0, JDK >= 24);
+    public final int klassMiscFlagsOffset = getFieldOffset("Klass::_misc_flags._flags", Integer.class, "u1");
     public final int klassLayoutHelperOffset = getFieldOffset("Klass::_layout_helper", Integer.class, "jint");
 
     public final int klassLayoutHelperNeutralValue = getConstant("Klass::_lh_neutral_value", Integer.class);
@@ -261,31 +259,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int instanceKlassStateBeingInitialized = getConstant("InstanceKlass::being_initialized", Integer.class);
     public final int instanceKlassStateFullyInitialized = getConstant("InstanceKlass::fully_initialized", Integer.class);
 
-    public final int arrayOopDescSize = getFieldValue("CompilerToVM::Data::sizeof_arrayOopDesc", Integer.class, "int");
-
-    public final int arrayLengthOffsetInBytes = getFieldValue("CompilerToVM::Data::arrayOopDesc_length_offset_in_bytes", Integer.class, "int", -1, JDK >= 24);
-
-    /**
-     * The offset of the array length word in an array object's header.
-     * <p>
-     * See {@code arrayOopDesc::length_offset_in_bytes()}.
-     */
-    public final int arrayOopDescLengthOffset() {
-        if (JDK >= 24) {
-            return arrayLengthOffsetInBytes;
-        }
-        return useCompressedClassPointers ? hubOffset + narrowKlassSize : arrayOopDescSize;
-    }
+    public final int arrayLengthOffsetInBytes = getFieldValue("CompilerToVM::Data::arrayOopDesc_length_offset_in_bytes", Integer.class, "int");
 
     public final int metaspaceArrayLengthOffset = getFieldOffset("Array<Klass*>::_length", Integer.class, "int");
     public final int metaspaceArrayBaseOffset = getFieldOffset("Array<Klass*>::_data[0]", Integer.class, "Klass*");
 
     public final int arrayClassElementOffset = getFieldOffset("ObjArrayKlass::_element_klass", Integer.class, "Klass*");
 
-    public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class, -1, JDK == 21);
-    public final int jvmAccIsHiddenClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_hidden_class", Integer.class) : getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class);
-    public final int jvmAccIsValueBasedClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_value_based_class", Integer.class) : getConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class);
-    public final int jvmAccHasFinalizer = JDK >= 24 ? getConstant("KlassFlags::_misc_has_finalizer", Integer.class) : getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
+    public final int jvmAccIsHiddenClass = getConstant("KlassFlags::_misc_is_hidden_class", Integer.class);
+    public final int jvmAccIsValueBasedClass = getConstant("KlassFlags::_misc_is_value_based_class", Integer.class);
+    public final int jvmAccHasFinalizer = getConstant("KlassFlags::_misc_has_finalizer", Integer.class);
 
     public final int jvmciCompileStateCanPostOnExceptionsOffset = getFieldOffset("JVMCICompileState::_jvmti_can_post_on_exceptions", Integer.class, "jbyte");
     public final int jvmciCompileStateCanPopFrameOffset = getFieldOffset("JVMCICompileState::_jvmti_can_pop_frame", Integer.class, "jbyte");
@@ -307,11 +290,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int javaThreadThreadObjOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
     public final int javaThreadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle");
 
-    public final int javaThreadMonitorOwnerIDOffset = getFieldOffset("JavaThread::_monitor_owner_id", Integer.class, "int64_t", -1, JDK > 21);
+    public final int javaThreadMonitorOwnerIDOffset = getFieldOffset("JavaThread::_monitor_owner_id", Integer.class, "int64_t");
 
     public final int javaThreadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool");
-    public final int javaThreadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool", -1, JDK == 21);
-    public final int javaThreadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool", -1, JDK >= 22);
+    public final int javaThreadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool");
 
     public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int");
     public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int");
@@ -326,7 +308,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int jfrThreadLocalVthreadExcludedOffset = getFieldOffset("JfrThreadLocal::_vthread_excluded", Integer.class, "bool");
     public final int jfrThreadLocalVthreadOffset = getFieldOffset("JfrThreadLocal::_vthread", Integer.class, "bool");
 
-    public final int threadObjectResultOffset = getFieldOffset(JDK == 21 ? "JavaThread::_vm_result" : "JavaThread::_vm_result_oop", Integer.class, "oop");
+    public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result_oop", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
 
     public final int jvmciReserved0Offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong");
@@ -387,25 +369,24 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Mark word right shift to get identity hash code.
     public final int markWordHashCodeShift = getConstant("markWord::hash_shift", Integer.class);
     // Mark word right shift to get compressed klass pointer
-    public final int markWordKlassShift = getConstant("markWord::klass_shift", Integer.class, 0, JDK >= 24);
+    public final int markWordKlassShift = getConstant("markWord::klass_shift", Integer.class);
 
     // The following three constants are declared as 64 bits uintptr_t, but known to be 32 bits
     public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
     public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
     public final int ageMaskInPlace = getConstant("markWord::age_mask_in_place", Integer.class);
-    public final int unusedMark = getConstant("markWord::marked_value", Integer.class, 3, JDK > 21);
+    public final int unusedMark = getConstant("markWord::marked_value", Integer.class);
     // Identity hash code value when uninitialized.
     public final int uninitializedIdentityHashCodeValue = getConstant("markWord::no_hash", Integer.class);
 
     // This field has no type in vmStructs.cpp
-    public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, JDK > 21 ? "int64_t" : null);
+    public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, "int64_t");
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t");
-    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1, JDK == 21);
-    public final int objectMonitorEntryList = getFieldOffset(JDK == 21 ? "ObjectMonitor::_EntryList" : "ObjectMonitor::_entry_list", Integer.class, "ObjectWaiter*");
-    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK > 21 ? "int64_t" : "JavaThread*");
+    public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_entry_list", Integer.class, "ObjectWaiter*");
+    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "int64_t");
 
-    public final int contEntryOffset = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
-    public final int pinCountOffset = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
+    public final int contEntryOffset = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*");
+    public final int pinCountOffset = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t");
 
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
 
@@ -423,7 +404,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long verifyOopMask = getFieldValue("CompilerToVM::Data::Universe_verify_oop_mask", Long.class, "uintptr_t");
     public final long verifyOopBits = getFieldValue("CompilerToVM::Data::Universe_verify_oop_bits", Long.class, "uintptr_t");
 
-    public final int logOfHRGrainBytes = getFieldValue(JDK >= 23 ? "G1HeapRegion::LogOfHRGrainBytes" : "HeapRegion::LogOfHRGrainBytes", Integer.class, JDK >= 22 ? "uint" : "int");
+    public final int logOfHRGrainBytes = getFieldValue("G1HeapRegion::LogOfHRGrainBytes", Integer.class, "uint");
 
     public final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
     public final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "CardTable::CardValue*");
@@ -439,7 +420,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * for {@code Unsafe.allocateInstance} to deopt when
      * {@code *shouldNotifyObjectAllocAddress != 0}.
      */
-    public final long shouldNotifyObjectAllocAddress = getFieldValue("CompilerToVM::Data::_should_notify_object_alloc", Long.class, "int*", 0L, JDK >= 23);
+    public final long shouldNotifyObjectAllocAddress = getFieldValue("CompilerToVM::Data::_should_notify_object_alloc", Long.class, "int*");
 
     // Check whether low-latency G1 post write barriers implemented in JDK-8340827 are available
     public final boolean g1LowLatencyPostWriteBarrierSupport = getStore().getConstants().containsKey("G1ThreadLocalData::card_table_base_offset");
@@ -459,13 +440,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
     public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
-    public final int basicLockMetadataOffset = JDK >= 24 ? getFieldOffset("BasicLock::_metadata", Integer.class, "uintptr_t") : getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
+    public final int basicLockMetadataOffset = getFieldOffset("BasicLock::_metadata", Integer.class, "uintptr_t");
 
-    public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class, false, JDK >= 24);
+    public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class);
 
     // JDK-8253180 & JDK-8265932
-    public final int threadPollDataOffset = JDK >= 24 ? getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData")
-                    : getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData");
+    public final int threadPollDataOffset = getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData");
     public final int threadPollingPageOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
     public final int threadPollingWordOffset = threadPollDataOffset + getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
     public final int savedExceptionPCOffset = getFieldOffset("JavaThread::_saved_exception_pc", Integer.class, "address");
@@ -518,11 +498,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long poly1305ProcessBlocks = getFieldValue("StubRoutines::_poly1305_processBlocks", Long.class, "address");
     public final long chacha20Block = getFieldValue("StubRoutines::_chacha20Block", Long.class, "address");
 
-    public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address", 0L, JDK >= 25);
-    public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address", 0L, JDK >= 23);
+    public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address");
+    public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address");
 
-    public final long throwDelayedStackOverflowErrorEntry = getFieldValue(JDK >= 24 ? "CompilerToVM::Data::SharedRuntime_throw_delayed_StackOverflowError_entry"
-                    : "StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
+    public final long throwDelayedStackOverflowErrorEntry = getFieldValue("CompilerToVM::Data::SharedRuntime_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
     public final long jbyteArraycopy = getFieldValue("StubRoutines::_jbyte_arraycopy", Long.class, "address");
     public final long jshortArraycopy = getFieldValue("StubRoutines::_jshort_arraycopy", Long.class, "address");
@@ -552,14 +531,22 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long checkcastArraycopyUninit = getFieldValue("StubRoutines::_checkcast_arraycopy_uninit", Long.class, "address");
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
-    public final long unsafeSetMemory = getFieldValue("StubRoutines::_unsafe_setmemory", Long.class, "address", 0L, JDK >= 23);
+    public final long unsafeSetMemory = getFieldValue("StubRoutines::_unsafe_setmemory", Long.class, "address");
 
-    public final long stubDoubleKeccak = getFieldValue("StubRoutines::_double_keccak", Long.class, "address", 0L, JDK >= 25);
-    public final long stubDilithiumAlmostNtt = getFieldValue("StubRoutines::_dilithiumAlmostNtt", Long.class, "address", 0L, JDK >= 25);
-    public final long stubDilithiumAlmostInverseNtt = getFieldValue("StubRoutines::_dilithiumAlmostInverseNtt", Long.class, "address", 0L, JDK >= 25);
-    public final long stubDilithiumNttMult = getFieldValue("StubRoutines::_dilithiumNttMult", Long.class, "address", 0L, JDK >= 25);
-    public final long stubDilithiumMontMulByConstant = getFieldValue("StubRoutines::_dilithiumMontMulByConstant", Long.class, "address", 0L, JDK >= 25);
-    public final long stubDilithiumDecomposePoly = getFieldValue("StubRoutines::_dilithiumDecomposePoly", Long.class, "address", 0L, JDK >= 25);
+    public final long stubDoubleKeccak = getFieldValue("StubRoutines::_double_keccak", Long.class, "address");
+    public final long stubDilithiumAlmostNtt = getFieldValue("StubRoutines::_dilithiumAlmostNtt", Long.class, "address");
+    public final long stubDilithiumAlmostInverseNtt = getFieldValue("StubRoutines::_dilithiumAlmostInverseNtt", Long.class, "address");
+    public final long stubDilithiumNttMult = getFieldValue("StubRoutines::_dilithiumNttMult", Long.class, "address");
+    public final long stubDilithiumMontMulByConstant = getFieldValue("StubRoutines::_dilithiumMontMulByConstant", Long.class, "address");
+    public final long stubDilithiumDecomposePoly = getFieldValue("StubRoutines::_dilithiumDecomposePoly", Long.class, "address");
+
+    public final long stubKyberNtt = getFieldValue("StubRoutines::_kyberNtt", Long.class, "address");
+    public final long stubKyberInverseNtt = getFieldValue("StubRoutines::_kyberInverseNtt", Long.class, "address");
+    public final long stubKyberNttMult = getFieldValue("StubRoutines::_kyberNttMult", Long.class, "address");
+    public final long stubKyberAddPoly2 = getFieldValue("StubRoutines::_kyberAddPoly_2", Long.class, "address");
+    public final long stubKyberAddPoly3 = getFieldValue("StubRoutines::_kyberAddPoly_3", Long.class, "address");
+    public final long stubKyber12To16 = getFieldValue("StubRoutines::_kyber12To16", Long.class, "address");
+    public final long stubKyberBarrettReduce = getFieldValue("StubRoutines::_kyberBarrettReduce", Long.class, "address");
 
     // Allocation stubs that return null when allocation fails
     public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null");
@@ -654,14 +641,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
-    public final int threadHeldMonitorCountOffset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, JDK >= 22 ? "intx" : "int64_t");
-    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22);
-    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22);
-    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22);
-    public final int threadOmCacheOffset = getFieldOffset("JavaThread::_om_cache", Integer.class, "OMCache", -1, JDK >= 24);
-    public final int threadUnlockedInflatedMonitorOffset = getFieldOffset("JavaThread::_unlocked_inflated_monitor", Integer.class, "ObjectMonitor*", -1, JDK >= 24);
-    public final int omCacheOopToOopDifference = getConstant("OMCache::oop_to_oop_difference", Integer.class, -1, JDK >= 24);
-    public final int omCacheOopToMonitorDifference = getConstant("OMCache::oop_to_monitor_difference", Integer.class, -1, JDK >= 24);
+    public final int threadHeldMonitorCountOffset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "intx");
+    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack");
+    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t");
+    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class);
+    public final int threadOmCacheOffset = getFieldOffset("JavaThread::_om_cache", Integer.class, "OMCache");
+    public final int threadUnlockedInflatedMonitorOffset = getFieldOffset("JavaThread::_unlocked_inflated_monitor", Integer.class, "ObjectMonitor*");
+    public final int omCacheOopToOopDifference = getConstant("OMCache::oop_to_oop_difference", Integer.class);
+    public final int omCacheOopToMonitorDifference = getConstant("OMCache::oop_to_monitor_difference", Integer.class);
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
@@ -687,7 +674,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long arithmeticSinAddress = getFieldValue("CompilerToVM::Data::dsin", Long.class, "address");
     public final long arithmeticCosAddress = getFieldValue("CompilerToVM::Data::dcos", Long.class, "address");
     public final long arithmeticTanAddress = getFieldValue("CompilerToVM::Data::dtan", Long.class, "address");
-    public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address", 0L, JDK >= 24);
+    public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address");
     public final long arithmeticExpAddress = getFieldValue("CompilerToVM::Data::dexp", Long.class, "address");
     public final long arithmeticLogAddress = getFieldValue("CompilerToVM::Data::dlog", Long.class, "address");
     public final long arithmeticLog10Address = getFieldValue("CompilerToVM::Data::dlog10", Long.class, "address");
@@ -706,7 +693,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     // JDK-8322630
-    public final int icSpeculatedKlassOffset = getFieldOffset("CompiledICData::_speculated_klass", Integer.class, "uintptr_t", Integer.MAX_VALUE, JDK >= 23);
+    public final int icSpeculatedKlassOffset = getFieldOffset("CompiledICData::_speculated_klass", Integer.class, "uintptr_t");
 
     public final int jvmciCountersSize = getFlag("JVMCICounterSize", Integer.class);
 
@@ -714,7 +701,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean deoptimizationSupportLargeAccessByteArrayVirtualization = //
                     getConstant("Deoptimization::_support_large_access_byte_array_virtualization", Boolean.class);
 
-    public final int l1LineSize = getFieldValue("CompilerToVM::Data::L1_line_size", Integer.class, "int", 0, JDK >= 24 && "amd64".equals(osArch));
+    public final int l1LineSize = getFieldValue("CompilerToVM::Data::L1_line_size", Integer.class, "int", 0, "amd64".equals(osArch));
 
     // Checkstyle: stop
     public final int VMINTRINSIC_FIRST_MH_SIG_POLY = getConstant("vmIntrinsics::FIRST_MH_SIG_POLY", Integer.class);

@@ -1904,7 +1904,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                 if (codeAttribute == null) {
                     Meta meta = getMeta();
                     throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
-                                    "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                                    "Calling abstract method: " + toExternalString());
                 }
                 EspressoRootNode rootNode = EspressoRootNode.createForBytecodes(this);
                 target = rootNode.getCallTarget();
@@ -1951,7 +1951,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         private EspressoException unsatisfiedLinkError() {
             getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", toString());
             Meta meta = getMeta();
-            return meta.throwException(meta.java_lang_UnsatisfiedLinkError);
+            return meta.throwExceptionWithMessage(meta.java_lang_UnsatisfiedLinkError, toExternalString());
         }
 
         private void checkPoisonPill(Meta meta) {
@@ -1979,6 +1979,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         @Override
         public String toString() {
             return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
+        }
+
+        @TruffleBoundary
+        public String toExternalString() {
+            return getDeclaringKlass().getExternalName() + "." + getName() + getRawSignature();
         }
 
         public boolean isInterfaceMethod() {

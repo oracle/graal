@@ -275,7 +275,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         // convert result to bitmask
         masm.pmovmsk(vectorSize, tmp1, vector1);
         // invert bit mask. if the result is non-zero, compared regions are not equal
-        masm.xorlAndJcc(tmp1, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.NotZero, diffFound, true);
+        masm.xorl(tmp1, vectorSize == XMM ? ONES_16 : ONES_32);
+        masm.jccb(ConditionFlag.NotZero, diffFound);
         // regions are equal, continue the loop
         masm.addqAndJcc(length, elementsPerVector, ConditionFlag.NotZero, loop, true);
 
@@ -289,7 +290,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.leaq(length, new AMD64Address(length, result, Stride.S1, -elementsPerVector));
         masm.pcmpeq(vectorSize, maxStride, vector1, vector2);
         masm.pmovmsk(vectorSize, tmp1, vector1);
-        masm.xorlAndJcc(tmp1, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.NotZero, diffFound, true);
+        masm.xorl(tmp1, vectorSize == XMM ? ONES_16 : ONES_32);
+        masm.jccb(ConditionFlag.NotZero, diffFound);
         // all elements are equal, return 0
         masm.xorq(result, result);
         masm.jmp(returnLabel);
@@ -360,7 +362,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         }
         masm.pcmpeq(cmpSize, maxStride, vector1, vector2);
         masm.pmovmsk(cmpSize, result, vector1);
-        masm.xorlAndJcc(result, cmpSize == XMM ? ONES_16 : ONES_32, ConditionFlag.Zero, returnLabel, false);
+        masm.xorl(result, cmpSize == XMM ? ONES_16 : ONES_32);
+        masm.jcc(ConditionFlag.Zero, returnLabel);
 
         bsfq(masm, tmp2, result);
         if (maxStride.value > 1) {

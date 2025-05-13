@@ -38,8 +38,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
@@ -106,9 +104,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
         // JDK-8220738
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerNetInitIDs, method(a, "sun.nio.ch.Net", "initIDs"));
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
-        }
 
         if (isPosix()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerUnixNativeDispatcherInit, method(a, "sun.nio.fs.UnixNativeDispatcher", "init"));
@@ -135,14 +130,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 
-    private static void registerFileKeyInitIDs(DuringAnalysisAccess a) {
-        if (isPosix()) {
-            RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileKey", "st_dev", "st_ino"));
-        } else if (isWindows()) {
-            RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileKey", "dwVolumeSerialNumber", "nFileIndexHigh", "nFileIndexLow"));
-        }
-    }
-
     private static void registerUnixNativeDispatcherInit(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixFileAttributes"));
         RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes",
@@ -150,9 +137,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
                         "st_atime_sec", "st_atime_nsec", "st_mtime_sec", "st_mtime_nsec", "st_ctime_sec", "st_ctime_nsec"));
         if (isDarwin() || isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_sec"));
-            if (JavaVersionUtil.JAVA_SPEC > 21) {
-                RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "birthtime_available"));
-            }
+            RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "birthtime_available"));
         }
         if (isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));

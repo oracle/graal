@@ -151,9 +151,7 @@ public class GraalCompiler {
                             DebugCloseable b = CompilerMemory.start(debug)) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
                 r.backend.emitBackEnd(r.graph, null, r.installedCodeOwner, r.compilationResult, r.factory, r.entryPointDecorator, null, r.lirSuites);
-                if (r.verifySourcePositions) {
-                    assert r.graph.verifySourcePositions(true);
-                }
+                assert !r.verifySourcePositions || r.graph.verifySourcePositions(true);
                 checkForRequestedCrash(r.graph, r.requestedCrashHandler());
             } catch (Throwable e) {
                 throw debug.handle(e);
@@ -272,7 +270,7 @@ public class GraalCompiler {
         try (DebugContext.Scope s = debug.scope("FrontEnd"); DebugCloseable a = FrontEnd.start(debug)) {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
-                try (CompilerPhaseScope cps = debug.enterCompilerPhase("Parsing")) {
+                try (CompilerPhaseScope cps = debug.enterCompilerPhase("Parsing", graph)) {
                     graphBuilderSuite.apply(graph, highTierContext);
                     new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
                     assert graph.verifySourcePositions(true);

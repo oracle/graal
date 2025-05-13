@@ -678,8 +678,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
-        public Register getHeapBaseRegister() {
-            return ReservedRegisters.singleton().getHeapBaseRegister();
+        public boolean isReservedRegister(Register r) {
+            return ReservedRegisters.singleton().isReservedRegister(r);
         }
 
         @Override

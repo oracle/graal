@@ -59,7 +59,7 @@ from os import PathLike
 from os.path import exists, basename
 from pathlib import Path
 from traceback import print_tb
-from typing import List, Optional, Set, Collection, Union, Iterable, Sequence, Callable, TextIO
+from typing import List, Optional, Set, Collection, Union, Iterable, Sequence, Callable, TextIO, Tuple
 
 import mx
 import mx_benchmark
@@ -307,31 +307,18 @@ class NativeImageBenchmarkConfig:
                                                                      not (vm.safepoint_sampler or vm.pgo_sampler_only))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args,
                                                                                  list(image_run_args))
-        benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg',
                        'extra-profile-run-arg',
                        'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
-        # These stages are not executed, even if explicitly requested.
-        # Some configurations don't need to/can't run certain stages
-        removed_stages: Set[Stage] = set()
-
-        if vm.jdk_profiles_collect:
-            # forbid image build/run in the profile collection execution mode
-            removed_stages.update([Stage.IMAGE, Stage.RUN])
-        if vm.profile_inference_feature_extraction or vm.profile_inference_debug:
-            # do not run the image in the profile inference feature extraction or debug mode
-            removed_stages.add(Stage.RUN)
         self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
-        root_dir = Path(
-            benchmark_output_dir if benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False,
-                                                                                             jdkDependent=False)).absolute()
-        unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
-        self.executable_name = (
-                    unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
-        instrumentation_executable_name = self.executable_name + "-instrument"
+        current_stage = vm.stages_info.current_stage
+        is_shared_library = current_stage is not None and current_stage.is_layered() and current_stage.layer_info.is_shared_library
+        self.benchmark_output_dir = self.bm_suite.benchmark_output_dir(self.benchmark_name, args)
+        executable_name, output_dir = self.get_executable_name_and_output_dir_for_stage(current_stage, vm)
+        self.executable_name: str = executable_name
+        self.output_dir: Path = output_dir
         self.final_image_name = self.executable_name + '-' + vm.config_name()
-        self.output_dir: Path = root_dir / "native-image-benchmarks" / f"{self.executable_name}-{vm.config_name()}"
         self.profile_path: Path = self.output_dir / f"{self.executable_name}.iprof"
         self.config_dir: Path = self.output_dir / "config"
         self.log_dir: Path = self.output_dir
@@ -387,7 +374,10 @@ class NativeImageBenchmarkConfig:
 
         # Path of the final executable
         self.image_path = self.output_dir / self.final_image_name
-        self.instrumented_image_path = self.output_dir / instrumentation_executable_name
+        self.instrumented_image_path = self.output_dir / f"{self.executable_name}-instrument"
+        if is_shared_library:
+            self.image_path = self.image_path.parent / f"{self.image_path.name}.so"
+            self.instrumented_image_path = self.instrumented_image_path.parent / f"{self.instrumented_image_path.name}.so"
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
@@ -421,16 +411,10 @@ class NativeImageBenchmarkConfig:
                                       '--enable-monitoring=jfr',
                                       '-R:+JfrBasedExecutionSamplerStatistics'
                                       ]
-            removed_stages.update([Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN])
-        if not vm.pgo_instrumentation:
-            removed_stages.update([Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN])
         if self.image_vm_args is not None:
             base_image_build_args += self.image_vm_args
         self.is_runnable = self.check_runnable()
         base_image_build_args += self.extra_image_build_arguments
-
-        # Inform the StagesInfo object about removed stages
-        bm_suite.stages_info.setup(removed_stages)
 
         bundle_args = [f'--bundle-apply={bundle_apply_path}'] if self.is_bundle_based else []
         # benchmarks are allowed to use experimental options
@@ -438,7 +422,7 @@ class NativeImageBenchmarkConfig:
         self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(
             base_image_build_args) + bundle_args
 
-        if bundle_create_path and Stage.INSTRUMENT_IMAGE in bm_suite.stages_info.effective_stages:
+        if bundle_create_path and StageName.INSTRUMENT_IMAGE in [stage.stage_name for stage in bm_suite.stages_info.effective_stages]:
             mx.warn(
                 "Building instrumented benchmarks with --bundle-create is untested and may behave in unexpected ways")
 
@@ -446,7 +430,25 @@ class NativeImageBenchmarkConfig:
         # Generate Build Report only when the benchmark is a part of EE gate.
         return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
 
-    def get_build_output_json_file(self, stage: Stage) -> Path:
+    def get_executable_name_and_output_dir_for_stage(self, stage: Stage, vm: NativeImageVM) -> Tuple[str, Path]:
+        # Form executable name
+        unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
+        executable_name = (
+                unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
+        is_shared_library = stage is not None and stage.is_layered() and stage.layer_info.is_shared_library
+        if is_shared_library:
+            # Shared library layers have to start with 'lib' and are differentiated with the layer index
+            executable_name = f"lib-layer{stage.layer_info.index}-{executable_name}"
+
+        # Form output directory
+        root_dir = Path(
+            self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False,
+                                                                                             jdkDependent=False)).absolute()
+        output_dir = root_dir / "native-image-benchmarks" / f"{executable_name}-{vm.config_name()}"
+
+        return executable_name, output_dir
+
+    def get_build_output_json_file(self, stage: StageName) -> Path:
         """
         Path to the build output statistics JSON file (see also ``-H:BuildOutputJSONFile``).
 
@@ -460,7 +462,7 @@ class NativeImageBenchmarkConfig:
         """
         if stage.is_instrument():
             suffix = "instrument"
-        elif stage in [Stage.IMAGE, Stage.RUN]:
+        elif stage.is_final():
             suffix = "final"
         else:
             raise AssertionError(f"There is no build output file for the {stage} stage")
@@ -472,7 +474,7 @@ class NativeImageBenchmarkConfig:
         else:
             return self.image_build_reports_directory / filename
 
-    def get_image_build_stats_file(self, stage: Stage) -> Path:
+    def get_image_build_stats_file(self, stage: StageName) -> Path:
         """
         Same concept as :meth:`get_build_output_json_file`, but for the ``image_build_statistics.json`` file.
 
@@ -480,7 +482,7 @@ class NativeImageBenchmarkConfig:
         """
         if stage.is_instrument():
             suffix = "instrument"
-        elif stage in [Stage.IMAGE, Stage.RUN]:
+        elif stage.is_final():
             suffix = "final"
         else:
             raise AssertionError(f"There is no image build statistics file for the {stage} stage")
@@ -576,14 +578,14 @@ class StageRunner:
 
     def __enter__(self):
         self.stdout_path = (
-                    self.config.log_dir / f"{self.final_image_name}-{self.stages_info.requested_stage}-stdout.log").absolute()
+                    self.config.log_dir / f"{self.final_image_name}-{self.stages_info.current_stage}-stdout.log").absolute()
         self.stderr_path = (
-                    self.config.log_dir / f"{self.final_image_name}-{self.stages_info.requested_stage}-stderr.log").absolute()
+                    self.config.log_dir / f"{self.final_image_name}-{self.stages_info.current_stage}-stderr.log").absolute()
         self.stdout_file = open(self.stdout_path, 'w')
         self.stderr_file = open(self.stderr_path, 'w')
 
         self.separator_line()
-        mx.log(f"{self.get_timestamp()}Entering stage: {self.stages_info.requested_stage} for {self.final_image_name}")
+        mx.log(f"{self.get_timestamp()}Entering stage: {self.stages_info.current_stage} for {self.final_image_name}")
         self.separator_line()
 
         if self.stdout_path:
@@ -603,20 +605,20 @@ class StageRunner:
             suffix = "PASS" if is_success else "FAILURE"
             with open(self.config.split_run, 'a') as f:
                 f.write(
-                    f"{self.get_timestamp()}{self.config.bm_suite.name()}:{self.config.benchmark_name} {self.stages_info.requested_stage}: {suffix}\n")
+                    f"{self.get_timestamp()}{self.config.bm_suite.name()}:{self.config.benchmark_name} {self.stages_info.current_stage}: {suffix}\n")
 
         if is_success:
             self.stages_info.success()
-            if self.stages_info.requested_stage == self.stages_info.last_stage:
+            if self.stages_info.current_stage == self.stages_info.last_stage:
                 self.bench_out(
-                    f"{self.get_timestamp()}{STAGE_LAST_SUCCESSFUL_PREFIX} {self.stages_info.requested_stage} for {self.final_image_name}")
+                    f"{self.get_timestamp()}{STAGE_LAST_SUCCESSFUL_PREFIX} {self.stages_info.current_stage} for {self.final_image_name}")
             else:
-                self.bench_out(f"{self.get_timestamp()}{STAGE_SUCCESSFUL_PREFIX} {self.stages_info.requested_stage}")
+                self.bench_out(f"{self.get_timestamp()}{STAGE_SUCCESSFUL_PREFIX} {self.stages_info.current_stage}")
 
             self.separator_line()
         else:
             self.stages_info.fail()
-            failure_prefix = f"{self.get_timestamp()}Failed in stage {self.stages_info.requested_stage} for {self.final_image_name}"
+            failure_prefix = f"{self.get_timestamp()}Failed in stage {self.stages_info.current_stage} for {self.final_image_name}"
             if self.exit_code is not None and self.exit_code != 0:
                 mx.log(mx.colorize(f"{failure_prefix} with exit code {self.exit_code}", 'red'))
             elif tb:
@@ -645,7 +647,7 @@ class StageRunner:
             mx.log(mx.colorize(
                 '--------- To only run the failed stage add the following to the end of the previous command: ',
                 'green'))
-            mx.log(f"-Dnative-image.benchmark.stages={self.stages_info.requested_stage}")
+            mx.log(f"-Dnative-image.benchmark.stages={self.stages_info.current_stage}")
 
             mx.log(mx.colorize(
                 '--------- Additional arguments that can be used for debugging the benchmark go after the final --: ',
@@ -680,12 +682,10 @@ class StageRunner:
 
         write_output = self.stages_info.should_produce_datapoints()
 
-        self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.effective_stage, command,
+        self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.current_stage, command,
                                                         self.stdout(write_output), self.stderr(write_output),
                                                         self.stages.cwd, False)
-        if self.stages_info.effective_stage not in [Stage.INSTRUMENT_IMAGE,
-                                                    Stage.IMAGE] and self.config.bm_suite.validateReturnCode(
-                self.exit_code):
+        if not self.stages_info.current_stage.is_image() and self.config.bm_suite.validateReturnCode(self.exit_code):
             self.exit_code = 0
 
         return self.exit_code
@@ -715,6 +715,7 @@ class NativeImageVM(GraalVm):
         self.pgo_sampler_only = False
         self.is_gate = False
         self.is_quickbuild = False
+        self.layered = False
         self.use_string_inlining = False
         self.is_llvm = False
         self.gc = None
@@ -777,6 +778,8 @@ class NativeImageVM(GraalVm):
             config += ["upx"]
         if self.is_quickbuild is True:
             config += ["quickbuild"]
+        if self.layered is True:
+            config += ["layered"]
         if self.gc == "G1":
             config += ["g1gc"]
         if self.is_llvm is True:
@@ -836,7 +839,7 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
-               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
+               r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<layered>layered-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
@@ -886,6 +889,10 @@ class NativeImageVM(GraalVm):
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
             self.is_quickbuild = True
+
+        if matching.group("layered") is not None:
+            mx.logv(f"'layered' is enabled for {config_name}")
+            self.layered = True
 
         if matching.group("gc") is not None:
             gc = matching.group("gc")[:-1]
@@ -1105,8 +1112,8 @@ class NativeImageVM(GraalVm):
         """
         dims = super().dimensions(cwd, args, code, out)
 
-        if not self.stages_info.fallback_mode and not self.stages_info.skip_current_stage and self.stages_info.effective_stage != Stage.AGENT:
-            assert self.stages_info.failed or self.stages_info.effective_stage in self.stages_info.stages_till_now, "dimensions method was called before stage was executed, not all information is available"
+        if not self.stages_info.fallback_mode and not self.stages_info.current_stage.is_agent():
+            assert self.stages_info.failed or self.stages_info.current_stage in self.stages_info.stages_till_now, "dimensions method was called before stage was executed, not all information is available"
 
             def gc_mapper(value: str) -> str:
                 """
@@ -1137,15 +1144,22 @@ class NativeImageVM(GraalVm):
             else:
                 pgo_value = "off"
 
+            replacement = {
+                "runtime.gc": ("<general_info.garbage_collector>", gc_mapper),
+                "native-image.stage": str(self.stages_info.current_stage.stage_name),
+                "native-image.instrumented": str(self.stages_info.current_stage.is_instrument()).lower(),
+                "native-image.pgo": pgo_value,
+                "native-image.opt": ("<general_info.graal_compiler.optimization_level>", opt_mapper),
+            }
+            if self.stages_info.current_stage.is_layered():
+                # By encoding the app layer with a fixed value string ("app-layer") we facilitate bench-server
+                # querying for the app layer specifically - enabling comparisons across benchmarks
+                layer_info = self.stages_info.current_stage.layer_info
+                layer_str = f"shared-layer-{layer_info.index}" if layer_info.is_shared_library else "app-layer"
+                replacement["native-image.layer"] = layer_str
             rule = mx_benchmark.JsonFixedFileRule(
-                self.config.get_build_output_json_file(self.stages_info.effective_stage),
-                {
-                    "runtime.gc": ("<general_info.garbage_collector>", gc_mapper),
-                    "native-image.stage": str(self.stages_info.effective_stage),
-                    "native-image.instrumented": str(self.stages_info.effective_stage.is_instrument()).lower(),
-                    "native-image.pgo": pgo_value,
-                    "native-image.opt": ("<general_info.graal_compiler.optimization_level>", opt_mapper),
-                },
+                self.config.get_build_output_json_file(self.stages_info.current_stage.stage_name),
+                replacement,
                 ["general_info.garbage_collector", "general_info.graal_compiler.optimization_level"]
             )
 
@@ -1162,9 +1176,9 @@ class NativeImageVM(GraalVm):
     def image_build_general_rules(self, benchmarks):
         rules = []
 
-        if self.stages_info.should_produce_datapoints(Stage.INSTRUMENT_IMAGE):
+        if self.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
             image_path = self.config.instrumented_image_path
-        elif self.stages_info.should_produce_datapoints(Stage.IMAGE):
+        elif self.stages_info.should_produce_datapoints(StageName.IMAGE):
             image_path = self.config.image_path
 
             for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
@@ -1260,11 +1274,11 @@ class NativeImageVM(GraalVm):
 
         stats_files = []
 
-        if self.stages_info.should_produce_datapoints(Stage.IMAGE):
-            stats_files.append(self.config.get_image_build_stats_file(Stage.IMAGE))
+        if self.stages_info.should_produce_datapoints(StageName.IMAGE):
+            stats_files.append(self.config.get_image_build_stats_file(StageName.IMAGE))
 
-        if self.stages_info.should_produce_datapoints(Stage.INSTRUMENT_IMAGE):
-            stats_files.append(self.config.get_image_build_stats_file(Stage.INSTRUMENT_IMAGE))
+        if self.stages_info.should_produce_datapoints(StageName.INSTRUMENT_IMAGE):
+            stats_files.append(self.config.get_image_build_stats_file(StageName.INSTRUMENT_IMAGE))
 
         return [mx_benchmark.JsonFixedFileRule(f, template, keys) for f in stats_files]
 
@@ -1339,7 +1353,7 @@ class NativeImageVM(GraalVm):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
         if not self.stages_info.fallback_mode and self.stages_info.should_produce_datapoints(
-                [Stage.INSTRUMENT_IMAGE, Stage.IMAGE]):
+                [StageName.INSTRUMENT_IMAGE, StageName.IMAGE]):
             # Only apply image build rules for the image build stages
             # In fallback mode, we don't produce any rules for the build stages,
             # see NativeImageBenchmarkMixin for more details.
@@ -1414,7 +1428,7 @@ class NativeImageVM(GraalVm):
 
         collection_args = []
         collection_args += svm_experimental_options(
-            [f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.INSTRUMENT_IMAGE)}"])
+            [f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(StageName.INSTRUMENT_IMAGE)}"])
 
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self,
@@ -1435,7 +1449,7 @@ class NativeImageVM(GraalVm):
 
         mx.move(
             self.config.image_build_reports_directory / "image_build_statistics.json",
-            self.config.get_image_build_stats_file(self.stages_info.effective_stage)
+            self.config.get_image_build_stats_file(self.stages_info.current_stage.stage_name)
         )
 
     def _ensureSamplesAreInProfile(self, profile_path: PathLike):
@@ -1476,6 +1490,43 @@ class NativeImageVM(GraalVm):
                 print(
                     f"Profile file {self.config.profile_path} not dumped. Instrument run failed with exit code {exit_code}")
 
+    def get_layered_build_args(self) -> List[str]:
+        """Return extra options that are necessary when building a layered image."""
+        current_stage = self.stages_info.current_stage
+        if not self.layered or current_stage.layer_info.is_shared_library:
+            # No extra options are necessary if we are not building a layered image
+            # No extra options are necessary when building shared layers
+            return []
+
+        # Set LinkerRPath to point to the directories containing the shared objects of underlying layers
+        shared_library_stages = [stage for stage in self.stages_info.complete_stage_list
+                                 if current_stage.stage_name == stage.stage_name and stage.is_layered() and stage.layer_info.is_shared_library]
+        if len(shared_library_stages) == 0:
+            mx.abort("Failed to find any shared library layer image stages!")
+        layer_output_dirs = []
+        for stage in shared_library_stages:
+            _, stage_output_dir = self.config.get_executable_name_and_output_dir_for_stage(stage, self)
+            layer_output_dirs.append(stage_output_dir.absolute().as_posix())
+        linker_r_path = ",".join(layer_output_dirs)
+        layer_build_args = [f"-H:LinkerRPath={linker_r_path}"]
+
+        # Set LayerUse to point to the .nil archive of the preceeding layer
+        last_shared_library_stage_output_dir = Path(layer_output_dirs[-1])
+        nil_archives = list(last_shared_library_stage_output_dir.glob("*.nil"))
+        if len(nil_archives) == 0:
+            mx.abort(
+                f"Could not determine the .nil archive of the preceding shared library layer!"
+                f" No .nil archives located in '{last_shared_library_stage_output_dir}' directory!"
+            )
+        if len(nil_archives) > 1:
+            mx.abort(
+                f"Could not determine the .nil archive of the preceding shared library layer!"
+                f" Multiple files found: {nil_archives}"
+            )
+        layer_build_args.append(f"-H:LayerUse={nil_archives[0]}")
+
+        return layer_build_args
+
     def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
         pgo_args = [f"--pgo={self.config.profile_path}"]
@@ -1509,9 +1560,10 @@ class NativeImageVM(GraalVm):
             ml_debug_args = []
 
         collection_args = svm_experimental_options(
-            [f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.IMAGE)}"])
-        final_image_command = self.config.base_image_build_args + executable_name_args + (
-            pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + ml_debug_args + collection_args
+            [f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(StageName.IMAGE)}"])
+        final_image_command = (self.config.base_image_build_args + executable_name_args
+            + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + ml_debug_args
+            + collection_args + self.get_layered_build_args())
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self, final_image_command)
             NativeImageVM.move_bundle_output(self.config, self.config.image_path)
@@ -1554,6 +1606,7 @@ class NativeImageVM(GraalVm):
 
         self.stages_info: StagesInfo = self.bmSuite.stages_info
         assert not self.stages_info.failed, "In case of a failed benchmark, no further calls into the VM should be made"
+        assert self.stages_info.vm_used_for_stages == self, f"VM used to prepare stages ({self.stages_info.vm_used_for_stages}) cannot be different from the VM used to run the suite ({self})!"
 
         self.config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
         self.stages = StagesContext(self, out, err, True if self.is_gate else nonZeroIsFatal,
@@ -1565,14 +1618,11 @@ class NativeImageVM(GraalVm):
         if self.stages_info.fallback_mode:
             # In fallback mode, we have to run all requested stages in the same `run_java` invocation.
             # We simply emulate the dispatching of the individual stages as in `NativeImageBenchmarkMixin.intercept_run`
-            for stage in self.stages_info.effective_stages:
-                self.stages_info.change_stage(stage)
+            while self.stages_info.has_next_stage():
+                self.stages_info.next_stage()
                 self.run_single_stage()
         else:
-            if self.stages_info.skip_current_stage:
-                out(f"{STAGE_SKIPPED_PREFIX} {self.stages_info.requested_stage}")
-            else:
-                self.run_single_stage()
+            self.run_single_stage()
 
         if self.stages_info.failed:
             mx.abort('Exiting the benchmark due to the failure.')
@@ -1581,21 +1631,69 @@ class NativeImageVM(GraalVm):
         return StageRunner(self.stages)
 
     def run_single_stage(self):
-        assert not self.stages_info.skip_current_stage
-
-        stage_to_run = self.stages_info.effective_stage
-        if stage_to_run == Stage.AGENT:
+        stage_to_run = self.stages_info.current_stage.stage_name
+        if stage_to_run == StageName.AGENT:
             self.run_stage_agent()
-        elif stage_to_run == Stage.INSTRUMENT_IMAGE:
+        elif stage_to_run == StageName.INSTRUMENT_IMAGE:
             self.run_stage_instrument_image()
-        elif stage_to_run == Stage.INSTRUMENT_RUN:
+        elif stage_to_run == StageName.INSTRUMENT_RUN:
             self.run_stage_instrument_run()
-        elif stage_to_run == Stage.IMAGE:
+        elif stage_to_run == StageName.IMAGE:
             self.run_stage_image()
-        elif stage_to_run == Stage.RUN:
+        elif stage_to_run == StageName.RUN:
             self.run_stage_run()
         else:
             raise ValueError(f"Unknown stage {stage_to_run}")
+
+    def prepare_stages(self, bm_suite: NativeImageBenchmarkMixin, bm_suite_args) -> Tuple[List[Stage], List[Stage]]:
+        # Default stages for chosen benchmark suite
+        stages = [Stage.from_string(s) for s in bm_suite.default_stages()]
+        # Removal of stages incompatible with the chosen VM config
+        stages = self._remove_stages(stages)
+        # Is this a layered native image benchmark?
+        complete_stage_list = self._layerize_stages(bm_suite, bm_suite_args, stages)
+        # Take user input as final filter
+        effective_stages = bm_suite.filter_stages_with_cli_requested_stages(bm_suite_args, complete_stage_list)
+        return effective_stages, complete_stage_list
+
+    def _remove_stages(self, stages: List[Stage]) -> List[Stage]:
+        # These stages are not executed, even if explicitly requested.
+        # Some configurations don't need to/can't run certain stages
+        removed_stages: Set[StageName] = set()
+
+        if self.jdk_profiles_collect:
+            # forbid image build/run in the profile collection execution mode
+            removed_stages.update([StageName.IMAGE, StageName.RUN])
+        if self.profile_inference_feature_extraction or self.profile_inference_debug:
+            # do not run the image in the profile inference feature extraction or debug mode
+            removed_stages.add(StageName.RUN)
+        if self.async_sampler:
+            removed_stages.update([StageName.INSTRUMENT_IMAGE, StageName.INSTRUMENT_RUN])
+        if not self.pgo_instrumentation:
+            removed_stages.update([StageName.INSTRUMENT_IMAGE, StageName.INSTRUMENT_RUN])
+        if self.layered:
+            # Layers have not yet been tested with PGO, unknown what would happen
+            removed_stages.update([StageName.INSTRUMENT_IMAGE, StageName.INSTRUMENT_RUN])
+
+        return [s for s in stages if s.stage_name not in removed_stages]
+
+    def _layerize_stages(self, bm_suite, bm_suite_args, stages: List[Stage]) -> List[Stage]:
+        if not self.layered:
+            return stages
+
+        if not isinstance(bm_suite, LayeredNativeImageBundleBasedBenchmarkMixin):
+            mx.abort(f"The selected benchmark suite ({type(bm_suite).__name__}) does not support layered native images!")
+
+        benchmark_layers = bm_suite.layers(bm_suite_args)
+        layered_stages = []
+        for s in stages:
+            assert not s.is_layered(), f"Stage {s} contains layer information before it should!"
+            if not s.is_image():
+                layered_stages.append(s)
+                continue
+            for layer in benchmark_layers:
+                layered_stages.append(Stage(s.stage_name, layer))
+        return layered_stages
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
@@ -3532,7 +3630,41 @@ def strip_args_with_number(strip_args, args):
     return list(result)
 
 
-class Stage(Enum):
+@dataclass(frozen = True)
+class Stage:
+    stage_name: StageName
+    layer_info: Layer = None
+
+    @staticmethod
+    def from_string(s: str) -> Stage:
+        return Stage(StageName(s))
+
+    def is_image(self) -> bool:
+        return self.stage_name.is_image()
+
+    def is_instrument(self) -> bool:
+        return self.stage_name.is_instrument()
+
+    def is_agent(self) -> bool:
+        return self.stage_name.is_agent()
+
+    def is_final(self) -> bool:
+        return self.stage_name.is_final()
+
+    def is_layered(self) -> bool:
+        return self.layer_info is not None
+
+    def is_requested(self, request: str):
+        """Whether the 'request' is equal to either the full name of the stage or it's name without layer info."""
+        return str(self) == request or str(self.stage_name) == request
+
+    def __str__(self):
+        if not self.is_layered():
+            return str(self.stage_name)
+        return f"{self.stage_name}-{self.layer_info}"
+
+
+class StageName(Enum):
     AGENT = "agent"
     INSTRUMENT_IMAGE = "instrument-image"
     INSTRUMENT_RUN = "instrument-run"
@@ -3544,11 +3676,26 @@ class Stage(Enum):
 
     def is_image(self) -> bool:
         """Whether this is an image stage (a stage that performs an image build)"""
-        return self in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE]
+        return self in [StageName.INSTRUMENT_IMAGE, StageName.IMAGE]
 
     def is_instrument(self) -> bool:
         """Whether this is an image stage (a stage that performs an image build)"""
-        return self in [Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN]
+        return self in [StageName.INSTRUMENT_IMAGE, StageName.INSTRUMENT_RUN]
+
+    def is_agent(self) -> bool:
+        return self == StageName.AGENT
+
+    def is_final(self) -> bool:
+        return self in [StageName.IMAGE, StageName.RUN]
+
+@dataclass(frozen = True)
+class Layer:
+    index: int
+    is_shared_library: bool
+
+    def __str__(self):
+        return f"layer{self.index}"
+
 
 class StagesInfo:
     """
@@ -3557,92 +3704,66 @@ class StagesInfo:
 
     Is used to pass data between the benchmark suite and the underlying :class:`mx_benchmark.Vm`.
 
-    The information about the stages comes from two layers:
+    The information about the stages is entirely computed within :meth:`NativeImageVM.prepare_stages`. There are two
+    lists of significance:
+    * The stages that are actually executed for this benchmark, returned by :attr:`effective_stages`.
+    * The complete list of stages that are required by the selected VM and benchmark combination,
+    returned by :attr:`complete_stage_list`.
 
-    * The stages requested by the user and passed into the object during creation
-    * And the effectively executed stages, which are determined in the `NativeImageBenchmarkConfig` class and passed to
-      this object the first time we call into the ``NativeImageVM``.
-      The effective stages are determined by removing stages that don't need to run in the current benchmark
-      configuration from the requested changes.
-      This information is only available if :attr:`is_set_up` returns ``True``.
+    The stages actually executed are a subset of the complete list of stages. If no filtering of stages is made by the
+    user, then these two lists will be identical.
     """
 
-    def __init__(self, requested_stages: List[Stage], fallback_mode: bool = False):
+    def __init__(self, effective_stages: List[Stage], complete_stage_list: List[Stage], vm_used_for_stages: NativeImageVM, fallback_mode: bool = False):
         """
-        :param requested_stages: List of stages requested by the user. See also :meth:`NativeImageBenchmarkMixin.stages`
-                                 and :attr:`StagesInfo.effective_stages`
+        :param effective_stages:    List of stages that will actually be executed in the benchmark.
+                                     See also :meth:`NativeImageBenchmarkMixin.filter_stages_with_cli_requested_stages`
+        :param complete_stage_list: List of all stages required by the VM and selected benchmark, not impacted by user
+                                     requests made through command line options.
+                                     See also :meth:`NativeImageBenchmarkMixin.prepare_stages`
+        :param vm_used_for_stages:  Virtual machine used in the computation of stages.
+        :param fallback_mode:       Whether the legacy mode of executing stages should be used in the benchmark.
+                                     See also :meth:`NativeImageVM.run_java`
         """
-        self._is_set_up: bool = False
-        self._requested_stages = requested_stages
-        self._removed_stages: Set[Stage] = set()
-        self._effective_stages: Optional[List[Stage]] = None
+        self._complete_stage_list: List[Stage] = complete_stage_list
+        self._effective_stages: List[Stage] = effective_stages
+        self._current_stage: Optional[Stage] = None
+        self._current_stage_index: int = -1
         self._stages_till_now: List[Stage] = []
-        self._requested_stage: Optional[Stage] = None
-        # Computed lazily
-        self._skip_current_stage: Optional[bool] = None
+        self._vm_used_for_stages: mx_benchmark.Vm = vm_used_for_stages
         self._failed: bool = False
-        self._fallback_mode = fallback_mode
+        self._fallback_mode: bool = fallback_mode
 
     @property
     def fallback_mode(self) -> bool:
         return self._fallback_mode
 
     @property
-    def is_set_up(self) -> bool:
-        return self._is_set_up
-
-    def setup(self, removed_stages: Set[Stage]) -> None:
-        """
-        Fully configures the object with information about removed stages.
-
-        From that, the effective list of stages can be computed.
-        Only after this method is called for the first time can the effective stages be accessed
-
-        :param removed_stages: Set of stages that should not be executed under this benchmark configuration
-        """
-        if self.is_set_up:
-            # This object is used again for an additional stage.
-            # Sanity check to make sure the removed stages are the same as in the first call
-            assert self._removed_stages == removed_stages, f"Removed stages differ between executed stages: {self._removed_stages} != {removed_stages}"
-        else:
-            self._removed_stages = removed_stages
-            # requested_stages - removed_stages while preserving order of requested_stages
-            self._effective_stages = [s for s in self._requested_stages if s not in removed_stages]
-            self._is_set_up = True
-
-    @property
     def effective_stages(self) -> List[Stage]:
         """
-        List of stages that are actually executed for this benchmark (is equal to requested_stages - removed_stages)
+        List of stages that are actually executed for this benchmark.
+        A subset of the complete stage list.
         """
-        assert self.is_set_up
         return self._effective_stages
 
     @property
-    def skip_current_stage(self) -> bool:
-        if self._skip_current_stage is None:
-            self._skip_current_stage = self.requested_stage not in self.effective_stages
-        return self._skip_current_stage
+    def complete_stage_list(self) -> List[Stage]:
+        """
+        Complete list of stages that are required by the selected VM and benchmark combination.
+        A superset of the effective stages.
+        """
+        return self._complete_stage_list
 
     @property
-    def requested_stage(self) -> Stage:
-        """
-        The stage that was last requested to be executed.
-        It is not guaranteed that this stage will be executed, it could be a skipped stage (see
-        :attr:`StagesInfo.skip_current_stage`)
-
-        Use this for informational output, prefer :attr:`StagesInfo.effective_stage` to compare against the effectively
-        executed stage.
-        """
-        assert self._requested_stage, "No current stage set"
-        return self._requested_stage
+    def vm_used_for_stages(self) -> NativeImageVM:
+        """Virtual machine used in the computation of stages."""
+        return self._vm_used_for_stages
 
     @property
-    def effective_stage(self) -> Optional[Stage]:
-        """
-        Same as :meth:`StagesInfo.requested_stage`, but returns None if the stage is skipped.
-        """
-        return None if self.skip_current_stage else self.requested_stage
+    def current_stage(self) -> Stage:
+        """The stage that is currently being executed."""
+        assert self._current_stage, "No current stage set"
+        return self._current_stage
 
     @property
     def last_stage(self) -> Stage:
@@ -3661,22 +3782,26 @@ class StagesInfo:
         """
         return self._stages_till_now
 
-    def change_stage(self, stage_name: Stage) -> None:
-        self._requested_stage = stage_name
-        # Force recomputation
-        self._skip_current_stage = None
+    def has_next_stage(self) -> bool:
+        """Whether there are more stages to be executed in the benchmark."""
+        return self._current_stage_index + 1 < len(self.effective_stages)
+
+    def next_stage(self) -> Stage:
+        """Progress to the next stage in the list of effective stages."""
+        self._current_stage_index += 1
+        assert self._current_stage_index < len(self.effective_stages), "Next stage requested after all have been executed"
+        self._current_stage = self.effective_stages[self._current_stage_index]
+        return self.current_stage
 
     def success(self) -> None:
-        assert self.is_set_up
         """Called when the current stage has finished successfully"""
-        self._stages_till_now.append(self.requested_stage)
+        self._stages_till_now.append(self.current_stage)
 
     def fail(self) -> None:
-        assert self.is_set_up
         """Called when the current stage finished with an error"""
         self._failed = True
 
-    def should_produce_datapoints(self, stages: Union[None, Stage, Collection[Stage]] = None) -> bool:
+    def should_produce_datapoints(self, stages: Union[None, StageName, Collection[StageName]] = None) -> bool:
         """
         Whether, under the current configuration, datapoints should be produced for any of the given stage.
 
@@ -3687,17 +3812,29 @@ class StagesInfo:
         """
 
         if not stages:
-            stages = [self.effective_stage]
+            stages = [self.current_stage.stage_name]
         elif not isinstance(stages, collections.abc.Collection):
             stages = [stages]
 
         if self.fallback_mode:
             # In fallback mode, all datapoints are generated at once and not in a specific stage, checking whether the
             # given stage matches the current stage will almost never yield the sensible result
-            return not {Stage.IMAGE, Stage.RUN}.isdisjoint(stages)
+            return not any([s.is_final() for s in stages])
         else:
-            return self.effective_stage in stages
+            return self.current_stage.stage_name in stages
 
+    def get_latest_image_stage(self) -> Optional[Stage]:
+        if self.current_stage.is_image():
+            return self.current_stage
+
+        latest_image_stage = None
+        for stage in self.complete_stage_list:
+            if stage == self.current_stage:
+                return latest_image_stage
+            if stage.is_image():
+                latest_image_stage = stage
+        complete_stage_list_stringified = ', '.join([str(s) for s in self.complete_stage_list])
+        mx.abort(f"Could not find current stage '{self.current_stage}' in complete list of stages: [{complete_stage_list_stringified}]!")
 
 class NativeImageBenchmarkMixin(object):
     """
@@ -3813,20 +3950,19 @@ class NativeImageBenchmarkMixin(object):
             return super_delegate.run(benchmarks, bm_suite_args)
 
         datapoints: List[DataPoint] = []
-
-        requested_stages = self.stages(bm_suite_args)
-
         fallback_reason = self.fallback_mode_reason(bm_suite_args)
-        if fallback_reason:
+
+        vm = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args)
+        effective_stages, complete_stage_list = vm.prepare_stages(self, bm_suite_args)
+        self.stages_info = StagesInfo(effective_stages, complete_stage_list, vm, bool(fallback_reason))
+
+        if self.stages_info.fallback_mode:
             # In fallback mode, all stages are run at once. There is matching code in `NativeImageVM.run_java` for this.
             mx.log(f"Running benchmark in fallback mode (reason: {fallback_reason})")
-            self.stages_info = StagesInfo(requested_stages, True)
             datapoints += super_delegate.run(benchmarks, bm_suite_args)
         else:
-            self.stages_info = StagesInfo(requested_stages)
-
-            for stage in requested_stages:
-                self.stages_info.change_stage(stage)
+            while self.stages_info.has_next_stage():
+                stage = self.stages_info.next_stage()
                 # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
                 # determine which stage to run this time.
                 stage_dps = super_delegate.run(benchmarks, bm_suite_args)
@@ -3847,14 +3983,17 @@ class NativeImageBenchmarkMixin(object):
         :param stage: The stage the datapoints were generated in
         """
 
-        if stage == Stage.AGENT:
+        if stage.is_agent():
             host_vm_suffix = "-agent"
-        elif stage in [Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN]:
+        elif stage.is_instrument():
             host_vm_suffix = "-instrument"
-        elif stage in [Stage.IMAGE, Stage.RUN]:
+        elif stage.is_final():
             host_vm_suffix = ""
         else:
             raise ValueError(f"Unknown stage {stage}")
+
+        if stage.is_layered() and stage.layer_info.is_shared_library:
+            host_vm_suffix += f"-layer{stage.layer_info.index}"
 
         for dp in dps:
             dp["host-vm-config"] += host_vm_suffix
@@ -3864,7 +4003,7 @@ class NativeImageBenchmarkMixin(object):
         # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
         # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
         # produced in the corresponding run stages.
-        if stage in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN] and self.stages_info.should_produce_datapoints(stage):
+        if not stage.is_image() and self.stages_info.should_produce_datapoints(stage.stage_name):
             final_command = self.apply_command_mapper_hooks(command, vm)
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
@@ -3952,24 +4091,34 @@ class NativeImageBenchmarkMixin(object):
         else:
             return None
 
-    def stages(self, bm_suite_args: List[str]) -> List[Stage]:
+    def filter_stages_with_cli_requested_stages(self, bm_suite_args: List[str], stages: List[Stage]) -> List[Stage]:
         """
-        Benchmark stages requested by the user with ``-Dnative-image.benchmark.stages=``.
-
-        Falls back to :meth:`NativeImageBenchmarkMixin.default_stages` if not specified.
+        If the `-Dnative-image.benchmark.stages=` arg is present, filter out any stage that is not requested.
+        A stage is requested if:
+         * it's name without layer information is specified
+           (e.g. '-Dnative-image.benchmark.stages=image' means all stages with the 'image' stage name are requested,
+           for standalone images this means the 'image' stage, for layered images this means every 'image-layer*'
+           stage)
+         * it's full name is specified
+           (e.g. '-Dnative-image.benchmark.stages=image-layer0' means that just the 'image' stage for the 0th layer is
+           requested)
         """
         args = self.vmArgs(bm_suite_args)
         parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        if not parsed_arg:
+            return stages
 
+        # Abort if fallback_mode is on
         fallback_reason = self.fallback_mode_reason(bm_suite_args)
-        if parsed_arg and fallback_reason:
+        if fallback_reason:
             mx.abort(
                 "This benchmarking configuration is running in fallback mode and does not support selection of benchmark stages using -Dnative-image.benchmark.stages"
                 f"Reason: {fallback_reason}\n"
                 f"Arguments: {bm_suite_args}"
             )
 
-        return list(map(Stage, parsed_arg.split(',') if parsed_arg else self.default_stages()))
+        cli_requested_stages = parsed_arg.split(',')
+        return [s for s in stages if any(s.is_requested(requested) for requested in cli_requested_stages)]
 
     def default_stages(self) -> List[str]:
         """Default list of stages to run if none have been specified."""
@@ -4258,7 +4407,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             with PatchEnv(self.get_image_env()):
                 return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
-            if stage == Stage.RUN:
+            if stage.stage_name == StageName.RUN:
                 serverCommandWithTracker = self.apply_command_mapper_hooks(server_command, vm)
 
                 mx_benchmark.disable_tracker()
@@ -4309,7 +4458,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 return returnCode
-            elif stage in [Stage.AGENT, Stage.INSTRUMENT_RUN]:
+            elif stage.stage_name in [StageName.AGENT, StageName.INSTRUMENT_RUN]:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
                 with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
@@ -4484,6 +4633,55 @@ class NativeImageBundleBasedBenchmarkMixin(object):
     def get_bundle_path(self):
         if self.uses_bundles():
             return self._get_single_file_with_extension_from_dist(".nib")
+
+
+class LayeredNativeImageBundleBasedBenchmarkMixin(NativeImageBundleBasedBenchmarkMixin):
+    """
+    Mixin for Native Image Bundle (NIB) based benchmark suites that contain benchmarks that
+    can be built as layered images. The implementing benchmark suite can support layered images
+    for a subset of its benchmarks. Benchmarks that support layered images can also run in
+    standalone mode. The layered image mode is triggered with the `layered` vm config modifier.
+
+    Any class implementing this mixin should also implement the
+    `mx_sdk_benchmark.NativeImageBenchmarkMixin` mixin.
+    """
+    def layers(self, bm_suite_args: List[str]) -> List[Layer]:
+        """
+        Produces layer information for each layer that the currently running benchmark contains.
+        This information is used in order to construct the list of benchmark stages to be run.
+        This method should abort if the currently running benchmark does not support layered
+        images. This method is invoked only if the VM is configured with the `layered` modifier.
+        """
+        raise NotImplementedError()
+
+    def get_bundle_path(self) -> str:
+        """
+        Returns the path to the bundle corresponding to the current benchmark and latest layer.
+        If the current benchmark execution is not layered, then returns the path to the standalone
+        bundle corresponding to the current benchmark.
+        """
+        benchmark = self.benchmarkName()
+        layer_info = self.get_latest_layer()
+        if layer_info is None:
+            return self.get_bundle_path_for_benchmark_standalone(benchmark)
+        return self.get_bundle_path_for_benchmark_layer(benchmark, layer_info)
+
+    def get_latest_layer(self) -> Optional[Layer]:
+        """
+        Returns the latest layer, which is:
+         * the current layer if in an IMAGE stage
+         * the layer of the latest preceding IMAGE stage if in a RUN stage
+        The value returned should be `None` if the benchmark is running in standalone mode.
+        """
+        raise NotImplementedError()
+
+    def get_bundle_path_for_benchmark_standalone(self, benchmark: str) -> str:
+        """Returns the path to the standalone bundle corresponding to the specified benchmark."""
+        raise NotImplementedError()
+
+    def get_bundle_path_for_benchmark_layer(self, benchmark: str, layer_info: Layer) -> str:
+        """Returns the path to the layered bundle corresponding to the specified benchmark and layer."""
+        raise NotImplementedError()
 
 
 class PatchEnv:

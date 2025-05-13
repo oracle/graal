@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -206,6 +206,9 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> ReplaceInputsWithConstantsBasedOnStamps = new OptionKey<>(true);
+
+    @Option(help = "", type=OptionType.Debug)
+    public static final OptionKey<Boolean> EnableFixReadsConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "Uses deoptimization to prune branches of code in the generated code that have never " +
                    "been executed by the interpreter.", type = OptionType.Expert)

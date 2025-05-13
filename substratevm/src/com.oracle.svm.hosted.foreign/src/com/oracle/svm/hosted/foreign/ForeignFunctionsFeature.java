@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.foreign;
 import static java.lang.invoke.MethodHandles.exactInvoker;
 import static java.lang.invoke.MethodHandles.insertArguments;
 
+import java.io.FileDescriptor;
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DirectMethodHandleDesc.Kind;
 import java.lang.foreign.FunctionDescriptor;
@@ -47,8 +48,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -59,6 +62,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationFile;
@@ -67,6 +71,7 @@ import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -76,6 +81,8 @@ import com.oracle.svm.core.foreign.JavaEntryPointInfo;
 import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
+import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
+import com.oracle.svm.core.foreign.Target_java_nio_MappedMemoryUtils;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -83,20 +90,31 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.internal.misc.ScopedMemoryAccess.ScopedAccessError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -104,6 +122,9 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
                     "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64", "jdk.vm.ci.aarch64"},
                     "java.base", new String[]{
+                                    "jdk.internal.access.foreign",
+                                    "jdk.internal.misc",
+                                    "jdk.internal.util",
                                     "jdk.internal.foreign",
                                     "jdk.internal.foreign.abi",
                                     "jdk.internal.foreign.abi.aarch64",
@@ -125,6 +146,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     private final Set<DirectUpcallDesc> registeredDirectUpcalls = ConcurrentHashMap.newKeySet();
     private int directUpcallCount = -1;
+
+    private final EconomicSet<ResolvedJavaType> neverAccessesSharedArena = EconomicSet.create();
+
+    private final EconomicSet<ResolvedJavaMethod> neverAccessesSharedArenaMethods = EconomicSet.create();
 
     @Fold
     public static ForeignFunctionsFeature singleton() {
@@ -214,7 +239,28 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
     }
 
-    ForeignFunctionsFeature() {
+    private final class SharedArenaSupportImpl implements SharedArenaSupport {
+
+        @Override
+        public BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase() {
+            PhaseSuite<MidTierContext> sharedArenaPhases = new PhaseSuite<>();
+            sharedArenaPhases.appendPhase(new SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase.create()));
+            /*
+             * After we injected all necessary scope wide session checks we need to cleanup any new,
+             * potentially repetitive, control flow logic.
+             */
+            sharedArenaPhases.appendPhase(new IterativeConditionalEliminationPhase(CanonicalizerPhase.create(), false));
+            sharedArenaPhases.appendPhase(CanonicalizerPhase.create());
+            return sharedArenaPhases;
+        }
+
+        @Override
+        public void registerSafeArenaAccessorClass(AnalysisMetaAccess metaAccess, Class<?> klass) {
+            ForeignFunctionsFeature.this.registerSafeArenaAccessorClass(metaAccess, klass);
+        }
+    }
+
+    protected ForeignFunctionsFeature() {
         /*
          * We intentionally add these exports in the constructor to avoid access errors from plugins
          * when the feature is disabled in the config.
@@ -229,7 +275,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
         if (!SubstrateOptions.ForeignAPISupport.getValue()) {
             return false;
         }
-        UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "Support for the Foreign Function and Memory API is available only with JDK 22 and later.");
         UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
         return true;
     }
@@ -242,6 +287,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
+        ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurations(getConfigurationParser(imageClassLoader), imageClassLoader, "panama foreign",
@@ -524,6 +570,70 @@ public class ForeignFunctionsFeature implements InternalFeature {
             directUpcallCount = 0;
         }
         ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount(), getCreatedUpcallStubsCount());
+
+        /*
+         * Even if there is no instance of MemorySessionImpl, we will kill the field location of
+         * 'MemorySessionImpl.state' which may trigger registration of the declaring type after the
+         * analysis universe was sealed. So, we eagerly register the field as accessed.
+         */
+        access.registerAsRead(ReflectionUtil.lookupField(MemorySessionImpl.class, "state"), "field location is killed after safepoint");
+        try {
+            initSafeArenaAccessors(access);
+        } catch (Throwable t) {
+            throw GraalError.shouldNotReachHere(t);
+        }
+    }
+
+    /**
+     * Remember a set of known methods that frequently appear in scoped memory access methods as
+     * callees. Not all of those callees have to be inlined because some of them are SVM specific
+     * and are known to never access a (potentially already closed) memory session. Thus, such
+     * callees can be excluded during verification.
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java")
+    protected void initSafeArenaAccessors(BeforeAnalysisAccessImpl access) throws NoSuchMethodException {
+        MetaAccessProvider metaAccess = access.getMetaAccess();
+
+        registerSafeArenaAccessorClass(metaAccess, FactoryMethodHolder.class);
+        registerSafeArenaAccessorClass(metaAccess, LogUtils.class);
+
+        /*
+         * Some methods that are normally part of the exception handler code for the calls to
+         * checkValidStateRaw
+         */
+        registerSafeArenaAccessorMethod(metaAccess, Supplier.class.getMethod("get"));
+        registerSafeArenaAccessorMethod(metaAccess, VMError.class.getMethod("shouldNotReachHereSubstitution"));
+        registerSafeArenaAccessorMethod(metaAccess, ScopedAccessError.class.getMethod("newRuntimeException"));
+        registerSafeArenaAccessorMethod(metaAccess, Throwable.class.getMethod("getMessage"));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(Throwable.class, "fillInStackTrace", int.class));
+
+        /*
+         * Calls to the following methods may remain in the @Scoped-annotated methods because they
+         * don't actually access the native memory in a way that it could lead to a crash. They do
+         * syscalls which can handle unmapped memory gracefully. However, any changes in class
+         * 'MappedMemoryUtils' must be carefully considered!
+         */
+        Class<?> mappedMemoryUtils = Target_java_nio_MappedMemoryUtils.class;
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "force", FileDescriptor.class, long.class, boolean.class, long.class, long.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "isLoaded", long.class, boolean.class, long.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "unload", long.class, boolean.class, long.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(SubstrateMappedMemoryUtils.class, "load", long.class, boolean.class, long.class));
+    }
+
+    protected void registerSafeArenaAccessorClass(MetaAccessProvider metaAccess, Class<?> klass) {
+        neverAccessesSharedArena.add(metaAccess.lookupJavaType(klass));
+    }
+
+    protected void registerSafeArenaAccessorMethod(MetaAccessProvider metaAccess, Executable method) {
+        neverAccessesSharedArenaMethods.add(metaAccess.lookupJavaMethod(method));
+    }
+
+    public EconomicSet<ResolvedJavaType> getNeverAccessesSharedArena() {
+        return neverAccessesSharedArena;
+    }
+
+    public EconomicSet<ResolvedJavaMethod> getNeverAccessesSharedArenaMethods() {
+        return neverAccessesSharedArenaMethods;
     }
 
     @Override

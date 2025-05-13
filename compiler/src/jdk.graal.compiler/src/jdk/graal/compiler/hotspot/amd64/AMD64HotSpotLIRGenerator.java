@@ -625,12 +625,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public int getArrayLengthOffset() {
-        return config.arrayOopDescLengthOffset();
+        return config.arrayLengthOffsetInBytes;
     }
 
     @Override
-    public Register getHeapBaseRegister() {
-        return getProviders().getRegisters().getHeapBaseRegister();
+    public boolean isReservedRegister(Register r) {
+        return getProviders().getRegisters().isReservedRegister(r);
     }
 
     // no need to call super because HotSpot already overrides the value according to the CPU

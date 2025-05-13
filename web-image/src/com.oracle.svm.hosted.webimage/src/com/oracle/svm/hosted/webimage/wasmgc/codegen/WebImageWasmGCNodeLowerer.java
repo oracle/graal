@@ -32,6 +32,7 @@ import java.util.Set;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
+import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -45,6 +46,7 @@ import com.oracle.svm.hosted.webimage.codegen.node.WriteIdentityHashCodeNode;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyNode;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.WasmJSCounterparts;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
@@ -283,11 +285,14 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
             case JSBodyNode jsBody -> lowerJSBody(jsBody);
             case JSBodyWithExceptionNode jsBody -> lowerJSBody(jsBody);
             case WordCastNode wordCast -> lowerWordCast(wordCast);
+            case FloatingWordCastNode wordCast -> lowerFloatingWordCast(wordCast);
             default -> {
                 assert !isForbiddenNode(n) : reportForbiddenNode(n);
+                if (WebImageOptions.DebugOptions.VerificationPhases.getValue()) {
+                    throw GraalError.shouldNotReachHere("Tried to lower unknown node: " + n);
+                }
                 // TODO GR-47009 Stop generating stub code.
                 yield getStub(n);
-                // throw GraalError.shouldNotReachHere("Tried to lower unknown node: " + n);
             }
         };
     }
@@ -1078,7 +1083,8 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         return returnValue;
     }
 
-    private Instruction lowerWordCast(WordCastNode n) {
+    @Override
+    protected Instruction lowerWordCast(WordCastNode n) {
         // TODO GR-60168 Eliminate WordCastNodes completely. They are fundamentally not supportable
         // under WasmGC
         logError("This method should never be reached and cannot be supported.");

@@ -36,6 +36,11 @@ public abstract class PLTGOTConfiguration {
     protected MethodAddressResolver methodAddressResolver;
 
     @Fold
+    public static boolean isEnabled() {
+        return ImageSingletons.contains(PLTGOTConfiguration.class);
+    }
+
+    @Fold
     public static PLTGOTConfiguration singleton() {
         return ImageSingletons.lookup(PLTGOTConfiguration.class);
     }
