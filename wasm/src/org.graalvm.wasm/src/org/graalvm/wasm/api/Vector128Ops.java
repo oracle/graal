@@ -51,7 +51,10 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
+import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorShuffle;
+import jdk.incubator.vector.VectorSpecies;
 import org.graalvm.wasm.constants.Bytecode;
 
 import java.util.Arrays;
@@ -158,17 +161,13 @@ public class Vector128Ops {
 
     // Checkstyle: stop method name check
 
-    public static byte[] v128_const(byte[] vec) {
-        return vec;
-    }
-
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] i8x16_shuffle(byte[] x, byte[] y, byte[] indices) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < BYTE_LENGTH; i++) {
-            result[i] = indices[i] < BYTE_LENGTH ? x[indices[i]] : y[indices[i] - BYTE_LENGTH];
-        }
-        return result;
+    public static ByteVector i8x16_shuffle(ByteVector xBytes, ByteVector yBytes, ByteVector indicesBytes) {
+        ByteVector x = cast(xBytes);
+        ByteVector y = cast(yBytes);
+        ByteVector indices = cast(indicesBytes);
+        VectorShuffle<Byte> shuffle = indices.add((byte) (-2 * BYTES), indices.lt((byte) BYTES).not()).toShuffle();
+        return cast(x.rearrange(shuffle, y));
     }
 
     public static int i8x16_extract_lane(byte[] bytes, int laneIndex, int vectorOpcode) {
@@ -331,7 +330,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int v128_any_true(ByteVector vec) {
-        return BYTE_128_CLASS.cast(vec).eq((byte) 0).allTrue() ? 0 : 1;
+        return cast(vec).eq((byte) 0).allTrue() ? 0 : 1;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -381,8 +380,8 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i32x4_relop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
-        IntVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsInts();
-        IntVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsInts();
+        IntVector x = cast(xBytes).reinterpretAsInts();
+        IntVector y = cast(yBytes).reinterpretAsInts();
         VectorOperators.Comparison comparison = switch (vectorOpcode) {
             case Bytecode.VECTOR_I32X4_EQ -> VectorOperators.EQ;
             case Bytecode.VECTOR_I32X4_NE -> VectorOperators.NE;
@@ -396,7 +395,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I32X4_GE_U -> VectorOperators.UGE;
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        return BYTE_128_CLASS.cast(x.compare(comparison, y).toVector().reinterpretAsBytes());
+        return cast(x.compare(comparison, y).toVector().reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -804,7 +803,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i32x4_all_true(ByteVector vecBytes) {
-        IntVector vec = BYTE_128_CLASS.cast(vecBytes).reinterpretAsInts();
+        IntVector vec = cast(vecBytes).reinterpretAsInts();
         return vec.eq(0).anyTrue() ? 0 : 1;
     }
 
@@ -838,8 +837,8 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i32x4_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
-        IntVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsInts();
-        IntVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsInts();
+        IntVector x = cast(xBytes).reinterpretAsInts();
+        IntVector y = cast(yBytes).reinterpretAsInts();
         IntVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_I32X4_ADD -> x.add(y);
             case Bytecode.VECTOR_I32X4_SUB -> x.sub(y);
@@ -850,7 +849,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I32X4_MAX_U -> x.lanewise(VectorOperators.UMAX, y);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        return BYTE_128_CLASS.cast(result.reinterpretAsBytes());
+        return cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1078,8 +1077,8 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector f32x4_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
-        FloatVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsFloats();
-        FloatVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsFloats();
+        FloatVector x = cast(xBytes).reinterpretAsFloats();
+        FloatVector y = cast(yBytes).reinterpretAsFloats();
         FloatVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_F32X4_ADD -> x.add(y);
             case Bytecode.VECTOR_F32X4_SUB -> x.sub(y);
@@ -1091,7 +1090,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_PMAX -> x.blend(y, x.compare(VectorOperators.LT, y));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        return BYTE_128_CLASS.cast(result.reinterpretAsBytes());
+        return cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1133,8 +1132,8 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector f64x2_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
-        DoubleVector x = BYTE_128_CLASS.cast(xBytes).reinterpretAsDoubles();
-        DoubleVector y = BYTE_128_CLASS.cast(yBytes).reinterpretAsDoubles();
+        DoubleVector x = cast(xBytes).reinterpretAsDoubles();
+        DoubleVector y = cast(yBytes).reinterpretAsDoubles();
         DoubleVector result = switch (vectorOpcode) {
             case Bytecode.VECTOR_F64X2_ADD -> x.add(y);
             case Bytecode.VECTOR_F64X2_SUB -> x.sub(y);
@@ -1146,7 +1145,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_PMAX -> x.blend(y, x.compare(VectorOperators.LT, y));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        return BYTE_128_CLASS.cast(result.reinterpretAsBytes());
+        return cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1305,38 +1304,38 @@ public class Vector128Ops {
     }
 
     public static ByteVector fromArray(byte[] bytes, int offset) {
-        return BYTE_128_CLASS.cast(ByteVector.fromArray(ByteVector.SPECIES_128, bytes, offset));
+        return cast(ByteVector.fromArray(ByteVector.SPECIES_128, bytes, offset));
     }
 
     public static ByteVector fromArray(short[] shorts) {
-        return BYTE_128_CLASS.cast(ShortVector.fromArray(ShortVector.SPECIES_128, shorts, 0).reinterpretAsBytes());
+        return cast(ShortVector.fromArray(ShortVector.SPECIES_128, shorts, 0).reinterpretAsBytes());
     }
 
     public static ByteVector fromArray(int[] ints) {
-        return BYTE_128_CLASS.cast(IntVector.fromArray(IntVector.SPECIES_128, ints, 0).reinterpretAsBytes());
+        return cast(IntVector.fromArray(IntVector.SPECIES_128, ints, 0).reinterpretAsBytes());
     }
 
     public static ByteVector fromArray(long[] longs) {
-        return BYTE_128_CLASS.cast(LongVector.fromArray(LongVector.SPECIES_128, longs, 0).reinterpretAsBytes());
+        return cast(LongVector.fromArray(LongVector.SPECIES_128, longs, 0).reinterpretAsBytes());
     }
 
     public static ByteVector broadcast(byte value) {
-        return BYTE_128_CLASS.cast(ByteVector.broadcast(ByteVector.SPECIES_128, value));
+        return cast(ByteVector.broadcast(ByteVector.SPECIES_128, value));
     }
 
     public static ByteVector broadcast(short value) {
-        return BYTE_128_CLASS.cast(ShortVector.broadcast(ShortVector.SPECIES_128, value).reinterpretAsBytes());
+        return cast(ShortVector.broadcast(ShortVector.SPECIES_128, value).reinterpretAsBytes());
     }
 
     public static ByteVector broadcast(int value) {
-        return BYTE_128_CLASS.cast(IntVector.broadcast(IntVector.SPECIES_128, value).reinterpretAsBytes());
+        return cast(IntVector.broadcast(IntVector.SPECIES_128, value).reinterpretAsBytes());
     }
 
     public static ByteVector broadcast(long value) {
-        return BYTE_128_CLASS.cast(LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsBytes());
+        return cast(LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsBytes());
     }
 
     public static byte[] toArray(ByteVector vec) {
-        return BYTE_128_CLASS.cast(vec).toArray();
+        return cast(vec).toArray();
     }
 }

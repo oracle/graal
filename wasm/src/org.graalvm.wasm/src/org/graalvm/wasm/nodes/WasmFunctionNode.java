@@ -2603,6 +2603,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushVector128(frame, stackPointer++, vector);
                 break;
             }
+            case Bytecode.VECTOR_I8X16_SHUFFLE: {
+                final ByteVector indices = Vector128Ops.fromArray(bytecode, offset);
+                offset += 16;
+
+                ByteVector y = popVector128(frame, --stackPointer);
+                ByteVector x = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i8x16_shuffle(x, y, indices);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_I8X16_SWIZZLE:
             case Bytecode.VECTOR_I8X16_EQ:
             case Bytecode.VECTOR_I8X16_NE:
