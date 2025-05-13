@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -136,7 +136,7 @@ public abstract class Layout {
     protected abstract static class Access {
         /** @since 19.0 */
         protected Access() {
-            if (!getClass().getName().startsWith("com.oracle.truffle.object.")) {
+            if (!getClass().getName().startsWith("com.oracle.truffle.api.object.")) {
                 throw new IllegalAccessError();
             }
         }

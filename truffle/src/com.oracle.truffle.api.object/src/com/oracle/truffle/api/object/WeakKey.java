@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 
-/**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
- */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+final class WeakKey<K> extends WeakReference<K> {
+
+    private final int hashCode;
+
+    WeakKey(K key) {
+        super(key);
+        this.hashCode = key.hashCode();
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    WeakKey(K key, ReferenceQueue<K> q) {
+        super(key, q);
+        this.hashCode = key.hashCode();
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    public int hashCode() {
+        return hashCode;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        Object thisKey = get();
+        if (thisKey == null) {
+            // If referent is null, only equal if this == obj.
+            return false;
+        }
+        Object otherKey;
+        if (obj instanceof WeakKey<?>) {
+            otherKey = ((WeakKey<?>) obj).get();
+        } else {
+            // Comparing against an unwrapped key.
+            otherKey = obj;
+        }
+        return thisKey.equals(otherKey);
+    }
+
 }

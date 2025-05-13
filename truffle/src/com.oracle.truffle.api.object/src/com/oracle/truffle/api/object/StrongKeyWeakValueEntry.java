@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,63 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.util.Map;
+import java.util.Objects;
 
 /**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
+ * An unmodifiable {@link Map.Entry} with a strongly referenced key and a weakly referenced value.
+ * Used by the shape transition map to allow garbage collection of unused shapes.
  */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+final class StrongKeyWeakValueEntry<K, V> extends WeakReference<V> implements Map.Entry<K, V> {
+    private final K key;
+
+    StrongKeyWeakValueEntry(K key, V value) {
+        super(value);
+        this.key = Objects.requireNonNull(key);
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    StrongKeyWeakValueEntry(K key, V value, ReferenceQueue<? super V> queue) {
+        super(value, queue);
+        this.key = Objects.requireNonNull(key);
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    public K getKey() {
+        return key;
+    }
+
+    @Override
+    public V getValue() {
+        return get();
+    }
+
+    @Override
+    public V setValue(V value) {
+        throw ImmutableMap.unmodifiableException();
+    }
+
+    @Override
+    public int hashCode() {
+        return key.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof StrongKeyWeakValueEntry<?, ?> other)) {
+            return false;
+        }
+        return this.key.equals(other.getKey()) && Objects.equals(this.getValue(), other.getValue());
+    }
+
+    @Override
+    public String toString() {
+        return getKey() + "=" + getValue();
     }
 }

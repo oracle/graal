@@ -1,0 +1,202 @@
+/*
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.api.object;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Map;
+import java.util.Objects;
+
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.TruffleOptions;
+
+/** @since 0.17 or earlier */
+@SuppressWarnings("deprecation")
+abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
+    private static final int INT_TO_DOUBLE_FLAG = 1;
+    private static final int INT_TO_LONG_FLAG = 2;
+
+    /** @since 0.17 or earlier */
+    protected final LayoutStrategy strategy;
+    /** @since 0.17 or earlier */
+    protected final Class<? extends DynamicObject> clazz;
+    private final int allowedImplicitCasts;
+
+    /** @since 0.17 or earlier */
+    protected LayoutImpl(Class<? extends DynamicObject> clazz, LayoutStrategy strategy, int implicitCastFlags) {
+        this.strategy = strategy;
+        this.clazz = Objects.requireNonNull(clazz);
+
+        this.allowedImplicitCasts = implicitCastFlags;
+    }
+
+    /** @since 0.17 or earlier */
+    @Override
+    public Class<? extends DynamicObject> getType() {
+        return clazz;
+    }
+
+    @Override
+    protected final Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
+        return newShape(dynamicType, sharedData, flags, null);
+    }
+
+    protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
+
+    /** @since 0.17 or earlier */
+    public boolean isAllowedIntToDouble() {
+        return (allowedImplicitCasts & INT_TO_DOUBLE_FLAG) != 0;
+    }
+
+    /** @since 0.17 or earlier */
+    public boolean isAllowedIntToLong() {
+        return (allowedImplicitCasts & INT_TO_LONG_FLAG) != 0;
+    }
+
+    /** @since 0.17 or earlier */
+    protected abstract boolean hasObjectExtensionArray();
+
+    /** @since 0.17 or earlier */
+    protected abstract boolean hasPrimitiveExtensionArray();
+
+    /** @since 0.17 or earlier */
+    protected abstract int getObjectFieldCount();
+
+    /** @since 0.17 or earlier */
+    protected abstract int getPrimitiveFieldCount();
+
+    /** @since 0.17 or earlier */
+    public abstract ShapeImpl.BaseAllocator createAllocator();
+
+    /** @since 0.17 or earlier */
+    public LayoutStrategy getStrategy() {
+        return strategy;
+    }
+
+    @Override
+    public String toString() {
+        return "Layout[" + clazz.getName() + "]";
+    }
+
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ((CoreLayoutFactory) getFactory()).resetNativeImageState();
+    }
+
+    /**
+     * Preinitializes DynamicObject layouts for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     *
+     * @deprecated method overload for JDK 21 backwards compatibility.
+     */
+    @Deprecated(since = "24.2")
+    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass) {
+        initializeDynamicObjectLayout(dynamicObjectClass, null);
+    }
+
+    /**
+     * Preinitializes DynamicObject layouts for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass, MethodHandles.Lookup lookup) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class), lookup);
+    }
+
+    @SuppressWarnings("static-method")
+    protected abstract static class Support extends Access {
+        protected Support() {
+        }
+
+        protected final void setShapeWithStoreFence(DynamicObject object, Shape shape) {
+            if (shape.isShared()) {
+                VarHandle.storeStoreFence();
+            }
+            super.setShape(object, shape);
+        }
+
+        protected final void grow(DynamicObject object, Shape thisShape, Shape otherShape) {
+            DynamicObjectSupport.grow(object, thisShape, otherShape);
+        }
+
+        protected final void resize(DynamicObject object, Shape thisShape, Shape otherShape) {
+            DynamicObjectSupport.resize(object, thisShape, otherShape);
+        }
+
+        protected final void invalidateAllPropertyAssumptions(Shape shape) {
+            DynamicObjectSupport.invalidateAllPropertyAssumptions(shape);
+        }
+
+        protected final void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
+            DynamicObjectSupport.trimToSize(object, thisShape, otherShape);
+        }
+
+        protected final Map<Object, Object> archive(DynamicObject object) {
+            return DynamicObjectSupport.archive(object);
+        }
+
+        protected final boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
+            return DynamicObjectSupport.verifyValues(object, archive);
+        }
+
+        protected void arrayCopy(Object[] from, Object[] to, int length) {
+            System.arraycopy(from, 0, to, 0, length);
+        }
+
+        protected void arrayCopy(int[] from, int[] to, int length) {
+            System.arraycopy(from, 0, to, 0, length);
+        }
+    }
+
+    static final class CoreAccess extends Support {
+        private CoreAccess() {
+        }
+    }
+
+    static final CoreAccess ACCESS = new CoreAccess();
+}

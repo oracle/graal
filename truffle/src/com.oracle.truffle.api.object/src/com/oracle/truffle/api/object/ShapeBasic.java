@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Assumption;
 
-/**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
- */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+@SuppressWarnings("deprecation")
+final class ShapeBasic extends ShapeImpl {
+    ShapeBasic(com.oracle.truffle.api.object.Layout layout, Object sharedData, Object objectType, int flags, Assumption singleContextAssumption) {
+        super(layout, objectType, sharedData, flags, singleContextAssumption);
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    ShapeBasic(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
+                    Transition transition, BaseAllocator allocator, int flags) {
+        super(layout, parent, objectType, sharedData, propertyMap, transition, allocator, flags);
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @SuppressWarnings("hiding")
+    @Override
+    protected ShapeImpl createShape(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
+                    Transition transition, BaseAllocator allocator, int flags) {
+        return new ShapeBasic(layout, sharedData, parent, objectType, propertyMap, transition, allocator, flags);
     }
 }

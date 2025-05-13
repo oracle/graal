@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.Iterator;
 
 /**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
+ * Immutable property map.
+ *
+ * @since 0.17 or earlier
  */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+abstract class PropertyMap implements ImmutableMap<Object, Property> {
+    /**
+     * @since 0.17 or earlier
+     */
+    protected PropertyMap() {
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    /** @since 0.17 or earlier */
+    public static PropertyMap empty() {
+        if (ObjectStorageOptions.TriePropertyMap) {
+            return TriePropertyMap.empty();
+        } else {
+            return ConsListPropertyMap.empty();
+        }
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
+    /** @since 0.17 or earlier */
+    public abstract Iterator<Object> orderedKeyIterator();
+
+    /** @since 0.17 or earlier */
+    public abstract Iterator<Object> reverseOrderedKeyIterator();
+
+    /** @since 0.17 or earlier */
+    public abstract Iterator<Property> orderedValueIterator();
+
+    /** @since 0.17 or earlier */
+    public abstract Iterator<Property> reverseOrderedValueIterator();
+
+    /** @since 0.17 or earlier */
+    public abstract Property getLastProperty();
+
+    /** @since 0.17 or earlier */
+    public abstract PropertyMap putCopy(Property element);
+
+    /** @since 0.17 or earlier */
+    public abstract PropertyMap replaceCopy(Property oldValue, Property newValue);
+
+    /** @since 0.17 or earlier */
+    public abstract PropertyMap removeCopy(Property value);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
-
-import com.oracle.truffle.api.CompilerDirectives;
+package com.oracle.truffle.api.object;
 
 /**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
+ * Helper methods for accessing property and object flags.
  */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+final class Flags {
+    static final int DEFAULT = 0;
+
+    /** If set, {@code int} values can be implicitly cast to {@code long}. */
+    static final int IMPLICIT_CAST_INT_TO_LONG = 1 << 0;
+    /** If set, {@code int} values can be implicitly cast to {@code double}. */
+    static final int IMPLICIT_CAST_INT_TO_DOUBLE = 1 << 1;
+
+    /** Only set property if it already exists. */
+    static final int IF_PRESENT = 1 << 2;
+    /** Only set property if it does not already exist. */
+    static final int IF_ABSENT = 1 << 3;
+    /** Redefine property if it already exists. */
+    static final int UPDATE_FLAGS = 1 << 4;
+
+    /** Define property as constant in the shape. */
+    static final int CONST = 1 << 5;
+    /** Declare property with constant initial value in the shape. */
+    static final int DECLARE = 1 << 6;
+    /** Split off separate shape. */
+    static final int SEPARATE_SHAPE = 1 << 7;
+
+    private Flags() {
+        // do not instantiate
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    private static boolean getFlag(int flags, int flagBit) {
+        return (flags & flagBit) != 0;
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    static boolean isImplicitCastIntToLong(int flags) {
+        return getFlag(flags, IMPLICIT_CAST_INT_TO_LONG);
+    }
+
+    static boolean isImplicitCastIntToDouble(int flags) {
+        return getFlag(flags, IMPLICIT_CAST_INT_TO_DOUBLE);
+    }
+
+    static boolean isSetExisting(int flags) {
+        return getFlag(flags, IF_PRESENT);
+    }
+
+    static boolean isUpdateFlags(int flags) {
+        return getFlag(flags, UPDATE_FLAGS);
+    }
+
+    static boolean isConstant(int flags) {
+        return getFlag(flags, CONST);
+    }
+
+    static boolean isDeclaration(int flags) {
+        return getFlag(flags, DECLARE);
+    }
+
+    static boolean isSeparateShape(int flags) {
+        return getFlag(flags, SEPARATE_SHAPE);
     }
 }

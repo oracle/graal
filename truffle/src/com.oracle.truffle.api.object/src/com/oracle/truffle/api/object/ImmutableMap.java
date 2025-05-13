@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.Map;
 
 /**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
+ * An immutable {@link Map}. Does not permit null keys or values.
+ *
+ * @since 0.17 or earlier
  */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+interface ImmutableMap<K, V> extends Map<K, V> {
+
+    /**
+     * Creates an immutable copy of this map with the given entry put in the map.
+     *
+     * @since 0.17 or earlier
+     */
+    ImmutableMap<K, V> copyAndPut(K key, V value);
+
+    /**
+     * Creates an immutable copy of this map with the given entry removed from the map.
+     *
+     * @since 0.17 or earlier
+     */
+    ImmutableMap<K, V> copyAndRemove(K key);
+
+    @Override
+    default V put(final K key, final V value) {
+        throw unmodifiableException();
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    default void putAll(final Map<? extends K, ? extends V> m) {
+        throw unmodifiableException();
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    default V remove(final Object key) {
+        throw unmodifiableException();
+    }
+
+    @Override
+    default void clear() {
+        throw unmodifiableException();
+    }
+
+    static RuntimeException unmodifiableException() {
+        throw new UnsupportedOperationException();
     }
 }

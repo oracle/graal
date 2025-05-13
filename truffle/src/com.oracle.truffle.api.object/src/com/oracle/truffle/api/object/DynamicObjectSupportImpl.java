@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.List;
 
-/**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
- */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
-    }
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
+final class DynamicObjectSupportImpl extends Accessor.DynamicObjectSupport {
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    public <T> Iterable<T> lookupTruffleService(Class<T> type) {
+        if (type == DefaultExportProvider.class) {
+            return List.of(type.cast(new DynamicObjectLibraryImplGen.DynamicObjectLibraryProvider()));
+        }
+        return List.of();
     }
 }

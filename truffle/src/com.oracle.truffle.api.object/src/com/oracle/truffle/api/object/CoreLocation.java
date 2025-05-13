@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-/**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
- */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+abstract class CoreLocation extends LocationImpl {
+    protected CoreLocation() {
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    public String toString() {
+        String typeString = (this instanceof CoreLocations.TypedLocation ? ((CoreLocations.TypedLocation) this).getType().getSimpleName() : "Object");
+        return typeString + getWhereString();
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    protected final boolean isIntLocation() {
+        return this instanceof CoreLocations.IntLocation;
+    }
+
+    @Override
+    protected final boolean isDoubleLocation() {
+        return this instanceof CoreLocations.DoubleLocation;
+    }
+
+    @Override
+    protected final boolean isLongLocation() {
+        return this instanceof CoreLocations.LongLocation;
+    }
+
+    @Override
+    protected boolean isObjectLocation() {
+        return this instanceof CoreLocations.ObjectLocation;
+    }
+
+    /**
+     * Boxed values need to be compared by value not by reference.
+     *
+     * The first parameter should be the one with the more precise type information.
+     *
+     * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
+     * usually know more about the value to be set.
+     */
+    @SuppressWarnings("deprecation")
+    static boolean valueEquals(Object val1, Object val2) {
+        return val1 == val2 || (val1 != null && equalsBoundary(val1, val2));
+    }
+
+    @TruffleBoundary // equals is blacklisted
+    private static boolean equalsBoundary(Object val1, Object val2) {
+        return val1.equals(val2);
     }
 }

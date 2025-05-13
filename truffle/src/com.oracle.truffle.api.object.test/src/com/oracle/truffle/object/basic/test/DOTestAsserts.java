@@ -119,7 +119,7 @@ public abstract class DOTestAsserts {
 
     private static Location getInternalLocation(Location location) {
         try {
-            Class<?> locations = Class.forName("com.oracle.truffle.object.LocationImpl");
+            Class<?> locations = Class.forName("com.oracle.truffle.api.object.LocationImpl");
             Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
                             m -> m.getName().equals("getInternalLocation")).findFirst().get();
             getInternalLocationMethod.setAccessible(true);
@@ -131,7 +131,7 @@ public abstract class DOTestAsserts {
 
     public static Class<?> getLocationType(Location location) {
         try {
-            Class<?> locations = Class.forName("com.oracle.truffle.object.LocationImpl");
+            Class<?> locations = Class.forName("com.oracle.truffle.api.object.LocationImpl");
             Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
                             m -> m.getName().equals("getType")).findFirst().get();
             getInternalLocationMethod.setAccessible(true);
@@ -148,7 +148,7 @@ public abstract class DOTestAsserts {
 
     public static boolean isCoreLocation(Location location) {
         try {
-            Class<?> locationBaseClass = Class.forName("com.oracle.truffle.object.CoreLocation");
+            Class<?> locationBaseClass = Class.forName("com.oracle.truffle.api.object.CoreLocation");
             return locationBaseClass.isInstance(location);
         } catch (ClassNotFoundException | IllegalArgumentException e) {
             throw new AssertionError(e);

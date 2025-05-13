@@ -38,23 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.lang.reflect.Field;
 
-/**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
- */
-@SuppressWarnings("unused")
+import sun.misc.Unsafe;
+
 final class UnsafeAccess {
+
+    private static final Unsafe UNSAFE = getUnsafe();
+
+    static final long ARRAY_INT_BASE_OFFSET = UNSAFE.arrayBaseOffset(int[].class);
+    static final long ARRAY_INT_INDEX_SCALE = UNSAFE.arrayIndexScale(int[].class);
+
+    @SuppressWarnings("deprecation")
+    static long objectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
+    }
+
+    static Object unsafeGetObject(Object receiver, long offset) {
+        return UNSAFE.getObject(receiver, offset);
+    }
+
+    static void unsafePutObject(Object receiver, long offset, Object value) {
+        UNSAFE.putObject(receiver, offset, value);
+    }
+
+    static long unsafeGetLong(Object receiver, long offset) {
+        return UNSAFE.getLong(receiver, offset);
+    }
+
+    static void unsafePutLong(Object receiver, long offset, long value) {
+        UNSAFE.putLong(receiver, offset, value);
+    }
+
+    @SuppressWarnings("unused")
+    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getLong(receiver, offset);
+    }
+
+    @SuppressWarnings("unused")
+    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
+        UNSAFE.putLong(receiver, offset, value);
+    }
+
     private UnsafeAccess() {
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
     }
 }

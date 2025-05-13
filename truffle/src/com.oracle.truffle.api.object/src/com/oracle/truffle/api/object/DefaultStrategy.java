@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,61 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object;
+package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.Objects;
 
-/**
- * Legacy class for compatibility with JDK 21 native image builds. Unused.
- */
-@SuppressWarnings("unused")
-final class UnsafeAccess {
-    private UnsafeAccess() {
+import com.oracle.truffle.api.object.ShapeImpl.BaseAllocator;
+
+final class DefaultStrategy extends LayoutStrategy {
+    static final LayoutStrategy SINGLETON = new DefaultStrategy();
+
+    private DefaultStrategy() {
     }
 
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    public boolean updateShape(DynamicObject object) {
+        assert object.getShape().isValid();
+        return false;
     }
 
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        throw CompilerDirectives.shouldNotReachHere();
+    @Override
+    public ShapeImpl ensureValid(ShapeImpl newShape) {
+        assert newShape.isValid();
+        return newShape;
+    }
+
+    private static boolean assertLocationInRange(ShapeImpl shape, Location location) {
+        DefaultLayout layout = (DefaultLayout) shape.getLayout();
+        assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
+        assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
+        return true;
+    }
+
+    @Override
+    public ShapeImpl ensureSpace(ShapeImpl shape, Location location) {
+        Objects.requireNonNull(location);
+        assert assertLocationInRange(shape, location);
+        return shape;
+    }
+
+    @Override
+    public BaseAllocator createAllocator(ShapeImpl shape) {
+        return new CoreAllocator(shape);
+    }
+
+    @Override
+    public BaseAllocator createAllocator(LayoutImpl layout) {
+        return new CoreAllocator(layout);
+    }
+
+    @Override
+    protected Location createLocationForValue(ShapeImpl shape, Object value, int putFlags) {
+        return ((CoreAllocator) shape.allocator()).locationForValue(value, true, value != null, putFlags);
+    }
+
+    @Override
+    protected int getLocationOrdinal(Location location) {
+        return CoreLocations.getLocationOrdinal(((CoreLocation) location));
     }
 }
