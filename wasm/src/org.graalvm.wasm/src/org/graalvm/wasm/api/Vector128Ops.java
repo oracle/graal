@@ -799,7 +799,7 @@ public class Vector128Ops {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i32x4_all_true(ByteVector vecBytes) {
         IntVector vec = BYTE_128_CLASS.cast(vecBytes).reinterpretAsInts();
-        return vec.lanewise(VectorOperators.ZOMO).reduceLanes(VectorOperators.AND) == 0 ? 0 : 1;
+        return vec.eq(0).anyTrue() ? 0 : 1;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
