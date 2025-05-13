@@ -44,6 +44,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
+import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
@@ -334,6 +335,8 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
             lower(readIdentityHashCodeNode);
         } else if (node instanceof WriteIdentityHashCodeNode writeIdentityHashCodeNode) {
             lower(writeIdentityHashCodeNode);
+        } else if (node instanceof FloatingWordCastNode floatingWordCastNode) {
+            lower(floatingWordCastNode);
         } else {
             super.dispatch(node);
         }
@@ -965,6 +968,10 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
          * holds reference ptr case via word cast from an object, we simple stick to it and keep the
          * object, which is needed to proceed certain floating decimal buffer operations
          */
+        lowerValue(node.getInput());
+    }
+
+    protected void lower(FloatingWordCastNode node) {
         lowerValue(node.getInput());
     }
 
