@@ -52,17 +52,16 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.ClassForNameSupportFeature;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -188,7 +187,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         AnalysisMethod targetMethod = null;
         DynamicHub initializeBeforeInvoke = null;
         if (member instanceof Method) {
-            int vtableOffset = SubstrateMethodAccessor.STATICALLY_BOUND;
+            int vtableIndex = SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND;
             Class<?> receiverType = null;
             boolean callerSensitiveAdapter = false;
 
@@ -211,18 +210,18 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 /*
                  * The SubstrateMethodAccessor is also used for the implementation of MethodHandle
                  * that are created to do an invokespecial. So non-abstract instance methods have
-                 * both a directTarget and a vtableOffset.
+                 * both a directTarget and a vtableIndex.
                  */
                 if (!targetMethod.isAbstract()) {
                     directTarget = asMethodPointer(targetMethod);
                 }
                 if (!targetMethod.canBeStaticallyBound()) {
-                    vtableOffset = SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED;
+                    vtableIndex = SubstrateMethodAccessor.VTABLE_INDEX_NOT_YET_COMPUTED;
                 }
                 if (callerSensitiveAdapter) {
-                    VMError.guarantee(vtableOffset == SubstrateMethodAccessor.STATICALLY_BOUND, "Caller sensitive adapters should always be statically bound %s", targetMethod);
+                    VMError.guarantee(vtableIndex == SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND, "Caller sensitive adapters should always be statically bound %s", targetMethod);
                 }
-                VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
+                VMError.guarantee(directTarget != null || vtableIndex != SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND, "Must have either a directTarget or a vtableIndex");
                 if (!targetMethod.isStatic()) {
                     receiverType = target.getDeclaringClass();
                 }
@@ -230,7 +229,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(targetMethod.getDeclaringClass());
                 }
             }
-            return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, targetMethod, vtableOffset, initializeBeforeInvoke, callerSensitiveAdapter);
+            return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, targetMethod, vtableIndex, initializeBeforeInvoke, callerSensitiveAdapter);
 
         } else {
             Class<?> holder = targetClass;
@@ -328,7 +327,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 access.registerAsRoot((AnalysisMethod) targetMethod, true, reason);
             }
             /* If the accessor can be used for a virtual call, register virtual root method. */
-            if (accessor instanceof SubstrateMethodAccessor mAccessor && mAccessor.getVTableOffset() != SubstrateMethodAccessor.STATICALLY_BOUND) {
+            if (accessor instanceof SubstrateMethodAccessor mAccessor && mAccessor.getVTableIndex() != SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND) {
                 access.registerAsRoot((AnalysisMethod) targetMethod, false, reason);
             }
             /* Register constructor factory method */
@@ -347,13 +346,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData.setAnalysisAccess(access);
 
         /*
-         * This has to be registered before registering methods below since this causes the analysis
-         * to see SubstrateMethodAccessor.vtableOffset before we register the transformer.
+         * These transformers have to be registered before registering methods below which causes
+         * the analysis to already see SubstrateMethodAccessor.vtableIndex.
          */
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
-        if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "interfaceTypeID"), new ComputeInterfaceTypeID());
-        }
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableIndex"), new ComputeVTableIndex());
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "interfaceTypeID"), new ComputeInterfaceTypeID());
 
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());
@@ -484,7 +481,7 @@ final class SignatureKey {
     }
 }
 
-final class ComputeVTableOffset implements FieldValueTransformerWithAvailability {
+final class ComputeVTableIndex implements FieldValueTransformerWithAvailability {
     @Override
     public boolean isAvailable() {
         return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -494,19 +491,15 @@ final class ComputeVTableOffset implements FieldValueTransformerWithAvailability
     public Object transform(Object receiver, Object originalValue) {
         SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
 
-        if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
+        if (accessor.getVTableIndex() == SubstrateMethodAccessor.VTABLE_INDEX_NOT_YET_COMPUTED) {
             HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
             if (member.canBeStaticallyBound()) {
-                return SubstrateMethodAccessor.STATICALLY_BOUND;
+                return SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND;
             }
-            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), true);
-            } else {
-                return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), false);
-            }
+            return member.getVTableIndex();
         } else {
-            VMError.guarantee(accessor.getVTableOffset() == SubstrateMethodAccessor.STATICALLY_BOUND);
-            return accessor.getVTableOffset();
+            VMError.guarantee(accessor.getVTableIndex() == SubstrateMethodAccessor.VTABLE_INDEX_STATICALLY_BOUND);
+            return accessor.getVTableIndex();
         }
     }
 }
@@ -520,7 +513,10 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
     @Override
     public Object transform(Object receiver, Object originalValue) {
         SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
-        VMError.guarantee(accessor.getInterfaceTypeID() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED);
+        VMError.guarantee(accessor.getInterfaceTypeID() == SubstrateMethodAccessor.INTERFACE_TYPEID_NOT_YET_COMPUTED);
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
+            return SubstrateMethodAccessor.INTERFACE_TYPEID_UNNEEDED;
+        }
 
         HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
         if (member.getDeclaringClass().isInterface()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.pltgot;
+package com.oracle.svm.core.c;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.RegisterValue;
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.thread.VMThreads;
 
-public abstract class PLTGOTConfiguration {
-    protected MethodAddressResolver methodAddressResolver;
-
-    @Fold
-    public static boolean isEnabled() {
-        return ImageSingletons.contains(PLTGOTConfiguration.class);
+/**
+ * Only sets the {@linkplain ReservedRegisters reserved registers}, but does not do any thread
+ * transitions. Only use this prologue if
+ * {@link com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue} can't be used.
+ */
+public class InitializeReservedRegistersPrologue implements CEntryPointOptions.Prologue {
+    @Uninterruptible(reason = "prologue")
+    public static void enter(IsolateThread thread) {
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        CEntryPointSnippets.initBaseRegisters(VMThreads.IsolateTL.get());
     }
-
-    @Fold
-    public static PLTGOTConfiguration singleton() {
-        return ImageSingletons.lookup(PLTGOTConfiguration.class);
-    }
-
-    @Fold
-    public MethodAddressResolver getMethodAddressResolver() {
-        return methodAddressResolver;
-    }
-
-    public abstract Register getExitMethodAddressResolutionRegister(RegisterConfig registerConfig);
-
-    public abstract LIRInstruction createExitMethodAddressResolutionOp(RegisterValue exitThroughRegisterValue);
-
 }

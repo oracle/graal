@@ -160,6 +160,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
             regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
             regs.remove(ReservedRegisters.singleton().getThreadRegister());
+            regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
             allocatableRegs = new RegisterArray(regs);
         } else {
             // This is the Linux 64-bit ABI for parameters.
@@ -175,6 +176,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
             regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
             regs.remove(ReservedRegisters.singleton().getThreadRegister());
+            regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
             allocatableRegs = new RegisterArray(regs);
         }
 

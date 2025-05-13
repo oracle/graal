@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.webimage.wasm.snippets;
+package com.oracle.svm.hosted.webimage.snippets;
 
 import java.util.Map;
 import java.util.function.Predicate;
@@ -37,16 +37,16 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class WebImageWasmNonSnippetLowerings extends NonSnippetLowerings {
+public class WebImageNonSnippetLowerings extends NonSnippetLowerings {
 
     @SuppressWarnings("unused")
     public static void registerLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
                     Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        new WebImageWasmNonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
+        new WebImageNonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
     }
 
-    protected WebImageWasmNonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Providers providers,
+    protected WebImageNonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         super(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
     }

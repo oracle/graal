@@ -46,7 +46,7 @@ import jdk.vm.ci.aarch64.AArch64;
 @Platforms(Platform.DARWIN_AARCH64.class)
 class AArch64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     AArch64DarwinUContextRegisterDumper() {
-        VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER));
         VMError.guarantee(AArch64.r28.equals(AArch64ReservedRegisters.THREAD_REGISTER));
     }
 

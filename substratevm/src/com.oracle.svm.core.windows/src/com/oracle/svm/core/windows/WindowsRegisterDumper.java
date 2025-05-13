@@ -42,7 +42,7 @@ import jdk.vm.ci.amd64.AMD64;
 @AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
 class WindowsRegisterDumper implements RegisterDumper {
     WindowsRegisterDumper() {
-        VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER));
         VMError.guarantee(AMD64.r15.equals(AMD64ReservedRegisters.THREAD_REGISTER));
     }
 

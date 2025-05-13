@@ -134,6 +134,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
          */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
+        regs.remove(ReservedRegisters.singleton().getCodeBaseRegister());
         regs.remove(x1); // ra
         regs.remove(x3); // gp
         allocatableRegs = new RegisterArray(regs);

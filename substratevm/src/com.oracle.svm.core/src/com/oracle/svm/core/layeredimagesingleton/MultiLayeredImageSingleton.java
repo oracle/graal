@@ -39,6 +39,7 @@ public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
      */
     int UNUSED_LAYER_NUMBER = -1;
     int UNKNOWN_LAYER_NUMBER = 0;
+    int INITIAL_LAYER_NUMBER = 0;
 
     /**
      * Returns an array containing the image singletons installed for {@code key} within all layers.

@@ -32,6 +32,7 @@ import java.util.Set;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
+import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -112,7 +113,8 @@ public class WebImageWasmGCLoweringProvider extends WebImageLoweringProvider {
                     SubstrateObjectCloneNode.class,
                     SubstrateObjectCloneWithExceptionNode.class,
                     IntegerDivRemNode.class,
-                    DeoptimizeNode.class));
+                    DeoptimizeNode.class,
+                    LoadMethodByIndexNode.class));
 
     @Override
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
