@@ -32,7 +32,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.LogUtils;
@@ -96,7 +95,7 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
                             Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
-        NamedConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
+        NamedConfigurationTypeDescriptor targetSerializationClass = NamedConfigurationTypeDescriptor.fromJSONName(asString(data.get(NAME_KEY)));
         UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {

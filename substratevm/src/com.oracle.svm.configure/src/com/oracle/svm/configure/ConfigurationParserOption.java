@@ -47,5 +47,10 @@ public enum ConfigurationParserOption {
     /**
      * Treat the "name" entry in a legacy reflection configuration as a "type" entry.
      */
-    TREAT_ALL_NAME_ENTRIES_AS_TYPE
+    TREAT_ALL_NAME_ENTRIES_AS_TYPE,
+
+    /**
+     * Parse the given type configuration file as a JNI configuration.
+     */
+    JNI_PARSER
 }

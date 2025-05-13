@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -237,14 +238,28 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     private Object forName0(String className, ClassLoader classLoader) {
         var conditional = knownClasses.get(className);
         Object result = conditional == null ? null : conditional.getValue();
-        if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
+        if (className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
-            result = new ClassNotFoundException(className);
+            result = NEGATIVE_QUERY;
         }
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
-        return result;
+        if (result == null && !ClassNameSupport.isValidReflectionName(className)) {
+            if (result == null && ClassNameSupport.isValidJNIName(className)) {
+                var jniAlias = knownClasses.get(ClassNameSupport.jniNameToReflectionName(className));
+                if (jniAlias != null && jniAlias.getValue() != null) {
+                    result = NEGATIVE_QUERY;
+                }
+            }
+            if (result == null && ClassNameSupport.isValidTypeName(className)) {
+                var typeAlias = knownClasses.get(ClassNameSupport.typeNameToReflectionName(className));
+                if (typeAlias != null && typeAlias.getValue() != null) {
+                    result = NEGATIVE_QUERY;
+                }
+            }
+        }
+        return result == NEGATIVE_QUERY ? new ClassNotFoundException(className) : result;
     }
 
     public int count() {
