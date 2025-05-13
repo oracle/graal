@@ -62,7 +62,7 @@ public class ErrorContext extends AbstractErrorContext {
     private MemorySegment errnoLocation;
 
     @SuppressWarnings("restricted")
-    private MemorySegment lookupErrnoLocation() {
+    private static MemorySegment lookupErrnoLocation() {
         try {
             Linker linker = Linker.nativeLinker();
             FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);

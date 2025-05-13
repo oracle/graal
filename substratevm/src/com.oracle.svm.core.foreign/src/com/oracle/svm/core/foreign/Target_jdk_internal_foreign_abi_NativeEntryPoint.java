@@ -38,6 +38,7 @@ import jdk.internal.foreign.abi.VMStorage;
  * Packs the address of a {@link com.oracle.svm.hosted.foreign.DowncallStub} with some extra
  * information.
  */
+@SuppressWarnings("javadoc")
 @TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint", onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 @Substitute
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
@@ -59,7 +60,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition,
-                    boolean usingAddressPairs) {
+                    @SuppressWarnings("unused") boolean usingAddressPairs) {
         /*
          * A VMStorage may be null only when the Linker.Option.critical(allowHeapAccess=true) option
          * is passed. (see

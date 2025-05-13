@@ -194,7 +194,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             checkNotSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
-                registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(new SharedDesc(desc, linkerOptions)));
+                registerConditionalConfiguration(condition, _ -> registeredDowncalls.add(new SharedDesc(desc, linkerOptions)));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register downcall");
             }
@@ -205,7 +205,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             checkNotSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
-                registerConditionalConfiguration(condition, (ignored) -> registeredUpcalls.add(new SharedDesc(desc, linkerOptions)));
+                registerConditionalConfiguration(condition, _ -> registeredUpcalls.add(new SharedDesc(desc, linkerOptions)));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register upcall");
             }
@@ -228,7 +228,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
             Executable method = implLookup.revealDirect(Objects.requireNonNull(target)).reflectAs(Executable.class, implLookup);
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
-                registerConditionalConfiguration(condition, (ignored) -> {
+                registerConditionalConfiguration(condition, _ -> {
                     RuntimeReflection.register(method);
                     registeredDirectUpcalls.add(new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions));
                 });
@@ -419,7 +419,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
              * applied to the user-provided method handle. We then re-create a method handle that is
              * equal to the one created in 'UpcallLinker.makeFactory'. This MH is then invoked from
              * the specialized upcall stub.
-             * 
+             *
              * Additionally, if the return type requires an in-memory return (e.g. in case of a
              * struct that doesn't fit into registers) the upcall stub factory is decorated (in
              * 'SharedUtils.arrangeUpcallHelper') with another factory that preprocesses the
@@ -558,7 +558,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                     "VarHandleSegmentAsFloats",
                     "VarHandleSegmentAsDoubles");
 
-    private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
+    private static void registerVarHandleMethodsForReflection(@SuppressWarnings("unused") FeatureAccess access, Class<?> subtype) {
         assert JLI_PACKAGE.equals(subtype.getPackage().getName());
         RuntimeReflection.register(subtype.getDeclaredMethods());
     }

@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  */
 @TargetClass(className = "jdk.internal.foreign.SystemLookup", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_jdk_internal_foreign_SystemLookup {
+    @SuppressWarnings("static-method")
     @Substitute
     public Optional<MemorySegment> find(String name) {
         return RuntimeSystemLookup.INSTANCE.find(name);

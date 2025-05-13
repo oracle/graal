@@ -823,7 +823,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
     private static class ReachingDefScope {
         private final MemoryArenaValidInScopeNode defNode;
 
-        ReachingDefScope(HIRBlock defBlock, MemoryArenaValidInScopeNode defNode) {
+        ReachingDefScope(MemoryArenaValidInScopeNode defNode) {
             this.defNode = defNode;
         }
 
@@ -866,7 +866,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
 
                 for (FixedNode f : b.getNodes()) {
                     if (f instanceof MemoryArenaValidInScopeNode mas) {
-                        defs.push(new ReachingDefScope(b, mas));
+                        defs.push(new ReachingDefScope(mas));
                         newDominatingValues++;
                     } else if (f instanceof ScopedMethodNode scope) {
                         if (scope.getType() == ScopedMethodNode.Type.START) {

@@ -84,6 +84,7 @@ import jdk.vm.ci.meta.Signature;
  * the call state, which could happen if a safepoint was inserted between the downcall and the
  * capture.
  */
+@SuppressWarnings("javadoc")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/nativeEntryPoint.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
@@ -131,7 +132,7 @@ class DowncallStub extends NonBytecodeMethod {
      */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         boolean deoptimizationTarget = SubstrateCompilationDirectives.isDeoptTarget(method);
         List<ValueNode> arguments = kit.getInitialArguments();

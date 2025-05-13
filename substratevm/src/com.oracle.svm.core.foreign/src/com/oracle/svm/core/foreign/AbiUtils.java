@@ -136,10 +136,10 @@ public abstract class AbiUtils {
         }
 
         public static Result.FullNativeAdaptation adaptToNative(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
-            originalArguments = Collections.unmodifiableList(originalArguments);
+            List<ValueNode> originalUnmodifiableArguments = Collections.unmodifiableList(originalArguments);
 
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
-            VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
+            VMError.guarantee(allEqual(adaptations.size(), originalUnmodifiableArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
 
             Map<Extracted, ValueNode> extractedArguments = new EnumMap<>(Extracted.class);
             List<ValueNode> arguments = new ArrayList<>();
@@ -154,7 +154,7 @@ public abstract class AbiUtils {
                     adaptation = NOOP;
                 }
 
-                arguments.addAll(adaptation.apply(originalArguments.get(i), extractedArguments, originalArguments, i, nodesToAppendToGraph::add));
+                arguments.addAll(adaptation.apply(originalUnmodifiableArguments.get(i), extractedArguments, originalUnmodifiableArguments, i, nodesToAppendToGraph::add));
                 assignment.addAll(adaptation.apply(originalAssignment[i]));
                 argumentTypes.addAll(adaptation.apply(nep.methodType().parameterType(i)));
 
@@ -246,7 +246,7 @@ public abstract class AbiUtils {
             return new ExtractSingle(as, type);
         }
 
-        public static Adaptation extractSegmentPair(Extracted as, Class<?> type) {
+        public static Adaptation extractSegmentPair(Extracted as) {
             return new ExtractSegmentPair(as);
         }
 
@@ -324,9 +324,9 @@ public abstract class AbiUtils {
          * (segments allocated using an Arena), and these have a method `unsafeGetOffset` which
          * straightforwardly returns the raw pointer. <br>
          * However, when `allowHeapAccess` is true (the argument to Linker.Option.critical), one may
-         * pass a {@link HeapMemorySegmentImpl} as well. For reasons detailed in its documentation,
-         * heap segments are represented as an Object + offset pair, where the raw pointer should be
-         * derived from their sum. <br>
+         * pass a {@link jdk.internal.foreign.HeapMemorySegmentImpl} as well. For reasons detailed
+         * in its documentation, heap segments are represented as an Object + offset pair, where the
+         * raw pointer should be derived from their sum. <br>
          * Hence, when `allowHeapAccess` is true,
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)} passes two
          * arguments for every AddressLayout, the result of `unsafeGetBase` (of type Object) and
@@ -340,6 +340,7 @@ public abstract class AbiUtils {
          * {@code null} is when Linker.Option.critical(true) is passed. See
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)}.
          */
+        @SuppressWarnings("javadoc")
         private static final class ComputeAddressFromSegmentPair extends Adaptation {
             private static final ComputeAddressFromSegmentPair SINGLETON = new ComputeAddressFromSegmentPair();
 
@@ -602,7 +603,7 @@ public abstract class AbiUtils {
             if (nep.allowHeapAccess()) {
                 VMError.guarantee(storages[current] != null && storages[current + 1] == null);
                 // consumes two parameters (i.e. object + offset pair)
-                handleCriticalWithHeapAccess(nep, current + 1, adaptations, Adapter.extractSegmentPair(Adapter.Extracted.CaptureBufferAddress, long.class));
+                handleCriticalWithHeapAccess(nep, current + 1, adaptations, Adapter.extractSegmentPair(Adapter.Extracted.CaptureBufferAddress));
                 current += 2;
             } else {
                 adaptations.set(current, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
@@ -898,6 +899,7 @@ class ABIs {
     @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
     abstract static class X86_64 extends AbiUtils {
 
+        @Override
         protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
 
         @Override

@@ -83,6 +83,7 @@ import jdk.internal.misc.ScopedMemoryAccess.ScopedAccessError;
  *
  * @noinspection CaughtExceptionImmediatelyRethrown
  */
+@SuppressWarnings("javadoc")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess-bin.java.template")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
 @TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignAPIPredicates.Enabled.class)

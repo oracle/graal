@@ -812,8 +812,6 @@ suite = {
                 ],
             },
             "javaCompliance" : "22+",
-            # GR-51699
-            "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -858,8 +856,6 @@ suite = {
                 ],
             },
             "javaCompliance" : "22+",
-            # GR-51699
-            "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
