@@ -136,7 +136,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         library.put(object, "a", 2L);
         Location locationA2 = object.getShape().getProperty("a").getLocation();
 
-        DOTestAsserts.assertSameLocation(locationA1, locationA2);
+        DOTestAsserts.assertSameUnderlyingLocation(locationA1, locationA2);
         Assert.assertEquals(long.class, getLocationType(locationA2));
         DOTestAsserts.assertShape(new String[]{"\"a\":long@0"}, object.getShape());
         DOTestAsserts.assertShapeFields(object, 1, 0);
@@ -205,7 +205,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         Location location1 = object.getShape().getProperty("a").getLocation();
         library.putWithFlags(object, "a", 2, 42);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        DOTestAsserts.assertSameLocation(location1, location2);
+        Assert.assertSame(location1, location2);
     }
 
     @Test

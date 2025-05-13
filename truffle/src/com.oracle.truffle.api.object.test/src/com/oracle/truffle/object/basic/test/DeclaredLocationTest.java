@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -57,8 +60,6 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.object.LocationImpl;
-import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -71,8 +72,8 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
     final Shape rootShape = Shape.newBuilder().build();
     final Object value = new Object();
-    final Location declaredLocation = ((ShapeImpl) rootShape).allocator().declaredLocation(value);
-    final Shape shapeWithDeclared = ((ShapeImpl) rootShape).addProperty(Property.create("declared", declaredLocation, 0));
+    final Location declaredLocation = invokeMethod("declaredLocation", invokeGetter("allocator", rootShape), value);
+    final Shape shapeWithDeclared = invokeMethod("addProperty", rootShape, Property.create("declared", declaredLocation, 0));
 
     private DynamicObject newInstance() {
         return new TestDynamicObjectDefault(rootShape);
@@ -137,7 +138,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
-        ((LocationImpl) property.getLocation()).set(object, value, rootShape, shapeWithDeclared);
+        property.getLocation().set(object, value, rootShape, shapeWithDeclared);
         Assert.assertSame(shapeWithDeclared, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "declared", null));
 
@@ -145,7 +146,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         try {
-            ((LocationImpl) property.getLocation()).set(object2, newValue, rootShape, shapeWithDeclared);
+            property.getLocation().set(object2, newValue, rootShape, shapeWithDeclared);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             // expected

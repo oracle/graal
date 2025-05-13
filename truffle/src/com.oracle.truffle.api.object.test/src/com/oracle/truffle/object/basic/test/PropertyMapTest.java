@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -54,17 +56,16 @@ import org.junit.Test;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.PropertyMap;
-import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 public class PropertyMapTest {
 
     final Shape rootShape = Shape.newBuilder().build();
+    final Map<Object, Property> empty = invokeMethod("getPropertyMap", rootShape);
 
     @Test
     public void testPropertyMap() {
-        PropertyMap map = PropertyMap.empty();
+        Map<Object, Property> map = empty;
         Map<Object, Property> referenceMap = new LinkedHashMap<>();
 
         Random rnd = new Random();
@@ -78,18 +79,18 @@ public class PropertyMapTest {
             int id = randomSequence[i];
             String key = String.valueOf(id);
             Property value = Property.create(key, newLocation(id), 0);
-            map = (PropertyMap) map.copyAndPut(key, value);
+            map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
             assertEqualsOrdered(referenceMap, map);
         }
 
         // put the same values again, should not modify the map
-        PropertyMap initial = map;
+        var initial = map;
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
             Property value = Property.create(key, newLocation(id), 0);
-            map = (PropertyMap) map.copyAndPut(key, value);
+            map = copyAndPut(map, key, value);
             assertSame(initial, map);
         }
         assertEqualsOrdered(referenceMap, map);
@@ -99,7 +100,7 @@ public class PropertyMapTest {
             int id = randomSequence[i];
             String key = String.valueOf(id);
             Property value = Property.create(key, newLocation((double) id), 0);
-            map = (PropertyMap) map.copyAndPut(key, value);
+            map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
         }
         assertEqualsOrdered(referenceMap, map);
@@ -107,7 +108,7 @@ public class PropertyMapTest {
             int id = randomSequence[i];
             String key = String.valueOf(id);
             Property value = Property.create(key, newLocation((double) id), 0);
-            map = (PropertyMap) map.copyAndPut(key, value);
+            map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
         }
         assertEqualsOrdered(referenceMap, map);
@@ -117,7 +118,7 @@ public class PropertyMapTest {
             int id = shuffledSequence[i];
             String key = String.valueOf(id);
             Property value = Property.create(key, newLocation((long) id), 0);
-            map = (PropertyMap) map.copyAndPut(key, value);
+            map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
         }
         assertEqualsOrdered(referenceMap, map);
@@ -126,32 +127,39 @@ public class PropertyMapTest {
         for (int i = size - 10; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            map = (PropertyMap) map.copyAndRemove(key);
+            map = copyAndRemove(map, key);
             referenceMap.remove(key);
             assertEqualsOrdered(referenceMap, map);
         }
         for (int i = 10; i >= 0; i--) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            map = (PropertyMap) map.copyAndRemove(key);
+            map = copyAndRemove(map, key);
             referenceMap.remove(key);
             assertEqualsOrdered(referenceMap, map);
         }
         for (int i = 0; i < size; i++) {
             int id = shuffledSequence[i];
             String key = String.valueOf(id);
-            map = (PropertyMap) map.copyAndRemove(key);
+            map = copyAndRemove(map, key);
             referenceMap.remove(key);
             assertEqualsOrdered(referenceMap, map);
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private Location newLocation(Object id) {
-        return ((ShapeImpl) rootShape).allocator().locationForValue(id);
+    private static Map<Object, Property> copyAndPut(Map<Object, Property> map, String key, Property value) {
+        return invokeMethod("copyAndPut", map, key, value);
     }
 
-    void assertEqualsOrdered(Map<Object, Property> referenceMap, PropertyMap map) {
+    private static Map<Object, Property> copyAndRemove(Map<Object, Property> map, String key) {
+        return invokeMethod("copyAndRemove", map, key);
+    }
+
+    private Location newLocation(Object id) {
+        return invokeMethod("locationForValue", invokeGetter("allocator", rootShape), id);
+    }
+
+    void assertEqualsOrdered(Map<Object, Property> referenceMap, Map<Object, Property> map) {
         assertEquals(referenceMap, map);
         for (Iterator<Map.Entry<Object, Property>> it1 = referenceMap.entrySet().iterator(), it2 = map.entrySet().iterator(); it1.hasNext() && it2.hasNext();) {
             Map.Entry<Object, Property> e1 = it1.next();
@@ -160,11 +168,11 @@ public class PropertyMapTest {
             assertEquals(e1.getValue(), e2.getValue());
             assertEquals(it1.hasNext(), it2.hasNext());
         }
-        for (Iterator<Object> it1 = new ArrayList<>(referenceMap.keySet()).listIterator(referenceMap.size()), it2 = map.reverseOrderedKeyIterator(); it1.hasNext() && it2.hasNext();) {
+        for (Iterator<Object> it1 = List.copyOf(referenceMap.keySet()).listIterator(referenceMap.size()), it2 = invokeGetter("reverseOrderedKeyIterator", map); it1.hasNext() && it2.hasNext();) {
             assertEquals(it1.next(), it2.next());
             assertEquals(it1.hasNext(), it2.hasNext());
         }
-        for (Iterator<Property> it1 = new ArrayList<>(referenceMap.values()).listIterator(referenceMap.size()), it2 = map.reverseOrderedValueIterator(); it1.hasNext() && it2.hasNext();) {
+        for (Iterator<Property> it1 = List.copyOf(referenceMap.values()).listIterator(referenceMap.size()), it2 = invokeGetter("reverseOrderedValueIterator", map); it1.hasNext() && it2.hasNext();) {
             assertEquals(it1.next(), it2.next());
             assertEquals(it1.hasNext(), it2.hasNext());
         }

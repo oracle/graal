@@ -107,7 +107,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
         Location location2 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(otherPrimClass, getLocationType(location2));
         Assert.assertEquals(otherVal.getClass(), library.getOrDefault(object, "a", null).getClass());
-        DOTestAsserts.assertSameLocation(location1, location2);
+        DOTestAsserts.assertSameUnderlyingLocation(location1, location2);
     }
 
     @Test
@@ -124,7 +124,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
         Location location2 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(otherPrimClass, getLocationType(location2));
         Assert.assertEquals(otherVal.getClass(), library.getOrDefault(object, "a", null).getClass());
-        DOTestAsserts.assertSameLocation(location1, location2);
+        DOTestAsserts.assertSameUnderlyingLocation(location1, location2);
     }
 
     @Test
@@ -141,13 +141,13 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
         Location location2 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(otherPrimClass, getLocationType(location2));
         Assert.assertEquals(otherVal.getClass(), library.getOrDefault(object, "a", null).getClass());
-        DOTestAsserts.assertSameLocation(location1, location2);
+        DOTestAsserts.assertSameUnderlyingLocation(location1, location2);
 
         library.put(object, "a", intVal);
         Location location3 = object.getShape().getProperty("a").getLocation();
         Assert.assertEquals(otherPrimClass, getLocationType(location3));
         Assert.assertEquals(otherVal.getClass(), library.getOrDefault(object, "a", null).getClass());
-        DOTestAsserts.assertSameLocation(location2, location3);
+        DOTestAsserts.assertSameUnderlyingLocation(location2, location3);
     }
 
     @Test

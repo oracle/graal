@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.locationForType;
+
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
@@ -50,9 +53,9 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -75,32 +78,34 @@ public class ShapeTest {
 
     @Test
     public void testToString() {
-        ShapeImpl rootShape = (ShapeImpl) makeRootShape();
+        Shape rootShape = makeRootShape();
         DOTestAsserts.assertShape(new String[]{}, rootShape);
 
-        ShapeImpl aInt = rootShape.defineProperty("a", 1, 0);
+        Shape aInt = rootShape.defineProperty("a", 1, 0);
         DOTestAsserts.assertShape(new String[]{"\"a\":int@0"}, aInt);
 
-        ShapeImpl aObj = aInt.defineProperty("a", new Object(), 0);
+        Shape aObj = aInt.defineProperty("a", new Object(), 0);
         DOTestAsserts.assertShape(new String[]{"\"a\":Object@0"}, aObj);
 
-        ShapeImpl aObjBInt = aObj.defineProperty("b", 2, 0);
+        Shape aObjBInt = aObj.defineProperty("b", 2, 0);
         DOTestAsserts.assertShape(new String[]{
                         "\"b\":int@1",
                         "\"a\":Object@0"}, aObjBInt);
 
-        ShapeImpl aIntBObj = aInt.defineProperty("b", new Object(), 0);
+        Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
         DOTestAsserts.assertShape(new String[]{
                         "\"b\":Object@0",
                         "\"a\":int@0"}, aIntBObj);
 
-        ShapeImpl bool = rootShape.addProperty(Property.create("bool", rootShape.allocator().locationForType(boolean.class), 0));
+        Location boolLocation = locationForType(rootShape, boolean.class);
+        Shape bool = invokeMethod("addProperty", rootShape, Property.create("bool", boolLocation, 0));
         DOTestAsserts.assertShape(new String[]{"\"bool\":boolean@0"}, bool);
 
-        ShapeImpl str = rootShape.addProperty(Property.create("str", rootShape.allocator().locationForType(String.class), 0));
+        Location strLocation = locationForType(rootShape, String.class);
+        Shape str = invokeMethod("addProperty", rootShape, Property.create("str", strLocation, 0));
         DOTestAsserts.assertShape(new String[]{"\"str\":Object@0"}, str);
 
-        ShapeImpl shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
+        Shape shapeWithExtArray = aIntBObj.defineProperty("c", true, 0).defineProperty("d", 3.14, 0).defineProperty("e", 1L << 44, 0);
         DOTestAsserts.assertShape(new String[]{
                         "\"e\":long[0]",
                         "\"d\":double@2",

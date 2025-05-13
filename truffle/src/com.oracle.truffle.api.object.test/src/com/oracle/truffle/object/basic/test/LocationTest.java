@@ -40,7 +40,16 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertLocationFields;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertObjectLocation;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.assertShapeFields;
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeGetter;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.invokeMethod;
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.isCoreLocation;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
@@ -60,7 +69,6 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -100,9 +108,9 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
         library.put(object, "obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
-        DOTestAsserts.assertObjectLocation(location);
-        DOTestAsserts.assertLocationFields(location, 0, 1);
-        DOTestAsserts.assertShapeFields(object, 0, 1);
+        assertObjectLocation(location);
+        assertLocationFields(location, 0, 1);
+        assertShapeFields(object, 0, 1);
     }
 
     @Test
@@ -113,9 +121,9 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
         library.put(object, "prim", 42);
         Location location = object.getShape().getProperty("prim").getLocation();
-        Assert.assertEquals(int.class, getLocationType(location));
-        DOTestAsserts.assertLocationFields(location, 1, 0);
-        DOTestAsserts.assertShapeFields(object, 1, 0);
+        assertEquals(int.class, getLocationType(location));
+        assertLocationFields(location, 1, 0);
+        assertShapeFields(object, 1, 0);
     }
 
     @Test
@@ -126,15 +134,15 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
         library.put(object, "foo", 42);
         Location location1 = object.getShape().getProperty("foo").getLocation();
-        Assert.assertEquals(int.class, getLocationType(location1));
-        DOTestAsserts.assertLocationFields(location1, 1, 0);
-        DOTestAsserts.assertShapeFields(object, 1, 0);
+        assertEquals(int.class, getLocationType(location1));
+        assertLocationFields(location1, 1, 0);
+        assertShapeFields(object, 1, 0);
 
         library.putIfPresent(object, "foo", new Object());
         Location location2 = object.getShape().getProperty("foo").getLocation();
-        Assert.assertEquals(Object.class, getLocationType(location2));
-        DOTestAsserts.assertLocationFields(location2, 0, 1);
-        DOTestAsserts.assertShapeFields(object, 1, 1);
+        assertEquals(Object.class, getLocationType(location2));
+        assertLocationFields(location2, 0, 1);
+        assertShapeFields(object, isCoreLocation(location2) ? 1 : 0, 1);
     }
 
     @Test
@@ -145,15 +153,15 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
         library.put(object, "foo", 42L);
         Location location1 = object.getShape().getProperty("foo").getLocation();
-        Assert.assertEquals(long.class, getLocationType(location1));
-        DOTestAsserts.assertLocationFields(location1, 1, 0);
-        DOTestAsserts.assertShapeFields(object, 1, 0);
+        assertEquals(long.class, getLocationType(location1));
+        assertLocationFields(location1, 1, 0);
+        assertShapeFields(object, 1, 0);
 
         library.putIfPresent(object, "foo", 3.14);
         Location location2 = object.getShape().getProperty("foo").getLocation();
-        Assert.assertEquals(Object.class, getLocationType(location2));
-        DOTestAsserts.assertLocationFields(location2, 0, 1);
-        DOTestAsserts.assertShapeFields(object, 1, 1);
+        assertEquals(Object.class, getLocationType(location2));
+        assertLocationFields(location2, 0, 1);
+        assertShapeFields(object, isCoreLocation(location2) ? 1 : 0, 1);
     }
 
     @Test
@@ -166,9 +174,9 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         Location location = object.getShape().getProperty("foo").getLocation();
 
         library.putWithFlags(object, "foo", 43, 111);
-        Assert.assertEquals(43, library.getOrDefault(object, "foo", null));
+        assertEquals(43, library.getOrDefault(object, "foo", null));
         Property newProperty = object.getShape().getProperty("foo");
-        Assert.assertEquals(111, newProperty.getFlags());
+        assertEquals(111, newProperty.getFlags());
         Location newLocation = newProperty.getLocation();
         Assert.assertSame(location, newLocation);
     }
@@ -183,9 +191,9 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         Location location = object.getShape().getProperty("foo").getLocation();
 
         library.putWithFlags(object, "foo", "str", 111);
-        Assert.assertEquals("str", library.getOrDefault(object, "foo", null));
+        assertEquals("str", library.getOrDefault(object, "foo", null));
         Property newProperty = object.getShape().getProperty("foo");
-        Assert.assertEquals(111, newProperty.getFlags());
+        assertEquals(111, newProperty.getFlags());
         Location newLocation = newProperty.getLocation();
         Assert.assertNotSame(location, newLocation);
     }
@@ -199,20 +207,20 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         library.put(object, "a", 1);
         library.put(object, "b", 2);
         library.removeKey(object, "a");
-        Assert.assertFalse(library.containsKey(object, "a"));
-        Assert.assertTrue(library.containsKey(object, "b"));
-        Assert.assertEquals(2, library.getOrDefault(object, "b", null));
+        assertFalse(library.containsKey(object, "a"));
+        assertTrue(library.containsKey(object, "b"));
+        assertEquals(2, library.getOrDefault(object, "b", null));
         library.put(object, "a", 3);
         library.removeKey(object, "b");
-        Assert.assertEquals(3, library.getOrDefault(object, "a", null));
+        assertEquals(3, library.getOrDefault(object, "a", null));
     }
 
     @Test
     public void testLocationDecoratorEquals() {
-        var allocator = ((ShapeImpl) rootShape).allocator();
-        Location intLocation1 = allocator.locationForType(int.class);
-        Location intLocation2 = allocator.locationForType(int.class);
-        Assert.assertEquals(intLocation1.getClass(), intLocation2.getClass());
+        var allocator = invokeGetter("allocator", rootShape);
+        Location intLocation1 = invokeMethod("locationForType", allocator, int.class);
+        Location intLocation2 = invokeMethod("locationForType", allocator, int.class);
+        assertEquals(intLocation1.getClass(), intLocation2.getClass());
         Assert.assertNotEquals(intLocation1, intLocation2);
     }
 
@@ -223,28 +231,28 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
         library.putConstant(object, "a", new Object(), 0);
-        Assert.assertTrue(library.containsKey(object, "a"));
+        assertTrue(library.containsKey(object, "a"));
         library.put(object, "a", 42);
-        Assert.assertEquals(1, object.getShape().getPropertyCount());
+        assertEquals(1, object.getShape().getPropertyCount());
         library.removeKey(object, "a");
-        Assert.assertFalse(library.containsKey(object, "a"));
+        assertFalse(library.containsKey(object, "a"));
     }
 
     @Test
     public void testLocationIsPrimitive() {
-        var allocator = ((ShapeImpl) rootShape).allocator();
+        var allocator = invokeGetter("allocator", rootShape);
 
-        Location objectLocation = allocator.locationForType(Object.class);
-        Assert.assertFalse(objectLocation.isPrimitive());
+        Location objectLocation = invokeMethod("locationForType", allocator, Object.class);
+        assertFalse(objectLocation.isPrimitive());
 
-        Location intLocation = allocator.locationForType(int.class);
-        Assert.assertTrue(intLocation.isPrimitive());
-        Location doubleLocation = allocator.locationForType(double.class);
-        Assert.assertTrue(doubleLocation.isPrimitive());
-        Location longLocation = allocator.locationForType(long.class);
-        Assert.assertTrue(longLocation.isPrimitive());
+        Location intLocation = invokeMethod("locationForType", allocator, int.class);
+        assertTrue(intLocation.isPrimitive());
+        Location doubleLocation = invokeMethod("locationForType", allocator, double.class);
+        assertTrue(doubleLocation.isPrimitive());
+        Location longLocation = invokeMethod("locationForType", allocator, long.class);
+        assertTrue(longLocation.isPrimitive());
 
-        Location constantLocation = allocator.constantLocation("constantValue");
-        Assert.assertFalse(constantLocation.isPrimitive());
+        Location constantLocation = invokeMethod("constantLocation", allocator, "constantValue");
+        assertFalse(constantLocation.isPrimitive());
     }
 }
