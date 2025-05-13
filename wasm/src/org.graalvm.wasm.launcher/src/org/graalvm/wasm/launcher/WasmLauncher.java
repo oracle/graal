@@ -77,7 +77,6 @@ public class WasmLauncher extends AbstractLanguageLauncher {
 
         // Add the default arguments.
         polyglotOptions.put("wasm.Builtins", "wasi_snapshot_preview1");
-        polyglotOptions.put("wasm.EvalReturnsModule", "true");
 
         while (argIterator.hasNext()) {
             final String argument = argIterator.next();

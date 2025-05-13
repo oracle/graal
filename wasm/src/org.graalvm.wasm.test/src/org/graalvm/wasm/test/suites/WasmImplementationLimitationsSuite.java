@@ -82,10 +82,10 @@ public class WasmImplementationLimitationsSuite {
 
     @Test
     public void test() throws IOException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.EvalReturnsModule", "true").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         try {
-            context.eval(source).newInstance().getMember("_main").execute();
+            context.eval(source).newInstance().getMember("exports").getMember("_main").execute();
         } catch (final PolyglotException e) {
             final Value actualFailureObject = e.getGuestObject();
 

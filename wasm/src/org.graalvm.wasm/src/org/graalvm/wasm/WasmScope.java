@@ -42,23 +42,17 @@ package org.graalvm.wasm;
 
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"static-method"})
 public final class WasmScope implements TruffleObject {
-    private static final String GET_STORE = "getStore";
-    private static final String NEW_STORE = "newStore";
-    private static final int INVOKE_MEMBER_COUNT = 2;
-
     private final WasmStore store;
 
     public WasmScope(WasmStore store) {
@@ -85,7 +79,7 @@ public final class WasmScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
         var instances = instances();
         Object value = instances.get(member);
@@ -96,23 +90,17 @@ public final class WasmScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     boolean isMemberReadable(String member) {
         var instances = instances();
         return instances.containsKey(member);
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         var instances = instances();
-        final String[] keys = new String[instances.size() + INVOKE_MEMBER_COUNT];
-        int index = 0;
-        for (String key : instances.keySet()) {
-            keys[index++] = key;
-        }
-        keys[index++] = GET_STORE;
-        keys[index] = NEW_STORE;
+        final String[] keys = instances.keySet().toArray(new String[instances.size()]);
         return new WasmNamesObject(keys);
     }
 
@@ -122,36 +110,8 @@ public final class WasmScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "wasm-global-scope" + instances().keySet();
-    }
-
-    @ExportMessage
-    boolean isMemberInvocable(String member) {
-        return GET_STORE.equals(member) || NEW_STORE.equals(member);
-    }
-
-    @ExportMessage
-    Object invokeMember(String member, Object... arguments) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        if (!isMemberInvocable(member)) {
-            throw UnknownIdentifierException.create(member);
-        }
-        if (GET_STORE.equals(member)) {
-            if (arguments.length != 1) {
-                throw ArityException.create(1, 1, arguments.length);
-            }
-            if (arguments[0] instanceof WasmInstance instance) {
-                return instance.store();
-            } else {
-                throw UnsupportedTypeException.create(arguments, "First argument must be an instance");
-            }
-        } else {
-            assert NEW_STORE.equals(member);
-            if (arguments.length != 0) {
-                throw ArityException.create(0, 0, arguments.length);
-            }
-            return new WasmStore(store.context(), store.language());
-        }
     }
 }

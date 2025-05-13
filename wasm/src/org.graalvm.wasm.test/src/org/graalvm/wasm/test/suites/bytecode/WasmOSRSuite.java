@@ -90,12 +90,11 @@ public class WasmOSRSuite {
         eb.option("wasm.Builtins", "wasi_snapshot_preview1");
         eb.option("engine.OSRCompilationThreshold", "100");
         eb.option("engine.BackgroundCompilation", "false");
-        eb.option("wasm.EvalReturnsModule", "true");
         try (Engine engine = eb.build()) {
             for (int i = 0; i < N_CONTEXTS; i++) {
                 try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
-                    Value mainIns = context.eval(sourceMain).newInstance();
-                    Value mainFun = mainIns.getMember("_main");
+                    Value mainExports = context.eval(sourceMain).newInstance().getMember("exports");
+                    Value mainFun = mainExports.getMember("_main");
                     Assert.assertEquals(0, mainFun.execute().asInt());
                 }
             }

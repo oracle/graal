@@ -62,6 +62,7 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -137,7 +138,8 @@ public class WebAssembly extends Dictionary {
 
     public WasmInstance moduleInstantiate(WasmModule module, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
-        return module.createInstance(currentContext, importObject, ExceptionProviders.WasmJsApiExceptionProvider);
+        final WasmStore store = new WasmStore(currentContext, currentContext.language());
+        return module.createInstance(store, importObject, ExceptionProviders.WasmJsApiExceptionProvider, true);
     }
 
     private static String makeModuleName(byte[] data) {

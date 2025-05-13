@@ -51,11 +51,9 @@ import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -209,8 +207,6 @@ public final class WasmStore implements TruffleObject {
         return this.contextOptions;
     }
 
-    private static final String NEW_INSTANCES = "newInstances";
-
     @ExportMessage
     boolean hasMembers() {
         return true;
@@ -232,51 +228,15 @@ public final class WasmStore implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
-        return NEW_INSTANCES.equals(member);
-    }
-
-    @ExportMessage
-    Object invokeMember(String member, Object... arguments) throws ArityException, UnsupportedTypeException, UnknownIdentifierException {
-        if (!isMemberInvocable(member)) {
-            throw UnknownIdentifierException.create(member);
-        }
-        assert NEW_INSTANCES.equals(member);
-
-        if (arguments.length == 0) {
-            throw ArityException.create(1, -1, 0);
-        }
-        if (arguments[0] instanceof WasmModule m) {
-            final WasmInstance instance = readInstance(m);
-            for (int i = 1; i < arguments.length; i++) {
-                if (arguments[i] instanceof WasmModule module) {
-                    readInstance(module);
-                } else {
-                    throw UnsupportedTypeException.create(arguments);
-                }
-            }
-            linker.tryLink(instance);
-        } else {
-            throw UnsupportedTypeException.create(arguments);
-        }
-        return WasmConstant.VOID;
-    }
-
-    @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        final String[] keys = new String[moduleInstances.size() + 1];
-        int index = 0;
-        for (String key : moduleInstances.keySet()) {
-            keys[index++] = key;
-        }
-        keys[index] = NEW_INSTANCES;
+        final String[] keys = moduleInstances.keySet().toArray(new String[moduleInstances.size()]);
         return new WasmNamesObject(keys);
     }
 
     @ExportMessage
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-store" + moduleInstances.keySet();
+        return "wasm-references" + moduleInstances.keySet();
     }
 }

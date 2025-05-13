@@ -185,12 +185,8 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // This is needed so that we can call WasmContext.getCurrent().
             context.enter();
 
-            final Object[] modules = new Object[sources.size()];
-
             try {
-                for (int i = 0; i < modules.length; i++) {
-                    modules[i] = context.eval(sources.get(i));
-                }
+                sources.forEach(context::eval);
             } catch (PolyglotException e) {
                 validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                 return;
@@ -198,7 +194,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             final WasmContext wasmContext = WasmContext.get(null);
             final var contextStore = wasmContext.contextStore();
-            context.asValue(contextStore).invokeMember("newInstances", modules);
             final Value mainFunction = findMain(contextStore);
 
             resetStatus(System.out, phaseIcon, phaseLabel);
@@ -216,7 +211,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     // If no exception is expected and the program returns with success exit status,
                     // then we check stdout.
                     if (e.isExit() && testCase.data().expectedErrorMessage() == null) {
-                        Assert.assertEquals("Program exited with non-zero return code.", e.getExitStatus(), 0);
+                        Assert.assertEquals("Program exited with non-zero return code.", 0, e.getExitStatus());
                         WasmCase.validateResult(testCase.data().resultValidator(), null, testOut);
                     } else if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
                         validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
@@ -396,7 +391,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 interpreterIterations = Math.min(interpreterIterations, 1);
             }
 
-            context = contextBuilder.options(getInterpretedNoInline()).option("wasm.EvalReturnsModule", "true").build();
+            context = contextBuilder.options(getInterpretedNoInline()).option("wasm.EvalReturnsInstance", "true").build();
             runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter", testOut);
 
             // Run in synchronous compiled mode, with inlining turned off.
@@ -406,7 +401,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if (WasmTestOptions.COVERAGE_MODE) {
                 syncNoinlineIterations = Math.min(syncNoinlineIterations, 1);
             }
-            context = contextBuilder.options(getSyncCompiledNoInline()).option("wasm.EvalReturnsModule", "true").build();
+            context = contextBuilder.options(getSyncCompiledNoInline()).option("wasm.EvalReturnsInstance", "true").build();
             runInContext(testCase, context, sources, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl", testOut);
 
             // Run in synchronous compiled mode, with inlining turned on.
@@ -416,7 +411,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if (WasmTestOptions.COVERAGE_MODE) {
                 syncInlineIterations = Math.min(syncInlineIterations, 1);
             }
-            context = contextBuilder.options(getSyncCompiledWithInline()).option("wasm.EvalReturnsModule", "true").build();
+            context = contextBuilder.options(getSyncCompiledWithInline()).option("wasm.EvalReturnsInstance", "true").build();
             runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl", testOut);
 
             // Run with normal, asynchronous compilation.
@@ -424,7 +419,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if (WasmTestOptions.COVERAGE_MODE) {
                 asyncIterations = Math.min(asyncIterations, 1);
             }
-            context = contextBuilder.options(getAsyncCompiled()).option("wasm.EvalReturnsModule", "true").build();
+            context = contextBuilder.options(getAsyncCompiled()).option("wasm.EvalReturnsInstance", "true").build();
             runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi", testOut);
         } else {
             int asyncSharedIterations = testCase.options().containsKey("async-iterations") && !testCase.options().containsKey("async-shared-iterations")
@@ -433,7 +428,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if (WasmTestOptions.COVERAGE_MODE) {
                 asyncSharedIterations = Math.min(asyncSharedIterations, 1);
             }
-            context = contextBuilder.option("wasm.EvalReturnsModule", "true").build();
+            context = contextBuilder.option("wasm.EvalReturnsInstance", "true").build();
             runInContext(testCase, context, sources, asyncSharedIterations, PHASE_SHARED_ENGINE_ICON, "async,shared", testOut);
         }
     }

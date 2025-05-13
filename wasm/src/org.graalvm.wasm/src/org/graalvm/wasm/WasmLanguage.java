@@ -163,25 +163,26 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
          * The CallTarget returned by {@code parse} supports two calling conventions:
          *
          * <ol>
-         * <li>(default) zero arguments provided: on the first call, instantiates the decoded module
-         * and puts it in the context's module instance map; then returns the {@link WasmInstance}.
-         * <li>first argument is {@code "module_decode"}: returns the decoded {@link WasmModule}
-         * (i.e. behaves like {@link WebAssembly#moduleDecode module_decode}). Used by the JS API.
+         * <li>(default) returns the decoded {@link WasmModule} (i.e. behaves like
+         * {@link WebAssembly#moduleDecode module_decode} in the JS API).
+         * <li>(enabled with {@link WasmOptions#EvalReturnsInstance}), instantiates the decoded
+         * module and puts it in the context's module instance map; then returns the
+         * {@link WasmInstance}.
          * </ol>
          */
         @Override
         public Object execute(VirtualFrame frame) {
             if (frame.getArguments().length == 0) {
                 final WasmContext context = WasmContext.get(this);
-                if (context.getContextOptions().evalReturnsModule()) {
-                    return module;
-                } else {
+                if (context.getContextOptions().evalReturnsInstance()) {
                     final WasmStore contextStore = context.contextStore();
                     WasmInstance instance = contextStore.lookupModuleInstance(module);
                     if (instance == null) {
                         instance = contextStore.readInstance(module);
                     }
                     return instance;
+                } else {
+                    return module;
                 }
             } else {
                 if (frame.getArguments()[0] instanceof String mode) {
@@ -208,7 +209,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     /**
      * Parses simple expressions required to modify values during debugging.
-     * 
+     *
      * @param request request for parsing
      */
     @Override

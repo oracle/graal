@@ -87,18 +87,16 @@ public class MultiInstantiationSuite {
     private static void test(byte[] testSource, Function<WebAssembly, Object> importFun, BiConsumer<WebAssembly, WasmInstance> check) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
-        contextBuilder.option("wasm.EvalReturnsModule", "true");
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
 
             Value mainModule = context.eval(source);
-            Value store = context.getBindings(WasmLanguage.ID).invokeMember("newStore");
-            store.invokeMember("newInstances", mainModule);
+            Value mainInstance = mainModule.newInstance();
 
-            Value main = store.getMember("main").getMember("main");
+            Value main = mainInstance.getMember("exports").getMember("main");
             main.execute();
-            Value run = store.getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value run = mainInstance.getMember("references").getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             run.execute(new GuestCode(c -> {
                 WebAssembly wasm = new WebAssembly(c);
                 WasmModule module = wasm.moduleDecode(testSource);
@@ -527,7 +525,7 @@ public class MultiInstantiationSuite {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         try (Context context = contextBuilder.build()) {
-            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             run.execute(new GuestCode(c -> {
                 WebAssembly wasm = new WebAssembly(c);
                 WasmModule module = wasm.moduleDecode(sourceCode);
@@ -547,13 +545,13 @@ public class MultiInstantiationSuite {
 
                 WasmInstance instance2 = wasm.moduleInstantiate(module, imports2);
 
-                Value v1 = context.asValue(instance1);
+                Value v1 = context.asValue(instance1).getMember("exports");
                 v1.getMember("main");
                 Value main1 = v1.getMember("main");
                 Value result1 = main1.execute();
                 Assert.assertEquals("Return value of main", List.of(42L, 1, 2, 3.14), List.copyOf(result1.as(List.class)));
 
-                Value v2 = context.asValue(instance2);
+                Value v2 = context.asValue(instance2).getMember("exports");
                 Value main2 = v2.getMember("main");
                 Value result2 = main2.execute();
                 Assert.assertEquals("Return value of main", List.of(42L, 6, 8, 2.72), List.copyOf(result2.as(List.class)));
