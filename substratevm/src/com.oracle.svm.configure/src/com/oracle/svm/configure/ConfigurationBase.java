@@ -28,8 +28,6 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.function.Consumer;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 

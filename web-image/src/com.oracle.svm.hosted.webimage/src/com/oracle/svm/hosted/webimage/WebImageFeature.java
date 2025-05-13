@@ -56,6 +56,7 @@ import org.graalvm.webimage.api.JSSymbol;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.core.c.ProjectHeaderFile;
@@ -240,8 +241,8 @@ public class WebImageFeature implements InternalFeature {
         if (entryPointConfig != null) {
             ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                             ClassInitializationSupport.singleton());
-            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(null, false, conditionResolver, entryPointsData, null, null,
-                            access.getImageClassLoader());
+            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, entryPointsData, null,
+                            null, null, access.getImageClassLoader());
             try {
                 parser.parseAndRegister(Path.of(entryPointConfig).toUri());
             } catch (IOException ex) {

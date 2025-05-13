@@ -32,7 +32,6 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.util.TypeResult;
@@ -40,19 +39,17 @@ import com.oracle.svm.util.TypeResult;
 class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T> {
     private static final List<String> OPTIONAL_REFLECT_METADATA_ATTRS = Arrays.asList(CONDITIONAL_KEY,
                     "allDeclaredConstructors", "allPublicConstructors", "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "methods", "fields", "unsafeAllocated", "serializable");
+                    "methods", "fields", "unsafeAllocated", "serializable", "jniAccessible");
 
-    private final String combinedFileKey;
-
-    ReflectionMetadataParser(String combinedFileKey, ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
+    ReflectionMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
                     EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, delegate, parserOptions);
-        this.combinedFileKey = combinedFileKey;
     }
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        Object reflectionJson = getFromGlobalFile(json, combinedFileKey);
+        String sectionName = checkOption(ConfigurationParserOption.JNI_PARSER) ? JNI_KEY : REFLECTION_KEY;
+        Object reflectionJson = getFromGlobalFile(json, sectionName);
         if (reflectionJson != null) {
             parseClassArray(asList(reflectionJson, "first level of document must be an array of class descriptors"));
         }
@@ -88,28 +85,37 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
+        boolean jniParser = checkOption(ConfigurationParserOption.JNI_PARSER);
         delegate.registerDeclaredClasses(queryCondition, clazz);
-        delegate.registerRecordComponents(queryCondition, clazz);
-        delegate.registerPermittedSubclasses(queryCondition, clazz);
-        delegate.registerNestMembers(queryCondition, clazz);
-        delegate.registerSigners(queryCondition, clazz);
         delegate.registerPublicClasses(queryCondition, clazz);
-        delegate.registerDeclaredConstructors(queryCondition, true, clazz);
-        delegate.registerPublicConstructors(queryCondition, true, clazz);
-        delegate.registerDeclaredMethods(queryCondition, true, clazz);
-        delegate.registerPublicMethods(queryCondition, true, clazz);
-        delegate.registerDeclaredFields(queryCondition, true, clazz);
-        delegate.registerPublicFields(queryCondition, true, clazz);
+        if (!jniParser) {
+            delegate.registerRecordComponents(queryCondition, clazz);
+            delegate.registerPermittedSubclasses(queryCondition, clazz);
+            delegate.registerNestMembers(queryCondition, clazz);
+            delegate.registerSigners(queryCondition, clazz);
+        }
+        delegate.registerDeclaredConstructors(queryCondition, true, jniParser, clazz);
+        delegate.registerPublicConstructors(queryCondition, true, jniParser, clazz);
+        delegate.registerDeclaredMethods(queryCondition, true, jniParser, clazz);
+        delegate.registerPublicMethods(queryCondition, true, jniParser, clazz);
+        delegate.registerDeclaredFields(queryCondition, true, jniParser, clazz);
+        delegate.registerPublicFields(queryCondition, true, jniParser, clazz);
 
-        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
+        boolean typeJniAccessible;
+        if (jniParser) {
+            typeJniAccessible = true;
+        } else {
+            registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
+            typeJniAccessible = registerIfNotDefault(data, false, clazz, "jniAccessible", () -> delegate.registerAsJniAccessed(condition, clazz));
+        }
+
+        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, typeJniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, typeJniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, typeJniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, typeJniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, typeJniAccessible, clazz));
+        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, typeJniAccessible, clazz));
         registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
-
-        registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
 
         MapCursor<String, Object> cursor = data.getEntries();
         while (cursor.advance()) {
@@ -118,10 +124,10 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             try {
                 switch (name) {
                     case "methods":
-                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, typeJniAccessible);
                         break;
                     case "fields":
-                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
+                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz, typeJniAccessible);
                         break;
                 }
             } catch (LinkageError e) {

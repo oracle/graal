@@ -1181,6 +1181,11 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "com.oracle.svm.configure",
             ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta"
+                ],
+            },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
             "annotationProcessors": [

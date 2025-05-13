@@ -28,14 +28,21 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public record ProxyConfigurationTypeDescriptor(List<String> interfaceNames) implements ConfigurationTypeDescriptor {
 
-    public ProxyConfigurationTypeDescriptor(List<String> interfaceNames) {
-        this.interfaceNames = interfaceNames.stream().map(ConfigurationTypeDescriptor::checkQualifiedJavaName).toList();
+    public static ProxyConfigurationTypeDescriptor fromInterfaceTypeNames(List<String> interfaceTypeNames) {
+        Objects.requireNonNull(interfaceTypeNames);
+        return new ProxyConfigurationTypeDescriptor(interfaceTypeNames);
+    }
+
+    public static ProxyConfigurationTypeDescriptor fromInterfaceReflectionNames(List<String> interfaceReflectionNames) {
+        return fromInterfaceTypeNames(interfaceReflectionNames.stream().map(ClassNameSupport::reflectionNameToTypeName).collect(Collectors.toList()));
     }
 
     @Override

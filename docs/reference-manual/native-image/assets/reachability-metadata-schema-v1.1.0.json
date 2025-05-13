@@ -207,6 +207,11 @@
             "title": "Allow objects of this class to be serialized and deserialized",
             "type": "boolean",
             "default": false
+          },
+          "jniAccessible": {
+            "title": "Register the type, including all registered fields and methods, for runtime JNI access",
+            "type": "boolean",
+            "default": false
           }
         },
         "additionalProperties": false
