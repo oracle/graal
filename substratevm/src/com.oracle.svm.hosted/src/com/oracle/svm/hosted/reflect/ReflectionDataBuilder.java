@@ -145,8 +145,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Class<?>, Throwable> recordComponentsLookupExceptions = new ConcurrentHashMap<>();
 
     // Intermediate bookkeeping
-    private final Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
-    private final Map<Class<?>, Set<Method>> pendingRecordClasses;
+    private Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
+    private Map<Class<?>, Set<Method>> pendingRecordClasses;
 
     record ConditionalTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
     }
@@ -1133,9 +1133,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     protected void afterAnalysis() {
         sealed = true;
-        processedTypes.clear();
+        processedTypes = null;
         if (!throwMissingRegistrationErrors()) {
-            pendingRecordClasses.clear();
+            pendingRecordClasses = null;
         }
     }
 
