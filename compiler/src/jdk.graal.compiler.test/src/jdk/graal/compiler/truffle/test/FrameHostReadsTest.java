@@ -109,7 +109,7 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
                 Assert.assertEquals(1, arrayLengthReads);
                 Assert.assertEquals(0, otherReads);
             });
-        }).disableAssertions(FrameWithoutBoxing.class).run();
+        }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
     }
 
     public static int snippetReadsWritesWithoutZeroExtend(FrameWithoutBoxing frame, int index) {
@@ -138,7 +138,7 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
                 }
                 Assert.assertEquals(2, writeCount);
             });
-        }).disableAssertions(FrameWithoutBoxing.class).run();
+        }).disableAssertions(FrameWithoutBoxing.class).postfixVmOption("-Djdk.graal.TruffleTrustedFinalFrameFields=true").run();
     }
 
     private void compileAndCheck(String snippet, Consumer<StructuredGraph> check) {
