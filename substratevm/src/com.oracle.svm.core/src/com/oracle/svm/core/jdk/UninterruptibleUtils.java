@@ -429,11 +429,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int clamp(int value, int min, int max) {
+            assert min <= max;
             return min(max(value, min), max);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static long clamp(long value, long min, long max) {
+            assert min <= max;
             return min(max(value, min), max);
         }
 
