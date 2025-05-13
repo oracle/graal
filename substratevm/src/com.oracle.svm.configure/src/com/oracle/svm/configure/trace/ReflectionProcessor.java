@@ -32,6 +32,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
@@ -101,7 +102,8 @@ class ReflectionProcessor extends AbstractProcessor {
                 name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
             }
             if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass), entry) &&
-                            !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass), entry))) {
+                            !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass), entry)) &&
+                            ClassNameSupport.isValidReflectionName(name)) {
                 configuration.getOrCreateType(condition, NamedConfigurationTypeDescriptor.fromReflectionName(name));
             }
             return;
