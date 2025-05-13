@@ -64,8 +64,8 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
     @CompilationFinal private boolean directByteBufferMemoryAccess;
-    @CompilationFinal private boolean evalReturnsModule;
     @CompilationFinal private boolean debugTestMode;
+    @CompilationFinal private boolean evalReturnsInstance;
 
     private final OptionValues optionValues;
 
@@ -94,8 +94,8 @@ public final class WasmContextOptions {
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
-        this.evalReturnsModule = readBooleanOption(WasmOptions.EvalReturnsModule);
         this.debugTestMode = readBooleanOption(WasmOptions.DebugTestMode);
+        this.evalReturnsInstance = readBooleanOption(WasmOptions.EvalReturnsInstance);
     }
 
     private void checkOptionDependencies() {
@@ -171,12 +171,12 @@ public final class WasmContextOptions {
         return directByteBufferMemoryAccess;
     }
 
-    public boolean evalReturnsModule() {
-        return evalReturnsModule;
-    }
-
     public boolean debugTestMode() {
         return debugTestMode;
+    }
+
+    public boolean evalReturnsInstance() {
+        return evalReturnsInstance;
     }
 
     @Override
@@ -195,8 +195,8 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
-        hash = 53 * hash + (this.evalReturnsModule ? 1 : 0);
         hash = 53 * hash + (this.debugTestMode ? 1 : 0);
+        hash = 53 * hash + (this.evalReturnsInstance ? 1 : 0);
         return hash;
     }
 
@@ -250,10 +250,10 @@ public final class WasmContextOptions {
         if (this.directByteBufferMemoryAccess != other.directByteBufferMemoryAccess) {
             return false;
         }
-        if (this.evalReturnsModule != other.evalReturnsModule) {
+        if (this.debugTestMode != other.debugTestMode) {
             return false;
         }
-        if (this.debugTestMode != other.debugTestMode) {
+        if (this.evalReturnsInstance != other.evalReturnsInstance) {
             return false;
         }
         return true;

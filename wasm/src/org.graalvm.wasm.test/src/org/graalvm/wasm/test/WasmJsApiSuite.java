@@ -2381,7 +2381,7 @@ public class WasmJsApiSuite {
                                     }),
                     });
                     WasmInstance instance1 = moduleInstantiate(wasm, sourceBytesMod1, importObj1);
-                    var mod1Sum = instance1.readMember("sum");
+                    var mod1Sum = WebAssembly.instanceExport(instance1, "sum");
                     Dictionary importObj2 = Dictionary.create(new Object[]{
                                     "mod1", Dictionary.create(new Object[]{
                                                     "sum", mod1Sum,
@@ -2521,7 +2521,6 @@ public class WasmJsApiSuite {
     public static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
-        contextBuilder.option("wasm.EvalReturnsModule", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }
@@ -2529,10 +2528,9 @@ public class WasmJsApiSuite {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
             Value mainInstance = context.eval(source).newInstance();
-            Value store = context.getBindings(WasmLanguage.ID).invokeMember("getStore", mainInstance);
-            Value main = mainInstance.getMember("main");
+            Value main = mainInstance.getMember("exports").getMember("main");
             main.execute();
-            Value run = store.getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            Value run = mainInstance.getMember("references").getMember("testutil").getMember("exports").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             run.execute(new GuestCode(testCase));
         }
     }

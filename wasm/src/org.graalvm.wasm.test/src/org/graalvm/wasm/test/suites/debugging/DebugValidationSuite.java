@@ -784,13 +784,12 @@ public class DebugValidationSuite extends AbstractBinarySuite {
     private static void runTest(byte[] data) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), "test_main").build();
-        contextBuilder.option("wasm.EvalReturnsModule", "true");
         Context context = contextBuilder.build();
         Debugger debugger = Debugger.find(context.getEngine());
         DebuggerSession session = debugger.startSession(event -> {
         });
         try {
-            Value val = context.eval(source).newInstance();
+            Value val = context.eval(source).newInstance().getMember("exports");
             val.getMember("_main").execute();
             session.suspendNextExecution();
         } finally {
