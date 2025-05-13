@@ -838,6 +838,8 @@ public class NativeImageGenerator {
                          */
                         HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
                     }
+                    /* All pre-analysis set-up is done and the fixed-point analysis can start. */
+                    BuildPhaseProvider.markAnalysisStarted();
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
