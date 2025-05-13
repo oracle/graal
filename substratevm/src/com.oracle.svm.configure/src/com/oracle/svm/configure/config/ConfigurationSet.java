@@ -151,7 +151,6 @@ public class ConfigurationSet {
         for (Path path : configFilePathResolver.apply(reachabilityMetadataFile)) {
             writtenFiles.add(path);
             JsonWriter writer = new JsonPrettyWriter(path);
-            writer.appendObjectStart();
             boolean first = true;
             for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
                 JsonPrintable configuration = configSupplier.apply(configFile);
@@ -172,6 +171,7 @@ public class ConfigurationSet {
                         continue;
                     }
                     if (first) {
+                        writer.appendObjectStart();
                         first = false;
                     } else {
                         writer.appendSeparator();
@@ -179,7 +179,11 @@ public class ConfigurationSet {
                     printConfigurationToCombinedFile(configSupplier.apply(configFile), configFile, writer);
                 }
             }
-            writer.appendObjectEnd();
+            if (first) {
+                writer.append("{}");
+            } else {
+                writer.appendObjectEnd();
+            }
             writer.close();
         }
         return writtenFiles;
