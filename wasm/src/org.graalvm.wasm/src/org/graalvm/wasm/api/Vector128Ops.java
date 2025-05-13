@@ -49,6 +49,8 @@ import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.VectorOperators;
 import org.graalvm.wasm.constants.Bytecode;
 
@@ -65,6 +67,10 @@ import static org.graalvm.wasm.api.Vector128.SHORT_LENGTH;
 public class Vector128Ops {
 
     private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(ByteVector.SPECIES_128).getClass();
+
+    public static final ByteVector cast(ByteVector vec) {
+        return BYTE_128_CLASS.cast(vec);
+    }
 
     private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
@@ -1300,6 +1306,34 @@ public class Vector128Ops {
 
     public static ByteVector fromArray(byte[] bytes, int offset) {
         return BYTE_128_CLASS.cast(ByteVector.fromArray(ByteVector.SPECIES_128, bytes, offset));
+    }
+
+    public static ByteVector fromArray(short[] shorts) {
+        return BYTE_128_CLASS.cast(ShortVector.fromArray(ShortVector.SPECIES_128, shorts, 0).reinterpretAsBytes());
+    }
+
+    public static ByteVector fromArray(int[] ints) {
+        return BYTE_128_CLASS.cast(IntVector.fromArray(IntVector.SPECIES_128, ints, 0).reinterpretAsBytes());
+    }
+
+    public static ByteVector fromArray(long[] longs) {
+        return BYTE_128_CLASS.cast(LongVector.fromArray(LongVector.SPECIES_128, longs, 0).reinterpretAsBytes());
+    }
+
+    public static ByteVector broadcast(byte value) {
+        return BYTE_128_CLASS.cast(ByteVector.broadcast(ByteVector.SPECIES_128, value));
+    }
+
+    public static ByteVector broadcast(short value) {
+        return BYTE_128_CLASS.cast(ShortVector.broadcast(ShortVector.SPECIES_128, value).reinterpretAsBytes());
+    }
+
+    public static ByteVector broadcast(int value) {
+        return BYTE_128_CLASS.cast(IntVector.broadcast(IntVector.SPECIES_128, value).reinterpretAsBytes());
+    }
+
+    public static ByteVector broadcast(long value) {
+        return BYTE_128_CLASS.cast(LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsBytes());
     }
 
     public static byte[] toArray(ByteVector vec) {
