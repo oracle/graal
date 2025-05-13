@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -160,4 +161,6 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
     public boolean hasTag(Class<? extends Tag> tag) {
         return tag == StandardTags.RootBodyTag.class;
     }
+
+    public abstract void prepareForInstrumentation(Set<Class<?>> tags);
 }
