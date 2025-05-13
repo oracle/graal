@@ -109,6 +109,7 @@ public class CompressedGlobTrie {
             if (!invalidPatterns.isEmpty()) {
                 StringBuilder sb = new StringBuilder("Error: invalid glob patterns found:" + System.lineSeparator());
                 invalidPatterns.forEach(msg -> sb.append(msg).append(System.lineSeparator()));
+
                 throw UserError.abort(sb.toString());
             }
 
