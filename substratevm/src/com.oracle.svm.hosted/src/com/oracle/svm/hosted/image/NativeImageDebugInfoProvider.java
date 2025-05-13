@@ -852,9 +852,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     /* The following methods provide some logging for foreign type entries. */
     private void logForeignTypeInfo(HostedType hostedType) {
         if (!isForeignPointerType(hostedType)) {
-            // non pointer type must be an interface because an instance needs to be pointed to
-            assert hostedType.isInterface();
-            // foreign word types never have element info
+            // foreign non-pointer word types never have element info
             debug.log(DebugContext.VERBOSE_LEVEL, "Foreign word type %s", hostedType.toJavaName());
         } else {
             ElementInfo elementInfo = nativeLibs.findElementInfo(hostedType);
