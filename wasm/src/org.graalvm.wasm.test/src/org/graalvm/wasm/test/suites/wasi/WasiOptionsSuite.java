@@ -187,10 +187,9 @@ public class WasiOptionsSuite {
         contextBuilder.allowIO(IOAccess.newBuilder().fileSystem(new TestFileSystem()).build());
         contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
         contextBuilder.option("wasm.WasiMapDirs", dir);
-        contextBuilder.option("wasm.EvalReturnsModule", "true");
         try (Context context = contextBuilder.build()) {
             final Source s = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(source), "main").build();
-            final Value main = context.eval(s).newInstance();
+            final Value main = context.eval(s).newInstance().getMember("exports");
             final Value relative = main.getMember("relative");
             final Value direct = main.getMember("direct");
             final Value absolute = main.getMember("absolute");

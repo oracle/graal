@@ -44,6 +44,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.collections.EconomicMap;
@@ -60,14 +61,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -292,32 +291,43 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object instantiate(Object... arguments) throws ArityException {
-        if (arguments.length > 1) {
-            throw ArityException.create(0, 1, arguments.length);
-        }
+    Object instantiate(Object... arguments) {
         final WasmContext context = WasmContext.get(null);
-        if (arguments.length == 0) {
-            return createInstance(context, WasmConstant.NULL, ExceptionProviders.PolyglotExceptionProvider);
-        } else {
-            return createInstance(context, arguments[0], ExceptionProviders.PolyglotExceptionProvider);
+        final WasmStore store = new WasmStore(context, context.language());
+        Object importObject = null;
+        for (Object argument : arguments) {
+            if (argument instanceof WasmModule module) {
+                store.readInstance(module);
+            } else {
+                if (importObject != null) {
+                    throw ExceptionProviders.PolyglotExceptionProvider.createTypeError("Can only provide a single import object. Other arguments must be modules.");
+                }
+                importObject = argument;
+            }
         }
+        return createInstance(store, Objects.requireNonNullElse(importObject, WasmConstant.NULL), ExceptionProviders.PolyglotExceptionProvider, false);
     }
 
-    public WasmInstance createInstance(WasmContext context, Object importObject, ExceptionProvider exceptionProvider) {
-        final WasmStore store = new WasmStore(context, context.language());
+    public WasmInstance createInstance(WasmStore store, Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
         final WasmInstance instance = store.readInstance(this);
-        var imports = resolveModuleImports(importObject, exceptionProvider);
-        instance.store().linker().tryLink(instance, imports);
+        var imports = resolveModuleImports(importObject, exceptionProvider, importsOnlyInImportObject);
+        store.linker().tryLink(instance, imports);
         return instance;
     }
 
-    private ImportValueSupplier resolveModuleImports(Object importObject, ExceptionProvider exceptionProvider) {
+    private ImportValueSupplier resolveModuleImports(Object importObject, ExceptionProvider exceptionProvider, boolean importsOnlyInImportObject) {
         CompilerAsserts.neverPartOfCompilation();
         List<Object> resolvedImports = new ArrayList<>(numImportedSymbols());
 
         if (!importedSymbols().isEmpty()) {
-            requireImportObject(importObject, exceptionProvider);
+            if (!importObjectExists(importObject)) {
+                if (importsOnlyInImportObject) {
+                    throw exceptionProvider.createTypeError("Module requires imports, but import object is undefined.");
+                } else {
+                    // imports could be provided by another source, such as a module.
+                    return null;
+                }
+            }
         }
 
         for (ImportDescriptor descriptor : importedSymbols()) {
@@ -346,11 +356,9 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         };
     }
 
-    private static void requireImportObject(Object importObject, ExceptionProvider exceptionProvider) {
+    private static boolean importObjectExists(Object importObject) {
         final InteropLibrary interop = InteropLibrary.getUncached(importObject);
-        if (interop.isNull(importObject) || !interop.hasMembers(importObject)) {
-            throw exceptionProvider.createTypeError("Module requires imports, but import object is undefined.");
-        }
+        return !interop.isNull(importObject) && interop.hasMembers(importObject);
     }
 
     private static Object getImportObjectMember(Object importObject, ImportDescriptor descriptor, ExceptionProvider exceptionProvider) {
