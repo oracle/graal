@@ -1578,14 +1578,8 @@ final class Target_com_oracle_truffle_polyglot_PolyglotEngineImpl {
     }
 }
 
-@TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLocation {
-    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
-    private long offset;
-}
-
-@TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicLongFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocation {
+@TargetClass(className = "com.oracle.truffle.api.object.FieldInfo", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_object_FieldInfo {
     @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
     private long offset;
 }

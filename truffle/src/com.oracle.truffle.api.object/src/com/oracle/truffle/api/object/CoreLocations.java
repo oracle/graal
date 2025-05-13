@@ -48,7 +48,6 @@ import static com.oracle.truffle.api.object.UnsafeAccess.unsafePutLong;
 import static com.oracle.truffle.api.object.UnsafeAccess.unsafePutObject;
 
 import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -312,8 +311,13 @@ abstract class CoreLocations {
 
     public abstract static class FieldLocation extends InstanceLocation {
 
-        protected FieldLocation(int index) {
+        protected final FieldInfo field;
+        protected final VarHandle varHandle;
+
+        protected FieldLocation(int index, FieldInfo field) {
             super(index);
+            this.field = Objects.requireNonNull(field);
+            this.varHandle = ObjectStorageOptions.UseVarHandle ? Objects.requireNonNull(field.varHandle()) : null;
         }
 
         @Override
@@ -340,8 +344,6 @@ abstract class CoreLocations {
         public String getWhereString() {
             return "@" + index;
         }
-
-        public abstract Class<? extends DynamicObject> getDeclaringClass();
 
         protected static DynamicObject receiverCast(DynamicObject store, Class<? extends DynamicObject> tclass) {
             try {
@@ -408,17 +410,28 @@ abstract class CoreLocations {
         }
     }
 
-    public abstract static class SimpleObjectFieldLocation extends FieldLocation implements ObjectLocation {
+    static final class SimpleObjectFieldLocation extends FieldLocation implements ObjectLocation {
 
-        protected SimpleObjectFieldLocation(int index) {
-            super(index);
+        SimpleObjectFieldLocation(int index, FieldInfo field) {
+            super(index, field);
         }
 
         @Override
-        public abstract Object get(DynamicObject store, boolean guard);
+        public Object get(DynamicObject store, boolean guard) {
+            if (ObjectStorageOptions.UseVarHandle) {
+                return varHandle.get(store);
+            }
+            return unsafeGetObject(receiverCast(store, field.getDeclaringClass()), field.offset());
+        }
 
         @Override
-        public abstract void set(DynamicObject store, Object value, boolean guard, boolean init);
+        public void set(DynamicObject store, Object value, boolean guard, boolean init) {
+            if (ObjectStorageOptions.UseVarHandle) {
+                varHandle.set(store, value);
+                return;
+            }
+            unsafePutObject(receiverCast(store, field.getDeclaringClass()), field.offset(), value);
+        }
 
         @Override
         public boolean canStore(Object value) {
@@ -446,7 +459,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void accept(LocationVisitor locationVisitor) {
+        public void accept(LocationVisitor locationVisitor) {
             locationVisitor.visitObjectField(getIndex(), OBJECT_SLOT_SIZE);
         }
     }
@@ -556,7 +569,7 @@ abstract class CoreLocations {
         }
     }
 
-    public static LongLocation createLongLocation(LongLocation longLocation, boolean allowInt) {
+    static LongLocation createLongLocation(LongLocation longLocation, boolean allowInt) {
         if ((!allowInt && (longLocation instanceof LongLocationDecorator)) || (longLocation instanceof LongLocationDecorator && ((LongLocationDecorator) longLocation).allowInt == allowInt)) {
             return longLocation;
         } else {
@@ -625,19 +638,19 @@ abstract class CoreLocations {
         }
     }
 
-    public abstract static class SimpleLongFieldLocation extends FieldLocation implements LongLocation {
+    static final class SimpleLongFieldLocation extends FieldLocation implements LongLocation {
 
-        protected SimpleLongFieldLocation(int index) {
-            super(index);
+        SimpleLongFieldLocation(int index, FieldInfo field) {
+            super(index, field);
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean guard) {
+        public Object get(DynamicObject store, boolean guard) {
             return getLong(store, guard);
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
+        public void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setLong(store, ((Long) value).longValue(), guard, init);
             } else {
@@ -646,20 +659,31 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final boolean canStore(Object value) {
+        public boolean canStore(Object value) {
             return value instanceof Long;
         }
 
         @Override
-        public abstract long getLong(DynamicObject store, boolean guard);
+        public long getLong(DynamicObject store, boolean guard) {
+            if (ObjectStorageOptions.UseVarHandle) {
+                return (long) varHandle.get(store);
+            }
+            return unsafeGetLong(receiverCast(store, field.getDeclaringClass()), field.offset());
+        }
 
         @Override
-        public final long getLong(DynamicObject store, Shape shape) {
+        public long getLong(DynamicObject store, Shape shape) {
             return getLong(store, checkShape(store, shape));
         }
 
         @Override
-        public abstract void setLong(DynamicObject store, long value, boolean guard, boolean init);
+        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
+            if (ObjectStorageOptions.UseVarHandle) {
+                varHandle.set(store, value);
+                return;
+            }
+            unsafePutLong(receiverCast(store, field.getDeclaringClass()), field.offset(), value);
+        }
 
         @Override
         public int primitiveFieldCount() {
@@ -667,7 +691,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Class<Long> getType() {
+        public Class<Long> getType() {
             return long.class;
         }
 
@@ -903,88 +927,6 @@ abstract class CoreLocations {
 
     static int upperInt(long value) {
         return (int) (value >>> 32);
-    }
-
-    static final class DynamicObjectFieldLocation extends SimpleObjectFieldLocation {
-        private final long offset;
-        private final Class<? extends DynamicObject> tclass;
-        /** Field {@link VarHandle}. */
-        private final VarHandle varHandle;
-
-        private DynamicObjectFieldLocation(int index, long offset, Class<? extends DynamicObject> declaringClass, VarHandle varHandle) {
-            super(index);
-            this.offset = offset;
-            this.tclass = declaringClass;
-            this.varHandle = ObjectStorageOptions.UseVarHandle ? Objects.requireNonNull(varHandle) : null;
-        }
-
-        DynamicObjectFieldLocation(int index, Field objectField, VarHandle varHandle) {
-            this(index, UnsafeAccess.objectFieldOffset(objectField), objectField.getDeclaringClass().asSubclass(DynamicObject.class), varHandle);
-            if (objectField.getType() != Object.class) {
-                throw new IllegalArgumentException();
-            }
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            if (ObjectStorageOptions.UseVarHandle) {
-                return varHandle.get(store);
-            }
-            return unsafeGetObject(receiverCast(store, tclass), offset);
-        }
-
-        @Override
-        public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (ObjectStorageOptions.UseVarHandle) {
-                varHandle.set(store, value);
-                return;
-            }
-            unsafePutObject(receiverCast(store, tclass), offset, value);
-        }
-
-        @Override
-        public Class<? extends DynamicObject> getDeclaringClass() {
-            return tclass;
-        }
-    }
-
-    static final class DynamicLongFieldLocation extends SimpleLongFieldLocation {
-        /** Field offset. */
-        private final long offset;
-        /** {@link DynamicObject} subclass holding field. */
-        private final Class<? extends DynamicObject> tclass;
-        /** Field {@link VarHandle}. */
-        private final VarHandle varHandle;
-
-        DynamicLongFieldLocation(int index, long offset, Class<? extends DynamicObject> declaringClass, VarHandle varHandle) {
-            super(index);
-            this.offset = offset;
-            this.tclass = declaringClass;
-            this.varHandle = ObjectStorageOptions.UseVarHandle ? Objects.requireNonNull(varHandle) : null;
-            assert offset % Long.BYTES == 0; // must be aligned
-        }
-
-        @Override
-        public long getLong(DynamicObject store, boolean guard) {
-            if (ObjectStorageOptions.UseVarHandle) {
-                return (long) varHandle.get(store);
-            }
-            return unsafeGetLong(receiverCast(store, tclass), offset);
-        }
-
-        @Override
-        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
-            if (ObjectStorageOptions.UseVarHandle) {
-                varHandle.set(store, value);
-                return;
-            }
-            unsafePutLong(receiverCast(store, tclass), offset, value);
-        }
-
-        @Override
-        public Class<? extends DynamicObject> getDeclaringClass() {
-            return tclass;
-        }
     }
 
     static int getLocationOrdinal(CoreLocation loc) {

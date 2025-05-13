@@ -269,12 +269,9 @@ class DefaultLayout extends LayoutImpl {
 
                     hasDynamicFields = true;
                     if (field.getType() == Object.class) {
-                        objectFieldList.add(new CoreLocations.DynamicObjectFieldLocation(objectFieldList.size(), field, varHandle));
+                        objectFieldList.add(new CoreLocations.SimpleObjectFieldLocation(objectFieldList.size(), FieldInfo.fromField(field, varHandle)));
                     } else if (field.getType() == long.class) {
-                        long offset = UnsafeAccess.objectFieldOffset(field);
-                        if (offset % Long.BYTES == 0) {
-                            primitiveFieldList.add(new CoreLocations.DynamicLongFieldLocation(primitiveFieldList.size(), offset, clazz, varHandle));
-                        }
+                        primitiveFieldList.add(new CoreLocations.SimpleLongFieldLocation(primitiveFieldList.size(), FieldInfo.fromField(field, varHandle)));
                     }
                 }
             }
