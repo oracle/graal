@@ -47,6 +47,13 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYP
 import static jdk.graal.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_12_TO_16;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_ADD_POLY_2;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_ADD_POLY_3;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_BARRETT_REDUCE;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_INVERSE_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
@@ -652,6 +659,27 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
         if (c.stubDilithiumDecomposePoly != 0L) {
             registerForeignCall(DILITHIUM_DECOMPOSE_POLY, c.stubDilithiumDecomposePoly, NativeCall);
+        }
+        if (c.stubKyberNtt != 0L) {
+            registerForeignCall(KYBER_NTT, c.stubKyberNtt, NativeCall);
+        }
+        if (c.stubKyberInverseNtt != 0L) {
+            registerForeignCall(KYBER_INVERSE_NTT, c.stubKyberInverseNtt, NativeCall);
+        }
+        if (c.stubKyberNttMult != 0L) {
+            registerForeignCall(KYBER_NTT_MULT, c.stubKyberNttMult, NativeCall);
+        }
+        if (c.stubKyberAddPoly2 != 0L) {
+            registerForeignCall(KYBER_ADD_POLY_2, c.stubKyberAddPoly2, NativeCall);
+        }
+        if (c.stubKyberAddPoly3 != 0L) {
+            registerForeignCall(KYBER_ADD_POLY_3, c.stubKyberAddPoly3, NativeCall);
+        }
+        if (c.stubKyber12To16 != 0L) {
+            registerForeignCall(KYBER_12_TO_16, c.stubKyber12To16, NativeCall);
+        }
+        if (c.stubKyberBarrettReduce != 0L) {
+            registerForeignCall(KYBER_BARRETT_REDUCE, c.stubKyberBarrettReduce, NativeCall);
         }
 
         registerSnippetStubs(providers, options);

@@ -39,6 +39,13 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCR
 import static jdk.graal.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_12_TO_16;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_ADD_POLY_2;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_ADD_POLY_3;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_BARRETT_REDUCE;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_INVERSE_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
@@ -274,6 +281,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
+                registerMLPlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, replacements, config);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
@@ -1160,8 +1168,10 @@ public class HotSpotGraphBuilderPlugins {
                 }
             }
         });
+    }
 
-        r = new Registration(plugins, "sun.security.provider.ML_DSA", replacements);
+    private static void registerMLPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "sun.security.provider.ML_DSA", replacements);
         r.registerConditional(config.stubDilithiumAlmostNtt != 0L, new InvocationPlugin("implDilithiumAlmostNtt", int[].class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode zetas) {
@@ -1240,6 +1250,127 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode highPartStart = helper.arrayStart(nonNullHighPart, JavaKind.Int);
 
                     ForeignCallNode call = new ForeignCallNode(DILITHIUM_DECOMPOSE_POLY, inputStart, lowPartStart, highPartStart, twoGamma2, multiplier);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+
+        r = new Registration(plugins, "com.sun.crypto.provider.ML_KEM", replacements);
+        r.registerConditional(config.stubKyberNtt != 0L, new InvocationPlugin("implKyberNtt", short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode poly, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode polyNonNull = b.nullCheckedValue(poly);
+                    ValueNode zetasNonNull = b.nullCheckedValue(zetas);
+
+                    ValueNode polyStart = helper.arrayStart(polyNonNull, JavaKind.Short);
+                    ValueNode zetasStart = helper.arrayStart(zetasNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_NTT, polyStart, zetasStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubKyberInverseNtt != 0L, new InvocationPlugin("implKyberInverseNtt", short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode poly, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode polyNonNull = b.nullCheckedValue(poly);
+                    ValueNode zetasNonNull = b.nullCheckedValue(zetas);
+
+                    ValueNode polyStart = helper.arrayStart(polyNonNull, JavaKind.Short);
+                    ValueNode zetasStart = helper.arrayStart(zetasNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_INVERSE_NTT, polyStart, zetasStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubKyberNttMult != 0L, new InvocationPlugin("implKyberNttMult", short[].class, short[].class, short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode ntta, ValueNode nttb, ValueNode zetas) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode resultNonNull = b.nullCheckedValue(result);
+                    ValueNode nttaNonNull = b.nullCheckedValue(ntta);
+                    ValueNode nttbNonNull = b.nullCheckedValue(nttb);
+                    ValueNode zetasNonNull = b.nullCheckedValue(zetas);
+
+                    ValueNode resultStart = helper.arrayStart(resultNonNull, JavaKind.Short);
+                    ValueNode nttaStart = helper.arrayStart(nttaNonNull, JavaKind.Short);
+                    ValueNode nttbStart = helper.arrayStart(nttbNonNull, JavaKind.Short);
+                    ValueNode zetasStart = helper.arrayStart(zetasNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_NTT_MULT, resultStart, nttaStart, nttbStart, zetasStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubKyberAddPoly2 != 0L, new InvocationPlugin("implKyberAddPoly", short[].class, short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode aIn, ValueNode bIn) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode resultNonNull = b.nullCheckedValue(result);
+                    ValueNode aNonNull = b.nullCheckedValue(aIn);
+                    ValueNode bNonNull = b.nullCheckedValue(bIn);
+
+                    ValueNode resultStart = helper.arrayStart(resultNonNull, JavaKind.Short);
+                    ValueNode aStart = helper.arrayStart(aNonNull, JavaKind.Short);
+                    ValueNode bStart = helper.arrayStart(bNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_ADD_POLY_2, resultStart, aStart, bStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubKyberAddPoly3 != 0L, new InvocationPlugin("implKyberAddPoly", short[].class, short[].class, short[].class, short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode aIn, ValueNode bIn, ValueNode cIn) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode resultNonNull = b.nullCheckedValue(result);
+                    ValueNode aNonNull = b.nullCheckedValue(aIn);
+                    ValueNode bNonNull = b.nullCheckedValue(bIn);
+                    ValueNode cNonNull = b.nullCheckedValue(cIn);
+
+                    ValueNode resultStart = helper.arrayStart(resultNonNull, JavaKind.Short);
+                    ValueNode aStart = helper.arrayStart(aNonNull, JavaKind.Short);
+                    ValueNode bStart = helper.arrayStart(bNonNull, JavaKind.Short);
+                    ValueNode cStart = helper.arrayStart(cNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_ADD_POLY_3, resultStart, aStart, bStart, cStart);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubKyber12To16 != 0L, new InvocationPlugin("implKyber12To16", byte[].class, int.class, short[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode condensed, ValueNode index, ValueNode parsed, ValueNode parsedLength) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode condensedNonNull = b.nullCheckedValue(condensed);
+                    ValueNode parsedNonNull = b.nullCheckedValue(parsed);
+
+                    ValueNode condensedStart = helper.arrayStart(condensedNonNull, JavaKind.Byte);
+                    ValueNode parsedStart = helper.arrayStart(parsedNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_12_TO_16, condensedStart, index, parsedStart, parsedLength);
+                    b.addPush(JavaKind.Int, call);
+                    return true;
+                }
+            }
+        });
+        r.registerConditional(config.stubKyberBarrettReduce != 0L, new InvocationPlugin("implKyberBarrettReduce", short[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode coeffsNonNull = b.nullCheckedValue(coeffs);
+                    ValueNode coeffsStart = helper.arrayStart(coeffsNonNull, JavaKind.Short);
+
+                    ForeignCallNode call = new ForeignCallNode(KYBER_BARRETT_REDUCE, coeffsStart);
                     b.addPush(JavaKind.Int, call);
                     return true;
                 }
