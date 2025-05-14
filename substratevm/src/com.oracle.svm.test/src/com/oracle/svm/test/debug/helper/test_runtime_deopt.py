@@ -85,9 +85,17 @@ class TestRuntimeDeopt(unittest.TestCase):
         backtrace = gdb_execute('backtrace 5')
         # check if eager deopt frame
         if 'EAGER DEOPT FRAME' in backtrace:
-            self.assertIn('[EAGER DEOPT FRAME] com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-            self.assertIn('(deoptFrameValues=2, __0=com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...}) at OptimizedCallTarget.java', backtrace)
-            self.assertIn('com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode::doInvoke', backtrace)
+            self.assertIn('in [EAGER DEOPT FRAME]', backtrace)
+            self.assertIn('deoptFrameValues=2', backtrace)
+
+            # check if values are printed correctly and backtrace is not corrupted
+            if 'SubstrateEnterpriseOptimizedCallTarget' in backtrace:
+                self.assertIn('SubstrateEnterpriseOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...}', backtrace)
+                self.assertIn('SubstrateEnterpriseOptimizedCallTarget::doInvoke', backtrace)
+            else:
+                self.assertIn('SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...})', backtrace)
+                self.assertIn('SubstrateOptimizedCallTargetInstalledCode::doInvoke', backtrace)
+
             self.assertNotIn('??', backtrace)
             self.assertNotIn('Unknown Frame at', backtrace)
         else:
@@ -104,9 +112,13 @@ class TestRuntimeDeopt(unittest.TestCase):
 
         # check backtrace
         backtrace = gdb_execute('backtrace 5')
-        self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-        self.assertIn('(this=<optimized out>, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
-        self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
+        if 'SubstrateEnterpriseOptimizedCallTarget' in backtrace:
+            self.assertIn('SubstrateEnterpriseOptimizedCallTarget::add_I_AAIIZ', backtrace)
+            self.assertNotIn('<unknown type in <in-memory@', backtrace)
+        else:
+            self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
+            self.assertIn('(this=<optimized out>, originalArguments=com.oracle.svm.core.option.RuntimeOptionKey = {...})', backtrace)
+            self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
 
 
 # redirect unittest output to terminal

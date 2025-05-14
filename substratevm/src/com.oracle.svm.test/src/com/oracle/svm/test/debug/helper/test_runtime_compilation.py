@@ -43,7 +43,6 @@ class TestJITCompilationInterface(unittest.TestCase):
         set_up_test()
         gdb_delete_breakpoints()
         gdb_start()
-        gdb_execute("set dwarf-type-signature-fallback main")
 
     @classmethod
     def tearDown(cls):
@@ -136,7 +135,6 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         gdb_delete_breakpoints()
         gdb_start()
         set_up_gdb_debughelpers()
-        gdb_execute("set dwarf-type-signature-fallback main")
 
     @classmethod
     def tearDown(cls):
