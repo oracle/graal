@@ -2597,6 +2597,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 loadVector(memory, memoryLib(memoryIndex), frame, stackPointer++, vectorOpcode, address);
                 break;
             }
+            case Bytecode.VECTOR_V128_STORE: {
+                final int encoding = rawPeekU8(bytecode, offset);
+                offset++;
+                final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                final int memoryIndex = rawPeekI32(bytecode, offset);
+                offset += 4;
+                final long memOffset;
+                if (indexType64 == 0) {
+                    memOffset = rawPeekU32(bytecode, offset);
+                    offset += 4;
+                } else {
+                    memOffset = rawPeekI64(bytecode, offset);
+                    offset += 8;
+                }
+                final ByteVector value = popVector128(frame, --stackPointer);
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
+                } else {
+                    baseAddress = popLong(frame, --stackPointer);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                final WasmMemory memory = memory(instance, memoryIndex);
+                storeVector(memory, memoryLib(memoryIndex), address, value);
+                break;
+            }
             case Bytecode.VECTOR_V128_CONST: {
                 final ByteVector vector = Vector128Ops.fromArray(bytecode, offset);
                 offset += 16;
@@ -2860,6 +2886,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
+    }
+
+    private void storeVector(WasmMemory memory, WasmMemoryLibrary memoryLib, long address, ByteVector value) {
+        memoryLib.store_i128(memory, this, address, value);
     }
 
     // Checkstyle: stop method name check

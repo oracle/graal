@@ -351,9 +351,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void store_i128(Node node, long address, Vector128 value) {
+    public void store_i128(Node node, long address, ByteVector value) {
         if (ByteArraySupport.littleEndian().inBounds(buffer(), address, 16)) {
-            System.arraycopy(value.getBytes(), 0, buffer(), (int) address, 16);
+            Vector128Ops.intoArray(value, buffer(), (int) address);
         } else {
             throw trapOutOfBounds(node, address, 16);
         }

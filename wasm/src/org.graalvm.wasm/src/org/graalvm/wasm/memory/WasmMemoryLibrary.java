@@ -199,7 +199,7 @@ public abstract class WasmMemoryLibrary extends Library {
 
     public abstract void store_i64_32(WasmMemory memory, Node node, long address, int value);
 
-    public abstract void store_i128(WasmMemory memory, Node node, long address, Vector128 value);
+    public abstract void store_i128(WasmMemory memory, Node node, long address, ByteVector value);
 
     public abstract int atomic_load_i32(WasmMemory memory, Node node, long address);
 

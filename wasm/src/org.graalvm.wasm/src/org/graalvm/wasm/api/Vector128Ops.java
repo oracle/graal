@@ -1338,4 +1338,8 @@ public class Vector128Ops {
     public static byte[] toArray(ByteVector vec) {
         return cast(vec).toArray();
     }
+
+    public static void intoArray(ByteVector vec, byte[] array, int offset) {
+        cast(vec).intoArray(array, offset);
+    }
 }

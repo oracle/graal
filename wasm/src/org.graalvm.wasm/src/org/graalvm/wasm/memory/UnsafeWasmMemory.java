@@ -326,9 +326,10 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void store_i128(Node node, long address, Vector128 value) {
+    public void store_i128(Node node, long address, ByteVector value) {
         validateAddress(node, address, 16);
-        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
+        // Use intoMemorySegment after adopting the FFM API
+        unsafe.copyMemory(Vector128Ops.toArray(value), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @ExportMessage
