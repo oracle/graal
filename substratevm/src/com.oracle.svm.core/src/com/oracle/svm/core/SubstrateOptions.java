@@ -591,6 +591,11 @@ public class SubstrateOptions {
                 }
             }
         };
+
+        @APIOption(name = "install-exit-handlers", deprecated = "Enabled by default for executables. For shared libraries (when --shared is used), use the experimental option -H:+InstallJavaExitHandlersForSharedLibrary.")//
+        @Option(help = "Provide java.lang.Terminator exit handlers", deprecated = true, deprecationMessage = "Enabled by default for executables. For shared libraries (when --shared is used), use the experimental option -H:+InstallJavaExitHandlersForSharedLibrary.")//
+        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
+
     }
 
     @Option(help = "Enable detection and runtime container configuration support.")//
@@ -1093,6 +1098,15 @@ public class SubstrateOptions {
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
 
+    @Option(help = "Provide java.lang.Terminator exit handlers for shared libraries. Note: this flag must be used with -XX:+EnableSignalHandling and will run shutdown hooks only in one isolate.", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final HostedOptionKey<Boolean> InstallJavaExitHandlersForSharedLibrary = new HostedOptionKey<>(false, key -> {
+        if (key.getValue()) {
+            UserError.guarantee(ImageInfo.isSharedLibrary(), "%s can be used only for shared libraries (when image is built with %s)",
+                            SubstrateOptionsParser.commandArgument(key, "+"),
+                            SubstrateOptionsParser.commandArgument(SharedLibrary, "+"));
+        }
+    });
+
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
 
@@ -1141,11 +1155,6 @@ public class SubstrateOptions {
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
-        /** Use {@link SubstrateOptions#needsExitHandlers()} instead. */
-        @APIOption(name = "install-exit-handlers")//
-        @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
-        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
-
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
 
@@ -1168,11 +1177,6 @@ public class SubstrateOptions {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
             }
         });
-    }
-
-    @Fold
-    public static boolean needsExitHandlers() {
-        return ConcealedOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
