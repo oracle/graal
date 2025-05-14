@@ -996,7 +996,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         abbrevCode = AbbrevCode.TYPE_POINTER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int pointerSize = dwarfSections.referenceSize();
+        int pointerSize = dwarfSections.pointerSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
         pos = writeAttrData1((byte) pointerSize, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x", pos, refTypeIdx);
