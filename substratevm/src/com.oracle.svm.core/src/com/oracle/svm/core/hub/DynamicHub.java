@@ -2348,12 +2348,10 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     private ClassFileFormatVersion classFileFormatVersion(Class<?> cl) {
         /* We don't have this information for our classes. */
         return null;
     }
-
 }
 
 /**
