@@ -535,6 +535,12 @@ public class FeatureImpl {
             if (bb.executorIsStarted()) {
                 throw VMError.shouldNotReachHere("Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis.");
             }
+            /*
+             * While it may seem wrong that the concurrent analysis accessor can request an
+             * additional analysis iteration this is necessary because the concurrent reachability
+             * callbacks can be forced to run synchronously in the single-threaded "during analysis"
+             * phase when elements are marked as reachable from Feature.duringAnalysis hooks.
+             */
             super.requireAnalysisIteration();
         }
 
