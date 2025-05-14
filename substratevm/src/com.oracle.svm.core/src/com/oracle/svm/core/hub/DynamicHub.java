@@ -87,7 +87,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
@@ -134,7 +134,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.CallerSensitive;
@@ -354,7 +353,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private final byte layerId;
 
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    private CFunctionPointer[] vtable;
+    private WordBase[] vtable;
 
     private final DynamicHubCompanion companion;
 
@@ -589,7 +588,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setClosedTypeWorldData(CFunctionPointer[] vtable, int typeID, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots) {
+    public void setClosedTypeWorldData(WordBase[] vtable, int typeID, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
@@ -601,8 +600,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setOpenTypeWorldData(CFunctionPointer[] vtable, int typeID,
-                    int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
+    public void setOpenTypeWorldData(WordBase[] vtable, int typeID, int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
@@ -2343,25 +2341,11 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
          * mutated, as it is not cached. To cache this constructor, setAccessible call must be done
          * on a copy and return that copy instead.
          */
-        Constructor<?> ctor = Helper_jdk_internal_reflect_ReflectionFactory.newConstructorWithAccessor(this, constructorToCall, acc);
+        Constructor<?> ctor = langReflectAccess.newConstructorWithAccessor(constructorToCall, acc);
         ctor.setAccessible(true);
         return ctor;
     }
 
-}
-
-/**
- * Reflectively access {@code JavaLangReflectAccess.newConstructorWithAccessor}. Once we drop JDK
- * 21, this can be replaced by a direct call to the method. (GR-55515)
- */
-final class Helper_jdk_internal_reflect_ReflectionFactory {
-    private static final Method NEW_CONSTRUCTOR_WITH_ACCESSOR = JavaVersionUtil.JAVA_SPEC > 21
-                    ? ReflectionUtil.lookupMethod(JavaLangReflectAccess.class, "newConstructorWithAccessor", Constructor.class, ConstructorAccessor.class)
-                    : null;
-
-    static Constructor<?> newConstructorWithAccessor(Target_jdk_internal_reflect_ReflectionFactory reflectionFactory, Constructor<?> constructorToCall, ConstructorAccessor acc) {
-        return ReflectionUtil.invokeMethod(NEW_CONSTRUCTOR_WITH_ACCESSOR, reflectionFactory.langReflectAccess, constructorToCall, acc);
-    }
 }
 
 /**

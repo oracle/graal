@@ -27,19 +27,16 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assume.assumeTrue;
 
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingStream;
@@ -56,11 +53,6 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
     private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
     private final Set<Long> expectedThreads = Collections.synchronizedSet(new HashSet<>());
-
-    @Before
-    public void checkJavaVersion() {
-        assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
-    }
 
     @Test
     public void test() throws Throwable {

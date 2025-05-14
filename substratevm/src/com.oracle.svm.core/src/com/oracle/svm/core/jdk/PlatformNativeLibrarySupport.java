@@ -39,8 +39,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 public abstract class PlatformNativeLibrarySupport {
 
     public static final String[] defaultBuiltInLibraries = {
@@ -128,14 +126,11 @@ public abstract class PlatformNativeLibrarySupport {
                         "java_lang_invoke_VarHandle_set",
                         "java_lang_invoke_VarHandle_compareAndExchange",
                         "java_lang_invoke_VarHandle_getAcquire",
-                        "java_lang_invoke_VarHandle_getAndSetAcquire");
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            Collections.addAll(blocklist,
-                            "java_nio_MappedMemoryUtils_load0",
-                            "java_nio_MappedMemoryUtils_unload0",
-                            "java_nio_MappedMemoryUtils_isLoaded0",
-                            "java_nio_MappedMemoryUtils_force0");
-        }
+                        "java_lang_invoke_VarHandle_getAndSetAcquire",
+                        "java_nio_MappedMemoryUtils_load0",
+                        "java_nio_MappedMemoryUtils_unload0",
+                        "java_nio_MappedMemoryUtils_isLoaded0",
+                        "java_nio_MappedMemoryUtils_force0");
         defaultBuiltInPkgNativesBlocklist = blocklist.toArray(new String[0]);
     }
 

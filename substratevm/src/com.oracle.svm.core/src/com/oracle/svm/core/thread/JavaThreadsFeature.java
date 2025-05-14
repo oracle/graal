@@ -27,15 +27,10 @@ package com.oracle.svm.core.thread;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 public abstract class JavaThreadsFeature implements InternalFeature {
 
     protected static long threadId(Thread thread) {
         if (thread == PlatformThreads.singleton().mainThread) {
-            if (JavaVersionUtil.JAVA_SPEC <= 21) {
-                return 1;
-            }
             return ReflectionUtil.readStaticField(Thread.class, "PRIMORDIAL_TID");
         }
         return JavaThreads.getThreadId(thread);

@@ -208,6 +208,7 @@ public abstract class NativeImageCodeCache {
     public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
+        DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
@@ -225,6 +226,7 @@ public abstract class NativeImageCodeCache {
                     constantReasons.put(constant, compilation.getName());
                 }
             }
+            watchdog.recordActivity();
         }
         dataSection.close(HostedOptionValues.singleton(), 1);
     }
@@ -301,7 +303,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
-        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), Word.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
     }
 
     static class HostedConstantAccess extends ConstantAccess {

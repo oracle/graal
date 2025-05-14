@@ -32,7 +32,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.Utils;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -66,9 +65,6 @@ final class BaseFieldRecomputer implements FieldValueTransformer {
             throw VMError.shouldNotReachHere("Unexpected BaseAndScale instance: " + receiver);
         }
         int offset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            return offset;
-        }
         return (long) offset;
     }
 }

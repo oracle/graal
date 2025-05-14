@@ -39,6 +39,6 @@ public final class RISCV64ReservedRegisters extends ReservedRegisters {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RISCV64ReservedRegisters() {
-        super(RISCV64.x2, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE);
+        super(RISCV64.x2, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE, null);
     }
 }

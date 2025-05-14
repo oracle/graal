@@ -36,7 +36,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -48,6 +47,8 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
@@ -112,7 +113,7 @@ public final class CEntryPointErrors {
     @Description("Some exception is not caught.") //
     public static final int UNCAUGHT_EXCEPTION = 12;
 
-    @Description("Initialization the isolate failed.") //
+    @Description("Initializing the isolate failed.") //
     public static final int ISOLATE_INITIALIZATION_FAILED = 13;
 
     @Description("Opening the located auxiliary image file failed.") //

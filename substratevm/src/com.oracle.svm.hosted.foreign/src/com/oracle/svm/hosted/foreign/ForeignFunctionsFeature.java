@@ -67,7 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
-import com.oracle.svm.core.LinkToNativeSupport;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -78,7 +78,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
-import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
 import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
@@ -108,7 +107,6 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
@@ -276,19 +274,24 @@ public class ForeignFunctionsFeature implements InternalFeature {
         if (!SubstrateOptions.ForeignAPISupport.getValue()) {
             return false;
         }
-        UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "Support for the Foreign Function and Memory API is available only with JDK 22 and later.");
         UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
         return true;
     }
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        AbiUtils abiUtils = AbiUtils.create();
+        ForeignFunctionsRuntime foreignFunctionsRuntime = new ForeignFunctionsRuntime(abiUtils);
+
+        ImageSingletons.add(AbiUtils.class, abiUtils);
+        ImageSingletons.add(ForeignSupport.class, foreignFunctionsRuntime);
+        ImageSingletons.add(ForeignFunctionsRuntime.class, foreignFunctionsRuntime);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess a) {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
-        AbiUtils abiUtils = AbiUtils.create();
-        ImageSingletons.add(AbiUtils.class, abiUtils);
-        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
-        ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
         ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();

@@ -32,9 +32,6 @@ import java.nio.file.Path;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 /*
  * Checkstyle: stop method name check
@@ -81,12 +78,6 @@ final class Target_sun_nio_fs_UnixNativeDispatcher_Web {
     @Substitute
     static void unlink0(long l) {
         throw new UnsupportedOperationException("UnixNativeDispatcher.unlink");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    static void futimes(int fd, long times0, long times1) {
-        throw new UnsupportedOperationException("UnixNativeDispatcher.futimes");
     }
 
     @Substitute
@@ -160,31 +151,11 @@ final class Target_sun_nio_fs_UnixNativeDispatcher_Web {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class, name = "access0")
-    static int access0JDK23(long pathAddress, int amode) {
+    static int access0(long pathAddress, int amode) {
         throw new UnsupportedOperationException("UnixNativeDispatcher.access0");
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    static void access0(long pathAddress, int amode) {
-        throw new UnsupportedOperationException("UnixNativeDispatcher.access0");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    static boolean exists0(long pathAddress) {
-        throw new UnsupportedOperationException("UnixNativeDispatcher.exists0");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    static void utimes0(long pathAddress, long times0, long times1) {
-        throw new UnsupportedOperationException("UnixNativeDispatcher.utimes0");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     private static void utimensat0(int fd, long pathAddress, long times0, long times1, int flags) {
         throw new UnsupportedOperationException("UnixNativeDispatcher.utimensat0");
     }
@@ -217,12 +188,6 @@ final class Target_sun_nio_fs_UnixNativeDispatcher_Web {
     @Substitute
     static void mknod0(long pathAddress, int mode, long dev) {
         throw new UnsupportedOperationException("UnixNativeDispatcher.mknod0");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    static void lutimes0(long pathAddress, long times0, long times1) {
-        throw new UnsupportedOperationException("UnixNativeDispatcher.lutimes0");
     }
 
     @Substitute

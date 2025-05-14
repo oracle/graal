@@ -271,6 +271,21 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor DILITHIUM_DECOMPOSE_POLY = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_dilithiumDecomposePoly", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class, int.class);
 
+    public static final HotSpotForeignCallDescriptor KYBER_NTT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberNtt", int.class,
+                    WordBase.class, WordBase.class);
+    public static final HotSpotForeignCallDescriptor KYBER_INVERSE_NTT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberInverseNtt", int.class,
+                    WordBase.class, WordBase.class);
+    public static final HotSpotForeignCallDescriptor KYBER_NTT_MULT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberNttMult", int.class,
+                    WordBase.class, WordBase.class, WordBase.class, WordBase.class);
+    public static final HotSpotForeignCallDescriptor KYBER_ADD_POLY_2 = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberAddPoly_2", int.class,
+                    WordBase.class, WordBase.class, WordBase.class);
+    public static final HotSpotForeignCallDescriptor KYBER_ADD_POLY_3 = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberAddPoly_3", int.class,
+                    WordBase.class, WordBase.class, WordBase.class, WordBase.class);
+    public static final HotSpotForeignCallDescriptor KYBER_12_TO_16 = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyber12To16", int.class,
+                    WordBase.class, int.class, WordBase.class, int.class);
+    public static final HotSpotForeignCallDescriptor KYBER_BARRETT_REDUCE = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_kyberBarrettReduce", int.class,
+                    WordBase.class);
+
     public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_start", void.class,
                     Object.class, boolean.class, Word.class);

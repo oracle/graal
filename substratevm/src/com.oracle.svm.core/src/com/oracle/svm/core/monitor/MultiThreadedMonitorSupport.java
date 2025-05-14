@@ -55,7 +55,6 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.internal.misc.Unsafe;
 
@@ -117,9 +116,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * java.lang.ref.ReferenceQueue internally. The ReferenceQueue uses the inner static
              * class Lock for all its locking needs.
              */
-            if (JavaVersionUtil.JAVA_SPEC > 21) {
-                monitorTypes.put(Class.forName("java.lang.ref.ReferenceQueue$Lock"), false);
-            }
+            monitorTypes.put(Class.forName("java.lang.ref.ReferenceQueue$Lock"), false);
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
             monitorTypes.put(java.lang.ref.ReferenceQueue.class, false);
 

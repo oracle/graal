@@ -31,12 +31,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
-import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
@@ -48,11 +45,9 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
@@ -68,21 +63,17 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
-import jdk.graal.compiler.nodes.extended.LoadMethodNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
-import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -105,7 +96,6 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private final Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings;
 
     private RuntimeConfiguration runtimeConfig;
-    private final KnownOffsets knownOffsets;
     private final DynamicHubOffsets dynamicHubOffsets;
     private final AbstractObjectStamp hubStamp;
 
@@ -121,7 +111,6 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             hubRefStamp = SubstrateNarrowOopStamp.compressed(hubRefStamp, ReferenceAccess.singleton().getCompressEncoding());
         }
         hubStamp = hubRefStamp;
-        knownOffsets = KnownOffsets.singleton();
         dynamicHubOffsets = DynamicHubOffsets.singleton();
     }
 
@@ -156,51 +145,8 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             lowerAssertionNode((AssertionNode) n);
         } else if (n instanceof DeadEndNode) {
             lowerDeadEnd((DeadEndNode) n);
-        } else if (n instanceof LoadMethodNode) {
-            lowerLoadMethodNode((LoadMethodNode) n, tool);
         } else {
             super.lower(n, tool);
-        }
-    }
-
-    private void lowerLoadMethodNode(LoadMethodNode loadMethodNode, LoweringTool tool) {
-        StructuredGraph graph = loadMethodNode.graph();
-        SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
-        ValueNode hub = loadMethodNode.getHub();
-
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-
-            int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
-            assert vtableEntryOffset > 0;
-            /*
-             * Method pointer will always exist in the vtable due to the fact that all reachable
-             * methods through method pointer constant references will be compiled.
-             */
-            AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-            ReadNode virtualMethod = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), loadMethodNode.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
-            graph.replaceFixed(loadMethodNode, virtualMethod);
-
-        } else {
-            // First compute the dispatch table starting offset
-            LoadOpenTypeWorldDispatchTableStartingOffset tableStartingOffset = graph.add(new LoadOpenTypeWorldDispatchTableStartingOffset(hub, method));
-
-            // Add together table starting offset and index offset
-            ValueNode methodAddress = graph.unique(
-                            new AddNode(tableStartingOffset, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), knownOffsets.getVTableOffset(method.getVTableIndex(), false), graph)));
-
-            // The load the method address for the dispatch table
-            AddressNode dispatchTableAddress = graph.unique(new OffsetAddressNode(hub, methodAddress));
-            ReadNode virtualMethod = graph
-                            .add(new ReadNode(dispatchTableAddress, SubstrateBackend.getVTableIdentity(), loadMethodNode.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
-
-            // wire in the new nodes
-            FixedWithNextNode predecessor = (FixedWithNextNode) loadMethodNode.predecessor();
-            predecessor.setNext(tableStartingOffset);
-            tableStartingOffset.setNext(virtualMethod);
-            graph.replaceFixed(loadMethodNode, virtualMethod);
-
-            // Lower logic associated with loading starting offset
-            tableStartingOffset.lower(tool);
         }
     }
 

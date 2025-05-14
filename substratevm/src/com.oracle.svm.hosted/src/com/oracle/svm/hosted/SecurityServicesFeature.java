@@ -43,7 +43,6 @@ import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.MessageDigest;
-import java.security.Policy;
 import java.security.Provider;
 import java.security.Provider.Service;
 import java.security.SecureRandom;
@@ -80,8 +79,6 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
-import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -105,14 +102,15 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -170,10 +168,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
                         KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            // JDK-8338411: Implement JEP 486: Permanently Disable the Security Manager
-            classList.add(Policy.class);
-        }
 
         if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
@@ -693,7 +687,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
         Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
         Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
-        Field consParamClassField = ReflectionUtil.lookupField(clazz, JavaVersionUtil.JAVA_SPEC >= 23 ? "constructorParameterClass" : "constructorParameterClassName");
+        Field consParamClassField = ReflectionUtil.lookupField(clazz, "constructorParameterClass");
 
         /*
          * The returned lambda captures the value of the Provider.knownEngines map retrieved above
@@ -718,13 +712,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (engineDescription == null) {
                     return null;
                 }
-                if (JavaVersionUtil.JAVA_SPEC >= 23) {
-                    return (Class<?>) consParamClassField.get(engineDescription);
-                }
-                String constrParamClassName = (String) consParamClassField.get(engineDescription);
-                if (constrParamClassName != null) {
-                    return loader.findClass(constrParamClassName).get();
-                }
+                return (Class<?>) consParamClassField.get(engineDescription);
             } catch (IllegalAccessException e) {
                 VMError.shouldNotReachHere(e);
             }

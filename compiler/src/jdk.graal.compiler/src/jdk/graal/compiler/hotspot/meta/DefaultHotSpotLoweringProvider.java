@@ -996,7 +996,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 graph.addBeforeFixed(migrationEnd, loadDisplacedHeader);
 
                 // we need to initialize the stack slot for the lock
-                BeginLockScopeNode beginLockScope = graph.add(new BeginLockScopeNode(lock.getStackKind(), monitorID.getLockDepth()));
+                BeginLockScopeNode beginLockScope = graph.add(new BeginLockScopeNode(replacements.getProviders().getWordTypes(), monitorID.getLockDepth()));
                 graph.addBeforeFixed(migrationEnd, beginLockScope);
 
                 // write the displaced mark to the correct stack slot

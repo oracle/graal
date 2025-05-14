@@ -661,15 +661,24 @@ public abstract class NativeImage extends AbstractImage {
 
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
-        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
-        boolean injectedNotCompiled = false;
-        if (!target.isCompiled() && !target.isCompiledInPriorLayer()) {
-            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
-            injectedNotCompiled = true;
-        }
+        HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
+        boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
+        HostedMethod target = getMethodPointerTargetMethod(metaAccess, hMethod);
 
         assert checkMethodPointerRelocationKind(info);
         relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer, injectedNotCompiled);
+    }
+
+    private static boolean isInjectedNotCompiled(HostedMethod target) {
+        return !target.isCompiled() && !target.isCompiledInPriorLayer();
+    }
+
+    static HostedMethod getMethodPointerTargetMethod(HostedMetaAccess metaAccess, ResolvedJavaMethod method) {
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : metaAccess.getUniverse().lookup(method);
+        if (isInjectedNotCompiled(target)) {
+            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        }
+        return target;
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {

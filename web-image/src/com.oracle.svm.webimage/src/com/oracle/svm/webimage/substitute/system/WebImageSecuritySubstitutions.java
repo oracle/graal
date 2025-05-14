@@ -25,64 +25,16 @@
 
 package com.oracle.svm.webimage.substitute.system;
 
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.Permission;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedExceptionAction;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.webimage.substitute.WebImageUtil;
 
 import sun.security.provider.NativePRNG;
 
 public class WebImageSecuritySubstitutions {
-}
-
-@TargetClass(value = AccessController.class, onlyWith = JDK21OrEarlier.class)
-final class Target_java_security_AccessController_Web {
-
-    /**
-     * We need this substitution to avoid doing a stack walk.
-     */
-    @Substitute
-    static <T> T doPrivileged(PrivilegedAction<T> action,
-                    @SuppressWarnings("unused") AccessControlContext context, @SuppressWarnings("unused") Permission... perms) {
-        return action.run();
-    }
-
-    @Substitute
-    static AccessControlContext getStackAccessControlContext() {
-        return null;
-    }
-
-    @Substitute
-    @SuppressWarnings({"deprecation", "unused"}) // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        return action.run();
-    }
-
-    @Substitute
-    @SuppressWarnings({"deprecation", "unused"}) // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
-        if (action == null) {
-            throw new NullPointerException("Null action");
-        }
-
-        return action.run();
-    }
 }
 
 // Windows does not have a NativePRNG implementation

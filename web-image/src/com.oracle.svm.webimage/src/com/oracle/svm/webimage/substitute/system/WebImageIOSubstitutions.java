@@ -52,8 +52,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.fs.WebImageNIOFileSystemProvider;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
@@ -175,7 +173,6 @@ final class Target_java_io_FileInputStream_Web {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     @SuppressWarnings({"static-method"})
     private boolean isRegularFile() {
         return !fd.equals(FileDescriptor.in);
@@ -414,13 +411,6 @@ final class Target_sun_nio_ch_FileChannelImpl_Web {
     }
 
     @Substitute
-    @TargetElement(name = "open", onlyWith = JDK21OrEarlier.class)
-    public static FileChannel openJDK21(FileDescriptor fd, String path, boolean readable, boolean writable, boolean direct, Closeable parent) {
-        throw new UnsupportedOperationException("FileChannelImpl.open");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     public static FileChannel open(FileDescriptor fd, String path, boolean readable, boolean writable, boolean sync, boolean direct, Closeable parent) {
         throw new UnsupportedOperationException("FileChannelImpl.open");
     }

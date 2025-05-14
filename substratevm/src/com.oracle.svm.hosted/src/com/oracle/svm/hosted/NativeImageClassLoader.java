@@ -24,15 +24,12 @@
  */
 package com.oracle.svm.hosted;
 
-import java.io.File;
-import java.io.FilePermission;
 import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -40,8 +37,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.security.CodeSigner;
 import java.security.CodeSource;
-import java.security.Permission;
-import java.security.PermissionCollection;
 import java.security.SecureClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,9 +53,7 @@ import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.loader.Resource;
@@ -140,11 +133,6 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         }
     }
 
-    // Use reflection for JDK21 compatibility
-    private final Method findResource;
-    private final Method findResources;
-    private final Method getResource;
-
     /**
      * See {@code jdk.internal.loader.Loader#Loader} and
      * {@code java.net.URLClassLoader#URLClassLoader}.
@@ -182,15 +170,6 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         /* Initialize URLClassPath that is used to lookup classes from class-path. */
         ucp = new URLClassPath(classpath.stream().map(NativeImageClassLoader::toURL).toArray(URL[]::new), null);
 
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            findResource = ReflectionUtil.lookupMethod(URLClassPath.class, "findResource", String.class, boolean.class);
-            findResources = ReflectionUtil.lookupMethod(URLClassPath.class, "findResources", String.class, boolean.class);
-            getResource = ReflectionUtil.lookupMethod(URLClassPath.class, "getResource", String.class, boolean.class);
-        } else {
-            findResource = ReflectionUtil.lookupMethod(URLClassPath.class, "findResource", String.class);
-            findResources = ReflectionUtil.lookupMethod(URLClassPath.class, "findResources", String.class);
-            getResource = ReflectionUtil.lookupMethod(URLClassPath.class, "getResource", String.class);
-        }
     }
 
     public static URL toURL(Path p) {
@@ -280,14 +259,6 @@ public final class NativeImageClassLoader extends SecureClassLoader {
                         .findAny();
     }
 
-    private URL findResourceByName(String name) {
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            return ReflectionUtil.invokeMethod(findResource, ucp, name, false);
-        } else {
-            return ReflectionUtil.invokeMethod(findResource, ucp, name);
-        }
-    }
-
     /**
      * See {@code jdk.internal.loader.Loader#findResource(String mn, String name)}.
      */
@@ -295,7 +266,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     protected URL findResource(String mn, String name) throws IOException {
         /* For unnamed module, search for resource in class-path */
         if (mn == null) {
-            return findResourceByName(name);
+            return ucp.findResource(name);
         }
 
         /* otherwise search in specific module */
@@ -324,7 +295,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         String pn = Resources.toPackageName(name);
 
         /* Search for resource in class-path ... */
-        URL urlOnClasspath = findResourceByName(name);
+        URL urlOnClasspath = ucp.findResource(name);
         if (urlOnClasspath != null) {
             return urlOnClasspath;
         }
@@ -408,14 +379,6 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         };
     }
 
-    private Enumeration<URL> findResourcesByName(String name) {
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            return ReflectionUtil.invokeMethod(findResources, ucp, name, false);
-        } else {
-            return ReflectionUtil.invokeMethod(findResources, ucp, name);
-        }
-    }
-
     /**
      * See {@code jdk.internal.loader.Loader#findResourcesAsList}.
      */
@@ -425,7 +388,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         List<URL> urls = new ArrayList<>();
 
         /* Search for resource in class-path ... */
-        Enumeration<URL> classPathResources = findResourcesByName(name);
+        Enumeration<URL> classPathResources = ucp.findResources(name);
         while (classPathResources.hasMoreElements()) {
             urls.add(classPathResources.nextElement());
         }
@@ -467,21 +430,13 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         return c;
     }
 
-    private Resource getResourceByPath(String path) {
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            return ReflectionUtil.invokeMethod(getResource, ucp, path, false);
-        } else {
-            return ReflectionUtil.invokeMethod(getResource, ucp, path);
-        }
-    }
-
     /**
      * See {@code java.net.URLClassLoader#findClass(java.lang.String)}.
      */
     private Class<?> findClassViaClassPath(String name) throws ClassNotFoundException {
         Class<?> result;
         String path = name.replace('.', '/').concat(".class");
-        Resource res = getResourceByPath(path);
+        Resource res = ucp.getResource(path);
         if (res != null) {
             try {
                 result = defineClass(name, res);
@@ -725,42 +680,6 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         } catch (IOException ioe) {
             return null;
         }
-    }
-
-    /**
-     * See {@code jdk.internal.loader.Loader#getPermissions}.
-     *
-     * The override was removed in JDK 24 by JDK-8343982.
-     */
-    @SuppressWarnings("deprecation")
-    @Override
-    protected PermissionCollection getPermissions(CodeSource cs) {
-        PermissionCollection perms = super.getPermissions(cs);
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            return perms;
-        }
-
-        URL url = cs.getLocation();
-        if (url == null) {
-            return perms;
-        }
-
-        try {
-            Permission p = url.openConnection().getPermission();
-            if (p != null) {
-                if (p instanceof FilePermission) {
-                    String path = p.getName();
-                    if (path.endsWith(File.separator)) {
-                        path += "-";
-                        p = new FilePermission(path, "read");
-                    }
-                }
-                perms.add(p);
-            }
-        } catch (IOException ioe) {
-        }
-
-        return perms;
     }
 
     /**

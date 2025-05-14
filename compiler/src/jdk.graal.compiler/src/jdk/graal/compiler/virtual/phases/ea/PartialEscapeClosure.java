@@ -225,7 +225,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         for (int i = 0; i < initialState.getStateCount(); i++) {
             if (initialState.hasObjectState(i) && initialState.getObjectState(i).isVirtual()) {
                 VirtualObjectNode virtual = virtualObjects.get(i);
-                initialState.materializeBefore(materializeBefore, virtual, effects);
+                initialState.materializeBefore(materializeBefore, virtual, requiresStrictLockOrder, virtualObjects, effects);
             }
         }
     }
@@ -559,17 +559,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             VirtualObjectNode virtual = virtualObjects.get(object);
 
             GraalError.guarantee(objectState.isVirtual(), "%s is not virtual", objectState);
-            if (requiresStrictLockOrder && objectState.hasLocks()) {
-                materializeVirtualLocksBefore(state, materializeBefore, effects, counter, objectState.getLockDepth());
-            }
-            /*
-             * At this point, the current object may have been materialized due to materializing
-             * lower depth locks that have a data dependency to the current object.
-             */
-            objectState = state.getObjectState(object);
-            if (objectState.isVirtual()) {
-                state.materializeBefore(materializeBefore, virtual, effects);
-            }
+            state.materializeBefore(materializeBefore, virtual, requiresStrictLockOrder, virtualObjects, effects);
 
             assert !updateStatesForMaterialized(state, virtual, state.getObjectState(object).getMaterializedValue()) : "method must already have been called before";
             return true;
@@ -648,7 +638,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             int otherID = other.getObjectId();
             if (state.hasObjectState(otherID)) {
                 ObjectState otherState = state.getObjectState(other);
-                if (otherState.isVirtual() && otherState.hasLocks() && otherState.getLockDepth() < lockDepth) {
+                if (otherState.isVirtual() && otherState.hasLocks() && otherState.getMinimumLockDepth() < lockDepth) {
                     ensureMaterialized(state, other.getObjectId(), materializeBefore, effects, counter);
                 }
             }

@@ -32,10 +32,9 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 /**
  * Information on a class that can be looked up and accessed via JNI.
@@ -117,7 +116,7 @@ public final class JNIAccessibleClass {
         return method;
     }
 
-    String getInternalName() {
-        return MetaUtil.toInternalName(classObject.getName());
+    String getJNIName() {
+        return ClassNameSupport.reflectionNameToJNIName(classObject.getName());
     }
 }

@@ -42,11 +42,12 @@ public final class GlobUtils {
     public static final String SAME_LEVEL_IDENTIFIER = "#";
     private static final Pattern threeConsecutiveStarsRegex = Pattern.compile(".*[*]{3,}.*");
     private static final Pattern emptyLevelsRegex = Pattern.compile(".*/{2,}.*");
+    private static final String ALL_UNNAMED = "ALL_UNNAMED";
 
     public static String transformToTriePath(String resource, String module) {
         String resolvedModuleName;
         if (module == null || module.isEmpty()) {
-            resolvedModuleName = "ALL_UNNAMED";
+            resolvedModuleName = ALL_UNNAMED;
         } else {
             resolvedModuleName = StringUtil.toSlashSeparated(module);
         }
@@ -104,15 +105,25 @@ public final class GlobUtils {
             escapeMode = current == '\\';
         }
 
-        // check if pattern contains ** without previous Literal parent. Example: */**/... or **/...
-        outer: for (List<GlobToken> levelTokens : tokenize(pattern)) {
-            for (GlobToken token : levelTokens) {
-                if (token.kind == GlobToken.Kind.LITERAL) {
-                    break outer;
-                } else if (token.kind == GlobToken.Kind.STAR_STAR) {
-                    sb.append("Pattern contains ** without previous literal. " +
-                                    "This pattern is too generic and therefore can match many resources. " +
-                                    "Please make the pattern more specific by adding non-generic level before ** level.");
+        // check if pattern (that matches something from classpath) contains ** without previous
+        // Literal parent. Example: */**/... or **/...
+        if (pattern.startsWith(ALL_UNNAMED)) {
+            List<List<GlobToken>> patternParts = tokenize(pattern);
+
+            // remove ALL_UNNAMED prefix
+            patternParts.removeFirst();
+
+            // check glob without module prefix
+            outer: for (List<GlobToken> levelTokens : patternParts) {
+                for (GlobToken token : levelTokens) {
+                    if (token.kind == GlobToken.Kind.LITERAL) {
+                        break outer;
+                    } else if (token.kind == GlobToken.Kind.STAR_STAR) {
+                        String patternWithoutModule = pattern.substring(ALL_UNNAMED.length() + 1);
+                        LogUtils.warning("Pattern: " + patternWithoutModule + " contains ** without previous literal. " +
+                                        "This pattern is too generic and therefore can match many resources. " +
+                                        "Please make the pattern more specific by adding non-generic level before ** level.");
+                    }
                 }
             }
         }

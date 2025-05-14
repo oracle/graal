@@ -28,6 +28,8 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
@@ -40,9 +42,6 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
-
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -59,11 +58,6 @@ public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implement
 
     public BeginLockScopeNode(@InjectedNodeParameter WordTypes wordTypes, int lockDepth) {
         super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
-        this.lockDepth = lockDepth;
-    }
-
-    public BeginLockScopeNode(JavaKind kind, int lockDepth) {
-        super(TYPE, StampFactory.forKind(kind));
         this.lockDepth = lockDepth;
     }
 

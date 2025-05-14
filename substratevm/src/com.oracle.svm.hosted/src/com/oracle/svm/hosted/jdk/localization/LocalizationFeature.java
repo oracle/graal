@@ -93,7 +93,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -292,16 +291,9 @@ public class LocalizationFeature implements InternalFeature {
         }
         langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
         parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-
-        if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
-            localeObjectCacheMapField = null;
-        } else {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
-            localeObjectCacheMapField = access.findField("sun.util.locale.LocaleObjectCache", "map");
-        }
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        localeCacheField = access.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+        localeObjectCacheMapField = null;
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
 
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";

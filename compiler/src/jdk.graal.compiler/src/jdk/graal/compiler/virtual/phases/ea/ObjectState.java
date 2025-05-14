@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.virtual.EscapeObjectState;
@@ -207,6 +208,8 @@ public class ObjectState {
     }
 
     public void addLock(MonitorIdNode monitorId) {
+        GraalError.guarantee(locks == null || locks.monitorId.getLockDepth() < monitorId.getLockDepth(),
+                        "Adding lock %d to locks %s", monitorId.getLockDepth(), locks);
         locks = new LockState(monitorId, locks);
     }
 
@@ -226,8 +229,23 @@ public class ObjectState {
         return locks != null;
     }
 
-    public int getLockDepth() {
+    public int getMaximumLockDepth() {
+        // Assume locks are ordered by their nesting depth in descending order (highest first).
         return locks.monitorId.getLockDepth();
+    }
+
+    public int getMinimumLockDepth() {
+        // Assume locks are ordered by their nesting depth in descending order (highest first).
+        LockState current = locks;
+        int currentLockDepth = current.monitorId.getLockDepth();
+        while (current.next != null) {
+            int nextLockDepth = current.next.monitorId.getLockDepth();
+            GraalError.guarantee(currentLockDepth > nextLockDepth,
+                            "Current: %s; Next: %s", current, current.next);
+            current = current.next;
+            currentLockDepth = nextLockDepth;
+        }
+        return current.monitorId.getLockDepth();
     }
 
     public boolean locksEqual(ObjectState other) {

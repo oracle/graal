@@ -108,7 +108,6 @@ import com.oracle.svm.core.jni.headers.JNINativeMethod;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
-import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.jni.headers.JNIVersionJDKLatest;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -126,7 +125,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
@@ -169,11 +167,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        if (JavaVersionUtil.JAVA_SPEC == 21) {
-            return JNIVersion.JNI_VERSION_21();
-        } else {
-            return JNIVersionJDKLatest.JNI_VERSION_LATEST();
-        }
+        return JNIVersionJDKLatest.JNI_VERSION_LATEST();
     }
 
     /*

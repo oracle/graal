@@ -36,13 +36,12 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.PredefinedClassesConfigurationParser;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 
 import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.graal.compiler.util.Digest;

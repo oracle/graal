@@ -25,40 +25,33 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
-import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 
+import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
     private final ConcurrentMap<ConditionalElement<ConfigurationTypeDescriptor>, ConfigurationType> types = new ConcurrentHashMap<>();
 
-    private final String combinedFileKey;
-
-    public TypeConfiguration(String combinedFileKey) {
-        this.combinedFileKey = combinedFileKey;
+    public TypeConfiguration() {
     }
 
     public TypeConfiguration(TypeConfiguration other) {
         other.types.forEach((key, value) -> types.put(key, new ConfigurationType(value)));
-        this.combinedFileKey = other.combinedFileKey;
     }
 
     @Override
@@ -124,10 +117,6 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         });
     }
 
-    public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, String qualifiedForNameString) {
-        return getOrCreateType(condition, new NamedConfigurationTypeDescriptor(qualifiedForNameString));
-    }
-
     public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
         return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), true));
     }
@@ -141,22 +130,12 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        List<ConfigurationType> typesList = new ArrayList<>(this.types.values());
-        typesList.sort(Comparator.comparing(ConfigurationType::getTypeDescriptor).thenComparing(ConfigurationType::getCondition));
-
-        writer.append('[').indent();
-        String prefix = "";
-        for (ConfigurationType type : typesList) {
-            writer.append(prefix).newline();
-            type.printJson(writer);
-            prefix = ",";
-        }
-        writer.unindent().newline().append(']');
+        JsonPrinter.printCollection(writer, types.values(), Comparator.comparing(ConfigurationType::getTypeDescriptor).thenComparing(ConfigurationType::getCondition), ConfigurationType::printJson);
     }
 
     @Override
     public ConfigurationParser createParser(boolean combinedFileSchema, EnumSet<ConfigurationParserOption> parserOptions) {
-        return ReflectionConfigurationParser.create(combinedFileKey, combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
+        return ReflectionConfigurationParser.create(combinedFileSchema, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), parserOptions);
     }
 
     @Override

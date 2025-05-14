@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core;
 
-import java.util.function.Function;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
 
-import com.oracle.svm.core.annotate.TargetClass;
+import jdk.graal.compiler.api.replacements.Fold;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class Name_jdk_jfr_internal_JDKEvents_helper implements Function<TargetClass, String> {
-
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 23) {
-            return "jdk.jfr.internal.JDKEvents";
-        } else {
-            return "jdk.jfr.internal.instrument.JDKEvents";
-        }
+public interface ForeignSupport {
+    @Fold
+    static boolean isAvailable() {
+        boolean result = ImageSingletons.contains(ForeignSupport.class);
+        assert result || !SubstrateOptions.ForeignAPISupport.getValue();
+        return result;
     }
+
+    @Fold
+    static ForeignSupport singleton() {
+        return ImageSingletons.lookup(ForeignSupport.class);
+    }
+
+    Object linkToNative(Object... args) throws Throwable;
+
+    void onMemorySegmentReachable(Object obj, DisallowedObjectReporter reporter);
+
+    void onScopeReachable(Object obj, DisallowedObjectReporter reporter);
 }

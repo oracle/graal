@@ -1850,4 +1850,9 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     public void emitCacheWritebackSync(boolean isPreSync) {
         builder.buildFence();
     }
+
+    @Override
+    public boolean isReservedRegister(Register r) {
+        return ReservedRegisters.singleton().isReservedRegister(r);
+    }
 }

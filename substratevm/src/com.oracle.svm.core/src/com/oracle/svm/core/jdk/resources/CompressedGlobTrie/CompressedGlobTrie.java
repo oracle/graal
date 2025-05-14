@@ -109,6 +109,7 @@ public class CompressedGlobTrie {
             if (!invalidPatterns.isEmpty()) {
                 StringBuilder sb = new StringBuilder("Error: invalid glob patterns found:" + System.lineSeparator());
                 invalidPatterns.forEach(msg -> sb.append(msg).append(System.lineSeparator()));
+
                 throw UserError.abort(sb.toString());
             }
 
@@ -352,8 +353,7 @@ public class CompressedGlobTrie {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static <C> List<C> getHostedOnlyContentIfMatched(GlobTrieNode<C> root, String text) {
-        List<GlobTrieNode<C>> matchedNodes = new ArrayList<>();
-        getAllPatterns(root, getPatternParts(text), 0, matchedNodes);
+        List<GlobTrieNode<C>> matchedNodes = getAllMatchedNodes(root, text);
         if (matchedNodes.isEmpty()) {
             /* text cannot be matched */
             return null;
@@ -368,11 +368,16 @@ public class CompressedGlobTrie {
      * Returns whether given text can be matched with any glob pattern in the Trie or not.
      */
     public static <C> boolean match(GlobTrieNode<C> root, String text) {
+        return !getAllMatchedNodes(root, text).isEmpty();
+    }
+
+    private static <C> List<GlobTrieNode<C>> getAllMatchedNodes(GlobTrieNode<C> root, String text) {
         /* in this case text is a plain text without special meanings, so stars must be escaped */
         String escapedText = escapeAllStars(text);
-        List<GlobTrieNode<C>> tmp = new ArrayList<>();
-        getAllPatterns(root, getPatternParts(escapedText), 0, tmp);
-        return !tmp.isEmpty();
+        List<GlobTrieNode<C>> matchedNodes = new ArrayList<>();
+        getAllPatterns(root, getPatternParts(escapedText), 0, matchedNodes);
+
+        return matchedNodes;
     }
 
     private static String escapeAllStars(String text) {

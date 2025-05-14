@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Random;
 
 import javax.crypto.Cipher;
+import javax.crypto.KEM;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
@@ -400,13 +401,17 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
             Assume.assumeTrue(className + " is not available", false);
             return;
         }
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, methodName)), testSnippetName, args);
+    }
+
+    void testWithInstalledIntrinsic(ResolvedJavaMethod intrinsicMethod, String testSnippetName, Object... args) {
         InstalledCode code = null;
         try {
             ResolvedJavaMethod method = getResolvedJavaMethod(testSnippetName);
             Object receiver = method.isStatic() ? null : this;
             GraalCompilerTest.Result expect = executeExpected(method, receiver, args);
-            code = compileAndInstallSubstitution(c, methodName);
-            assertTrue("Failed to install " + methodName, code != null);
+            code = compileAndInstallSubstitution(intrinsicMethod);
+            assertTrue("Failed to install " + intrinsicMethod.getName(), code != null);
             testAgainstExpected(method, expect, receiver, args);
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
@@ -527,5 +532,69 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumNttMult", "testSignVer", "ML-DSA-87");
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumMontMulByConstant", "testSignVer", "ML-DSA-87");
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumDecomposePoly", "testSignVer", "ML-DSA-87");
+    }
+
+    public boolean testMLKEMEncapsulateDecapsulate(String algorithm) throws GeneralSecurityException {
+        var kp = generateKeyPair(algorithm);
+        var senderKem = KEM.getInstance(algorithm);
+
+        var encapsulator = senderKem.newEncapsulator(kp.getPublic(), new SeededSecureRandom());
+        var enc = encapsulator.encapsulate();
+        SecretKey key = enc.key();
+
+        var receiverKem = KEM.getInstance(algorithm);
+        byte[] ciphertext = enc.encapsulation();
+        var decapsulator = receiverKem.newDecapsulator(kp.getPrivate());
+        SecretKey decapsulatedKey = decapsulator.decapsulate(ciphertext);
+
+        return key.equals(decapsulatedKey);
+    }
+
+    @Test
+    public void testMLKEM() {
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberNtt != 0L);
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberInverseNtt != 0L);
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberNttMult != 0L);
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberAddPoly2 != 0L);
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberAddPoly3 != 0L);
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyber12To16 != 0L);
+        Assume.assumeTrue("ML_KEM not supported", runtime().getVMConfig().stubKyberBarrettReduce != 0L);
+
+        Class<?> c;
+        try {
+            c = Class.forName("sun.security.provider.ML_KEM");
+        } catch (ClassNotFoundException e) {
+            Assume.assumeTrue("sun.security.provider.ML_KEM is not available", false);
+            return;
+        }
+
+        // ML-KEM-512
+        testWithInstalledIntrinsic("sun.security.provider.ML_KEM", "implKyberNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberInverseNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNttMult", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate",
+                        "ML-KEM-512");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberBarrettReduce", "testMLKEMEncapsulateDecapsulate", "ML-KEM-512");
+        // ML-KEM-768
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberInverseNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNttMult", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate",
+                        "ML-KEM-768");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberBarrettReduce", "testMLKEMEncapsulateDecapsulate", "ML-KEM-768");
+        // ML-KEM-1024
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberInverseNtt", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberNttMult", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsic(getMetaAccess().lookupJavaMethod(getMethod(c, "implKyberAddPoly", short[].class, short[].class, short[].class, short[].class)), "testMLKEMEncapsulateDecapsulate",
+                        "ML-KEM-1024");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyber12To16", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
+        testWithInstalledIntrinsic("sun.security.provider.ML-KEM", "implKyberBarrettReduce", "testMLKEMEncapsulateDecapsulate", "ML-KEM-1024");
     }
 }

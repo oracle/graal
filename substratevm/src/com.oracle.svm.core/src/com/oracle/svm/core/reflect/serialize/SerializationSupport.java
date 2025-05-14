@@ -46,7 +46,6 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 public class SerializationSupport implements SerializationRegistry {
 
@@ -146,9 +145,7 @@ public class SerializationSupport implements SerializationRegistry {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public Object addConstructorAccessor(Class<?> declaringClass, Class<?> targetConstructorClass, Object constructorAccessor) {
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            VMError.guarantee(constructorAccessor instanceof SubstrateConstructorAccessor, "Not a SubstrateConstructorAccessor: %s", constructorAccessor);
-        }
+        VMError.guarantee(constructorAccessor instanceof SubstrateConstructorAccessor, "Not a SubstrateConstructorAccessor: %s", constructorAccessor);
         SerializationLookupKey key = new SerializationLookupKey(declaringClass, targetConstructorClass);
         return constructorAccessors.putIfAbsent(key, constructorAccessor);
     }

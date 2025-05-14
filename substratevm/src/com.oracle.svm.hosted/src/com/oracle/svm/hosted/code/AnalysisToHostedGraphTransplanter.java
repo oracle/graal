@@ -39,7 +39,9 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
+import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -328,6 +330,13 @@ public class AnalysisToHostedGraphTransplanter {
             ResolvedJavaMethod method = methodPointer.getMethod();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
+
+        } else if (obj.getClass() == SubstrateMethodOffsetConstant.class) {
+            SubstrateMethodOffsetConstant methodOffsetConstant = (SubstrateMethodOffsetConstant) obj;
+
+            MethodOffset methodOffset = methodOffsetConstant.offset();
+            ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(methodOffset.getMethod(), node, replacements, hUniverse);
+            newReplacement = new SubstrateMethodOffsetConstant(new MethodOffset(replacedMethod));
 
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
             ComputedIndirectCallTargetNode.FieldLoad fieldLoad = (ComputedIndirectCallTargetNode.FieldLoad) obj;

@@ -93,7 +93,6 @@ import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.ReflectionFactory;
@@ -599,13 +598,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     private Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass, Constructor<?> customConstructorToCall) {
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            if (customConstructorToCall == null) {
-                return ReflectionFactory.getReflectionFactory().newConstructorForSerialization(serializationTargetClass);
-            } else {
-                return ReflectionFactory.getReflectionFactory().newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
-            }
-        }
         Constructor<?> constructorToCall;
         if (customConstructorToCall == null) {
             constructorToCall = getConstructorForSerialization(serializationTargetClass);

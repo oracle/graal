@@ -166,7 +166,6 @@ import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.vm.ci.code.Architecture;
@@ -932,6 +931,13 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInvocationPlugin("codeBase") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadCodeBaseNode(b.getGraph()));
+                return true;
+            }
+        });
         r.register(new RequiredInvocationPlugin("readHub", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
@@ -1126,17 +1132,14 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            // In JDK 21, the same plugin is registered in StandardGraphBuilderPlugins
-            r.register(new InvocationPlugin("isArray", Receiver.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    LogicNode isArray = b.add(ClassIsArrayNode.create(b.getConstantReflection(), receiver.get(true)));
-                    b.addPush(JavaKind.Boolean, ConditionalNode.create(isArray, NodeView.DEFAULT));
-                    return true;
-                }
-            });
-        }
+        r.register(new InvocationPlugin("isArray", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                LogicNode isArray = b.add(ClassIsArrayNode.create(b.getConstantReflection(), receiver.get(true)));
+                b.addPush(JavaKind.Boolean, ConditionalNode.create(isArray, NodeView.DEFAULT));
+                return true;
+            }
+        });
 
         registerClassDesiredAssertionStatusPlugin(plugins);
     }

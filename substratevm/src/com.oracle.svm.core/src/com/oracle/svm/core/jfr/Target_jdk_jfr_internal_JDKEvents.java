@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public interface LinkToNativeSupport {
-    @Fold
-    static boolean isAvailable() {
-        return ImageSingletons.contains(LinkToNativeSupport.class);
-    }
+import jdk.jfr.events.ActiveRecordingEvent;
+import jdk.jfr.events.ActiveSettingEvent;
 
-    @Fold
-    static LinkToNativeSupport singleton() {
-        return ImageSingletons.lookup(LinkToNativeSupport.class);
-    }
+@TargetClass(value = jdk.jfr.internal.JDKEvents.class, onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_internal_JDKEvents {
 
-    Object linkToNative(Object... args) throws Throwable;
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    private static Class<?>[] eventClasses = {
+                    ActiveSettingEvent.class,
+                    ActiveRecordingEvent.class
+    };
 }
