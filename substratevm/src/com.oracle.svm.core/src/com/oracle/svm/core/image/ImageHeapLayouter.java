@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.image;
 
+import com.oracle.svm.core.util.VMError;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -46,6 +48,16 @@ public interface ImageHeapLayouter {
      * Places all heap partitions and assigns objects their final offsets.
      */
     ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
+
+    /**
+     * Cancellable version of {@link ImageHeapLayouter#layout(ImageHeap, int)}. Cancellation is
+     * performed via {@link ImageHeapLayingOutController}.. If the layout is cancelled, an instance
+     * of {@link ImageHeapLayingOutCancelledException} is thrown.
+     */
+    @SuppressWarnings("unused")
+    default ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayingOutController controller) {
+        throw VMError.unimplemented("This layouter does not support cancellation");
+    }
 
     /** Hook to run tasks after heap layout is finished. */
     @SuppressWarnings("unused")

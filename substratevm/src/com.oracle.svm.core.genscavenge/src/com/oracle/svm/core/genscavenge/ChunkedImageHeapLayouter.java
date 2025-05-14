@@ -39,8 +39,10 @@ import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeap;
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.image.ImageHeapLayingOutControl;
+import com.oracle.svm.core.image.ImageHeapLayingOutController;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -157,10 +159,16 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
 
     @Override
     public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize) {
+        return layout(imageHeap, pageSize, () -> false);
+    }
+
+    @Override
+    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayingOutController controller) {
+        ImageHeapLayingOutControl control = new ImageHeapLayingOutControl(controller);
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize);
+        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize, control);
 
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             assert partition.getStartOffset() % partition.getStartAlignment() == 0 : partition;
@@ -170,15 +178,16 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         return layoutInfo;
     }
 
-    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize) {
+    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize, ImageHeapLayingOutControl control) {
         allocator = new ChunkedImageHeapAllocator(imageHeap, startOffset);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
-            partition.layout(allocator);
+            control.heartbeat();
+            partition.layout(allocator, control);
         }
-        return populateInfoObjects(imageHeap.countAndVerifyDynamicHubs(), pageSize);
+        return populateInfoObjects(imageHeap.countAndVerifyDynamicHubs(), pageSize, control);
     }
 
-    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize) {
+    private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize, ImageHeapLayingOutControl control) {
         // Determine writable start boundary from chunks: a chunk that contains writable objects
         // must also have a writable card table
         long offsetOfFirstWritableAlignedChunk = -1;
@@ -187,6 +196,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                 offsetOfFirstWritableAlignedChunk = chunk.getBegin();
                 break; // (chunks are in ascending memory order)
             }
+            control.heartbeat();
         }
         VMError.guarantee(offsetOfFirstWritableAlignedChunk >= 0 && offsetOfFirstWritableAlignedChunk % pageSize == 0, "Start of the writable part is assumed to be page-aligned");
         long offsetOfFirstWritableUnalignedChunk = -1;
@@ -199,6 +209,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                 offsetOfFirstWritableUnalignedChunk = chunk.getBegin();
             }
             offsetOfLastWritableUnalignedChunk = chunk.getBegin();
+            control.heartbeat();
         }
 
         heapInfo.initialize(getReadOnlyRegular().firstObject, getReadOnlyRegular().lastObject, getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject,
@@ -206,6 +217,8 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                         getWritableRegular().firstObject, getWritableRegular().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
                         getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, offsetOfFirstWritableAlignedChunk, offsetOfFirstWritableUnalignedChunk, offsetOfLastWritableUnalignedChunk,
                         dynamicHubCount);
+
+        control.heartbeat();
 
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - offsetOfFirstWritableAlignedChunk;
