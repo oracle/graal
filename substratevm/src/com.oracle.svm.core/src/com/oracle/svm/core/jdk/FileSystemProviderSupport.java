@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -142,7 +142,7 @@ final class FileSystemProviderFeature implements InternalFeature {
     }
 }
 
-@TargetClass(java.nio.file.spi.FileSystemProvider.class)
+@TargetClass(value = java.nio.file.spi.FileSystemProvider.class, onlyWith = JDKInitializedAtBuildTime.class)
 final class Target_java_nio_file_spi_FileSystemProvider {
     @Substitute
     public static List<FileSystemProvider> installedProviders() {
@@ -171,7 +171,7 @@ final class Target_java_nio_file_spi_FileSystemProvider {
  * c) Allow UnixFileSystem in the image heap and recompute state at run time on first acccess. This
  * approach is implemented here.
  */
-@TargetClass(className = "sun.nio.fs.UnixFileSystem")
+@TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixFileSystem {
 
@@ -224,12 +224,12 @@ final class Target_sun_nio_fs_UnixFileSystem {
     native void originalConstructor(Target_sun_nio_fs_UnixFileSystemProvider p, String dir);
 }
 
-@TargetClass(className = "sun.nio.fs.UnixFileSystemProvider")
+@TargetClass(className = "sun.nio.fs.UnixFileSystemProvider", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixFileSystemProvider {
 }
 
-@TargetClass(className = "sun.nio.fs.UnixPath")
+@TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixPath {
 }
@@ -403,7 +403,7 @@ class WindowsFileSystemAccessors {
     }
 }
 
-@TargetClass(className = "java.io.UnixFileSystem")
+@TargetClass(className = "java.io.UnixFileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_UnixFileSystem {
 
@@ -412,7 +412,7 @@ final class Target_java_io_UnixFileSystem {
     private String userDir;
 }
 
-@TargetClass(className = "java.io.FileSystem")
+@TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 final class Target_java_io_FileSystem {
 
     @Alias
