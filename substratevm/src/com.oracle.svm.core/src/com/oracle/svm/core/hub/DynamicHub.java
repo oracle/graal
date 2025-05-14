@@ -2348,7 +2348,8 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 
     @Substitute
-    private ClassFileFormatVersion classFileFormatVersion(Class<?> cl) {
+    @SuppressWarnings("static-method")
+    private ClassFileFormatVersion classFileFormatVersion(@SuppressWarnings("unused") Class<?> cl) {
         /* We don't have this information for our classes. */
         return null;
     }
