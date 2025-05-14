@@ -64,10 +64,11 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
-import com.oracle.truffle.api.memory.ByteArraySupport;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.ShortVector;
+import jdk.incubator.vector.VectorOperators;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
@@ -2778,60 +2779,45 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_V128_LOAD8X8_S:
             case Bytecode.VECTOR_V128_LOAD8X8_U: {
                 final long value = memoryLib.load_i64(memory, this, address);
-                byte[] bytes = new byte[8];
-                CompilerDirectives.ensureVirtualized(bytes);
-                ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-                short[] resultShorts = new short[Vector128.SHORT_LENGTH];
-                for (int i = 0; i < 8; i++) {
-                    byte x = bytes[i];
-                    short result = (short) switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD8X8_S -> x;
-                        case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(x);
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                    resultShorts[i] = result;
-                }
-                final ByteVector vec = Vector128Ops.fromArray(resultShorts);
+                ByteVector bytes = LongVector.zero(LongVector.SPECIES_128).withLane(0, value).reinterpretAsBytes();
+                // Could this be faster?
+                // ByteVector bytes = LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsBytes();
+                VectorOperators.Conversion<Byte, Short> conversion = switch (vectorOpcode) {
+                    case Bytecode.VECTOR_V128_LOAD8X8_S -> VectorOperators.B2S;
+                    case Bytecode.VECTOR_V128_LOAD8X8_U -> VectorOperators.ZERO_EXTEND_B2S;
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+                final ByteVector vec = Vector128Ops.cast(bytes.convert(conversion, 0).reinterpretAsBytes());
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD16X4_S:
             case Bytecode.VECTOR_V128_LOAD16X4_U: {
                 final long value = memoryLib.load_i64(memory, this, address);
-                byte[] bytes = new byte[8];
-                CompilerDirectives.ensureVirtualized(bytes);
-                ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-                int[] resultInts = new int[Vector128.INT_LENGTH];
-                for (int i = 0; i < 4; i++) {
-                    short x = ByteArraySupport.littleEndian().getShort(bytes, i * Short.BYTES);
-                    int result = switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD16X4_S -> x;
-                        case Bytecode.VECTOR_V128_LOAD16X4_U -> Short.toUnsignedInt(x);
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                    resultInts[i] = result;
-                }
-                final ByteVector vec = Vector128Ops.fromArray(resultInts);
+                ShortVector shorts = LongVector.zero(LongVector.SPECIES_128).withLane(0, value).reinterpretAsShorts();
+                // Could this be faster?
+                // ShortVector shorts = LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsShorts();
+                VectorOperators.Conversion<Short, Integer> conversion = switch (vectorOpcode) {
+                    case Bytecode.VECTOR_V128_LOAD16X4_S -> VectorOperators.S2I;
+                    case Bytecode.VECTOR_V128_LOAD16X4_U -> VectorOperators.ZERO_EXTEND_S2I;
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+                final ByteVector vec = Vector128Ops.cast(shorts.convert(conversion, 0).reinterpretAsBytes());
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32X2_S:
             case Bytecode.VECTOR_V128_LOAD32X2_U: {
                 final long value = memoryLib.load_i64(memory, this, address);
-                byte[] bytes = new byte[8];
-                CompilerDirectives.ensureVirtualized(bytes);
-                ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-                long[] resultLongs = new long[Vector128.LONG_LENGTH];
-                for (int i = 0; i < 2; i++) {
-                    int x = ByteArraySupport.littleEndian().getInt(bytes, i * Integer.BYTES);
-                    long result = switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD32X2_S -> x;
-                        case Bytecode.VECTOR_V128_LOAD32X2_U -> Integer.toUnsignedLong(x);
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                    resultLongs[i] = result;
-                }
-                final ByteVector vec = Vector128Ops.fromArray(resultLongs);
+                IntVector ints = LongVector.zero(LongVector.SPECIES_128).withLane(0, value).reinterpretAsInts();
+                // Could this be faster?
+                // IntVector ints = LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsInts();
+                VectorOperators.Conversion<Integer, Long> conversion = switch (vectorOpcode) {
+                    case Bytecode.VECTOR_V128_LOAD32X2_S -> VectorOperators.I2L;
+                    case Bytecode.VECTOR_V128_LOAD32X2_U -> VectorOperators.ZERO_EXTEND_I2L;
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+                final ByteVector vec = Vector128Ops.cast(ints.convert(conversion, 0).reinterpretAsBytes());
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
