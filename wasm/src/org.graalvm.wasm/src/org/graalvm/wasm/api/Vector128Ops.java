@@ -149,7 +149,7 @@ public class Vector128Ops {
         };
     }
 
-    public static byte[] shift(byte[] x, int shift, int vectorOpcode) {
+    public static ByteVector shift(ByteVector x, int shift, int vectorOpcode) {
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_I8X16_SHL, Bytecode.VECTOR_I8X16_SHR_S, Bytecode.VECTOR_I8X16_SHR_U -> i8x16_shiftop(x, shift, vectorOpcode);
             case Bytecode.VECTOR_I16X8_SHL, Bytecode.VECTOR_I16X8_SHR_S, Bytecode.VECTOR_I16X8_SHR_U -> i16x8_shiftop(x, shift, vectorOpcode);
@@ -511,18 +511,15 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i8x16_shiftop(byte[] x, int shift, int vectorOpcode) {
-        byte[] result = new byte[BYTES];
-        int shiftMod = shift % Byte.SIZE;
-        for (int i = 0; i < BYTE_LENGTH; i++) {
-            result[i] = (byte) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I8X16_SHL -> x[i] << shiftMod;
-                case Bytecode.VECTOR_I8X16_SHR_S -> x[i] >> shiftMod;
-                case Bytecode.VECTOR_I8X16_SHR_U -> Byte.toUnsignedInt(x[i]) >>> shiftMod;
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-        }
-        return result;
+    private static ByteVector i8x16_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
+        ByteVector x = cast(xBytes);
+        VectorOperators.Binary op = switch (vectorOpcode) {
+            case Bytecode.VECTOR_I8X16_SHL -> VectorOperators.LSHL;
+            case Bytecode.VECTOR_I8X16_SHR_S -> VectorOperators.ASHR;
+            case Bytecode.VECTOR_I8X16_SHR_U -> VectorOperators.LSHR;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(x.lanewise(op, (byte) shift));
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -651,20 +648,15 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i16x8_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        byte[] vecResult = new byte[BYTES];
-        int shiftMod = shift % Short.SIZE;
-        for (int i = 0; i < SHORT_LENGTH; i++) {
-            short x = byteArraySupport.getShort(vecX, i * Short.BYTES);
-            short result = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_SHL -> x << shiftMod;
-                case Bytecode.VECTOR_I16X8_SHR_S -> x >> shiftMod;
-                case Bytecode.VECTOR_I16X8_SHR_U -> Short.toUnsignedInt(x) >>> shiftMod;
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-            byteArraySupport.putShort(vecResult, i * Short.BYTES, result);
-        }
-        return vecResult;
+    private static ByteVector i16x8_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
+        ShortVector x = cast(xBytes).reinterpretAsShorts();
+        VectorOperators.Binary op = switch (vectorOpcode) {
+            case Bytecode.VECTOR_I16X8_SHL -> VectorOperators.LSHL;
+            case Bytecode.VECTOR_I16X8_SHR_S -> VectorOperators.ASHR;
+            case Bytecode.VECTOR_I16X8_SHR_U -> VectorOperators.LSHR;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(x.lanewise(op, (short) shift).reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -819,19 +811,15 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i32x4_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        byte[] vecResult = new byte[BYTES];
-        for (int i = 0; i < INT_LENGTH; i++) {
-            int x = byteArraySupport.getInt(vecX, i * Integer.BYTES);
-            int result = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_SHL -> x << shift;
-                case Bytecode.VECTOR_I32X4_SHR_S -> x >> shift;
-                case Bytecode.VECTOR_I32X4_SHR_U -> x >>> shift;
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-            byteArraySupport.putInt(vecResult, i * Integer.BYTES, result);
-        }
-        return vecResult;
+    private static ByteVector i32x4_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
+        IntVector x = cast(xBytes).reinterpretAsInts();
+        VectorOperators.Binary op = switch (vectorOpcode) {
+            case Bytecode.VECTOR_I32X4_SHL -> VectorOperators.LSHL;
+            case Bytecode.VECTOR_I32X4_SHR_S -> VectorOperators.ASHR;
+            case Bytecode.VECTOR_I32X4_SHR_U -> VectorOperators.LSHR;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(x.lanewise(op, shift).reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -990,19 +978,15 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i64x2_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        byte[] vecResult = new byte[BYTES];
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            long x = byteArraySupport.getLong(vecX, i * Long.BYTES);
-            long result = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_SHL -> x << shift;
-                case Bytecode.VECTOR_I64X2_SHR_S -> x >> shift;
-                case Bytecode.VECTOR_I64X2_SHR_U -> x >>> shift;
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-            byteArraySupport.putLong(vecResult, i * Long.BYTES, result);
-        }
-        return vecResult;
+    private static ByteVector i64x2_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
+        LongVector x = cast(xBytes).reinterpretAsLongs();
+        VectorOperators.Binary op = switch (vectorOpcode) {
+            case Bytecode.VECTOR_I64X2_SHL -> VectorOperators.LSHL;
+            case Bytecode.VECTOR_I64X2_SHR_S -> VectorOperators.ASHR;
+            case Bytecode.VECTOR_I64X2_SHR_U -> VectorOperators.LSHR;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(x.lanewise(op, shift).reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)

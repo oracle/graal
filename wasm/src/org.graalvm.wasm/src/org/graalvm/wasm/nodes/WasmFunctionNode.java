@@ -2902,6 +2902,24 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushInt(frame, stackPointer++, result);
                 break;
             }
+            case Bytecode.VECTOR_I8X16_SHL:
+            case Bytecode.VECTOR_I8X16_SHR_S:
+            case Bytecode.VECTOR_I8X16_SHR_U:
+            case Bytecode.VECTOR_I16X8_SHL:
+            case Bytecode.VECTOR_I16X8_SHR_S:
+            case Bytecode.VECTOR_I16X8_SHR_U:
+            case Bytecode.VECTOR_I32X4_SHL:
+            case Bytecode.VECTOR_I32X4_SHR_S:
+            case Bytecode.VECTOR_I32X4_SHR_U:
+            case Bytecode.VECTOR_I64X2_SHL:
+            case Bytecode.VECTOR_I64X2_SHR_S:
+            case Bytecode.VECTOR_I64X2_SHR_U: {
+                int shift = popInt(frame, --stackPointer);
+                ByteVector x = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.shift(x, shift, vectorOpcode);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
