@@ -449,16 +449,8 @@ public class TruffleFeature implements InternalFeature {
         config.registerSubtypeReachabilityHandler((acc, klass) -> {
             DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
             /* Pass known reachable classes to the initializer: it will decide there what to do. */
-            Boolean modified = TruffleBaseFeature.invokeStaticMethod(
-                            "com.oracle.truffle.runtime.BytecodeOSRRootNode",
-                            "initializeClassUsingDeprecatedFrameTransfer",
-                            Collections.singleton(Class.class),
-                            klass);
-            if (modified != null && modified) {
-                if (!impl.concurrentReachabilityHandlers()) {
-                    impl.requireAnalysisIteration();
-                }
-            }
+            TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.runtime.BytecodeOSRRootNode", "initializeClassUsingDeprecatedFrameTransfer",
+                            Collections.singleton(Class.class), klass);
         }, BytecodeOSRNode.class);
     }
 

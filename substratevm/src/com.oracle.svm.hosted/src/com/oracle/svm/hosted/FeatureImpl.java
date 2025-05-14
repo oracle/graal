@@ -67,7 +67,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -76,7 +75,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -360,16 +358,14 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
-        private final boolean concurrentReachabilityHandlers;
         private final ReachabilityHandler reachabilityHandler;
-        private ClassForNameSupport classForNameSupport;
+        private final ClassForNameSupport classForNameSupport;
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
-            this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
-            this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
+            this.reachabilityHandler = new ConcurrentReachabilityHandler();
             this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
@@ -491,10 +487,6 @@ public class FeatureImpl {
             reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
         }
 
-        public boolean concurrentReachabilityHandlers() {
-            return concurrentReachabilityHandlers;
-        }
-
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
@@ -534,8 +526,6 @@ public class FeatureImpl {
 
     public static class ConcurrentAnalysisAccessImpl extends DuringAnalysisAccessImpl {
 
-        private static final String concurrentReachabilityOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.RunReachabilityHandlersConcurrently, "-");
-
         public ConcurrentAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
         }
@@ -543,10 +533,7 @@ public class FeatureImpl {
         @Override
         public void requireAnalysisIteration() {
             if (bb.executorIsStarted()) {
-                String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
-                                "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
-                                " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
-                throw VMError.shouldNotReachHere(msg);
+                throw VMError.shouldNotReachHere("Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis.");
             }
             super.requireAnalysisIteration();
         }
