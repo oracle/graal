@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -37,14 +36,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
-import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.JVMSupport;
 
 /**
@@ -58,77 +53,25 @@ public final class JfrJdkCompatibility {
     }
 
     public static String makeFilename(Recording recording) {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            return Target_jdk_jfr_internal_JVMSupport.makeFilename(recording);
-        } else {
-            return Target_jdk_jfr_internal_Utils.makeFilename(recording);
-        }
+        return Target_jdk_jfr_internal_JVMSupport.makeFilename(recording);
     }
 
     public static String formatTimespan(Duration dValue, String separation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            return Target_jdk_jfr_internal_util_ValueFormatter.formatTimespan(dValue, separation);
-        } else {
-            return Target_jdk_jfr_internal_Utils.formatTimespan(dValue, separation);
-        }
+        return Target_jdk_jfr_internal_util_ValueFormatter.formatTimespan(dValue, separation);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void createNativeJFR() {
         try {
-            if (JavaVersionUtil.JAVA_SPEC >= 22) {
-                Method createJFR = ReflectionUtil.lookupMethod(JVMSupport.class, "createJFR");
-                createJFR.invoke(null);
-            } else {
-                Method createNativeJFR = ReflectionUtil.lookupMethod(JVM.class, "createNativeJFR");
-                createNativeJFR.invoke(getJVMOrNull());
-            }
+            Method createJFR = ReflectionUtil.lookupMethod(JVMSupport.class, "createJFR");
+            createJFR.invoke(null);
         } catch (ReflectiveOperationException | ClassCastException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void retransformClasses(Class<?>[] classes) {
-        try {
-            // call JVM.retransformClasses(classes)
-            Method retransformClasses = ReflectionUtil.lookupMethod(JVM.class, "retransformClasses", Class[].class);
-            retransformClasses.invoke(getJVMOrNull(), (Object) classes);
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    /**
-     * Gets a {@link JVM} object or {@code null} in case of JDK 22+, where the methods of
-     * {@link JVM} are static (JDK-8310661).
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static JVM getJVMOrNull() throws IllegalAccessException, InvocationTargetException {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            return null;
-        } else {
-            Method getJVM = ReflectionUtil.lookupMethod(JVM.class, "getJVM");
-            return (JVM) getJVM.invoke(null);
-        }
-    }
 }
 
-@TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = {JDK21OrEarlier.class, HasJfrSupport.class})
-final class Target_jdk_jfr_internal_Utils {
-    @Substitute
-    public static String makeFilename(Recording recording) {
-        return JfrFilenameUtil.makeFilename(recording);
-    }
-
-    @Alias
-    public static native String formatTimespan(Duration dValue, String separation);
-
-    @Alias
-    public static native String formatDateTime(LocalDateTime time);
-}
-
-@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_JVMSupport {
     @Substitute
     public static String makeFilename(Recording recording) {
@@ -136,7 +79,7 @@ final class Target_jdk_jfr_internal_JVMSupport {
     }
 }
 
-@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = {JDKLatest.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
@@ -156,9 +99,6 @@ final class JfrFilenameUtil {
 
     private static String getFormatDateTime() {
         LocalDateTime now = LocalDateTime.now();
-        if (JavaVersionUtil.JAVA_SPEC >= 24) {
-            return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
-        }
-        return Target_jdk_jfr_internal_Utils.formatDateTime(now);
+        return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
     }
 }

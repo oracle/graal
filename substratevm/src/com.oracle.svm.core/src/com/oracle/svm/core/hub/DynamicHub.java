@@ -88,7 +88,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
@@ -103,7 +103,6 @@ import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -115,8 +114,6 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
@@ -138,7 +135,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.CallerSensitive;
@@ -358,7 +354,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private final byte layerId;
 
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    private CFunctionPointer[] vtable;
+    private WordBase[] vtable;
 
     private final DynamicHubCompanion companion;
 
@@ -593,7 +589,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setClosedTypeWorldData(CFunctionPointer[] vtable, int typeID, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots) {
+    public void setClosedTypeWorldData(WordBase[] vtable, int typeID, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
@@ -605,8 +601,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setOpenTypeWorldData(CFunctionPointer[] vtable, int typeID,
-                    int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
+    public void setOpenTypeWorldData(WordBase[] vtable, int typeID, int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
@@ -1114,10 +1109,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native boolean isAnonymousClass();
 
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private native boolean isUnnamedClass();
-
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isHidden() {
@@ -1501,29 +1492,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native Class<?>[] getPermittedSubclasses();
 
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkMemberAccess(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
-        /* No runtime access checks. */
-    }
-
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @Substitute
-    @SuppressWarnings({"deprecation", "unused"})
-    private void checkPackageAccess(SecurityManager sm, ClassLoader ccl, boolean checkProxyInterfaces) {
-        /* No runtime access checks. */
-    }
-
-    /**
-     * Never called as it is partially evaluated away due to SecurityManager.
-     */
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    @KeepOriginal
-    @SuppressWarnings({"deprecation", "unused"})
-    private static native void checkPackageAccessForPermittedSubclasses(@SuppressWarnings("removal") SecurityManager sm,
-                    ClassLoader ccl, Class<?>[] subClasses);
-
     @Substitute
     private static ReflectionFactory getReflectionFactory() {
         return Target_jdk_internal_reflect_ReflectionFactory.getReflectionFactory();
@@ -1635,9 +1603,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return forName(module, className, Reflection.getCallerClass());
     }
 
-    @Substitute
     @CallerSensitiveAdapter
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
@@ -1656,9 +1622,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return forName(name, initialize, loader, Reflection.getCallerClass());
     }
 
-    @Substitute
     @CallerSensitiveAdapter
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
@@ -1680,7 +1644,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     public static native Class<?> forPrimitiveName(String primitiveName);
 
     @KeepOriginal
@@ -1738,11 +1701,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public native String toGenericString();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     private native void addSealingInfo(int modifiersParam, StringBuilder sb);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     private native boolean hasSealedAncestor(Class<?> clazz);
 
     @KeepOriginal
@@ -1766,12 +1727,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             companion.protectionDomain = ProtectionDomainSupport.allPermDomain();
         }
         return companion.protectionDomain;
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private ProtectionDomain protectionDomain() {
-        return getProtectionDomain();
     }
 
     void setProtectionDomainAtRuntime(ProtectionDomain protectionDomain) {
@@ -2093,7 +2048,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native GenericsFactory getFactory();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     native Method findMethod(boolean publicOnly, String nameParam, Class<?>... parameterTypes);
 
     @KeepOriginal
@@ -2103,11 +2057,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static native void addAll(Collection<Field> c, Field[] o);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic);
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDKLatest.class)
     private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic, boolean publicOnly);
 
     @KeepOriginal
@@ -2385,7 +2334,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
     private Constructor<?> generateConstructor(Class<?> cl, Constructor<?> constructorToCall) {
         SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
         ConstructorAccessor acc = (ConstructorAccessor) serializationRegistry.getSerializationConstructorAccessor(cl, constructorToCall.getDeclaringClass());
@@ -2394,7 +2342,7 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
          * mutated, as it is not cached. To cache this constructor, setAccessible call must be done
          * on a copy and return that copy instead.
          */
-        Constructor<?> ctor = Helper_jdk_internal_reflect_ReflectionFactory.newConstructorWithAccessor(this, constructorToCall, acc);
+        Constructor<?> ctor = langReflectAccess.newConstructorWithAccessor(constructorToCall, acc);
         ctor.setAccessible(true);
         return ctor;
     }
@@ -2406,20 +2354,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return null;
     }
 
-}
-
-/**
- * Reflectively access {@code JavaLangReflectAccess.newConstructorWithAccessor}. Once we drop JDK
- * 21, this can be replaced by a direct call to the method. (GR-55515)
- */
-final class Helper_jdk_internal_reflect_ReflectionFactory {
-    private static final Method NEW_CONSTRUCTOR_WITH_ACCESSOR = JavaVersionUtil.JAVA_SPEC > 21
-                    ? ReflectionUtil.lookupMethod(JavaLangReflectAccess.class, "newConstructorWithAccessor", Constructor.class, ConstructorAccessor.class)
-                    : null;
-
-    static Constructor<?> newConstructorWithAccessor(Target_jdk_internal_reflect_ReflectionFactory reflectionFactory, Constructor<?> constructorToCall, ConstructorAccessor acc) {
-        return ReflectionUtil.invokeMethod(NEW_CONSTRUCTOR_WITH_ACCESSOR, reflectionFactory.langReflectAccess, constructorToCall, acc);
-    }
 }
 
 /**

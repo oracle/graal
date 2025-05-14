@@ -126,7 +126,7 @@ public class WebImageOptions {
         public static final HostedOptionKey<Boolean> RuntimeDebugChecks = new HostedOptionKey<>(false);
 
         @Option(help = "Enable verification phases.")//
-        public static final OptionKey<Boolean> VerificationPhases = new OptionKey<>(false);
+        public static final HostedOptionKey<Boolean> VerificationPhases = new HostedOptionKey<>(false);
 
         @Option(help = "Dump type control graph, a graph of dependencies between types, methods, and inspected objects.")//
         public static final OptionKey<Boolean> DumpTypeControlGraph = new OptionKey<>(false);
@@ -134,6 +134,15 @@ public class WebImageOptions {
         @Option(help = "Dump the expected value of the ProvidedHostedOptions property.")//
         public static final HostedOptionKey<Boolean> DumpProvidedHostedOptionsAndExit = new HostedOptionKey<>(false);
     }
+
+    /**
+     * Web Image only.
+     * <p>
+     * Do not read this value directly. Instead, look it up based on the selected {@link Platform}
+     * using {@link #getBackend}.
+     */
+    @Option(help = "The Web Image Backend to use.") //
+    public static final EnumOptionKey<CompilerBackend> Backend = new EnumOptionKey<>(CompilerBackend.JS);
 
     @Option(help = "Report the code sizes of different parts of the generated JavaScript image. If the closure compiler is applied, this instruments the generated javascript code by injecting labels.")//
     public static final HostedOptionKey<Boolean> ReportImageSizeBreakdown = new HostedOptionKey<>(false);

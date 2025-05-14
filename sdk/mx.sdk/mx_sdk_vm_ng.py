@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import shutil
 import sys
 from abc import ABCMeta, abstractmethod
 from os import listdir, linesep
-from os.path import join, exists, isfile, basename, relpath, isdir, isabs, dirname
+from os.path import join, exists, isfile, basename, relpath, isdir, isabs, dirname, normpath
 from typing import Tuple
 
 import mx
@@ -126,10 +126,16 @@ def _get_dyn_attribute(dep, attr_name, default):
         raise mx.abort(f"Could not resolve {attr_name} '{attr}' in {suite.extensions.__file__}", context=dep)
     return func(), attr
 
-def _is_enterprise():
-    return mx.suite('graal-enterprise', fatalIfMissing=False) or mx.suite('truffle-enterprise', fatalIfMissing=False) or mx.suite('substratevm-enterprise', fatalIfMissing=False)
 
-def _is_nativeimage_ee():
+def _has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+# Whether any of truffle-enterprise, graal-enterprise or substratevm-enterprise are imported.
+def uses_enterprise_sources():
+    # Technically testing for truffle-enterprise might be enough currently, but unclear if graal-enterprise will always depend on truffle-enterprise.
+    return _has_suite('truffle-enterprise') or _has_suite('graal-enterprise') or _has_suite('substratevm-enterprise')
+
+def is_nativeimage_ee():
     global _is_nativeimage_ee_cache
     if _is_nativeimage_ee_cache is None:
         if not _external_bootstrap_graalvm:
@@ -138,13 +144,18 @@ def _is_nativeimage_ee():
             _is_nativeimage_ee_cache = exists(join(_external_bootstrap_graalvm, 'lib', 'svm', 'builder', 'svm-enterprise.jar'))
     return _is_nativeimage_ee_cache
 
+# Whether the produced standalone uses anything enterprise, either from source or prebuilt (i.e., a boostrap Oracle GraalVM)
+def is_enterprise():
+    return uses_enterprise_sources() or is_nativeimage_ee()
+
 class StandaloneLicenses(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense=None, **kw_args):
         self.community_license_file = _require(kw_args, 'community_license_file', suite, name)
         self.community_3rd_party_license_file = _require(kw_args, 'community_3rd_party_license_file', suite, name)
 
-        self.enterprise = _is_enterprise()
-        if self.enterprise:
+        self.uses_enterprise_sources = uses_enterprise_sources()
+        self.enterprise = is_enterprise()
+        if self.uses_enterprise_sources:
             deps.append('lium:LICENSE_INFORMATION_USER_MANUAL')
         super().__init__(suite, name, subDir=None, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kw_args)
 
@@ -156,12 +167,17 @@ class StandaloneLicenses(mx.Project):
             raise ValueError('single not supported')
 
         if self.enterprise:
-            truffle_enterprise = mx.suite('truffle-enterprise', fatalIfMissing=True, context=self)
-            vm_enterprise_dir = join(dirname(truffle_enterprise.dir), 'vm-enterprise')
-            yield join(vm_enterprise_dir, 'GraalVM_GFTC_License.txt'), 'LICENSE.txt'
-            yield from mx.distribution('lium:LICENSE_INFORMATION_USER_MANUAL').getArchivableResults(use_relpath, single=True)
-            if not mx.suite('sdk').is_release():
-                yield join(vm_enterprise_dir, 'DISCLAIMER_FOR_SNAPSHOT_ARTIFACTS.txt'), 'DISCLAIMER.txt'
+            if not _suite.is_release():
+                yield join(_suite.mxDir, 'DISCLAIMER_FOR_GFTC_SNAPSHOT_ARTIFACTS.txt'), 'DISCLAIMER.txt'
+            if self.uses_enterprise_sources:
+                lium_suite = mx.suite('lium', fatalIfMissing=True, context=self)
+                vm_enterprise_dir = join(dirname(lium_suite.dir), 'vm-enterprise')
+                yield join(vm_enterprise_dir, 'GraalVM_GFTC_License.txt'), 'LICENSE.txt'
+                yield from mx.distribution('lium:LICENSE_INFORMATION_USER_MANUAL').getArchivableResults(use_relpath, single=True)
+            else:
+                # If the only enterprise input is a bootstrap Oracle GraalVM then copy the license from there
+                yield join(_external_bootstrap_graalvm, 'LICENSE.txt'), 'LICENSE.txt'
+                yield join(_external_bootstrap_graalvm, 'license-information-user-manual.zip'), 'license-information-user-manual.zip'
         else:
             yield join(self.suite.dir, self.community_license_file), 'LICENSE.txt'
             yield join(self.suite.dir, self.community_3rd_party_license_file), '3rd_party_licenses.txt'
@@ -182,14 +198,19 @@ class StandaloneLicensesBuildTask(mx.BuildTask):
         else:
             contents = None
         if contents != self.witness_contents():
-            return True, 'CE<=>EE'
+            return True, f"{contents} => {self.witness_contents()}"
         return False, 'Files are already on disk'
 
     def witness_file(self):
         return join(self.subject.get_output_root(), 'witness')
 
     def witness_contents(self):
-        return 'ee' if self.subject.enterprise else 'ce'
+        if self.subject.uses_enterprise_sources:
+            return 'ee sources'
+        elif self.subject.enterprise:
+            return _external_bootstrap_graalvm
+        else:
+            return 'ce'
 
     def build(self):
         witness_file = self.witness_file()
@@ -338,7 +359,7 @@ class NativeImageLibraryProject(NativeImageProject):
 
     def get_build_args(self):
         extra_build_args = ['--shared']
-        if _is_nativeimage_ee():
+        if is_nativeimage_ee():
             # PGO is supported
             extra_build_args += mx_sdk_vm_impl.svm_experimental_options(['-H:+ProfilingEnableProfileDumpHooks'])
         return super().get_build_args() + extra_build_args
@@ -381,6 +402,9 @@ class NativeImageBuildTask(mx.BuildTask):
             max_parallelism = 12
         super().__init__(project, args, min(max_parallelism, mx.cpu_count()))
 
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([_path for _path, _ in self.subject.getArchivableResults()])
+
     def get_build_args(self):
         experimental_build_args = [
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
@@ -397,7 +421,7 @@ class NativeImageBuildTask(mx.BuildTask):
         canonical_name = self.subject.base_file_name()
         profiles = mx_sdk_vm_impl._image_profiles(canonical_name)
         if profiles:
-            if not _is_nativeimage_ee():
+            if not is_nativeimage_ee():
                 raise mx.abort("Image profiles can not be used if PGO is not supported.")
             basenames = [basename(p) for p in profiles]
             if len(set(basenames)) != len(profiles):
@@ -568,6 +592,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
     def cflags(self):
         _dynamic_cflags = [
             ('/std:c++17' if mx.is_windows() else '-std=c++17'),
+            '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
@@ -753,6 +778,10 @@ class JavaHomeDependency(mx.BaseLibrary):
     def isJDKDependent(self):
         return False
 
+    # Needed when somesuite._output_root_includes_config() == False
+    def get_output_root(self):
+        return join(self.get_output_base(), self.name)
+
 
 class JavaHomeBuildTask(mx.BuildTask):
     subject: JavaHomeDependency
@@ -931,6 +960,49 @@ class ExtractedEngineResourcesBuildTask(mx.BuildTask):
         return f"roots: {', '.join(self.subject.root_components)}\nignored: {', '.join(self.subject.ignore_components)}"
 
 
+def _make_windows_link(link_target):
+    link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
+    with open(link_template_name, 'r') as template:
+        _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+        _template_subst.register_no_arg('target', normpath(link_target))
+        return _template_subst.substitute(template.read())
+
+
+class ToolchainToolDistribution(mx.LayoutDirDistribution):
+    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
+        self.tool_project = _require(kw_args, 'tool_project', suite, name)
+        self.tool_links = _require(kw_args, 'tool_links', suite, name)
+
+        layout = {
+            './': [{
+                "source_type": "dependency",
+                "dependency": self.tool_project,
+            }]
+        }
+
+        super().__init__(suite, name=name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, defaultBuild=defaultBuild)
+
+    def resolveDeps(self):
+        self.tool_project = mx.project(self.tool_project)
+        _, main_tool_name = next(self.tool_project.getArchivableResults(single=True))
+
+        def _add_link(name, target):
+            if mx.is_windows():
+                # ignore indirect symlinks on windows and link everything directly to the main tool
+                # otherwise we lose the original program name
+                self.layout[f'./{name}.cmd'] = f'string:{_make_windows_link(main_tool_name)}'
+            else:
+                self.layout[f'./{name}'] = f'link:{target}'
+
+        for tool in self.tool_links:
+            _add_link(tool, main_tool_name)
+            alt_names = self.tool_links[tool]
+            for alt_name in alt_names:
+                _add_link(alt_name, tool)
+
+        super().resolveDeps()
+
+
 if mx.is_windows():
     DeliverableArchiveSuper = mx.LayoutZIPDistribution
 else:
@@ -938,7 +1010,7 @@ else:
 
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
-    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, **kw_args):
+    def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
         enterprise_archive_name = _require(kw_args, 'enterprise_archive_name', suite, name)
@@ -951,7 +1023,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         path_substitutions.register_no_arg('graalvm_os', mx_sdk_vm_impl.get_graalvm_os())
         string_substitutions = mx_subst.SubstitutionEngine(path_substitutions)
 
-        if _is_enterprise():
+        if is_enterprise():
             dir_name = enterprise_dir_name or f'{enterprise_archive_name}-<version>-<graalvm_os>-<arch>'
             dist_name = 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
         else:
@@ -959,11 +1031,16 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
             dist_name = 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
 
         layout = {
-            f'{dir_name}/': f'dependency:{standalone_dir_dist}/*'
+            f'{dir_name}/': {
+                "source_type": "dependency",
+                "dependency": standalone_dir_dist,
+                "path": "*",
+                "dereference": "never",
+            }
         }
         self.standalone_dir_dist = standalone_dir_dist
         maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
-        super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven)
+        super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
 
     def resolveDeps(self):

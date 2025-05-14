@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.jni;
 
-import static com.oracle.svm.configure.ConfigurationParser.JNI_KEY;
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -62,6 +60,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
@@ -69,7 +68,6 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
@@ -107,6 +105,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
@@ -199,7 +198,7 @@ public class JNIAccessFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         // Ensure that KnownOffsets is fully initialized before we access it
-        return List.of(KnownOffsetsFeature.class, DynamicProxyFeature.class);
+        return List.of(KnownOffsetsFeature.class, DynamicProxyFeature.class, ReflectionFeature.class);
     }
 
     @Override
@@ -213,10 +212,11 @@ public class JNIAccessFeature implements Feature {
 
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                         ClassInitializationSupport.singleton());
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(JNI_KEY, true, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.JNI, true, conditionResolver, runtimeSupport, null, null, null,
                         access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "JNI");
-        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(null, false, conditionResolver, runtimeSupport, null, null,
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> legacyParser = ConfigurationParserUtils.create(ConfigurationFile.JNI, false, conditionResolver, runtimeSupport, null, null,
+                        null,
                         access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
@@ -257,11 +257,11 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+        public void registerClassLookup(ConfigurationCondition condition, String jniName) {
             try {
-                register(condition, false, Class.forName(typeName));
+                register(condition, false, Class.forName(ClassNameSupport.jniNameToReflectionName(jniName)));
             } catch (ClassNotFoundException e) {
-                newNegativeClassLookups.add(typeName);
+                newNegativeClassLookups.add(jniName);
             }
         }
 
@@ -424,11 +424,7 @@ public class JNIAccessFeature implements Feature {
         }
         return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
-            if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
-                analysisClass.registerAsReachable("is accessed via JNI");
-            } else {
-                analysisClass.registerAsInstantiated("is accessed via JNI");
-            }
+            analysisClass.registerAsReachable("is accessed via JNI");
             return new JNIAccessibleClass(classObj);
         });
     }
@@ -609,17 +605,16 @@ public class JNIAccessFeature implements Feature {
         HostedUniverse hUniverse = access.getUniverse();
         AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
         HostedMethod hTarget = hUniverse.lookup(aUniverse.lookup(method.targetMethod));
-        int vtableOffset;
+        int vtableIndex;
         int interfaceTypeID;
         if (isStaticallyBound(hTarget)) {
-            vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
+            vtableIndex = JNIAccessibleMethod.VTABLE_INDEX_STATICALLY_BOUND_METHOD;
             interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
         } else {
+            vtableIndex = hTarget.getVTableIndex();
             if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), true);
                 interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
             } else {
-                vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), false);
                 HostedType declaringClass = hTarget.getDeclaringClass();
                 interfaceTypeID = declaringClass.isInterface() ? declaringClass.getTypeID() : JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE;
             }
@@ -630,7 +625,7 @@ public class JNIAccessFeature implements Feature {
             newObjectTarget = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.newObjectMethod)));
         } else if (method.targetMethod.isConstructor()) {
             assert method.targetMethod.getDeclaringClass().isAbstract();
-            newObjectTarget = Word.signed(JNIAccessibleMethod.NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE);
+            newObjectTarget = Word.signed(JNIAccessibleMethod.NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE);
         }
         CodePointer callWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.callWrapper)));
         CodePointer varargs = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.varargs)));
@@ -645,7 +640,7 @@ public class JNIAccessFeature implements Feature {
             valistNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.valist)));
         }
         EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor));
-        method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableOffset, interfaceTypeID, nonvirtualTarget, newObjectTarget, callWrapper,
+        method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableIndex, interfaceTypeID, nonvirtualTarget, newObjectTarget, callWrapper,
                         varargs, array, valist, varargsNonvirtual, arrayNonvirtual, valistNonvirtual);
     }
 

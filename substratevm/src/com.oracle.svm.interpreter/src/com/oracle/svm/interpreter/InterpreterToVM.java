@@ -37,6 +37,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -691,7 +693,16 @@ public final class InterpreterToVM {
                 vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getTypeID());
             }
         }
-        return Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        WordBase vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        return getSVMVTableCodePointer(vtableEntry);
+    }
+
+    private static CFunctionPointer getSVMVTableCodePointer(WordBase vtableEntry) {
+        WordBase codePointer = vtableEntry;
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            codePointer = KnownIntrinsics.codeBase().add((UnsignedWord) codePointer);
+        }
+        return (CFunctionPointer) codePointer;
     }
 
     private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {

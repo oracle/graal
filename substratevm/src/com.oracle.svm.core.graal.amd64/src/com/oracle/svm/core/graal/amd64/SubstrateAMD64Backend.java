@@ -835,8 +835,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        public Register getHeapBaseRegister() {
-            return ReservedRegisters.singleton().getHeapBaseRegister();
+        public boolean isReservedRegister(Register r) {
+            return ReservedRegisters.singleton().isReservedRegister(r);
         }
 
         @Override
@@ -1065,7 +1065,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             /* Register allocator cannot handle variables at call sites, need a fixed register. */
-            Register frameAnchorRegister = AMD64.r13;
+            Register frameAnchorRegister = AMD64.rbx;
             AllocatableValue frameAnchor = frameAnchorRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(frameAnchor, operand(getJavaFrameAnchor(callTarget)));
             return frameAnchor;

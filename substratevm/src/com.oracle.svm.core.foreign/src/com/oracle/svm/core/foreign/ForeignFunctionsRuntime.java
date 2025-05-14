@@ -103,13 +103,13 @@ public class ForeignFunctionsRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
-        VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for " + jep);
+        VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for %s", jep);
         VMError.guarantee(upcallStubs.put(jep, new FunctionPointerHolder(ptr)) == null);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, CFunctionPointer ptr) {
-        VMError.guarantee(!directUpcallStubs.containsKey(desc), "Seems like multiple stubs were generated for " + desc);
+        VMError.guarantee(!directUpcallStubs.containsKey(desc), "Seems like multiple stubs were generated for %s", desc);
         VMError.guarantee(directUpcallStubs.put(desc, new FunctionPointerHolder(ptr)) == null);
     }
 

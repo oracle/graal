@@ -228,8 +228,8 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
             }
             masm.align(preferredLoopAlignment(crb));
             masm.bind(labelMultiBlockLoopTop[k]);
-            masm.cmpq(lenReg, PARALLEL_FACTOR * AES_BLOCK_SIZE); // see if at least 4 blocks left
-            masm.jcc(ConditionFlag.Less, labelSingleBlockLoopTopHead[k]);
+            // see if at least 4 blocks left
+            masm.cmpqAndJcc(lenReg, PARALLEL_FACTOR * AES_BLOCK_SIZE, ConditionFlag.Less, labelSingleBlockLoopTopHead[k], false);
 
             if (k != 0) {
                 masm.movdqu(xmm15, new AMD64Address(rsp, 2 * wordSize));
@@ -312,8 +312,8 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
             } else if (k == 2) {
                 masm.addq(rsp, 10 * wordSize);
             }
-            masm.cmpq(lenReg, 0); // any blocks left??
-            masm.jcc(ConditionFlag.Equal, labelExit);
+            // any blocks left??
+            masm.cmpqAndJcc(lenReg, 0, ConditionFlag.Equal, labelExit, false);
             masm.bind(labelSingleBlockLoopTopHead2[k]);
             if (k == 1) {
                 loadKey(masm, xmmKey11, key, 0xb0, crb); // 0xb0;
@@ -355,8 +355,7 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
             // set up next r vector with cipher input from this block
             masm.movdqa(xmmPrevBlockCipher, xmmPrevBlockCipherSave);
             masm.addq(pos, AES_BLOCK_SIZE);
-            masm.subq(lenReg, AES_BLOCK_SIZE);
-            masm.jcc(ConditionFlag.NotEqual, labelSingleBlockLoopTop[k]);
+            masm.subqAndJcc(lenReg, AES_BLOCK_SIZE, ConditionFlag.NotEqual, labelSingleBlockLoopTop[k], false);
             if (k != 2) {
                 masm.jmp(labelExit);
             }

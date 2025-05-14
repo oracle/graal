@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -207,6 +208,7 @@ public abstract class NativeImageCodeCache {
     public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
+        DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
@@ -224,6 +226,7 @@ public abstract class NativeImageCodeCache {
                     constantReasons.put(constant, compilation.getName());
                 }
             }
+            watchdog.recordActivity();
         }
         dataSection.close(HostedOptionValues.singleton(), 1);
     }
@@ -243,7 +246,17 @@ public abstract class NativeImageCodeCache {
             CompilationResult compilationResult = pair.getRight();
             for (DataPatch patch : compilationResult.getDataPatches()) {
                 if (patch.reference instanceof ConstantReference ref) {
-                    embeddedConstants.put(ref.getConstant(), position);
+                    if (ref.getConstant() instanceof JavaConstant jc) {
+                        if (jc.getJavaKind() == JavaKind.Object) {
+                            embeddedConstants.put(jc, position);
+                        } else if (jc instanceof TLABObjectHeaderConstant ohc) {
+                            embeddedConstants.put(ohc.hub(), position);
+                        } else {
+                            throw VMError.shouldNotReachHereUnexpectedInput(jc);
+                        }
+                    } else {
+                        embeddedConstants.put(ref.getConstant(), position);
+                    }
                 }
             }
             for (CompilationResult.CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
@@ -290,7 +303,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
-        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), Word.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
     }
 
     static class HostedConstantAccess extends ConstantAccess {

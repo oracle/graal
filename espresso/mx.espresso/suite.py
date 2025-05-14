@@ -96,6 +96,16 @@ suite = {
             "license": "UPL",
         },
 
+        "com.oracle.truffle.espresso.io": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            # Contains classes in sun.nio.* that only compile with javac.
+            "forceJavac": "true",
+            "javaCompliance": "8+",
+            "checkPackagePrefix": False,  # Contains classes in java.io and sun.nio.
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso.hotswap": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -263,7 +273,7 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Wall"],
+                        "cflags": ["-g", "-O3", "-Wall"],
                     },
                 },
                 "linux-musl": {
@@ -291,7 +301,7 @@ suite = {
             "os_arch": {
                 "linux": {
                     "<others>": {
-                        "cflags" : ["-g", "-fPIC", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+                        "cflags" : ["-g", "-O3", "-fPIC", "-Wall", "-Werror", "-D_GNU_SOURCE"],
                         "ldflags": [
                             "-Wl,-soname,libeden.so",
                         ],
@@ -357,7 +367,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Wall"],
+                        "cflags": ["-g", "-O3", "-Wall"],
                     },
                 }
             },
@@ -512,6 +522,7 @@ suite = {
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
                                 "dependency:espresso:ESPRESSO_JVMCI",
+                                "dependency:espresso:ESPRESSO_IO",
                             ],
                         },
                     },
@@ -527,6 +538,7 @@ suite = {
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
                                 "dependency:espresso:ESPRESSO_JVMCI",
+                                "dependency:espresso:ESPRESSO_IO",
                             ],
                         },
                     },
@@ -542,6 +554,7 @@ suite = {
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
                                 "dependency:espresso:ESPRESSO_JVMCI",
+                                "dependency:espresso:ESPRESSO_IO",
                             ],
                         },
                     },
@@ -569,6 +582,7 @@ suite = {
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
                                 "dependency:espresso:ESPRESSO_JVMCI/*",
+                                "dependency:espresso:ESPRESSO_IO",
                             ],
                         },
                     },
@@ -586,6 +600,7 @@ suite = {
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
                                 "dependency:espresso:ESPRESSO_JVMCI/*",
+                                "dependency:espresso:ESPRESSO_IO",
                             ],
                         },
                     },
@@ -603,6 +618,7 @@ suite = {
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
                                 "dependency:espresso:ESPRESSO_JVMCI/*",
+                                "dependency:espresso:ESPRESSO_IO",
                             ],
                         },
                     },
@@ -620,6 +636,15 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },
+            "maven": False,
+        },
+
+        "ESPRESSO_IO": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.io"
+            ],
+            "description": "Injection of Truffle file system to guest java.base",
             "maven": False,
         },
 

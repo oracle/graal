@@ -33,6 +33,8 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -54,6 +56,7 @@ import org.graalvm.webimage.api.JSSymbol;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
 import com.oracle.svm.core.c.ProjectHeaderFile;
@@ -61,7 +64,10 @@ import com.oracle.svm.core.c.ProjectHeaderFileHeaderResolversRegistryFeature;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.FileSystemProviderSupport;
@@ -83,6 +89,7 @@ import com.oracle.svm.hosted.webimage.codegen.LowerableResources;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.WebImageJSLog;
@@ -103,8 +110,11 @@ import com.oracle.svm.webimage.substitute.system.WebImageTempFileHelperSupport;
 import com.oracle.svm.webimage.substitute.system.WebImageTempFileHelperSupportWithoutSecureRandom;
 
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImagePlatform.class)
@@ -121,6 +131,16 @@ public class WebImageFeature implements InternalFeature {
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         ImplicitExceptions.registerForeignCalls(foreignCalls);
+    }
+
+    @Override
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
+        if (hosted) {
+            mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
+        }
+
+        WebImageNonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
     }
 
     @Override
@@ -221,8 +241,8 @@ public class WebImageFeature implements InternalFeature {
         if (entryPointConfig != null) {
             ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
                             ClassInitializationSupport.singleton());
-            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(null, false, conditionResolver, entryPointsData, null, null,
-                            access.getImageClassLoader());
+            ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, false, conditionResolver, entryPointsData, null,
+                            null, null, access.getImageClassLoader());
             try {
                 parser.parseAndRegister(Path.of(entryPointConfig).toUri());
             } catch (IOException ex) {

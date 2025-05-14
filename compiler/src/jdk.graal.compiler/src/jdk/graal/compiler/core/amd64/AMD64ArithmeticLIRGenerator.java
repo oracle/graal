@@ -1368,6 +1368,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    // Object constants can only be inlined if getLIRGen().target().inlineObjects
+    private boolean canInlineStoreVMConstant(AMD64Kind kind, VMConstant c) {
+        if (kind.getSizeInBytes() >= Long.BYTES) {
+            // Store instructions cannot have 8-byte immediate
+            return false;
+        }
+        return !(c instanceof JavaConstant jc) || jc.getJavaKind() != JavaKind.Object || getLIRGen().target().inlineObjects;
+    }
+
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
         Constant c = value.getConstant();
         if (JavaConstant.isNull(c)) {
@@ -1375,15 +1384,10 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             OperandSize size = kind == AMD64Kind.DWORD ? DWORD : QWORD;
             getLIRGen().append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, size, address, 0, state));
             return;
-        } else if (c instanceof VMConstant) {
-            // only 32-bit constants can be patched
-            if (kind == AMD64Kind.DWORD) {
-                if (getLIRGen().target().inlineObjects || !(c instanceof JavaConstant)) {
-                    // if c is a JavaConstant, it's an oop, otherwise it's a metaspace constant
-                    assert !(c instanceof JavaConstant) || ((JavaConstant) c).getJavaKind() == JavaKind.Object : c;
-                    getLIRGen().append(new AMD64BinaryConsumer.MemoryVMConstOp(AMD64MIOp.MOV, address, (VMConstant) c, state));
-                    return;
-                }
+        } else if (c instanceof VMConstant vmc) {
+            if (canInlineStoreVMConstant(kind, vmc)) {
+                getLIRGen().append(new AMD64BinaryConsumer.MemoryVMConstOp(AMD64MIOp.MOV, address, (VMConstant) c, state));
+                return;
             }
         } else {
             JavaConstant jc = (JavaConstant) c;

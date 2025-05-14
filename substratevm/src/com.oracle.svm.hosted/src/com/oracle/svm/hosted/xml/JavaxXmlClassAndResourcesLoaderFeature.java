@@ -41,8 +41,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
 
@@ -81,9 +79,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
      * XMLSecurityManager#prepareCatalog (JDK-8350189).
      */
     private static void initializeJdkCatalog() {
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            return;
-        }
         if (ModuleLayer.boot().findModule("java.xml").isPresent()) {
             // Ensure the JdkCatalog#catalog field is initialized.
             Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.XMLSecurityManager");

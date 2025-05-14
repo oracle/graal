@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -121,13 +120,8 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
         }
         if (isDarwin()) {
-            Class<?>[] scanKeychainParameterTypes = {};
-            if (JavaVersionUtil.JAVA_SPEC >= 23) {
-                // JDK-8320362
-                scanKeychainParameterTypes = new Class<?>[]{String.class};
-            }
             List<Method> darwinMethods = Arrays.asList(
-                            method(a, "apple.security.KeychainStore", "_scanKeychain", scanKeychainParameterTypes),
+                            method(a, "apple.security.KeychainStore", "_scanKeychain", String.class), // JDK-8320362
                             method(a, "apple.security.KeychainStore", "_releaseKeychainItemRef", long.class),
                             method(a, "apple.security.KeychainStore", "_addItemToKeychain", String.class, boolean.class, byte[].class, char[].class),
                             method(a, "apple.security.KeychainStore", "_removeItemFromKeychain", long.class),

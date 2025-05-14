@@ -50,6 +50,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -72,12 +73,14 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
     @Temp({OperandFlag.REG}) private Value tmp1Value;
     @Temp({OperandFlag.REG}) private Value[] tmpValues;
 
+    private final boolean spillR13;
+
     public AMD64BigIntegerSquareToLenOp(
+                    LIRGeneratorTool tool,
                     Value xValue,
                     Value lenValue,
                     Value zValue,
-                    Value zlenValue,
-                    Register heapBaseRegister) {
+                    Value zlenValue) {
         super(TYPE);
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
@@ -92,7 +95,14 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         this.zValue = zValue;
         this.zlenValue = zlenValue;
 
-        this.tmp1Value = r12.equals(heapBaseRegister) ? r14.asValue() : r12.asValue();
+        if (tool.isReservedRegister(r12)) {
+            GraalError.guarantee(!tool.isReservedRegister(r14), "One of r12 or r14 must be available");
+            this.tmp1Value = r14.asValue();
+        } else {
+            this.tmp1Value = r12.asValue();
+        }
+        this.spillR13 = tool.isReservedRegister(r13);
+
         this.tmpValues = new Value[]{
                         rax.asValue(),
                         rcx.asValue(),
@@ -125,7 +135,13 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         Register tmp4 = r10;
         Register tmp5 = rbx;
 
+        if (spillR13) {
+            masm.push(r13);
+        }
         squareToLen(masm, x, len, z, zlen, tmp1, tmp2, tmp3, tmp4, tmp5, rdx, rax);
+        if (spillR13) {
+            masm.pop(r13);
+        }
     }
 
     static void squareRshift(AMD64MacroAssembler masm, Register x, Register xlen, Register z,
@@ -200,7 +216,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         masm.bind(lFourthLoop);
         masm.jccb(ConditionFlag.CarryClear, lFourthLoopExit);
-        masm.sublAndJcc(zlen, 2, ConditionFlag.Negative, lFourthLoopExit, true);
+        masm.subl(zlen, 2);
+        masm.jccb(ConditionFlag.Negative, lFourthLoopExit);
         masm.addq(new AMD64Address(z, zlen, Stride.S4, 0), tmp1);
         masm.jmp(lFourthLoop);
         masm.bind(lFourthLoopExit);
@@ -235,7 +252,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         masm.bind(lFifthLoop);
         masm.decl(zidx);  // Use decl to preserve carry flag
-        masm.declAndJcc(zidx, ConditionFlag.Negative, lFifthLoopExit, true);
+        masm.decl(zidx);
+        masm.jccb(ConditionFlag.Negative, lFifthLoopExit);
 
         if (useBMI2Instructions(masm)) {
             masm.movq(value, new AMD64Address(z, zidx, Stride.S4, 0));
@@ -324,8 +342,10 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         }
 
         masm.bind(lThirdLoop);
-        masm.declAndJcc(len, ConditionFlag.Negative, lThirdLoopExit, true);
-        masm.declAndJcc(len, ConditionFlag.Negative, lLastX, true);
+        masm.decl(len);
+        masm.jccb(ConditionFlag.Negative, lThirdLoopExit);
+        masm.decl(len);
+        masm.jccb(ConditionFlag.Negative, lLastX);
 
         masm.movq(op1, new AMD64Address(x, len, Stride.S4, 0));
         masm.rorq(op1, 32);

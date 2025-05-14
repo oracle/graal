@@ -29,13 +29,7 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
 final class JNIHeaderDirectivesJDKLatest extends JNIHeaderDirectives {
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC > 21;
-    }
 }
 
 @CContext(JNIHeaderDirectivesJDKLatest.class)

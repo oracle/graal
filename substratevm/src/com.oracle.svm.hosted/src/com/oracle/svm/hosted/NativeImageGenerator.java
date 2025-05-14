@@ -1603,6 +1603,11 @@ public class NativeImageGenerator {
         lowTier.replacePlaceholder(AddressLoweringPhase.class, addressLoweringPhase);
         lowTier.replacePlaceholder(TransplantGraphsPhase.class, new TransplantGraphsPhase(createSuitesForLateSnippetTemplate(suites)));
 
+        if (hosted && SharedArenaSupport.isAvailable()) {
+            var pos = midTier.findPhase(FrameStateAssignmentPhase.class, true);
+            pos.add(SharedArenaSupport.singleton().createOptimizeSharedArenaAccessPhase());
+        }
+
         /*
          * Graal inserts only loop safepoints. We want a SafepointNode also before every return. Our
          * safepoint insertion phase inserts both kinds of safepoints.

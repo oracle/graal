@@ -116,6 +116,11 @@ public final class StoredContinuationAccess {
         return s.ip;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isInitialized(StoredContinuation s) {
+        return s.ip.isNonNull();
+    }
+
     public static int allocateToYield(Target_jdk_internal_vm_Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
         assert baseSp.isNonNull() && sp.isNonNull() && ip.isNonNull();
 

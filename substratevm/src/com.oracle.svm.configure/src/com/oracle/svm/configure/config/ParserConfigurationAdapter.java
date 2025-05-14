@@ -26,10 +26,9 @@ package com.oracle.svm.configure.config;
 
 import java.util.List;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.util.TypeResult;
@@ -60,21 +59,30 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerField(UnresolvedConfigurationCondition condition, ConfigurationType type, String fieldName, boolean finalButWritable) {
+    public void registerField(UnresolvedConfigurationCondition condition, ConfigurationType type, String fieldName, boolean finalButWritable, boolean jniAccessible) {
         checkArguments(condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.addField(fieldName, ConfigurationMemberDeclaration.PRESENT, finalButWritable);
     }
 
     @Override
-    public boolean registerAllMethodsWithName(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName) {
+    public boolean registerAllMethodsWithName(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type, String methodName) {
         checkArguments(condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.addMethodsWithName(methodName, ConfigurationMemberDeclaration.PRESENT, queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
         return true;
     }
 
     @Override
-    public boolean registerAllConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public boolean registerAllConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.addMethodsWithName(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
         return true;
@@ -87,15 +95,22 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerMethod(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
+    public void registerMethod(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes,
+                    boolean jniAccessible) {
         checkArguments(condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerConstructor(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, List<ConfigurationType> methodParameterTypes) {
+    public void registerConstructor(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, List<ConfigurationType> methodParameterTypes, boolean jniAccessible) {
         checkArguments(condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
@@ -137,38 +152,56 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerPublicFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerPublicFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.setAllPublicFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.setAllDeclaredFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerPublicMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerPublicMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.setAllPublicMethods(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerDeclaredMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.setAllDeclaredMethods(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerPublicConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerPublicConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.setAllPublicConstructors(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerDeclaredConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        if (jniAccessible) {
+            type.setJniAccessible();
+        }
         type.setAllDeclaredConstructors(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
@@ -176,6 +209,12 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     public void registerAsSerializable(UnresolvedConfigurationCondition condition, ConfigurationType type) {
         checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setSerializable();
+    }
+
+    @Override
+    public void registerAsJniAccessed(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+        checkArguments(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        type.setJniAccessible();
     }
 
     @Override

@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY_LOCATION;
@@ -33,7 +32,6 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JA
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MISC_FLAGS_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
 
 import java.util.function.Function;
@@ -44,7 +42,6 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
@@ -61,10 +58,8 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A helper class for HotSpot specific invocation plugins. In particular it adds helpers for
@@ -79,11 +74,6 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         super(b, targetMethod);
         this.config = config;
         this.barrierSet = b.getPlatformConfigurationProvider().getBarrierSet();
-    }
-
-    private Stamp getClassStamp(boolean nonNull) {
-        ResolvedJavaType toType = b.getMetaAccess().lookupJavaType(Class.class);
-        return StampFactory.object(TypeReference.createExactTrusted(toType), nonNull);
     }
 
     public ValueNode readKlassFromClass(ValueNode clazz) {
@@ -115,10 +105,6 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      * HotSpot field to ensure they are used consistently in plugins.
      */
     public enum HotSpotVMConfigField {
-        KLASS_MODIFIER_FLAGS(
-                        config -> config.klassModifierFlagsOffset,
-                        KLASS_MODIFIER_FLAGS_LOCATION,
-                        JavaVersionUtil.JAVA_SPEC == 21 ? StampFactory.forKind(JavaKind.Int) : StampFactory.forUnsignedInteger(JavaKind.Char.getBitCount())),
         KLASS_SUPER_KLASS(config -> config.klassSuperKlassOffset, KLASS_SUPER_KLASS_LOCATION, KlassPointerStamp.klass()),
         CLASS_ARRAY_KLASS(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         /** JavaThread::_vthread. */
@@ -129,11 +115,11 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         KLASS_ACCESS_FLAGS(
                         config -> config.klassAccessFlagsOffset,
                         KLASS_ACCESS_FLAGS_LOCATION,
-                        JavaVersionUtil.JAVA_SPEC == 21 ? StampFactory.forKind(JavaKind.Int) : StampFactory.forUnsignedInteger(JavaKind.Char.getBitCount())),
+                        StampFactory.forUnsignedInteger(JavaKind.Char.getBitCount())),
         KLASS_MISC_FLAGS(
                         config -> config.klassMiscFlagsOffset,
                         KLASS_MISC_FLAGS_LOCATION,
-                        JavaVersionUtil.JAVA_SPEC == 21 ? StampFactory.forKind(JavaKind.Int) : StampFactory.forUnsignedInteger(JavaKind.Byte.getBitCount())),
+                        StampFactory.forUnsignedInteger(JavaKind.Byte.getBitCount())),
         HOTSPOT_JAVA_THREAD_CONT_ENTRY(config -> config.contEntryOffset, HOTSPOT_JAVA_THREAD_CONT_ENTRY_LOCATION),
         HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT(config -> config.pinCountOffset, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION, StampFactory.forKind(JavaKind.Int));
 
@@ -182,13 +168,6 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * Read {@code Klass::_modifier_flags} as int.
-     */
-    public ValueNode readKlassModifierFlags(ValueNode klass) {
-        return ZeroExtendNode.create(readLocation(klass, HotSpotVMConfigField.KLASS_MODIFIER_FLAGS), JavaKind.Int.getBitCount(), NodeView.DEFAULT);
-    }
-
-    /**
      * Read {@code Klass::_access_flags} as int.
      */
     public ValueNode readKlassAccessFlags(ValueNode klass) {
@@ -207,15 +186,6 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      */
     public ValueNode klassLayoutHelper(ValueNode klass) {
         return b.add(KlassLayoutHelperNode.create(config, klass, b.getConstantReflection()));
-    }
-
-    /**
-     * Read {@code ArrayKlass::_component_mirror}.
-     */
-    public ValueNode readArrayKlassComponentMirror(ValueNode klass, GuardingNode guard) {
-        int offset = config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop");
-        Stamp stamp = getClassStamp(true);
-        return readLocation(klass, offset, ARRAY_KLASS_COMPONENT_MIRROR, stamp, guard);
     }
 
     /**

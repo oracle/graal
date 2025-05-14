@@ -31,6 +31,8 @@ import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 import static jdk.graal.compiler.options.OptionType.Expert;
 import static jdk.graal.compiler.options.OptionType.User;
+import static org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
+import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -50,6 +52,7 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -62,6 +65,7 @@ import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -1426,4 +1430,45 @@ public class SubstrateOptions {
                      2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
                      3. All @TargetClass substitutions in classes loaded by the custom loader are processed.""")//
     public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
+
+    @Option(help = "Flag indicating if the code checking for closed arenas should print to stdout when it sees an exception.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> PrintClosedArenaUponThrow = new HostedOptionKey<>(false);
+
+    @Fold
+    public static boolean printClosedArenaUponThrow() {
+        return PrintClosedArenaUponThrow.getValue();
+    }
+
+    @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> RelativeCodePointers = new HostedOptionKey<>(false, SubstrateOptions::validateRelativeCodePointers);
+
+    @Fold
+    public static boolean useRelativeCodePointers() {
+        return RelativeCodePointers.getValue();
+    }
+
+    private static void validateRelativeCodePointers(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue()) {
+            String enabledOption = SubstrateOptionsParser.commandArgument(optionKey, "+");
+
+            UserError.guarantee(Platform.includedIn(PLATFORM_JNI.class) || Platform.includedIn(NATIVE_ONLY.class), "%s is supported only with hardware target platforms.", enabledOption);
+
+            /*
+             * GR-59707: Dispatch tables must potentially be patched at runtime still. Method
+             * offsets for dispatch need to be passed on between layer builds rather than using
+             * symbol names.
+             */
+            UserError.guarantee(!ImageLayerBuildingSupport.buildingImageLayer(), "%s is currently not supported with layered images.", enabledOption);
+
+            // The concept of a code base would need to be introduced in the LLVM backend first.
+            UserError.guarantee(!useLLVMBackend(), "%s is currently not supported with the LLVM backend.", enabledOption);
+
+            /*
+             * Code offsets of PLT stubs cannot be predetermined because the PLT is separate from
+             * the text section and has its own base address. It would need to become a part of the
+             * text section (e.g., by turning it into a compilation unit).
+             */
+            UserError.guarantee(!PLTGOTConfiguration.isEnabled(), "%s cannot be used together with PLT/GOT.", enabledOption);
+        }
+    }
 }

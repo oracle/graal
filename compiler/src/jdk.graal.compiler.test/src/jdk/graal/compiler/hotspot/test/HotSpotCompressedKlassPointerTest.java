@@ -32,7 +32,6 @@ import org.junit.Test;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -41,7 +40,7 @@ public class HotSpotCompressedKlassPointerTest extends HotSpotGraalCompilerTest 
     @Before
     public void setUp() {
         GraalHotSpotVMConfig config = runtime().getVMConfig();
-        assumeTrue("compressed class pointers specific tests", JavaVersionUtil.JAVA_SPEC >= 24 && config.useCompressedClassPointers);
+        assumeTrue("compressed class pointers specific tests", config.useCompressedClassPointers);
     }
 
     // Non-abstract class

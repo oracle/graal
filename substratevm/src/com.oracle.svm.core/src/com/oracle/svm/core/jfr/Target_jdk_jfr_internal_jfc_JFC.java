@@ -37,8 +37,6 @@ import java.util.List;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDKLatest;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.jfc.JFC;
@@ -49,7 +47,6 @@ public final class Target_jdk_jfr_internal_jfc_JFC {
 
     // Checkstyle: stop
     @Delete //
-    @TargetElement(onlyWith = JDKLatest.class) //
     private static Path JFC_DIRECTORY;
     // Checkstyle: resume
 

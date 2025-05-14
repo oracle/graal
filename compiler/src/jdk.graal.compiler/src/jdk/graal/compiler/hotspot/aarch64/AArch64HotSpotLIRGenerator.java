@@ -497,12 +497,12 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public int getArrayLengthOffset() {
-        return config.arrayOopDescLengthOffset();
+        return config.arrayLengthOffsetInBytes;
     }
 
     @Override
-    public Register getHeapBaseRegister() {
-        return getProviders().getRegisters().getHeapBaseRegister();
+    public boolean isReservedRegister(Register r) {
+        return getProviders().getRegisters().isReservedRegister(r);
     }
 
     @Override

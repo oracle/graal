@@ -188,7 +188,7 @@ public abstract class SubstrateSegfaultHandler {
         if (isolateThread.isNonNull()) {
             Isolate isolate = VMThreads.IsolateTL.get(isolateThread);
             if (isValid(isolate)) {
-                CEntryPointSnippets.setHeapBase(isolate);
+                CEntryPointSnippets.initBaseRegisters(isolate);
                 WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
                 return true;
             }
@@ -200,10 +200,10 @@ public abstract class SubstrateSegfaultHandler {
     @NeverInline("Prevent register writes from floating")
     private static boolean tryEnterIsolateViaHeapBaseRegister(RegisterDumper.Context context) {
         /*
-         * Set the heap base register to null so that we don't execute this code more than once if
-         * we trigger a recursive segfault.
+         * Set the base registers to null so that we don't execute this code more than once if we
+         * trigger a recursive segfault.
          */
-        CEntryPointSnippets.setHeapBase(Word.nullPointer());
+        CEntryPointSnippets.initBaseRegisters(Word.nullPointer(), Word.nullPointer());
 
         Isolate isolate = (Isolate) RegisterDumper.singleton().getHeapBase(context);
         if (isValid(isolate)) {

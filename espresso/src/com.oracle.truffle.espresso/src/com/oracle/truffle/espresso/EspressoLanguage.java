@@ -145,6 +145,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean whiteBoxEnabled;
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
+    @CompilationFinal private boolean useEspressoLibs;
     // endregion Options
 
     // region Allocation
@@ -250,6 +251,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case compact -> new CompactGuestFieldOffsetStrategy();
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
+        this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -339,7 +341,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -563,6 +566,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean isJVMCIEnabled() {
         return internalJvmciEnabled;
+    }
+
+    public boolean useEspressoLibs() {
+        return useEspressoLibs;
     }
 
     public EspressoLanguageCache getLanguageCache() {

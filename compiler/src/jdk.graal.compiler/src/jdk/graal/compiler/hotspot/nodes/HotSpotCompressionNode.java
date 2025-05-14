@@ -38,7 +38,6 @@ import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
@@ -74,7 +73,7 @@ public final class HotSpotCompressionNode extends CompressionNode {
 
     @Override
     public boolean isCompressible(Constant constant) {
-        if (JavaVersionUtil.JAVA_SPEC >= 24 && constant instanceof HotSpotMetaspaceConstant mc) {
+        if (constant instanceof HotSpotMetaspaceConstant mc) {
             ResolvedJavaType type = mc.asResolvedJavaType();
             // As of JDK-8338526, interface and abstract types are not compressible.
             return type.isArray() || (!type.isAbstract() && !type.isInterface());

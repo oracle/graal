@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted.webimage.wasmgc.image;
 
 import java.nio.ByteBuffer;
+import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.svm.core.image.ImageHeap;
@@ -64,7 +65,7 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
 
     @Override
     public void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable, boolean patched) {
-        if (info.getConstant() instanceof ImageHeapPrimitiveArray) {
+        if (info.getWrapped() instanceof ImageHeapPrimitiveArray) {
             singlePartition.add(info);
         } else {
             pseudoPartition.add(info);
@@ -76,7 +77,7 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
         layoutPseudoPartition();
         doLayout();
 
-        long totalSize = imageHeap.getObjects().stream().mapToLong(ImageHeapObject::getSize).sum();
+        long totalSize = StreamSupport.stream(imageHeap.getObjects().spliterator(), false).mapToLong(ImageHeapObject::getSize).sum();
         long serializedSize = singlePartition.getStartOffset() + singlePartition.getSize() - startOffset;
         return new WasmGCImageHeapLayoutInfo(startOffset, serializedSize, totalSize);
     }
@@ -85,7 +86,7 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
         int offset = 0;
         for (ImageHeapObject info : singlePartition.getObjects()) {
             // Only primitive arrays are supposed to be in this partition
-            ImageHeapPrimitiveArray primitiveArray = (ImageHeapPrimitiveArray) info.getConstant();
+            ImageHeapPrimitiveArray primitiveArray = (ImageHeapPrimitiveArray) info.getWrapped();
             info.setOffsetInPartition(offset);
             offset += primitiveArray.getType().getComponentType().getStorageKind().getByteCount() * primitiveArray.getLength();
         }

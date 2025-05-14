@@ -32,9 +32,6 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * This class provides JDK-internal access to values that are also available via system properties.
@@ -108,95 +105,76 @@ final class Target_jdk_internal_util_StaticProperty {
     private static String JAVA_LOCALE_USE_OLD_ISO_CODES;
 
     @Delete//
-    @TargetElement(onlyWith = JDKLatest.class)//
     private static String OS_NAME;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private static String OS_ARCH;
 
     @Delete//
-    @TargetElement(onlyWith = JDKLatest.class)//
     private static String OS_VERSION;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS_DISPLAY;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS_FORMAT;
 
     @Alias//
-    @TargetElement(onlyWith = JDKLatest.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_REGION;
     // Checkstyle: resume
@@ -218,40 +196,38 @@ final class Target_jdk_internal_util_StaticProperty {
             SUN_JNU_ENCODING = p.getInitialProperty("sun.jnu.encoding");
             JAVA_LOCALE_USE_OLD_ISO_CODES = p.getInitialProperty("java.locale.useOldISOCodes", "");
 
-            if (JavaVersionUtil.JAVA_SPEC > 21) {
-                OS_ARCH = p.getInitialProperty("os.arch");
+            OS_ARCH = p.getInitialProperty("os.arch");
 
-                USER_LANGUAGE = p.getInitialProperty(UserSystemProperty.LANGUAGE, "en");
-                USER_LANGUAGE_DISPLAY = p.getInitialProperty(UserSystemProperty.LANGUAGE_DISPLAY, USER_LANGUAGE);
-                USER_LANGUAGE_FORMAT = p.getInitialProperty(UserSystemProperty.LANGUAGE_FORMAT, USER_LANGUAGE);
-                // for compatibility, check for old user.region property
-                USER_REGION = p.getInitialProperty(UserSystemProperty.REGION, "");
-                if (!USER_REGION.isEmpty()) {
-                    // region can be of form country, country_variant, or _variant
-                    int i = USER_REGION.indexOf('_');
-                    if (i >= 0) {
-                        USER_COUNTRY = USER_REGION.substring(0, i);
-                        USER_VARIANT = USER_REGION.substring(i + 1);
-                    } else {
-                        USER_COUNTRY = USER_REGION;
-                        USER_VARIANT = "";
-                    }
-                    USER_SCRIPT = "";
+            USER_LANGUAGE = p.getInitialProperty(UserSystemProperty.LANGUAGE, "en");
+            USER_LANGUAGE_DISPLAY = p.getInitialProperty(UserSystemProperty.LANGUAGE_DISPLAY, USER_LANGUAGE);
+            USER_LANGUAGE_FORMAT = p.getInitialProperty(UserSystemProperty.LANGUAGE_FORMAT, USER_LANGUAGE);
+            // for compatibility, check for old user.region property
+            USER_REGION = p.getInitialProperty(UserSystemProperty.REGION, "");
+            if (!USER_REGION.isEmpty()) {
+                // region can be of form country, country_variant, or _variant
+                int i = USER_REGION.indexOf('_');
+                if (i >= 0) {
+                    USER_COUNTRY = USER_REGION.substring(0, i);
+                    USER_VARIANT = USER_REGION.substring(i + 1);
                 } else {
-                    USER_SCRIPT = p.getInitialProperty(UserSystemProperty.SCRIPT, "");
-                    USER_COUNTRY = p.getInitialProperty(UserSystemProperty.COUNTRY, "");
-                    USER_VARIANT = p.getInitialProperty(UserSystemProperty.VARIANT, "");
+                    USER_COUNTRY = USER_REGION;
+                    USER_VARIANT = "";
                 }
-                USER_SCRIPT_DISPLAY = p.getInitialProperty(UserSystemProperty.SCRIPT_DISPLAY, USER_SCRIPT);
-                USER_SCRIPT_FORMAT = p.getInitialProperty(UserSystemProperty.SCRIPT_FORMAT, USER_SCRIPT);
-                USER_COUNTRY_DISPLAY = p.getInitialProperty(UserSystemProperty.COUNTRY_DISPLAY, USER_COUNTRY);
-                USER_COUNTRY_FORMAT = p.getInitialProperty(UserSystemProperty.COUNTRY_FORMAT, USER_COUNTRY);
-                USER_VARIANT_DISPLAY = p.getInitialProperty(UserSystemProperty.VARIANT_DISPLAY, USER_VARIANT);
-                USER_VARIANT_FORMAT = p.getInitialProperty(UserSystemProperty.VARIANT_FORMAT, USER_VARIANT);
-                USER_EXTENSIONS = p.getInitialProperty(UserSystemProperty.EXTENSIONS, "");
-                USER_EXTENSIONS_DISPLAY = p.getInitialProperty(UserSystemProperty.EXTENSIONS_DISPLAY, USER_EXTENSIONS);
-                USER_EXTENSIONS_FORMAT = p.getInitialProperty(UserSystemProperty.EXTENSIONS_FORMAT, USER_EXTENSIONS);
+                USER_SCRIPT = "";
+            } else {
+                USER_SCRIPT = p.getInitialProperty(UserSystemProperty.SCRIPT, "");
+                USER_COUNTRY = p.getInitialProperty(UserSystemProperty.COUNTRY, "");
+                USER_VARIANT = p.getInitialProperty(UserSystemProperty.VARIANT, "");
             }
+            USER_SCRIPT_DISPLAY = p.getInitialProperty(UserSystemProperty.SCRIPT_DISPLAY, USER_SCRIPT);
+            USER_SCRIPT_FORMAT = p.getInitialProperty(UserSystemProperty.SCRIPT_FORMAT, USER_SCRIPT);
+            USER_COUNTRY_DISPLAY = p.getInitialProperty(UserSystemProperty.COUNTRY_DISPLAY, USER_COUNTRY);
+            USER_COUNTRY_FORMAT = p.getInitialProperty(UserSystemProperty.COUNTRY_FORMAT, USER_COUNTRY);
+            USER_VARIANT_DISPLAY = p.getInitialProperty(UserSystemProperty.VARIANT_DISPLAY, USER_VARIANT);
+            USER_VARIANT_FORMAT = p.getInitialProperty(UserSystemProperty.VARIANT_FORMAT, USER_VARIANT);
+            USER_EXTENSIONS = p.getInitialProperty(UserSystemProperty.EXTENSIONS, "");
+            USER_EXTENSIONS_DISPLAY = p.getInitialProperty(UserSystemProperty.EXTENSIONS_DISPLAY, USER_EXTENSIONS);
+            USER_EXTENSIONS_FORMAT = p.getInitialProperty(UserSystemProperty.EXTENSIONS_FORMAT, USER_EXTENSIONS);
         }
     }
 
@@ -334,20 +310,17 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)//
     public static String osName() {
         return SystemPropertiesSupport.singleton().getInitialProperty("os.name");
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)//
     public static String osArch() {
         assert Objects.equals(OS_ARCH, SystemPropertiesSupport.singleton().getInitialProperty("os.arch"));
         return OS_ARCH;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)//
     public static String osVersion() {
         return SystemPropertiesSupport.singleton().getInitialProperty("os.version");
     }

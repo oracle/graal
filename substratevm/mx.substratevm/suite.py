@@ -365,6 +365,7 @@ suite = {
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
+                    "jdk.internal.foreign",
                     "jdk.internal.access",
                     "jdk.internal.event",
                     "jdk.internal.loader",
@@ -727,6 +728,7 @@ suite = {
                     "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
+                    "jdk.internal.foreign",
                     "sun.net.www",
                     "sun.reflect.annotation",
                     "sun.security.jca",
@@ -787,6 +789,10 @@ suite = {
             ],
             "requiresConcealed": {
                 "java.base": [
+                    "jdk.internal.misc",
+                    "jdk.internal.util",
+                    "jdk.internal.access.foreign",
+                    "jdk.internal.vm.vector",
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64",
@@ -833,6 +839,8 @@ suite = {
             ],
             "requiresConcealed": {
                 "java.base": [
+                    "jdk.internal.misc",
+                    "jdk.internal.util",
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64.windows",
@@ -900,12 +908,12 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Wall"]
+                        "cflags": ["-g", "-O2", "-Wall"]
                     }
                 },
                 "<others>": {
                     "<others>": {
-                        "cflags": ["-Wall", "-Werror"],
+                        "cflags": ["-g", "-O2", "-Wall", "-Werror"],
                     },
                 },
             },
@@ -1173,6 +1181,11 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "com.oracle.svm.configure",
             ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta"
+                ],
+            },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -2518,6 +2531,9 @@ suite = {
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.foreign",
+                "opens" : [
+                    "com.oracle.svm.core.foreign                  to org.graalvm.nativeimage.builder"
+                ],
                 "requires" : [
                     "org.graalvm.nativeimage.builder",
                     "org.graalvm.collections",
@@ -2533,6 +2549,8 @@ suite = {
                         "jdk.vm.ci.aarch64",
                     ],
                     "java.base": [
+                        "jdk.internal.misc",
+                        "jdk.internal.util",
                         "jdk.internal.foreign",
                         "jdk.internal.foreign.abi",
                         "jdk.internal.foreign.abi.x64",
