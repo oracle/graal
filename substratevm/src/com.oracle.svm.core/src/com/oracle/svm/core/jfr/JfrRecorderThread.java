@@ -130,18 +130,10 @@ public class JfrRecorderThread extends Thread {
         }
 
         if (chunkWriter.shouldRotateDisk()) {
-            Object chunkRotationMonitor = getChunkRotationMonitor();
+            Object chunkRotationMonitor = Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR;
             synchronized (chunkRotationMonitor) {
                 chunkRotationMonitor.notifyAll();
             }
-        }
-    }
-
-    private static Object getChunkRotationMonitor() {
-        if (HasChunkRotationMonitorField.get()) {
-            return Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR;
-        } else {
-            return Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
         }
     }
 
