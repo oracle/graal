@@ -201,7 +201,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.getName(), registeredProviders);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
     public static void registerProviderForRuntimeReflectionAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
         /* Make provider reflectively instantiable */
         Class<?> providerClass = access.findClassByName(provider);
@@ -271,7 +271,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
     private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
         Constructor<?> nullaryConstructor = null;
         try {
@@ -285,7 +285,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         return nullaryConstructor;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
     private static Method findProviderMethod(Class<?> providerClass) {
         Method nullaryProviderMethod = null;
         try {

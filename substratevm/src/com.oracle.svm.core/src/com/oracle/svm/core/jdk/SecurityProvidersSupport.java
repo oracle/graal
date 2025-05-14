@@ -45,7 +45,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
- * The class that holds various build-time and runtime structures necessary for security providers.
+ * The class that holds various build-time and run-time structures necessary for security providers.
  */
 public final class SecurityProvidersSupport {
     /**
