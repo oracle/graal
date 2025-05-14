@@ -28,12 +28,21 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKLatest;
 
-@TargetClass(className = "jdk.internal.foreign.MemorySessionImpl", onlyWith = {JDKLatest.class, ForeignAPIPredicates.Enabled.class})
+import jdk.internal.foreign.MemorySessionImpl.ResourceList;
+
+@TargetClass(className = "jdk.internal.foreign.MemorySessionImpl", onlyWith = ForeignAPIPredicates.Enabled.class)
 final class Target_jdk_internal_foreign_MemorySessionImpl {
     @Alias //
     int state;
+
+    /**
+     * Non-closable or closed memory sessions may land in the image heap but the resource list is no
+     * longer required.
+     */
+    @Alias //
+    @RecomputeFieldValue(isFinal = true, kind = Kind.Reset) //
+    ResourceList resourceList;
 
     @Alias //
     @RecomputeFieldValue(isFinal = true, kind = Kind.None) //
