@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.c.locale;
 
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-
-@CLibrary(value = "libchelper", requireStatic = true, dependsOn = "java")
-public class LibCHelper {
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native CCharPointerPointer getEnviron();
-
-    @CFunction(transition = Transition.TO_NATIVE)
-    // Checkstyle: stop
-    public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
-    // Checkstyle: start
+public record LocaleData(String country, String displayCountry, String formatCountry,
+                String language, String displayLanguage, String formatLanguage,
+                String script, String displayScript, String formatScript,
+                String variant, String displayVariant, String formatVariant) {
 }

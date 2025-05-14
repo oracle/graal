@@ -23,14 +23,6 @@
  * questions.
  */
 
-typedef struct {
-    char* language;
-    char* script;
-    char* country;
-    char* variant;
-    char* extensions;
-} locale_props_t;
-
 /*
  * Mappings from partial locale names to full locale names
  */

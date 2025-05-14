@@ -40,7 +40,7 @@ import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.properties.RuntimePropertyParser;
+import com.oracle.svm.core.properties.RuntimeSystemPropertyParser;
 import com.oracle.svm.core.util.ImageHeapMap;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -92,8 +92,9 @@ public final class RuntimeOptionParser {
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         String[] args = initialArgs;
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+            /* JDK code may access and cache system properties, so parse them early. */
+            args = RuntimeSystemPropertyParser.parse(args, GRAAL_OPTION_PREFIX, LEGACY_GRAAL_OPTION_PREFIX);
             args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, LEGACY_GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, ignoreUnrecognized);
-            args = RuntimePropertyParser.parse(args);
         } else if (RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates() && IsolateArgumentParser.isCompilationIsolate()) {
             /*
              * Compilation isolates always need to parse the Native Image options that the main

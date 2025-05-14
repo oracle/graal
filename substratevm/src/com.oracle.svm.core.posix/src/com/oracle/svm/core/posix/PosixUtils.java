@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -71,12 +72,13 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.word.Word;
 
 public class PosixUtils {
+    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
     static String setLocale(String category, String locale) {
         int intCategory = getCategory(category);
-
         return setLocale(intCategory, locale);
     }
 
+    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
     private static String setLocale(int category, String locale) {
         if (locale == null) {
             CCharPointer cstrResult = Locale.setlocale(category, WordFactory.nullPointer());

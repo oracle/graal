@@ -31,7 +31,7 @@ import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 
-public final class RuntimePropertyParser {
+public final class RuntimeSystemPropertyParser {
 
     private static final String PROPERTY_PREFIX = "-D";
 
@@ -41,14 +41,12 @@ public final class RuntimePropertyParser {
      * property is set. The returned array of arguments are those that should be passed through to
      * the application.
      */
-    public static String[] parse(String[] args) {
+    public static String[] parse(String[] args, String graalOptionPrefix, String legacyGraalOptionPrefix) {
         int newIdx = 0;
         EconomicMap<String, String> properties = EconomicMap.create();
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
             String arg = args[oldIdx];
-            if (arg.startsWith(PROPERTY_PREFIX) && parseProperty(arg.substring(PROPERTY_PREFIX.length()), properties)) {
-                // Option consumed
-            } else {
+            if (!parseProperty(arg, properties, graalOptionPrefix, legacyGraalOptionPrefix)) {
                 assert newIdx <= oldIdx;
                 args[newIdx] = arg;
                 newIdx++;
@@ -56,7 +54,7 @@ public final class RuntimePropertyParser {
         }
         MapCursor<String, String> cursor = properties.getEntries();
         while (cursor.advance()) {
-            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue(), false);
+            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue());
         }
         if (newIdx == args.length) {
             /* We can be allocation free and just return the original arguments. */
@@ -66,7 +64,15 @@ public final class RuntimePropertyParser {
         }
     }
 
-    private static boolean parseProperty(String property, EconomicMap<String, String> parsedProperties) {
+    private static boolean parseProperty(String arg, EconomicMap<String, String> properties, String graalOptionPrefix, String legacyGraalOptionPrefix) {
+        if (!arg.startsWith(PROPERTY_PREFIX) || arg.startsWith(graalOptionPrefix) || arg.startsWith(legacyGraalOptionPrefix)) {
+            return false;
+        }
+        return parseProperty0(arg, properties);
+    }
+
+    private static boolean parseProperty0(String arg, EconomicMap<String, String> parsedProperties) {
+        String property = arg.substring(PROPERTY_PREFIX.length());
         int splitIndex = property.indexOf('=');
         if (splitIndex == -1) {
             return false;
@@ -74,9 +80,7 @@ public final class RuntimePropertyParser {
 
         String key = property.substring(0, splitIndex);
         String value = property.substring(splitIndex + 1);
-
         parsedProperties.put(key, value);
-
         return true;
     }
 }
