@@ -608,7 +608,7 @@ public abstract class ImageHeapScanner {
                  * conditions, e.g., a started Thread should never be added to the image heap, but
                  * the structure of the object is valid, as ensured by the validity check above.
                  */
-                objectType.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
+                objectType.notifyObjectReachable(object, reason);
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();
