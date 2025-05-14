@@ -56,9 +56,12 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     public void testJDKConstantValue() {
         Assert.assertEquals(getField("T_BOOLEAN"), VectorizedHashCodeInvocationPlugin.T_BOOLEAN);
         Assert.assertEquals(getField("T_CHAR"), VectorizedHashCodeInvocationPlugin.T_CHAR);
+        Assert.assertEquals(getField("T_FLOAT"), VectorizedHashCodeInvocationPlugin.T_FLOAT);
+        Assert.assertEquals(getField("T_DOUBLE"), VectorizedHashCodeInvocationPlugin.T_DOUBLE);
         Assert.assertEquals(getField("T_BYTE"), VectorizedHashCodeInvocationPlugin.T_BYTE);
         Assert.assertEquals(getField("T_SHORT"), VectorizedHashCodeInvocationPlugin.T_SHORT);
         Assert.assertEquals(getField("T_INT"), VectorizedHashCodeInvocationPlugin.T_INT);
+        Assert.assertEquals(getField("T_LONG"), VectorizedHashCodeInvocationPlugin.T_LONG);
     }
 
     // @formatter:off
