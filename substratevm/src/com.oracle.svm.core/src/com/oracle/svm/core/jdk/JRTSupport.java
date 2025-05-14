@@ -176,7 +176,7 @@ final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
     }
 }
 
-@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JRTDisabled.class)
+@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = {JRTDisabled.class, JDKInitializedAtBuildTime.class})
 @Delete
 final class Target_jdk_internal_jrtfs_JrtFileSystemProvider_JRTDisabled {
 }
