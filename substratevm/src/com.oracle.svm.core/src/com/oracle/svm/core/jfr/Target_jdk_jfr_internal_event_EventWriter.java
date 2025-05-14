@@ -30,7 +30,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 
-@TargetClass(className = "jdk.jfr.internal.event.EventWriter", onlyWith = HasJfrSupport.class)
+@TargetClass(className = "jdk.jfr.internal.event.EventWriter")
 public final class Target_jdk_jfr_internal_event_EventWriter {
     @Alias //
     boolean excluded;
