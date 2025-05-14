@@ -27,7 +27,9 @@ package com.oracle.svm.hosted;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,9 +47,12 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -67,7 +72,6 @@ public class OpenTypeWorldFeature implements InternalFeature {
     }
 
     private final Set<AnalysisType> triggeredTypes = new HashSet<>();
-    private final Set<AnalysisMethod> triggeredMethods = new HashSet<>();
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
@@ -76,14 +80,6 @@ public class OpenTypeWorldFeature implements InternalFeature {
             if (triggeredTypes.add(aType)) {
                 aType.getOrCalculateOpenTypeWorldDispatchTableMethods();
                 config.requireAnalysisIteration();
-            }
-        }
-        for (AnalysisMethod aMethod : config.getUniverse().getMethods()) {
-            if (triggeredMethods.add(aMethod)) {
-                if (!aMethod.isStatic()) {
-                    aMethod.getIndirectCallTarget();
-                    config.requireAnalysisIteration();
-                }
             }
         }
     }
@@ -95,6 +91,117 @@ public class OpenTypeWorldFeature implements InternalFeature {
             DynamicHub hub = type.getHub();
             impl.registerAsImmutable(hub.getOpenTypeWorldTypeCheckSlots());
         }
+    }
+
+    /**
+     * see {@link SharedMethod#getIndirectCallTarget}.
+     */
+    public static void computeIndirectCallTargets(HostedUniverse hUniverse, Map<AnalysisMethod, HostedMethod> methods) {
+        Map<HostedType, HostedType[]> allInterfacesMap = new HashMap<>();
+        methods.forEach((aMethod, hMethod) -> {
+            if (!aMethod.isOriginalMethod()) {
+                // We don't need to set this; only original methods will be call targets
+                return;
+            }
+
+            var aAlias = calculateIndirectCallTarget(allInterfacesMap, hMethod);
+            HostedMethod hAlias;
+            if (aAlias.equals(aMethod)) {
+                hAlias = hMethod;
+            } else {
+                hAlias = hUniverse.lookup(aAlias);
+                assert hAlias != null;
+            }
+
+            hMethod.setIndirectCallTarget(hAlias);
+        });
+    }
+
+    /**
+     * For methods where its {@link AnalysisMethod#getDeclaringClass()} does not explicitly declare
+     * the method, find an alternative explicit declaration for the method which can be used as an
+     * indirect call target. This logic is currently used for deciding the target of
+     * virtual/interface calls when using the open type world.
+     */
+    private static AnalysisMethod calculateIndirectCallTarget(Map<HostedType, HostedType[]> allInterfacesMap, HostedMethod hOriginal) {
+        AnalysisMethod aOriginal = hOriginal.getWrapped();
+        if (hOriginal.isStatic() || hOriginal.isConstructor()) {
+            /*
+             * Static methods and constructors must always be explicitly declared.
+             */
+            return aOriginal;
+        }
+
+        var declaringClass = hOriginal.getDeclaringClass();
+        var dispatchTableMethods = declaringClass.getWrapped().getOpenTypeWorldDispatchTableMethods();
+
+        if (dispatchTableMethods.contains(aOriginal)) {
+            return aOriginal;
+        }
+
+        for (var interfaceType : getAllInterfaces(allInterfacesMap, declaringClass)) {
+            if (interfaceType.equals(declaringClass)) {
+                // already checked
+                continue;
+            }
+            dispatchTableMethods = interfaceType.getWrapped().getOpenTypeWorldDispatchTableMethods();
+            for (AnalysisMethod candidate : dispatchTableMethods) {
+                if (matchingSignature(candidate, aOriginal)) {
+                    return candidate;
+                }
+            }
+        }
+
+        /*
+         * For some methods (e.g., methods labeled as @PolymorphicSignature or @Delete), we
+         * currently do not find matches. However, these methods will not be indirect calls within
+         * our generated code, so it is not necessary to determine an accurate virtual/interface
+         * call target.
+         */
+        return aOriginal;
+    }
+
+    /**
+     * @return All interfaces this type inherits (including itself if it is an interface).
+     */
+    private static HostedType[] getAllInterfaces(Map<HostedType, HostedType[]> allInterfacesMap, HostedType type) {
+        var result = allInterfacesMap.get(type);
+        if (result != null) {
+            return result;
+        }
+
+        Set<HostedType> allInterfaceSet = new HashSet<>();
+
+        if (type.isInterface()) {
+            allInterfaceSet.add(type);
+        }
+
+        if (type.getSuperclass() != null) {
+            allInterfaceSet.addAll(Arrays.asList(getAllInterfaces(allInterfacesMap, type.getSuperclass())));
+        }
+
+        for (var i : type.getInterfaces()) {
+            allInterfaceSet.addAll(Arrays.asList(getAllInterfaces(allInterfacesMap, i)));
+        }
+
+        result = allInterfaceSet.toArray(HostedType[]::new);
+        // sort so that we have a consistent order
+        Arrays.sort(result, HostedUniverse.TYPE_COMPARATOR);
+
+        allInterfacesMap.put(type, result);
+        return result;
+    }
+
+    private static boolean matchingSignature(AnalysisMethod o1, AnalysisMethod o2) {
+        if (o1.equals(o2)) {
+            return true;
+        }
+
+        if (!o1.getName().equals(o2.getName())) {
+            return false;
+        }
+
+        return o1.getSignature().equals(o2.getSignature());
     }
 
     public static int loadTypeInfo(Collection<HostedType> types) {

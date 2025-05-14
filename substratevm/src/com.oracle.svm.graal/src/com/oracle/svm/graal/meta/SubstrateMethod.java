@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -88,7 +90,8 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final int hashCode;
     private SubstrateType declaringClass;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) private int encodedGraphStartOffset;
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int vTableIndex;
+    @UnknownObjectField(availability = AfterCompilation.class) private SubstrateMethod indirectCallTarget;
 
     /**
      * A metadata object describing the image code that contains the compiled code of this method.
@@ -195,8 +198,13 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         return implementations;
     }
 
-    public void setSubstrateData(int vTableIndex, int imageCodeOffset, int imageCodeDeoptOffset) {
+    public void setSubstrateDataAfterCompilation(SubstrateMethod indirectCallTarget, int vTableIndex) {
+        this.indirectCallTarget = indirectCallTarget;
         this.vTableIndex = vTableIndex;
+
+    }
+
+    public void setSubstrateDataAfterHeapLayout(int imageCodeOffset, int imageCodeDeoptOffset) {
         this.imageCodeOffset = imageCodeOffset;
         this.imageCodeDeoptOffset = imageCodeDeoptOffset;
     }
@@ -300,6 +308,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
             throw shouldNotReachHere("no vtable index");
         }
         return vTableIndex;
+    }
+
+    @Override
+    public SharedMethod getIndirectCallTarget() {
+        return indirectCallTarget;
     }
 
     @Override

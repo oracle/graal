@@ -616,8 +616,9 @@ public class JNIAccessFeature implements Feature {
             if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
             } else {
-                HostedType declaringClass = hTarget.getDeclaringClass();
+                HostedType declaringClass = hTarget.getIndirectCallTarget().getDeclaringClass();
                 interfaceTypeID = declaringClass.isInterface() ? declaringClass.getTypeID() : JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE;
+                VMError.guarantee(!(interfaceTypeID == JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE && !declaringClass.equals(hTarget.getDeclaringClass())));
             }
         }
         CodePointer nonvirtualTarget = new MethodPointer(hTarget);

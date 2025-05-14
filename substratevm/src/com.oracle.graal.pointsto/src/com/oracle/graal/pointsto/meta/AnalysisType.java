@@ -175,8 +175,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private AnalysisMethod[] declaredMethods;
     private Set<AnalysisMethod> dispatchTableMethods;
 
-    private AnalysisType[] allInterfaces;
-
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
     private final boolean isJavaLangObject;
@@ -375,36 +373,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public int getArrayDimension() {
         return dimension;
-    }
-
-    /**
-     * @return All interfaces this type inherits (including itself if it is an interface).
-     */
-    public AnalysisType[] getAllInterfaces() {
-        if (allInterfaces != null) {
-            return allInterfaces;
-        }
-
-        Set<AnalysisType> allInterfaceSet = new HashSet<>();
-
-        if (isInterface()) {
-            allInterfaceSet.add(this);
-        }
-
-        if (this.superClass != null) {
-            allInterfaceSet.addAll(Arrays.asList(this.superClass.getAllInterfaces()));
-        }
-
-        for (AnalysisType i : interfaces) {
-            allInterfaceSet.addAll(Arrays.asList(i.getAllInterfaces()));
-        }
-
-        var result = allInterfaceSet.toArray(AnalysisType[]::new);
-
-        // ensure result is fully visible across threads
-        VarHandle.storeStoreFence();
-        allInterfaces = result;
-        return allInterfaces;
     }
 
     public void cleanupAfterAnalysis() {
@@ -1354,18 +1322,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
-    }
-
-    public AnalysisMethod findConstructor(Signature signature) {
-        if (wrapped instanceof BaseLayerType) {
-            return null;
-        }
-        for (AnalysisMethod ctor : getDeclaredConstructors(false)) {
-            if (ctor.getSignature().equals(signature)) {
-                return ctor;
-            }
-        }
-        return null;
     }
 
     public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {

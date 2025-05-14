@@ -32,6 +32,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -57,6 +58,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
@@ -100,6 +102,23 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      * index is relative to the start of the appropriate table.
      */
     int vtableIndex = MISSING_VTABLE_IDX;
+
+    /**
+     * When using the open type world we must differentiate between this method's vtable index and
+     * the vtable index used for virtual calls. This is because sometimes JVMCI will expose to
+     * analysis special methods HotSpot introduces into vtables, such as miranda and overpass
+     * methods. In the open type word we only include declared methods in vtables and hence must
+     * adjust indirect call targets accordingly.
+     *
+     * Note normally {@code indirectCallTarget == this}. Only for special HotSpot methods such as
+     * miranda and overpass methods will the indirectCallTarget be a different method. The logic for
+     * setting the indirectCallTarget can be found in
+     * {@link OpenTypeWorldFeature#calculateIndirectCallTarget}.
+     *
+     * For additional information, see {@link SharedMethod#getIndirectCallTarget}.
+     */
+    int indirectCallVTableIndex = MISSING_VTABLE_IDX;
+    HostedMethod indirectCallTarget = null;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -349,13 +368,49 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     public boolean hasVTableIndex() {
-        return vtableIndex != MISSING_VTABLE_IDX;
+        return indirectCallVTableIndex != MISSING_VTABLE_IDX;
     }
 
     @Override
     public int getVTableIndex() {
-        assert vtableIndex != MISSING_VTABLE_IDX : "Missing vtable index for method " + this.format("%H.%n(%p)");
-        return vtableIndex;
+        assert hasVTableIndex() : "Missing vtable index for method " + this.format("%H.%n(%p)");
+        return indirectCallVTableIndex;
+    }
+
+    public void setIndirectCallTarget(HostedMethod alias) {
+        assert indirectCallTarget == null : indirectCallTarget;
+        if (!alias.equals(this)) {
+            /*
+             * When there is an indirectCallTarget installed which is not the original method, we
+             * currently expect the target method to either have an interface as its declaring class
+             * or for the declaring class to be unchanged. If we change this in the future, then we
+             * will need to adjust the JNI (JNIAccessFeature) and reflection (ReflectionFeature)
+             * code as well.
+             */
+            VMError.guarantee(alias.getDeclaringClass().isInterface() || alias.getDeclaringClass().equals(getDeclaringClass()), "Invalid indirect call target for %s: %s", this, alias);
+        }
+        indirectCallTarget = alias;
+    }
+
+    @Override
+    public HostedMethod getIndirectCallTarget() {
+        Objects.requireNonNull(indirectCallTarget);
+        return indirectCallTarget;
+    }
+
+    public void finalizeVTableIndex(boolean closedTypeWorld) {
+        if (closedTypeWorld) {
+            /*
+             * In the closed type word we do not have a different indirectCallTarget, so the
+             * vtableIndex is always the original vtable index.
+             */
+            indirectCallVTableIndex = vtableIndex;
+        } else {
+            /*
+             * In the open type word we must use the vtable index from the indirect call target.
+             */
+            indirectCallVTableIndex = indirectCallTarget.vtableIndex;
+        }
     }
 
     @Override

@@ -529,10 +529,12 @@ final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailabil
             return SubstrateMethodAccessor.INTERFACE_TYPEID_UNNEEDED;
         }
 
-        HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
-        if (member.getDeclaringClass().isInterface()) {
-            return member.getDeclaringClass().getTypeID();
+        HostedMethod method = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+        HostedMethod indirectCallTarget = method.getIndirectCallTarget();
+        if (indirectCallTarget.getDeclaringClass().isInterface()) {
+            return indirectCallTarget.getDeclaringClass().getTypeID();
         }
+        VMError.guarantee(method.equals(indirectCallTarget));
         return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }
 }
