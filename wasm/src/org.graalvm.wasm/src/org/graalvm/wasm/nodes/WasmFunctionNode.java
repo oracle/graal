@@ -2639,6 +2639,121 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 ByteVector result = Vector128Ops.i8x16_shuffle(x, y, indices);
                 pushVector128(frame, stackPointer++, result);
                 break;
+            }            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S:
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                ByteVector vec = popVector128(frame, --stackPointer);
+                int result = Vector128Ops.i8x16_extract_lane(vec, laneIndex, vectorOpcode);
+                pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_REPLACE_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                byte value = (byte) popInt(frame, --stackPointer);
+                ByteVector vec = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i8x16_replace_lane(vec, laneIndex, value);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S:
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                ByteVector vec = popVector128(frame, --stackPointer);
+                int result = Vector128Ops.i16x8_extract_lane(vec, laneIndex, vectorOpcode);
+                pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I16X8_REPLACE_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                short value = (short) popInt(frame, --stackPointer);
+                ByteVector vec = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i16x8_replace_lane(vec, laneIndex, value);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I32X4_EXTRACT_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                ByteVector vec = popVector128(frame, --stackPointer);
+                int result = Vector128Ops.i32x4_extract_lane(vec, laneIndex);
+                pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I32X4_REPLACE_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                int value = popInt(frame, --stackPointer);
+                ByteVector vec = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i32x4_replace_lane(vec, laneIndex, value);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I64X2_EXTRACT_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                ByteVector vec = popVector128(frame, --stackPointer);
+                long result = Vector128Ops.i64x2_extract_lane(vec, laneIndex);
+                pushLong(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I64X2_REPLACE_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                long value = popLong(frame, --stackPointer);
+                ByteVector vec = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i64x2_replace_lane(vec, laneIndex, value);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F32X4_EXTRACT_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                ByteVector vec = popVector128(frame, --stackPointer);
+                float result = Vector128Ops.f32x4_extract_lane(vec, laneIndex);
+                pushFloat(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F32X4_REPLACE_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                float value = popFloat(frame, --stackPointer);
+                ByteVector vec = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.f32x4_replace_lane(vec, laneIndex, value);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F64X2_EXTRACT_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                ByteVector vec = popVector128(frame, --stackPointer);
+                double result = Vector128Ops.f64x2_extract_lane(vec, laneIndex);
+                pushDouble(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F64X2_REPLACE_LANE: {
+                final int laneIndex = rawPeekU8(bytecode, offset);
+                offset++;
+
+                double value = popDouble(frame, --stackPointer);
+                ByteVector vec = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.f64x2_replace_lane(vec, laneIndex, value);
+                pushVector128(frame, stackPointer++, result);
+                break;
             }
             case Bytecode.VECTOR_I8X16_SWIZZLE:
             case Bytecode.VECTOR_I8X16_EQ:

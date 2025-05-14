@@ -170,73 +170,72 @@ public class Vector128Ops {
         return cast(x.rearrange(shuffle, y));
     }
 
-    public static int i8x16_extract_lane(byte[] bytes, int laneIndex, int vectorOpcode) {
+    public static int i8x16_extract_lane(ByteVector vecBytes, int laneIndex, int vectorOpcode) {
+        ByteVector vec = cast(vecBytes);
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S -> bytes[laneIndex];
-            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U -> Byte.toUnsignedInt(bytes[laneIndex]);
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S -> vec.lane(laneIndex);
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U -> Byte.toUnsignedInt(vec.lane(laneIndex));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
 
-    public static byte[] i8x16_replace_lane(byte[] bytes, int laneIndex, byte value) {
-        byte[] result = Arrays.copyOf(bytes, BYTES);
-        result[laneIndex] = value;
-        return result;
+    public static ByteVector i8x16_replace_lane(ByteVector vecBytes, int laneIndex, byte value) {
+        ByteVector vec = cast(vecBytes);
+        return cast(vec.withLane(laneIndex, value));
     }
 
-    public static int i16x8_extract_lane(byte[] vec, int laneIndex, int vectorOpcode) {
-        short x = byteArraySupport.getShort(vec, laneIndex * Short.BYTES);
+    public static int i16x8_extract_lane(ByteVector vecBytes, int laneIndex, int vectorOpcode) {
+        ShortVector vec = cast(vecBytes).reinterpretAsShorts();
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> x;
-            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U -> Short.toUnsignedInt(x);
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> vec.lane(laneIndex);
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U -> Short.toUnsignedInt(vec.lane(laneIndex));
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
 
-    public static byte[] i16x8_replace_lane(byte[] vec, int laneIndex, short value) {
-        byte[] result = Arrays.copyOf(vec, BYTES);
-        byteArraySupport.putShort(result, laneIndex * Short.BYTES, value);
-        return result;
+    public static ByteVector i16x8_replace_lane(ByteVector vecBytes, int laneIndex, short value) {
+        ShortVector vec = cast(vecBytes).reinterpretAsShorts();
+        return cast(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static int i32x4_extract_lane(byte[] vec, int laneIndex) {
-        return byteArraySupport.getInt(vec, laneIndex * Integer.BYTES);
+    public static int i32x4_extract_lane(ByteVector vecBytes, int laneIndex) {
+        IntVector vec = cast(vecBytes).reinterpretAsInts();
+        return vec.lane(laneIndex);
     }
 
-    public static byte[] i32x4_replace_lane(byte[] vec, int laneIndex, int value) {
-        byte[] result = Arrays.copyOf(vec, BYTES);
-        byteArraySupport.putInt(result, laneIndex * Integer.BYTES, value);
-        return result;
+    public static ByteVector i32x4_replace_lane(ByteVector vecBytes, int laneIndex, int value) {
+        IntVector vec = cast(vecBytes).reinterpretAsInts();
+        return cast(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static long i64x2_extract_lane(byte[] vec, int laneIndex) {
-        return byteArraySupport.getLong(vec, laneIndex * Long.BYTES);
+    public static long i64x2_extract_lane(ByteVector vecBytes, int laneIndex) {
+        LongVector vec = cast(vecBytes).reinterpretAsLongs();
+        return vec.lane(laneIndex);
     }
 
-    public static byte[] i64x2_replace_lane(byte[] vec, int laneIndex, long value) {
-        byte[] result = Arrays.copyOf(vec, BYTES);
-        byteArraySupport.putLong(result, laneIndex * Long.BYTES, value);
-        return result;
+    public static ByteVector i64x2_replace_lane(ByteVector vecBytes, int laneIndex, long value) {
+        LongVector vec = cast(vecBytes).reinterpretAsLongs();
+        return cast(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static float f32x4_extract_lane(byte[] vec, int laneIndex) {
-        return byteArraySupport.getFloat(vec, laneIndex * Float.BYTES);
+    public static float f32x4_extract_lane(ByteVector vecBytes, int laneIndex) {
+        FloatVector vec = cast(vecBytes).reinterpretAsFloats();
+        return vec.lane(laneIndex);
     }
 
-    public static byte[] f32x4_replace_lane(byte[] vec, int laneIndex, float value) {
-        byte[] result = Arrays.copyOf(vec, BYTES);
-        byteArraySupport.putFloat(result, laneIndex * Float.BYTES, value);
-        return result;
+    public static ByteVector f32x4_replace_lane(ByteVector vecBytes, int laneIndex, float value) {
+        FloatVector vec = cast(vecBytes).reinterpretAsFloats();
+        return cast(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    public static double f64x2_extract_lane(byte[] vec, int laneIndex) {
-        return byteArraySupport.getDouble(vec, laneIndex * Double.BYTES);
+    public static double f64x2_extract_lane(ByteVector vecBytes, int laneIndex) {
+        DoubleVector vec = cast(vecBytes).reinterpretAsDoubles();
+        return vec.lane(laneIndex);
     }
 
-    public static byte[] f64x2_replace_lane(byte[] vec, int laneIndex, double value) {
-        byte[] result = Arrays.copyOf(vec, BYTES);
-        byteArraySupport.putDouble(result, laneIndex * Double.BYTES, value);
-        return result;
+    public static ByteVector f64x2_replace_lane(ByteVector vecBytes, int laneIndex, double value) {
+        DoubleVector vec = cast(vecBytes).reinterpretAsDoubles();
+        return cast(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
