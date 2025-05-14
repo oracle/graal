@@ -34,7 +34,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 public class SubstrateExitHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (SubstrateOptions.needsExitHandlers()) {
+        if (SubstrateOptions.InstallExitHandlers.getValue()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateExitHandlerStartupHook());
         }
     }
@@ -43,7 +43,7 @@ public class SubstrateExitHandlerFeature implements InternalFeature {
 final class SubstrateExitHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
+        if (SubstrateOptions.EnableSignalHandling.getValue() && isFirstIsolate) {
             Target_java_lang_Terminator.setup();
         }
     }
