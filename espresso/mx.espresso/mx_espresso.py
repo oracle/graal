@@ -969,7 +969,8 @@ static int probe_option_type(const char* option) {
 
 # Register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
-    'espresso': [_run_espresso_launcher, '[args]'],
+    'espresso': [_run_espresso, '[args]'],
+    'espresso-launcher': [_run_espresso_launcher, '[args]'],
     'espresso-embedded': [_run_espresso_embedded, '[args]'],
     'java-truffle': [_run_java_truffle, '[args]'],
     'espresso-meta': [_run_espresso_meta, '[args]'],
