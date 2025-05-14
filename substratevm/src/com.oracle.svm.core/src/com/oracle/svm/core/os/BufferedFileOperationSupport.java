@@ -44,6 +44,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFileOperationSupportHolder;
@@ -344,6 +345,11 @@ public class BufferedFileOperationSupport {
         return writeLong(f, Double.doubleToLongBits(v));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean writeUTF8(BufferedFile f, String string) {
+        return writeUTF8(f, string, null);
+    }
+
     /**
      * Writes the String characters encoded as UTF8 to the current file position and advances the
      * file position.
@@ -351,10 +357,14 @@ public class BufferedFileOperationSupport {
      * @return true if the data was written, false otherwise.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean writeUTF8(BufferedFile f, String string) {
+    public boolean writeUTF8(BufferedFile f, String string, CharReplacer replacer) {
         boolean success = true;
         for (int index = 0; index < string.length() && success; index++) {
-            success &= writeUTF8(f, UninterruptibleUtils.String.charAt(string, index));
+            char ch = UninterruptibleUtils.String.charAt(string, index);
+            if (replacer != null) {
+                ch = replacer.replace(ch);
+            }
+            success &= writeUTF8(f, ch);
         }
         return success;
     }

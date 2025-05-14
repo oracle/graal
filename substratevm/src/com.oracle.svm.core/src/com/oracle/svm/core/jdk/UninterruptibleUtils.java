@@ -714,6 +714,17 @@ public class UninterruptibleUtils {
         char replace(char val);
     }
 
+    public static final class ReplaceDotWithSlash implements CharReplacer {
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public char replace(char ch) {
+            if (ch == '.') {
+                return '/';
+            }
+            return ch;
+        }
+    }
+
     public static class CodeUtil {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static long signExtend(long value, int inputBits) {
