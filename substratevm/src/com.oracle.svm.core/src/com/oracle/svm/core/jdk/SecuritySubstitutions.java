@@ -66,7 +66,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.security.util.Debug;
 import sun.security.util.SecurityConstants;
 
@@ -471,7 +470,6 @@ final class Target_sun_security_jca_ProviderConfig {
      * reachable via a security service.
      */
     @Substitute
-    @SuppressWarnings("fallthrough")
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", justification = "This double-check is implemented correctly and is intentional.")
     Provider getProvider() {
         // volatile variable load
@@ -508,6 +506,11 @@ final class Target_sun_security_jca_ProviderConfig {
                     p = support.isSecurityProviderExpected("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
                     break;
                 }
+                case "SunEC": {
+                    // Constructor inside method and then allocate. ModuleSupport to open.
+                    p = support.isSecurityProviderExpected("SunEC", "sun.security.ec.SunEC") ? support.allocateSunECProvider() : null;
+                    break;
+                }
                 case "Apple", "apple.security.AppleProvider": {
                     // need to use reflection since this class only exists on MacOsx
                     try {
@@ -525,20 +528,6 @@ final class Target_sun_security_jca_ProviderConfig {
                     }
                     break;
                 }
-                case "SunEC": {
-                    if (JavaVersionUtil.JAVA_SPEC > 21) {
-                        // Constructor inside method and then allocate. ModuleSupport to open.
-                        p = support.isSecurityProviderExpected("SunEC", "sun.security.ec.SunEC") ? support.allocateSunECProvider() : null;
-                        break;
-                    }
-                    /*
-                     * On older JDK versions, SunEC was part of the `jdk.crypto.ec` module and was
-                     * allocated via the service loading mechanism, so this fallthrough is
-                     * intentional. On newer JDK versions, SunEC is part of `java.base` and is
-                     * allocated directly.
-                     */
-                }
-                // fall through
                 default: {
                     if (isLoading) {
                         // because this method is synchronized, this can only

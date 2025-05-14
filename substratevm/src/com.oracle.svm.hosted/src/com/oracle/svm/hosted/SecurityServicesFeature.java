@@ -220,11 +220,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
 
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
-            Constructor<?> sunECConstructor = constructor(a, "sun.security.ec.SunEC");
-            SecurityProvidersSupport.singleton().setSunECConstructor(sunECConstructor);
-        }
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
+        Constructor<?> sunECConstructor = constructor(a, "sun.security.ec.SunEC");
+        SecurityProvidersSupport.singleton().setSunECConstructor(sunECConstructor);
 
         Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
         SecurityProvidersSupport.singleton().setSavedInitialSecurityProperties(securityProperties);
