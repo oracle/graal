@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
-import java.io.File;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.security.CodeSource;
@@ -66,7 +65,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import sun.security.util.Debug;
 import sun.security.util.SecurityConstants;
 
 /*
@@ -133,41 +131,9 @@ final class Target_java_security_Security {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     static Properties props;
-
-    @Alias //
-    private static Properties initialSecurityProperties;
-
-    @Alias //
-    private static Debug sdebug;
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private static void initialize() {
-        props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
-        boolean overrideAll = false;
-
-        if ("true".equalsIgnoreCase(props.getProperty("security.overridePropertiesFile"))) {
-            String extraPropFile = System.getProperty("java.security.properties");
-            if (extraPropFile != null && extraPropFile.startsWith("=")) {
-                overrideAll = true;
-                extraPropFile = extraPropFile.substring(1);
-            }
-            loadProps(null, extraPropFile, overrideAll);
-        }
-        initialSecurityProperties = (Properties) props.clone();
-        if (sdebug != null) {
-            for (String key : props.stringPropertyNames()) {
-                sdebug.println("Initial security property: " + key + "=" + props.getProperty(key));
-            }
-        }
-    }
-
-    @Alias
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    private static native boolean loadProps(File masterFile, String extraPropFile, boolean overrideAll);
 }
 
-@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = JDKLatest.class)
+@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader")
 final class Target_java_security_Security_SecPropLoader {
 
     @Substitute
