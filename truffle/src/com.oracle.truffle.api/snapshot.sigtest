@@ -354,6 +354,7 @@ fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<j
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.UserPrincipal> UNIX_OWNER
 fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.util.Set<java.nio.file.attribute.PosixFilePermission>> UNIX_PERMISSIONS
 innr public abstract interface static FileTypeDetector
+innr public final FileStoreInfo
 innr public final static AttributeDescriptor
 innr public final static Attributes
 meth public !varargs <%0 extends java.lang.Object> void setAttribute(com.oracle.truffle.api.TruffleFile$AttributeDescriptor<{%%0}>,{%%0},java.nio.file.LinkOption[]) throws java.io.IOException
@@ -405,6 +406,7 @@ meth public com.oracle.truffle.api.TruffleFile readSymbolicLink() throws java.io
 meth public com.oracle.truffle.api.TruffleFile relativize(com.oracle.truffle.api.TruffleFile)
 meth public com.oracle.truffle.api.TruffleFile resolve(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile resolveSibling(java.lang.String)
+meth public com.oracle.truffle.api.TruffleFile$FileStoreInfo getFileStoreInfo()
 meth public int hashCode()
 meth public java.io.BufferedReader newBufferedReader() throws java.io.IOException
 meth public java.io.BufferedReader newBufferedReader(java.nio.charset.Charset) throws java.io.IOException
@@ -435,6 +437,13 @@ CLSS public final static com.oracle.truffle.api.TruffleFile$Attributes
 meth public <%0 extends java.lang.Object> {%%0} get(com.oracle.truffle.api.TruffleFile$AttributeDescriptor<{%%0}>)
 supr java.lang.Object
 hfds delegate,queriedAttributes
+
+CLSS public final com.oracle.truffle.api.TruffleFile$FileStoreInfo
+ outer com.oracle.truffle.api.TruffleFile
+meth public long getTotalSpace() throws java.io.IOException
+meth public long getUnallocatedSpace() throws java.io.IOException
+meth public long getUsableSpace() throws java.io.IOException
+supr java.lang.Object
 
 CLSS public abstract interface static com.oracle.truffle.api.TruffleFile$FileTypeDetector
  outer com.oracle.truffle.api.TruffleFile

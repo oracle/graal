@@ -17,6 +17,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-64533 By default every specialization is now included for {@link GenerateUncached}, except specializations that require a {@link Specialization#limit() limit} and are replaced, those are excluded by default. By setting `@Specialization(excludeForUncached=..)` explicitly the default behavior can be overridden, e.g. to include or exclude a specialization for uncached. Specializations which are no longer compatible with uncached will produce a warning instead of an error for compatibility reasons until all languages are migrated. It is therefore expected that language implementations may see new warnings with this version.
 * GR-64124 Added `BytecodeOSRNode.pollOSRBackEdge(BytecodeOSRNode, int)` that supports batch polling for bytecode OSR. Using this method avoids checking for bytecode OSR on every loop backedge.
 * GR-64124 Deprecated  `BytecodeOSRNode.pollOSRBackEdge(BytecodeOSRNode)`. Use `BytecodeOSRNode.pollOSRBackEdge(BytecodeOSRNode, int)` instead. Please note that the old method did call `TruffleSafepoint.poll(Node)`, but the the new method does not. Please double check that your bytecode interpreter polls Truffle safepoints at loop back-edges.
+* GR-64488 Added `TruffleFile#getFileStoreInfo()` providing access to disk-related metadata such as total size, usable space, and unallocated space.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

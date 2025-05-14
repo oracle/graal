@@ -89,6 +89,7 @@ import org.junit.BeforeClass;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public final class MemoryFileSystem implements FileSystem {
+
     private static final byte[] EMPTY = new byte[0];
     private static final UserPrincipal USER = new UserPrincipal() {
         @Override
@@ -428,6 +429,21 @@ public final class MemoryFileSystem implements FileSystem {
     @Override
     public Path getTempDirectory() {
         return tmpDir;
+    }
+
+    @Override
+    public long getTotalSpace(Path path) {
+        return Runtime.getRuntime().maxMemory();
+    }
+
+    @Override
+    public long getUnallocatedSpace(Path path) {
+        return Runtime.getRuntime().freeMemory();
+    }
+
+    @Override
+    public long getUsableSpace(Path path) {
+        return getUnallocatedSpace(path);
     }
 
     private static Object[] parse(String attributesSelector) {
