@@ -1482,7 +1482,6 @@ class NativeImageVM(GraalVm):
                     mx.abort(
                         f"Profile file {self.config.profile_path} does not exist "
                         f"even though the instrument run terminated successfully with exit code 0. "
-                        f"Try adding the '--install-exit-handlers' build option if it is not present."
                     )
                 print(f"Profile file {self.config.profile_path} sha1 is {mx.sha1OfFile(self.config.profile_path)}")
                 self._ensureSamplesAreInProfile(self.config.profile_path)
