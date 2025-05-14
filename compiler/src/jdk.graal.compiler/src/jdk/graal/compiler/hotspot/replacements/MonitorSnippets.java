@@ -110,7 +110,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
@@ -887,7 +886,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         private boolean verifyLockOrder(MonitorEnterNode monitorenterNode) {
-            if (Assertions.assertionsEnabled() && requiresStrictLockOrder) {
+            if (requiresStrictLockOrder) {
                 FrameState state = monitorenterNode.stateAfter();
                 boolean subsequentLocksMustBeEliminated = false;
                 for (int lockIdx = 0; lockIdx < state.locksSize(); lockIdx++) {
