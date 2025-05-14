@@ -149,6 +149,9 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        if (FutureDefaultsOptions.isJDKInitializedAtBuildTime()) {
+            servicesToSkip.add(java.security.Provider.class.getName());
+        }
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
         serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
     }
@@ -187,7 +190,7 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(java.security.Provider.class) && FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            if (serviceProvider.equals(java.security.Provider.class)) {
                 SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
                 /* Only register the security providers that are requested. */
                 if (support.isUserRequestedSecurityProvider(provider)) {
