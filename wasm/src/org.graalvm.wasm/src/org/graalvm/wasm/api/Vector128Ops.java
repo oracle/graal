@@ -51,10 +51,8 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
-import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShuffle;
-import jdk.incubator.vector.VectorSpecies;
 import org.graalvm.wasm.constants.Bytecode;
 
 import java.util.Arrays;
@@ -161,7 +159,6 @@ public class Vector128Ops {
 
     // Checkstyle: stop method name check
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static ByteVector i8x16_shuffle(ByteVector xBytes, ByteVector yBytes, ByteVector indicesBytes) {
         ByteVector x = cast(xBytes);
         ByteVector y = cast(yBytes);
@@ -327,7 +324,6 @@ public class Vector128Ops {
         return result;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int v128_any_true(ByteVector vec) {
         return cast(vec).eq((byte) 0).allTrue() ? 0 : 1;
     }
@@ -377,7 +373,6 @@ public class Vector128Ops {
         return vecResult;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i32x4_relop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
         IntVector x = cast(xBytes).reinterpretAsInts();
         IntVector y = cast(yBytes).reinterpretAsInts();
@@ -510,7 +505,6 @@ public class Vector128Ops {
         return result;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i8x16_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
         ByteVector x = cast(xBytes);
         VectorOperators.Binary op = switch (vectorOpcode) {
@@ -647,7 +641,6 @@ public class Vector128Ops {
         return vecResult;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i16x8_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
         ShortVector x = cast(xBytes).reinterpretAsShorts();
         VectorOperators.Binary op = switch (vectorOpcode) {
@@ -792,7 +785,6 @@ public class Vector128Ops {
         return vecResult;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i32x4_all_true(ByteVector vecBytes) {
         IntVector vec = cast(vecBytes).reinterpretAsInts();
         return vec.eq(0).anyTrue() ? 0 : 1;
@@ -810,7 +802,6 @@ public class Vector128Ops {
         return result;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i32x4_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
         IntVector x = cast(xBytes).reinterpretAsInts();
         VectorOperators.Binary op = switch (vectorOpcode) {
@@ -822,7 +813,6 @@ public class Vector128Ops {
         return cast(x.lanewise(op, shift).reinterpretAsBytes());
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i32x4_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
         IntVector x = cast(xBytes).reinterpretAsInts();
         IntVector y = cast(yBytes).reinterpretAsInts();
@@ -977,7 +967,6 @@ public class Vector128Ops {
         return result;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector i64x2_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
         LongVector x = cast(xBytes).reinterpretAsLongs();
         VectorOperators.Binary op = switch (vectorOpcode) {
@@ -1058,7 +1047,6 @@ public class Vector128Ops {
         return vecResult;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector f32x4_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
         FloatVector x = cast(xBytes).reinterpretAsFloats();
         FloatVector y = cast(yBytes).reinterpretAsFloats();
@@ -1113,7 +1101,6 @@ public class Vector128Ops {
         return vecResult;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static ByteVector f64x2_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
         DoubleVector x = cast(xBytes).reinterpretAsDoubles();
         DoubleVector y = cast(yBytes).reinterpretAsDoubles();
