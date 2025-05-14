@@ -39,7 +39,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.util.LogUtils;
 
 public class LayerArchiveSupport {
@@ -48,19 +47,61 @@ public class LayerArchiveSupport {
     private static final int LAYER_FILE_FORMAT_VERSION_MINOR = 1;
 
     protected static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
-    protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot-";
+    protected static final String LAYER_TEMP_DIR_PREFIX = "_layerRoot_";
 
     public static final String LAYER_FILE_EXTENSION = ".nil";
 
     protected final LayerProperties layerProperties;
+    protected final Path layerFile;
     protected final ArchiveSupport archiveSupport;
 
-    public LayerArchiveSupport(String layerName, ArchiveSupport archiveSupport) {
+    /** The temp directory where the layer files reside in expanded form. */
+    protected final Path layerDir;
+
+    public LayerArchiveSupport(String layerName, Path layerFile, Path layerDir, ArchiveSupport archiveSupport) {
         this.archiveSupport = archiveSupport;
+
+        validateLayerFile(layerFile);
+        this.layerFile = layerFile;
+
+        this.layerDir = layerDir;
+        try {
+            Files.createDirectory(layerDir);
+        } catch (IOException e) {
+            throw UserError.abort("Unable to create temp directory " + layerDir + " where the layer files reside in expanded form.", e);
+        }
+
         this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
     }
 
-    protected static final Path layerPropertiesFileName = Path.of("META-INF/nilayer.properties");
+    protected void validateLayerFile(Path layerFile) {
+        Path fileName = layerFile.getFileName();
+        if (fileName == null || !fileName.toString().endsWith(LAYER_FILE_EXTENSION)) {
+            throw UserError.abort("The given layer file " + layerFile + " must end with '" + LAYER_FILE_EXTENSION + "'.");
+        }
+
+        if (Files.isDirectory(layerFile)) {
+            throw UserError.abort("The given layer file " + layerFile + " is a directory and not a file.");
+        }
+    }
+
+    public Path getSnapshotPath() {
+        return layerDir.resolve(SVMImageLayerSnapshotUtil.SNAPSHOT_FILE_NAME);
+    }
+
+    public Path getSnapshotGraphsPath() {
+        return layerDir.resolve(SVMImageLayerSnapshotUtil.SNAPSHOT_GRAPHS_FILE_NAME);
+    }
+
+    public Path getSharedLibraryPath() {
+        return layerDir.resolve(layerProperties.layerName() + ".so");
+    }
+
+    private static final Path layerPropertiesFileName = Path.of("META-INF/nilayer.properties");
+
+    protected Path getLayerPropertiesFile() {
+        return layerDir.resolve(layerPropertiesFileName);
+    }
 
     public final class LayerProperties {
 
@@ -109,9 +150,9 @@ public class LayerArchiveSupport {
             }
         }
 
-        void loadAndVerify(Path inputLayerLocation, Path expandedInputLayerDir) {
-            Path layerFileName = inputLayerLocation.getFileName();
-            Path layerPropertiesFile = expandedInputLayerDir.resolve(layerPropertiesFileName);
+        void loadAndVerify() {
+            Path layerFileName = layerFile.getFileName();
+            Path layerPropertiesFile = getLayerPropertiesFile();
 
             if (!Files.isReadable(layerPropertiesFile)) {
                 throw UserError.abort("The given layer file " + layerFileName + " does not contain a layer properties file");
@@ -166,7 +207,7 @@ public class LayerArchiveSupport {
             properties.put(PROPERTY_KEY_LAYER_FILE_CREATION_TIMESTAMP, ArchiveSupport.currentTime());
             properties.put(PROPERTY_KEY_LAYER_BUILDER_VM_PLATFORM, platform());
             BuilderVMIdentifier.system().store(properties);
-            Path layerPropertiesFile = NativeImageGenerator.getOutputDirectory().resolve(layerPropertiesFileName);
+            Path layerPropertiesFile = getLayerPropertiesFile();
             Path parent = layerPropertiesFile.getParent();
             if (parent == null) {
                 throw VMError.shouldNotReachHere("The layer properties file " + layerPropertiesFile + " doesn't have a parent directory.");

@@ -26,50 +26,23 @@ package com.oracle.svm.hosted.imagelayer;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 
-    /** The temp directory where the input layer is expanded. */
-    private final Path expandedInputLayerDir;
-
-    private final AtomicBoolean deleteLayerRoot = new AtomicBoolean();
-
-    public LoadLayerArchiveSupport(String layerName, Path layerFile, ArchiveSupport archiveSupport) {
-        super(layerName, archiveSupport);
-        Path inputLayerLocation = validateLayerFile(layerFile);
-        expandedInputLayerDir = this.archiveSupport.createTempDir(LAYER_TEMP_DIR_PREFIX, deleteLayerRoot);
-        this.archiveSupport.expandJarToDir(inputLayerLocation, expandedInputLayerDir, deleteLayerRoot);
-        layerProperties.loadAndVerify(inputLayerLocation, expandedInputLayerDir);
+    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport) {
+        super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "load"), archiveSupport);
+        this.archiveSupport.expandJarToDir(layerFile, layerDir);
+        layerProperties.loadAndVerify();
     }
 
-    public Path getSharedLibraryPath() {
-        return expandedInputLayerDir.resolve(layerProperties.layerName() + ".so");
-    }
+    protected void validateLayerFile(Path layerFile) {
+        super.validateLayerFile(layerFile);
 
-    public Path getSnapshotPath() {
-        return expandedInputLayerDir.resolve(SVMImageLayerSnapshotUtil.snapshotFileName(layerProperties.layerName()));
-    }
-
-    public Path getSnapshotGraphsPath() {
-        return expandedInputLayerDir.resolve(SVMImageLayerSnapshotUtil.snapshotGraphsFileName(layerProperties.layerName()));
-    }
-
-    private static Path validateLayerFile(Path layerFile) {
-        Path fileName = layerFile.getFileName();
-        if (fileName == null || !fileName.toString().endsWith(LAYER_FILE_EXTENSION)) {
-            throw UserError.abort("The given layer file " + layerFile + " must end with '" + LAYER_FILE_EXTENSION + "'.");
-        }
-        if (Files.isDirectory(layerFile)) {
-            throw UserError.abort("The given layer file " + layerFile + " is a directory and not a file.");
-        }
         if (!Files.isReadable(layerFile)) {
             throw UserError.abort("The given layer file " + layerFile + " cannot be read.");
         }
-        return layerFile;
     }
-
 }
