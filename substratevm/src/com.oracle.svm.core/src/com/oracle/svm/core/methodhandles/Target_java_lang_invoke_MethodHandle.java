@@ -37,7 +37,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
-import com.oracle.svm.core.LinkToNativeSupport;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -144,8 +144,8 @@ final class Target_java_lang_invoke_MethodHandle {
 
     @Substitute(polymorphicSignature = true)
     static Object linkToNative(Object... args) throws Throwable {
-        if (LinkToNativeSupport.isAvailable()) {
-            return LinkToNativeSupport.singleton().linkToNative(args);
+        if (ForeignSupport.isAvailable()) {
+            return ForeignSupport.singleton().linkToNative(args);
         } else {
             throw unsupportedFeature("The foreign downcalls feature is not available. Please make sure that preview features are enabled with '--enable-preview'.");
         }
