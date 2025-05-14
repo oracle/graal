@@ -159,6 +159,9 @@ public class JDKInitializationFeature implements InternalFeature {
             rci.initializeAtRunTime("java.io.FileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             rci.initializeAtRunTime("java.io.FileSystem$CurrentWorkingDirectoryHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             rci.initializeAtRunTime("java.io.UnixFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // Contains a static File reference
+            rci.initializeAtRunTime("java.lang.ProcessBuilder$Redirect", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
         }
 
         /* XML-related */
