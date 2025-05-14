@@ -828,15 +828,6 @@ public final class Deoptimizer {
         CodePointer originalReturnAddress = framePointer.readWord(0);
         VMError.guarantee(originalReturnAddress.isNonNull());
 
-        /* Clear the deoptimization slot. */
-        framePointer.writeWord(0, Word.nullPointer());
-
-        /*
-         * Write the old return address to the return address slot, so that stack walks see a
-         * consistent stack.
-         */
-        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, originalReturnAddress);
-
         try {
             deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, originalReturnAddress, hasException);
         } catch (OutOfMemoryError ex) {
@@ -864,7 +855,7 @@ public final class Deoptimizer {
          * can only be called from the current thread. Thus, there is no use case for eager
          * deoptimization to happen if the current thread is executing the lazy deopt stub.
          */
-        VMError.guarantee(framePointer.readWord(0) == Word.nullPointer(), "Eager deoptimization should not occur when lazy deoptimization is in progress");
+        VMError.guarantee(framePointer.readWord(0) == originalReturnAddress, "Eager deoptimization should not occur when lazy deoptimization is in progress");
 
         recentDeoptimizationEvents.append(deoptFrame.getCompletedMessage());
 
