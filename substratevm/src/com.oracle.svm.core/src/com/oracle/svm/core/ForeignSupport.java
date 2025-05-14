@@ -24,19 +24,28 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-public interface LinkToNativeSupport {
+import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
+public interface ForeignSupport {
     @Fold
     static boolean isAvailable() {
-        return ImageSingletons.contains(LinkToNativeSupport.class);
+        boolean result = ImageSingletons.contains(ForeignSupport.class);
+        assert result || !SubstrateOptions.ForeignAPISupport.getValue();
+        return result;
     }
 
     @Fold
-    static LinkToNativeSupport singleton() {
-        return ImageSingletons.lookup(LinkToNativeSupport.class);
+    static ForeignSupport singleton() {
+        return ImageSingletons.lookup(ForeignSupport.class);
     }
 
     Object linkToNative(Object... args) throws Throwable;
+
+    void onMemorySegmentReachable(Object obj, DisallowedObjectReporter reporter);
+
+    void onScopeReachable(Object obj, DisallowedObjectReporter reporter);
 }

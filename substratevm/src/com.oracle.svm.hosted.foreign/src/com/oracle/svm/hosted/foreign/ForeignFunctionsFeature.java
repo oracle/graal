@@ -67,7 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
-import com.oracle.svm.core.LinkToNativeSupport;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -78,7 +78,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
-import com.oracle.svm.core.foreign.LinkToNativeSupportImpl;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
 import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
@@ -280,13 +279,19 @@ public class ForeignFunctionsFeature implements InternalFeature {
     }
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        AbiUtils abiUtils = AbiUtils.create();
+        ForeignFunctionsRuntime foreignFunctionsRuntime = new ForeignFunctionsRuntime(abiUtils);
+
+        ImageSingletons.add(AbiUtils.class, abiUtils);
+        ImageSingletons.add(ForeignSupport.class, foreignFunctionsRuntime);
+        ImageSingletons.add(ForeignFunctionsRuntime.class, foreignFunctionsRuntime);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess a) {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
-        AbiUtils abiUtils = AbiUtils.create();
-        ImageSingletons.add(AbiUtils.class, abiUtils);
-        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
-        ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
         ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
