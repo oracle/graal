@@ -162,6 +162,7 @@ public class JSObjectSubclassTest {
         inspectHeapOnlyPoint("dummy");
     }
 
+    // TODO GR-65036 This will have to be updated since the x and y values will be JS primitives
     @JS("const { x, y } = dummy.$vm.exports.com.oracle.svm.webimage.jtt.api.HeapOnlyPointStatics.getPoint(); console.log(x.$as('number')); console.log(y.$as('number'));")
     private static native void inspectHeapOnlyPoint(String dummy);
 }
@@ -212,7 +213,7 @@ class ImportedJSObject extends JSObject {
 
 @JS.Export
 class SubclassOfImportedJSObject extends ImportedJSObject {
-    protected final int index;
+    protected int index;
 
     SubclassOfImportedJSObject(String importDeclaration, int index) {
         super(importDeclaration);
