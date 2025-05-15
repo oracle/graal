@@ -2543,14 +2543,24 @@ def capnp_compile(args):
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-//@formatter:off
-//Checkstyle: stop
-// Generated via:
-//  $ mx capnp-compile
+// @formatter:off
+// Checkstyle: stop
 """)
         for line in lines:
             if line.startswith("public final class "):
-                f.write('@SuppressWarnings("all")\n')
+                f.write(
+"""import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+/**
+ * This class contains the methods used by the Native Image Layers feature to communicate with the Cap'n Proto Java runtime.
+ * The Native Image Layers feature uses Cap'n Proto to serialize and deserialize metadata between layered build processes.
+ * This file is generated from the {@code SharedLayerSnapshotCapnProtoSchema.capnp} schema file using {@code mx capnp-compile}
+ * and should not be modified manually.
+*/
+@Platforms(Platform.HOSTED_ONLY.class)
+@SuppressWarnings("all")
+""")
             if 'public static final class Schemas {' in line:
                 break
             # Replace org.capnproto with com.oracle.svm.shaded.org.capnproto in generated code
