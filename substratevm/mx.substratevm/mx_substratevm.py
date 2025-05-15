@@ -1500,7 +1500,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 # are also added to the value of the `-imagecp` Native Image option when
 # building libgraal.
 libgraal_jar_distributions = [
-    'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
     'compiler:LIBGRAAL',
     'compiler:LIBGRAAL_LOADER']
