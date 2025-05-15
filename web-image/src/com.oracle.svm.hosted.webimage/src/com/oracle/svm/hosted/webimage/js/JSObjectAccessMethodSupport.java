@@ -72,6 +72,8 @@ public class JSObjectAccessMethodSupport {
         GraalError.guarantee(JSObject.class.isAssignableFrom(field.getDeclaringClass().getJavaClass()), "Field must be in JSObject class: %s", field);
         GraalError.guarantee(!field.isStatic(), "Field must not be static: %s", field);
         UserError.guarantee(!field.isFinal(), "Instance fields in subclasses of %s must not be final: %s", JSObject.class.getSimpleName(), field.format("%H.%n"));
+        UserError.guarantee(field.isPublic() || field.isProtected(), "Only public and protected instance fields in subclasses of %s are allowed: %s", JSObject.class.getSimpleName(),
+                        field.format("%H.%n"));
         JSObjectAccessMethod accessMethod = accessMethods.computeIfAbsent(
                         new AccessorDescription(field, isLoad),
                         key -> createAccessMethod(aMetaAccess, field, isLoad));

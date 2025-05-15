@@ -30,6 +30,7 @@ import org.graalvm.webimage.api.JSObject;
 
 public class JSObjectSubclassTest {
     public static final String[] OUTPUT = {
+                    // jsObjectSubclass
                     "Declared(made in Java)",
                     "made in Java",
                     "Declared(made in JavaScript)",
@@ -56,12 +57,15 @@ public class JSObjectSubclassTest {
                     "inner imported in Java",
                     "InnerImported(inner exported from JavaScript)",
                     "inner exported from JavaScript",
+                    // exportedReturningObject
                     "non-exported subclass",
                     "non-exported",
                     "non-exported subclass",
                     "non-exported",
+                    // heapGeneratedObjects
                     "5",
                     "8",
+                    // nonInstantiatedImported
                     "7.0",
     };
 

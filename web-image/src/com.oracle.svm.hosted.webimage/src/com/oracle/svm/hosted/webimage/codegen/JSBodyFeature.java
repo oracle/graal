@@ -125,7 +125,7 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-                if (ClassWithMirrorLowerer.isJSObjectSubtype(((AnalysisType) field.getDeclaringClass()).getJavaClass())) {
+                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
                     genJSObjectFieldAccess(b, object, field, null);
                     return true;
                 }
@@ -134,7 +134,7 @@ public final class JSBodyFeature implements InternalFeature {
 
             @Override
             public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
-                if (ClassWithMirrorLowerer.isJSObjectSubtype(((AnalysisType) field.getDeclaringClass()).getJavaClass())) {
+                if (ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
                     genJSObjectFieldAccess(b, object, field, value);
                     return true;
                 }
