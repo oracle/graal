@@ -60,6 +60,7 @@ import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodInfo;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -119,6 +120,11 @@ final class PodFeature implements PodSupport, InternalFeature {
     private BeforeAnalysisAccess analysisAccess;
     private volatile boolean instantiated = false;
     private boolean sealed = false;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !ImageLayerBuildingSupport.buildingImageLayer();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

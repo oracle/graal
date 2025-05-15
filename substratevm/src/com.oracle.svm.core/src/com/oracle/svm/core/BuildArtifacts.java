@@ -30,7 +30,13 @@ import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
+
 /** Interface for collecting artifacts produced during native image build. */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public interface BuildArtifacts {
 
     /**

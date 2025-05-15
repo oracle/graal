@@ -37,12 +37,12 @@ import java.util.Set;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.LinkStrategy;
@@ -154,7 +154,7 @@ public class HeapBreakdownProvider {
         long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
         addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
-        int metadataByteLength = ImageSingletons.lookup(RuntimeMetadataDecoder.class).getMetadataByteLength();
+        int metadataByteLength = RuntimeMetadataEncoding.currentLayer().getEncoding().length;
         if (metadataByteLength > 0) {
             long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
             addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);

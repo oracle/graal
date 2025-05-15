@@ -27,9 +27,15 @@ package com.oracle.svm.core.posix;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibMSupport;
+import com.oracle.svm.core.imagelayer.BuildingMonolithicImage;
 import com.oracle.svm.core.posix.headers.PosixLibM;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
-@AutomaticallyRegisteredImageSingleton(LibMSupport.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@AutomaticallyRegisteredImageSingleton(value = LibMSupport.class, onlyWith = BuildingMonolithicImage.class)
 public class PosixLibMSupport implements LibMSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

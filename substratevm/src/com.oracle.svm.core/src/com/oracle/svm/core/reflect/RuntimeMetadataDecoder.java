@@ -32,15 +32,19 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.RecordComponent;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
@@ -73,9 +77,6 @@ public interface RuntimeMetadataDecoder {
     boolean isHiding(int modifiers);
 
     boolean isNegative(int modifiers);
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    int getMetadataByteLength();
 
     class ElementDescriptor {
         private final Class<?> declaringClass;
@@ -154,6 +155,7 @@ public interface RuntimeMetadataDecoder {
         }
     }
 
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     interface MetadataAccessor {
         @Fold
         static MetadataAccessor singleton() {

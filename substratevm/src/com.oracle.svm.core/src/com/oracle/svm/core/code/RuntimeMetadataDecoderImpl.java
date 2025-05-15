@@ -269,11 +269,6 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         return (modifiers & NEGATIVE_FLAG_MASK) != 0;
     }
 
-    @Override
-    public int getMetadataByteLength() {
-        return RuntimeMetadataEncoding.currentLayer().getEncoding().length;
-    }
-
     public static boolean isErrorIndex(int index) {
         return index < NO_DATA;
     }

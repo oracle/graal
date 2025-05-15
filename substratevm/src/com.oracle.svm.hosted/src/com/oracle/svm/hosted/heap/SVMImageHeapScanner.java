@@ -74,13 +74,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         economicMapImplTotalEntriesField = ReflectionUtil.lookupField(economicMapImpl, "totalEntries");
         economicMapImplDeletedEntriesField = ReflectionUtil.lookupField(economicMapImpl, "deletedEntries");
-        ImageSingletons.add(ImageHeapScanner.class, this);
         reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
         fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
-    }
-
-    public static ImageHeapScanner instance() {
-        return ImageSingletons.lookup(ImageHeapScanner.class);
     }
 
     @Override
