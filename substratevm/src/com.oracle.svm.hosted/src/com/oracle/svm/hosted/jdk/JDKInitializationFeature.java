@@ -162,8 +162,10 @@ public class JDKInitializationFeature implements InternalFeature {
             rci.initializeAtRunTime("java.io.UnixFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
 
             rci.initializeAtBuildTime("java.io.File", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtBuildTime("sun.nio.fs.UnixPath", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             // holder for the default file system
             rci.initializeAtRunTime("com.oracle.svm.core.jdk.DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.UnixFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
 
             // Contains a static File reference
 // rci.initializeAtRunTime("java.lang.ProcessBuilder$Redirect",
