@@ -68,7 +68,7 @@ public class FutureDefaultsOptions {
 
     @APIOption(name = OPTION_NAME, defaultValue = DEFAULT_NAME) //
     @Option(help = "file:doc-files/FutureDefaultsHelp.txt", type = OptionType.User) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
+    static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     private static EconomicSet<String> futureDefaults;
