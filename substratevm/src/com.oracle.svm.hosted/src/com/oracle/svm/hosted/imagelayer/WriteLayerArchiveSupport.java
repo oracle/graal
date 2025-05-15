@@ -33,13 +33,15 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGenerator;
 
 /* Builds an image layer, either initial or intermediate. */
 public class WriteLayerArchiveSupport extends LayerArchiveSupport {
 
-    public WriteLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport) {
-        super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport);
+    public WriteLayerArchiveSupport(String layerName, NativeImageClassLoaderSupport classLoaderSupport, Path tempDir, ArchiveSupport archiveSupport) {
+        super(layerName, classLoaderSupport.getLayerFile(), tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport);
+        builderArguments.addAll(classLoaderSupport.getHostedOptionParser().getArguments());
     }
 
     protected void validateLayerFile(Path layerFile) {
@@ -58,18 +60,28 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
+    private void writeBuilderArgumentsFile() {
+        try {
+            Files.write(getBuilderArgumentsFilePath(), builderArguments);
+        } catch (IOException e) {
+            throw UserError.abort("Unable to write builder arguments to file " + getBuilderArgumentsFilePath());
+        }
+    }
+
     public void write() {
-        layerProperties.write();
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(layerFile), archiveSupport.createManifest())) {
             // disable compression for significant (un)archiving speedup at the cost of file size
             jarOutStream.setLevel(0);
+            // write builder arguments file and add to jar
+            writeBuilderArgumentsFile();
+            archiveSupport.addFileToJar(layerDir, getBuilderArgumentsFilePath(), layerFile, jarOutStream);
             // copy the layer snapshot file and its graphs file to the jar
             archiveSupport.addFileToJar(layerDir, getSnapshotPath(), layerFile, jarOutStream);
             archiveSupport.addFileToJar(layerDir, getSnapshotGraphsPath(), layerFile, jarOutStream);
             // copy the shared object file to the jar
             Path sharedLibFile = BuildArtifacts.singleton().get(BuildArtifacts.ArtifactType.IMAGE_LAYER).getFirst();
             archiveSupport.addFileToJar(NativeImageGenerator.getOutputDirectory(), sharedLibFile, layerFile, jarOutStream);
-            // copy the properties file to the jar
+            // write properties file and add to jar
             layerProperties.write();
             archiveSupport.addFileToJar(layerDir, getLayerPropertiesFile(), layerFile, jarOutStream);
             BuildArtifacts.singleton().add(ArtifactType.IMAGE_LAYER_BUNDLE, layerFile);

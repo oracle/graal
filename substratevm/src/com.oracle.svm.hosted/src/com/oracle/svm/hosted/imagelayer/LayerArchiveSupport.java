@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -46,10 +48,15 @@ public class LayerArchiveSupport {
     private static final int LAYER_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int LAYER_FILE_FORMAT_VERSION_MINOR = 1;
 
-    protected static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
-    protected static final String LAYER_TEMP_DIR_PREFIX = "_layerRoot_";
+    private static final String BUILDER_ARGUMENTS_FILE_NAME = "builder-arguments.txt";
+    private static final String SNAPSHOT_FILE_NAME = "layer-snapshot.lsb";
+    private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
+    private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
+    protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
 
     public static final String LAYER_FILE_EXTENSION = ".nil";
+
+    protected final List<String> builderArguments;
 
     protected final LayerProperties layerProperties;
     protected final Path layerFile;
@@ -72,6 +79,7 @@ public class LayerArchiveSupport {
         }
 
         this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
+        this.builderArguments = new ArrayList<>();
     }
 
     protected void validateLayerFile(Path layerFile) {
@@ -86,11 +94,11 @@ public class LayerArchiveSupport {
     }
 
     public Path getSnapshotPath() {
-        return layerDir.resolve(SVMImageLayerSnapshotUtil.SNAPSHOT_FILE_NAME);
+        return layerDir.resolve(SNAPSHOT_FILE_NAME);
     }
 
     public Path getSnapshotGraphsPath() {
-        return layerDir.resolve(SVMImageLayerSnapshotUtil.SNAPSHOT_GRAPHS_FILE_NAME);
+        return layerDir.resolve(SNAPSHOT_GRAPHS_FILE_NAME);
     }
 
     public Path getSharedLibraryPath() {
@@ -101,6 +109,10 @@ public class LayerArchiveSupport {
 
     protected Path getLayerPropertiesFile() {
         return layerDir.resolve(layerPropertiesFileName);
+    }
+
+    protected Path getBuilderArgumentsFilePath() {
+        return layerDir.resolve(BUILDER_ARGUMENTS_FILE_NAME);
     }
 
     public final class LayerProperties {

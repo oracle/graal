@@ -92,8 +92,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class SVMImageLayerSnapshotUtil {
-    public static final String SNAPSHOT_FILE_NAME = "layer-snapshot.lsb";
-    public static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
 
     public static final String CONSTRUCTOR_NAME = "<init>";
     public static final String CLASS_INIT_NAME = "<clinit>";
