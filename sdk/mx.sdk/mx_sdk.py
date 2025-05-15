@@ -273,8 +273,7 @@ class GraalVMJDKConfig(mx.JDKConfig):
             # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
             # However, the Graal compiler is disabled by default and must be explicitly enabled using the -XX:+UseJVMCICompiler option.
             graalvm_home = default_jdk.home
-            # GR-58388: Switch '-XX:+UseJVMCINativeLibrary' to '-XX:+UseGraalJIT'
-            additional_vm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
+            additional_vm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseGraalJIT', '-XX:-UnlockExperimentalVMOptions']
         else:
             graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
             additional_vm_args = []

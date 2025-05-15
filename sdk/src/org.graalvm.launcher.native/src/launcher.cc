@@ -824,6 +824,9 @@ static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
             // GR-59703: Migrate sun.misc.* usages.
             vmArgs.push_back("--sun-misc-unsafe-memory-access=allow");
         }
+
+        // Required as of JDK-8345826, harmless on earlier versions.
+        vmArgs.push_back("-XX:+EnableJVMCI");
     }
 
     // Convert vmArgs to JavaVMInitArgs

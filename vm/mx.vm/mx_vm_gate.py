@@ -406,6 +406,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                   f'-Dpolyglot.log.file={truffle_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
+                   '-XX:+EnableJVMCI',            # JDK-8345826: Required to load the JVMCI module if libgraal is in use
                    '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
                    '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
 

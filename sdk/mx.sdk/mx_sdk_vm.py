@@ -619,29 +619,21 @@ def get_JVMCIThreadsPerNativeLibraryRuntime(jdk):
 def _probe_jlink_info(jdk, attribute_name):
     """
     Determines if the jlink executable in `jdk` supports various options such
-    as those added by JDK-8232080 and JDK-8237467.
+    as those added by JDK-8237467.
     """
-    if not hasattr(jdk, '.supports_JDK_8232080'):
+    if not hasattr(jdk, '.supports_JDK_8237467'):
         output = mx.OutputCapture()
         jlink_exe = jdk.javac.replace('javac', 'jlink')
         mx.run([jlink_exe, '--list-plugins'], out=output)
-        setattr(jdk, '.supports_JDK_8232080', '--add-options=' in output.data or '--add-options ' in output.data)
-        setattr(jdk, '.supports_save_jlink_argfiles', '--save-jlink-argfiles=' in output.data or '--save-jlink-argfiles ' in output.data)
+        setattr(jdk, '.supports_JDK_8237467', '--save-jlink-argfiles=' in output.data or '--save-jlink-argfiles ' in output.data)
         setattr(jdk, '.supports_copy_files', '--copy-files=' in output.data or '--copy-files ' in output.data)
     return getattr(jdk, attribute_name)
-
-def jlink_supports_8232080(jdk):
-    """
-    Determines if the jlink executable in `jdk` supports ``--add-options`` and
-    ``--vendor-[bug-url|vm-bug-url|version]`` added by JDK-8232080.
-    """
-    return _probe_jlink_info(jdk, '.supports_JDK_8232080')
 
 def jlink_has_save_jlink_argfiles(jdk):
     """
     Determines if the jlink executable in `jdk` supports ``--save-jlink-argfiles``.
     """
-    return _probe_jlink_info(jdk, '.supports_save_jlink_argfiles')
+    return _probe_jlink_info(jdk, '.supports_JDK_8237467')
 
 def _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
     """
@@ -813,62 +805,62 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
-    if jlink_supports_8232080(jdk):
-        if mx.get_env('CONTINUOUS_INTEGRATION', None) == 'true':
-            is_gate = mx.get_env('BUILD_TARGET', None) == 'gate'
-            is_bench = 'bench-' in mx.get_env('BUILD_NAME', '')
-            if is_gate or is_bench:
-                # For gate and benchmark jobs, we want to know about each compilation failure
-                # but only exit the VM on systemic compilation failure for gate jobs.
-                vm_options.append('-Djdk.graal.CompilationFailureAction=Diagnose')
-                mx.log('Adding -Djdk.graal.CompilationFailureAction=Diagnose VM option to image')
-                if is_gate:
-                    mx.log('Adding -Djdk.graal.SystemicCompilationFailureRate=-1 VM option to image')
-                    vm_options.append('-Djdk.graal.SystemicCompilationFailureRate=-1')
+    if mx.get_env('CONTINUOUS_INTEGRATION', None) == 'true':
+        is_gate = mx.get_env('BUILD_TARGET', None) == 'gate'
+        is_bench = 'bench-' in mx.get_env('BUILD_NAME', '')
+        if is_gate or is_bench:
+            # For gate and benchmark jobs, we want to know about each compilation failure
+            # but only exit the VM on systemic compilation failure for gate jobs.
+            vm_options.append('-Djdk.graal.CompilationFailureAction=Diagnose')
+            mx.log('Adding -Djdk.graal.CompilationFailureAction=Diagnose VM option to image')
+            if is_gate:
+                mx.log('Adding -Djdk.graal.SystemicCompilationFailureRate=-1 VM option to image')
+                vm_options.append('-Djdk.graal.SystemicCompilationFailureRate=-1')
 
-        if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
-            vm_options.append('-XX:ThreadPriorityPolicy=1')
-        else:
-            mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
+    if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
+        vm_options.append('-XX:ThreadPriorityPolicy=1')
+    else:
+        mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
 
-        if jdk_supports_enablejvmciproduct(jdk):
-            non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
-            if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
-                threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
-                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
-                if threads is not None and threads != 1:
-                    vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
-                if default_to_jvmci == 'lib':
-                    vm_options.append('-XX:+UseJVMCINativeLibrary')
-                vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
-                import mx_sdk_vm_impl
-                if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
-                    # If libgraal is absent, jargraal is used by default.
-                    # Use of jargraal requires exporting jdk.internal.misc to
-                    # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
-                    # about unknown modules (e.g. in `-Xint` mode), the export target
-                    # modules must be explicitly added to the root set with `--add-modules`.
-                    if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
-                        vm_options.extend([
-                            '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
-                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
-                        ])
-                    else:
-                        vm_options.extend([
-                            '--add-modules=jdk.graal.compiler',
-                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
-                        ])
-            else:
-                # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
-                # This avoids unexpected issues with using the out-of-date Graal compiler in
-                # the JDK itself.
-                vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UseJVMCICompiler', '-XX:-UnlockExperimentalVMOptions'])
+    if jdk_supports_enablejvmciproduct(jdk):
+        non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
+        if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
+            threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
+            vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
+            if threads is not None and threads != 1:
+                vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+            if default_to_jvmci == 'lib':
+                # As of JDK-8345826, the JVMCI module must be explicitly
+                # added to the root set if libgraal is in use
+                vm_options.append('--add-modules=jdk.internal.vm.ci')
+                vm_options.append('-XX:+UseJVMCINativeLibrary')
+            vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
+            import mx_sdk_vm_impl
+            if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
+                # If libgraal is absent, jargraal is used by default.
+                # Use of jargraal requires exporting jdk.internal.misc to
+                # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
+                # about unknown modules (e.g. in `-Xint` mode), the export target
+                # modules must be explicitly added to the root set with `--add-modules`.
+                if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
+                    vm_options.extend([
+                        '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
+                        '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
+                    ])
+                else:
+                    vm_options.extend([
+                        '--add-modules=jdk.graal.compiler',
+                        '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
+                    ])
         else:
-            mx.logv('[Creating JDK without -XX:+EnableJVMCIProduct]')
-        if modules and use_upgrade_module_path:
-            vm_options.append('--upgrade-module-path=' + os.pathsep.join((synthetic_modules.get(m, m.jarpath) for m in modules)))
-    elif use_upgrade_module_path:
-        mx.abort('Cannot create an image with an --upgrade-module-path setting since jlink does not support the --add-options flag')
+            # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
+            # This avoids unexpected issues with using the out-of-date Graal compiler in
+            # the JDK itself.
+            vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct', '-XX:-UseJVMCICompiler', '-XX:-UnlockExperimentalVMOptions'])
+    else:
+        mx.logv('[Creating JDK without -XX:+EnableJVMCIProduct]')
+    if modules and use_upgrade_module_path:
+        vm_options.append('--upgrade-module-path=' + os.pathsep.join((synthetic_modules.get(m, m.jarpath) for m in modules)))
     return vm_options
 
 def _copy_src_zip(from_jdk, to_jdk, extra_modules, extra_modules_predicate):
@@ -1043,7 +1035,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
-            # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
+            # +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
             jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
 
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))
@@ -1120,7 +1112,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 jlink.append(f'--add-options={" ".join(vm_options)}')
                 jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
 
-            if jlink_supports_8232080(jdk) and vendor_info is not None:
+            if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append(f'--{name}={value}')
                     jlink_persist.append(f'--{name}="{value}"')
