@@ -287,20 +287,21 @@ class NativeImageProject(mx.Project, metaclass=ABCMeta):
                 with open(build_artifacts_file, 'r') as f:
                     build_artifacts = json.load(f)
 
-                def _yield_files(file_type):
+                def _yield_files(file_type, prefix=None):
                     if file_type not in build_artifacts:
                         return
+                    file_type_prefix = prefix or file_type
                     for build_artifact in build_artifacts[file_type]:
                         build_artifact_path = join(build_directory, build_artifact)
                         if isfile(build_artifact_path):
-                            yield build_artifact_path, join(file_type, build_artifact)
+                            yield build_artifact_path, join(file_type_prefix, build_artifact)
                         elif isdir(build_artifact_path):
                             for root, _, files in os.walk(build_artifact_path):
-                                relroot = join(file_type, relpath(root, build_directory))
+                                relroot = join(file_type_prefix, relpath(root, build_directory))
                                 for name in files:
                                     yield join(root, name), join(relroot, name)
                         else:
-                            mx.abort("Could not find or understand build artifact '{}', referred by '{}' and produced while building '{}'".format(build_artifact_path, build_artifacts_file, self.native_image_name))
+                            mx.logv(f"Ignoring non-existent build artifact {build_artifact_path}', referred by '{build_artifacts_file}' produced while building '{self.output_file_name()}'")
 
                 yield from _yield_files('shared_libraries')
                 yield from _yield_files('executables')
@@ -308,6 +309,11 @@ class NativeImageProject(mx.Project, metaclass=ABCMeta):
                 yield from _yield_files('c_headers')
                 yield from _yield_files('language_resources')
                 yield from _yield_files('debug_info')
+
+                yield from _yield_files('shared_libraries', 'standard-deliverables')
+                yield from _yield_files('executables', 'standard-deliverables')
+                if mx_sdk_vm_impl._debug_images():
+                    yield from _yield_files('debug_info', 'standard-deliverables')
 
 class NativeImageExecutableProject(NativeImageProject):
     def resolveDeps(self):
@@ -1011,12 +1017,33 @@ else:
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
     def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
+        # required
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
         enterprise_archive_name = _require(kw_args, 'enterprise_archive_name', suite, name)
 
+        # required but optional for compatibility and when the default *_dist_name are not good enough
+        language_id = kw_args.pop('language_id', None)
+
+        # optional, derived from *_archive_name by default. Best left as default to avoid extra folder when extracting with some GUIs.
         community_dir_name = kw_args.pop('community_dir_name', None)
         enterprise_dir_name = kw_args.pop('enterprise_dir_name', None)
+
+        # optional, the internal legacy distribution names for uploading, prefer setting language_id where possible
+        community_dist_name = kw_args.pop('community_dist_name', None)
+        enterprise_dist_name = kw_args.pop('enterprise_dist_name', None)
+
+        if language_id:
+            # Example community dist names:
+            # JS_NATIVE_STANDALONE_SVM_JAVA25 (native standalone)
+            # JS_JAVA_STANDALONE_SVM_JAVA25 (jvm standalone)
+            assert '_NATIVE_' in standalone_dir_dist or '_JVM_' in standalone_dir_dist, f"Cannot find out whether {standalone_dir_dist} is a Native or JVM standalone, it should include _NATIVE_ or _JVM_"
+            is_jvm = '_JVM_' in standalone_dir_dist
+            jdk_version = get_bootstrap_graalvm_jdk_version().parts[0]
+            if not community_dist_name:
+                community_dist_name = f"{language_id.upper()}_{'JAVA' if is_jvm else 'NATIVE'}_STANDALONE_SVM_JAVA{jdk_version}"
+            if not enterprise_dist_name:
+                enterprise_dist_name = f"{language_id.upper()}_{'JAVA' if is_jvm else 'NATIVE'}_STANDALONE_SVM_SVMEE_JAVA{jdk_version}"
 
         path_substitutions = mx_subst.SubstitutionEngine(mx_subst.path_substitutions)
         path_substitutions.register_no_arg('version', _suite.release_version)
@@ -1025,10 +1052,10 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
 
         if is_enterprise():
             dir_name = enterprise_dir_name or f'{enterprise_archive_name}-<version>-<graalvm_os>-<arch>'
-            dist_name = 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
+            dist_name = enterprise_dist_name or 'STANDALONE_' + enterprise_archive_name.upper().replace('-', '_')
         else:
             dir_name = community_dir_name or f'{community_archive_name}-<version>-<graalvm_os>-<arch>'
-            dist_name = 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
+            dist_name = community_dist_name or 'STANDALONE_' + community_archive_name.upper().replace('-', '_')
 
         layout = {
             f'{dir_name}/': {
@@ -1049,3 +1076,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         self._resolveDepsHelper(resolved)
         self.standalone_dir_dist = resolved[0]
         self.theLicense = self.standalone_dir_dist.theLicense
+
+    def get_artifact_metadata(self):
+        return {'edition': 'ee' if is_enterprise() else 'ce', 'type': 'standalone', 'project': 'graal'}
