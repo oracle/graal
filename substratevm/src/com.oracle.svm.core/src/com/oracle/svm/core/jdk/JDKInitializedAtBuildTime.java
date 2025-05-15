@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.Predicate;
+import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 
-public class JDKInitializedAtBuildTime implements Predicate<String> {
+public class JDKInitializedAtBuildTime implements BooleanSupplier {
     @Override
-    public boolean test(String className) {
+    public boolean getAsBoolean() {
         return !FutureDefaultsOptions.isJDKInitializedAtRunTime();
     }
 }
