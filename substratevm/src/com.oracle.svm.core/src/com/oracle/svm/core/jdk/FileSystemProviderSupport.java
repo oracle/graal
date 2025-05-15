@@ -412,10 +412,11 @@ final class Target_java_io_UnixFileSystem {
     private String userDir;
 }
 
-@TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtBuildTime.class)
+@TargetClass(className = "java.io.FileSystem")
 final class Target_java_io_FileSystem {
 
     @Alias
+    @TargetElement(onlyWith = JDKInitializedAtBuildTime.class)
     native String normalize(String path);
 }
 
@@ -445,4 +446,31 @@ final class Target_java_io_WinNTFileSystem {
     @Alias //
     @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
+}
+
+// Substitutions for run time initialization
+
+@TargetClass(className = "java.io.File", onlyWith = JDKInitializedAtRunTime.class)
+final class Target_java_io_File {
+    @Alias //
+    @InjectAccessors(DefaultFileSystemAccessor.class) //
+    private static Target_java_io_FileSystem FS;// =
+    // DefaultFileSystem.getFileSystem();
+}
+
+@TargetClass(className = "java.io.DefaultFileSystem", onlyWith = JDKInitializedAtRunTime.class)
+final class Target_java_io_DefaultFileSystem {
+    @Alias
+    static native Target_java_io_FileSystem getFileSystem();
+}
+
+class DefaultFileSystemHolder {
+    static final Target_java_io_FileSystem FS = Target_java_io_DefaultFileSystem.getFileSystem();// =
+}
+
+class DefaultFileSystemAccessor {
+    @SuppressWarnings("unused")
+    static Target_java_io_FileSystem get() {
+        return DefaultFileSystemHolder.FS;
+    }
 }
