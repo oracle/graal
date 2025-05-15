@@ -81,6 +81,10 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
@@ -105,6 +109,7 @@ import jdk.graal.compiler.word.Word;
  * The implementation avoids dirtying the pages of the original, and only referencing what is
  * strictly required.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     /** Magic value to verify that a located image file matches our loaded image. */
     public static final CGlobalData<Pointer> MAGIC = CGlobalDataFactory.createWord(Word.<Word> signed(ThreadLocalRandom.current().nextLong()));
