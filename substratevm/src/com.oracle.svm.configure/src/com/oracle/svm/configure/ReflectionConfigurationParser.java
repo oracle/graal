@@ -82,16 +82,14 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConditionalCon
 
     protected abstract void parseClass(EconomicMap<String, Object> data);
 
-    protected boolean registerIfNotDefault(EconomicMap<String, Object> data, boolean defaultValue, T clazz, String propertyName, Runnable register) {
+    protected void registerIfNotDefault(EconomicMap<String, Object> data, boolean defaultValue, T clazz, String propertyName, Runnable register) {
         if (data.containsKey(propertyName) ? asBoolean(data.get(propertyName), propertyName) : defaultValue) {
             try {
                 register.run();
-                return true;
             } catch (LinkageError e) {
                 handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + propertyName + " for reflection.", e);
             }
         }
-        return false;
     }
 
     protected void parseFields(C condition, List<Object> fields, T clazz, boolean jniAccessible) {
@@ -165,7 +163,7 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConditionalCon
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), NamedConfigurationTypeDescriptor.fromJSONName(typeName), true);
+            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), NamedConfigurationTypeDescriptor.fromJSONName(typeName), true, false);
             if (!typeResult.isPresent()) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;
