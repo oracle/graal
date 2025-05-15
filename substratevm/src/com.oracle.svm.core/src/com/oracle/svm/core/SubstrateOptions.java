@@ -1160,6 +1160,14 @@ public class SubstrateOptions {
         @OptionMigrationMessage("Use the '-o' option instead.")//
         @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
         public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
+
+        /** Use {@link SubstrateOptions#hasDumpRuntimeCompiledMethodsSupport()} instead. */
+        @Option(help = "Dump the instructions of runtime compiled methods in temporary files.") //
+        public static final RuntimeOptionKey<Boolean> DumpRuntimeCompiledMethods = new RuntimeOptionKey<>(false, key -> {
+            if (key.hasBeenSet() && Platform.includedIn(Platform.WINDOWS.class)) {
+                throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
+            }
+        });
     }
 
     @Fold
@@ -1471,4 +1479,9 @@ public class SubstrateOptions {
             UserError.guarantee(!PLTGOTConfiguration.isEnabled(), "%s cannot be used together with PLT/GOT.", enabledOption);
         }
     }
+
+    public static boolean hasDumpRuntimeCompiledMethodsSupport() {
+        return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
+    }
+
 }
