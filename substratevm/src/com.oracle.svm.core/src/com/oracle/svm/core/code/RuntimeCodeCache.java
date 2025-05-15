@@ -26,14 +26,20 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode.WRITE;
+import static com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -58,6 +64,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.word.Word;
+
+import java.text.SimpleDateFormat;
 
 public class RuntimeCodeCache {
 
@@ -161,11 +169,45 @@ public class RuntimeCodeCache {
         return -(low + 1);  // key not found.
     }
 
+    private static RawFileOperationSupport getFileSupport() {
+        return RawFileOperationSupport.bigEndian();
+    }
+
+    private static void dumpMethod(CodeInfo info) {
+        String methodName = CodeInfoAccess.getName(info);
+        int tier = CodeInfoAccess.getTier(info);
+        String date = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
+        String tmpDirPath = getFileSupport().getTempDirectory();
+        String filePath = tmpDirPath + "/" + date + "_" + methodName + "_" + tier + ".bin";
+
+        RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(filePath, CREATE_OR_REPLACE, WRITE);
+        if (!getFileSupport().isValid(fd)) {
+            Log.log().string("Failed to dump runtime compiled code: '").string(filePath).string("' could not be created.").newline();
+            return;
+        }
+
+        try {
+            CCharPointer codeStart = (CCharPointer) CodeInfoAccess.getCodeStart(info);
+
+            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
+            if (!RawFileOperationSupport.bigEndian().write(fd, (Pointer) codeStart, codeSize)) {
+                Log.log().string("Dumping method to ").string(filePath).string(" failed").newline();
+            }
+        } finally {
+            getFileSupport().close(fd);
+        }
+    }
+
     public void addMethod(CodeInfo info) {
         assert VMOperation.isInProgressAtSafepoint() : "invalid state";
         InstalledCodeObserverSupport.activateObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
+
         addMethod0(info);
         RuntimeCodeInfoHistory.singleton().logAdd(info);
+
+        if (SubstrateOptions.hasDumpRuntimeCompiledMethodsSupport()) {
+            dumpMethod(info);
+        }
     }
 
     @Uninterruptible(reason = "Modifying code tables that are used by the GC")

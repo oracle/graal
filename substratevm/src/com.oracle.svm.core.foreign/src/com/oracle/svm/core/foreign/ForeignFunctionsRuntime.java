@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -286,11 +286,11 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     }
 
     /**
-     * Workaround for CapturableState.mask() being interruptible.
+     * Workaround for CapturableState.maskFromName(String) being interruptible.
      */
     @Fold
-    static int getMask(CapturableState state) {
-        return state.mask();
+    static int getMask(String state) {
+        return CapturableState.maskFromName(state);
     }
 
     @Fold
@@ -307,7 +307,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+12/src/hotspot/share/prims/downcallLinker.cpp")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         assert statesToCapture != 0;
         assert captureBuffer.isNonNull();
@@ -316,18 +316,18 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
         if (isWindows()) {
             assert WindowsAPIs.isSupported() : "Windows APIs should be supported on Windows OS";
 
-            if ((statesToCapture & getMask(CapturableState.GET_LAST_ERROR)) != 0) {
+            if ((statesToCapture & getMask("GetLastError")) != 0) {
                 captureBuffer.write(i, WindowsAPIs.getLastError());
             }
             ++i;
-            if ((statesToCapture & getMask(CapturableState.WSA_GET_LAST_ERROR)) != 0) {
+            if ((statesToCapture & getMask("WSAGetLastError")) != 0) {
                 captureBuffer.write(i, WindowsAPIs.wsaGetLastError());
             }
             ++i;
         }
 
         assert LibC.isSupported() : "LibC should always be supported";
-        if ((statesToCapture & getMask(CapturableState.ERRNO)) != 0) {
+        if ((statesToCapture & getMask("errno")) != 0) {
             captureBuffer.write(i, LibC.errno());
         }
         ++i;

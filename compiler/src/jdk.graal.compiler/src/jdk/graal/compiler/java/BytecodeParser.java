@@ -5078,7 +5078,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             if (handler != null) {
                 JavaType catchType = handler.getCatchType();
                 // catch type can be null for java.lang.Throwable which catches everything
-                inOOMETry = catchType != null && catchType.equals(getMetaAccess().lookupJavaType(OutOfMemoryError.class));
+                inOOMETry = catchType != null && catchType.getName().equals("Ljava/lang/OutOfMemoryError;");
             }
         }
         return inOOMETry;

@@ -64,10 +64,9 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.graal.compiler.util.json.JsonParserException;
-import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.layout.ValueLayouts;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
@@ -302,7 +301,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
                  * information from the run-time NativeEntryPoint object. So, we always use
                  * 'Linker.Option.captureCallState("errno")' here.
                  */
-                res.add(Linker.Option.captureCallState(CapturableState.ERRNO.stateName()));
+                res.add(Linker.Option.captureCallState("errno"));
             }
         }
         if (map.containsKey(DOWNCALL_OPTION_CRITICAL)) {

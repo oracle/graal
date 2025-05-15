@@ -407,7 +407,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
             }
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
                 return;
@@ -428,7 +428,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
-            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
+            if (method.getName().equalsIgnoreCase(math.getOperation().name()) && method.getDeclaringClass().getName().equals("Ljava/lang/Math;")) {
                 // A root compilation of the intrinsic method should emit the full assembly
                 // implementation.
                 return;

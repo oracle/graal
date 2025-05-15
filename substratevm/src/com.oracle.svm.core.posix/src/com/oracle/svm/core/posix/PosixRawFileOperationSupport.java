@@ -27,6 +27,7 @@ package com.oracle.svm.core.posix;
 import java.io.File;
 import java.nio.ByteOrder;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -80,6 +81,11 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     public RawFileDescriptor create(CCharPointer cPath, FileCreationMode creationMode, FileAccessMode accessMode) {
         int flags = parseMode(creationMode) | parseMode(accessMode);
         return open0(cPath, flags);
+    }
+
+    @Override
+    public String getTempDirectory() {
+        return SystemPropertiesSupport.singleton().getInitialProperty("java.io.tmpdir");
     }
 
     @Override

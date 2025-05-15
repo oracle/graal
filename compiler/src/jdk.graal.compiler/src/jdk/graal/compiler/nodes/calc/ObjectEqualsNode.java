@@ -178,8 +178,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             } else if (!xVirtual.hasIdentity() && !yVirtual.hasIdentity()) {
                 ResolvedJavaType type = xVirtual.type();
                 if (type.equals(yVirtual.type())) {
-                    MetaAccessProvider metaAccess = tool.getMetaAccess();
-                    if (type.equals(metaAccess.lookupJavaType(Integer.class)) || type.equals(metaAccess.lookupJavaType(Long.class))) {
+                    if (type.getName().equals("Ljava/lang/Integer;") || type.getName().equals("Ljava/lang/Long;")) {
                         // both are virtual without identity: check contents
                         assert xVirtual.entryCount() == 1 && yVirtual.entryCount() == 1 : Assertions.errorMessageContext("x", xVirtual, "y", yVirtual);
                         assert xVirtual.entryKind(tool.getMetaAccessExtensionProvider(), 0).getStackKind() == JavaKind.Int ||

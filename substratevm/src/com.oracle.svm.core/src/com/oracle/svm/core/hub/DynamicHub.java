@@ -58,6 +58,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.ClassFileFormatVersion;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -2346,6 +2347,12 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         return ctor;
     }
 
+    @Substitute
+    @SuppressWarnings("static-method")
+    private ClassFileFormatVersion classFileFormatVersion(@SuppressWarnings("unused") Class<?> cl) {
+        /* We don't have this information for our classes. */
+        return null;
+    }
 }
 
 /**
