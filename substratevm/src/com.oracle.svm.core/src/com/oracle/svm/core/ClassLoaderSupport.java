@@ -36,8 +36,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
+
 @Platforms(Platform.HOSTED_ONLY.class)
-public abstract class ClassLoaderSupport {
+public abstract class ClassLoaderSupport implements BuildTimeUnsavedSingleton {
 
     public boolean isNativeImageClassLoader(ClassLoader classLoader) {
         ClassLoader loader = classLoader;

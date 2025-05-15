@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.headers;
+package com.oracle.svm.core.imagelayer;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.layeredimagesingleton.UnsupportedLayeredSingleton;
+import java.util.function.BooleanSupplier;
 
-public interface LibMSupport extends UnsupportedLayeredSingleton {
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    double log(double value);
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+@Platforms(Platform.HOSTED_ONLY.class)
+public class BuildingMonolithicImage implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !ImageLayerBuildingSupport.buildingImageLayer();
+    }
 }

@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
-public abstract class SubstrateBackendFactory {
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
+
+import jdk.graal.compiler.phases.util.Providers;
+
+public abstract class SubstrateBackendFactory implements BuildTimeUnsavedSingleton {
     public abstract SubstrateBackend newBackend(Providers newProviders);
 
     public static SubstrateBackendFactory get() {

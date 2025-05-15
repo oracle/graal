@@ -33,7 +33,7 @@ import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -62,7 +62,7 @@ class NoSignalHandlerSupport implements SignalHandlerSupport {
 }
 
 @AutomaticallyRegisteredFeature
-class SignalHandlerFeature implements InternalFeature {
+class SignalHandlerFeature implements InitialLayerInternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return List.of(RuntimeSupportFeature.class, IsolateListenerSupportFeature.class);

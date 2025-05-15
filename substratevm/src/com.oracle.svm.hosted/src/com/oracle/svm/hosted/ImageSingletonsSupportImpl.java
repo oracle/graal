@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -235,7 +236,8 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             if (value instanceof LayeredImageSingleton singleton) {
                 assert LayeredImageSingletonBuilderFlags.verifyImageBuilderFlags(singleton);
 
-                if (checkUnsupported && singleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.UNSUPPORTED)) {
+                EnumSet<LayeredImageSingletonBuilderFlags> imageBuilderFlags = singleton.getImageBuilderFlags();
+                if (checkUnsupported && imageBuilderFlags.contains(LayeredImageSingletonBuilderFlags.UNSUPPORTED)) {
                     throw UserError.abort("Unsupported image singleton is being installed %s %s", key.getTypeName(), singleton);
                 }
 
@@ -258,7 +260,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     futureLayerAccessibleImageSingletonKeys.add(key);
                 }
 
-                if (!singleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS)) {
+                if (!imageBuilderFlags.contains(LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS) && !imageBuilderFlags.contains(LayeredImageSingletonBuilderFlags.UNSUPPORTED)) {
                     storedValue = new RuntimeOnlyWrapper(singleton);
                 }
             }

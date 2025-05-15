@@ -35,8 +35,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerInternalFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 
@@ -103,7 +103,7 @@ class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
 }
 
 @AutomaticallyRegisteredFeature
-class DumpLinuxOSInfoFeature implements InternalFeature {
+class DumpLinuxOSInfoFeature implements InitialLayerInternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {

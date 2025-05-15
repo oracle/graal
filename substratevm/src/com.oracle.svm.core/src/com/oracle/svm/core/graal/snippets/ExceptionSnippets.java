@@ -39,6 +39,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 
@@ -119,7 +120,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-final class ExceptionFeature implements InternalFeature {
+final class ExceptionFeature implements InternalFeature, FeatureSingleton {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

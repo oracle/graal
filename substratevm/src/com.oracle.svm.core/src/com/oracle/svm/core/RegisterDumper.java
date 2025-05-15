@@ -24,14 +24,19 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.word.Word;
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
-public interface RegisterDumper {
+import jdk.graal.compiler.word.Word;
+
+public interface RegisterDumper extends InitialLayerOnlyImageSingleton {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static RegisterDumper singleton() {
         if (!ImageSingletons.contains(RegisterDumper.class)) {
@@ -61,4 +66,14 @@ public interface RegisterDumper {
     PointerBase getSP(Context context);
 
     PointerBase getIP(Context context);
+
+    @Override
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    default boolean accessibleInFutureLayers() {
+        return true;
+    }
 }

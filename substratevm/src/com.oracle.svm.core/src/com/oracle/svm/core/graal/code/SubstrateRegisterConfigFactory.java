@@ -25,11 +25,12 @@
 package com.oracle.svm.core.graal.code;
 
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import com.oracle.svm.core.layeredimagesingleton.BuildTimeUnsavedSingleton;
 
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public interface SubstrateRegisterConfigFactory {
+public interface SubstrateRegisterConfigFactory extends BuildTimeUnsavedSingleton {
     RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer);
 }
