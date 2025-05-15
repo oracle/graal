@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.hosted.DynamicJNIAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -203,6 +204,11 @@ public class FeatureImpl {
         @Override
         public ResourceDynamicAccess getResourceDynamicAccess() {
             return new ResourceDynamicAccessImpl();
+        }
+
+        @Override
+        public DynamicJNIAccess getDynamicJNIAccess() {
+            return new DynamicJNIAccessImpl();
         }
     }
 

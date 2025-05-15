@@ -6,7 +6,6 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.ReflectionDynamicAccess;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -44,11 +43,22 @@ public class InternalReflectionDynamicAccess implements ReflectionDynamicAccess 
 
     @Override
     public void register(RegistrationCondition condition, Executable... methods) {
+        Class<?>[] uniqueDeclaringClasses = java.util.Arrays.stream(methods)
+                        .map(Executable::getDeclaringClass)
+                        .distinct()
+                        .toArray(Class<?>[]::new);
+
+        register(condition, uniqueDeclaringClasses);
         rrsInstance.register(condition, false, methods);
     }
 
     @Override
     public void register(RegistrationCondition condition, Field... fields) {
+        Class<?>[] uniqueDeclaringClasses = java.util.Arrays.stream(fields)
+                        .map(Field::getDeclaringClass)
+                        .distinct()
+                        .toArray(Class<?>[]::new);
+        register(condition, uniqueDeclaringClasses);
         rrsInstance.register(condition, false, fields);
     }
 
@@ -56,11 +66,5 @@ public class InternalReflectionDynamicAccess implements ReflectionDynamicAccess 
     public void registerForSerialization(RegistrationCondition condition, Class<?>... classes) {
         register(condition, classes);
         RuntimeSerializationSupport.singleton().register(condition, classes);
-    }
-
-    @Override
-    public void registerForJNIAccess(RegistrationCondition condition, Class<?>... classes) {
-        register(condition, classes);
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, classes);
     }
 }

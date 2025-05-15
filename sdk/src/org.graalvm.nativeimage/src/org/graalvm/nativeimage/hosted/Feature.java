@@ -171,14 +171,24 @@ public interface Feature {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterRegistrationAccess extends FeatureAccess {
+
         /**
-         * Creates access for runtime registration. All registrations should happen in
-         * {@link Feature#afterRegistration}
-         *
+         * Returns the access instance used to register elements for reflection at runtime. All
+         * registrations should happen in {@link Feature#afterRegistration}.
          */
         ReflectionDynamicAccess getReflectionDynamicAccess();
 
+        /**
+         * Returns the access instance used to register resources for runtime access. All
+         * registrations should happen in {@link Feature#afterRegistration}.
+         */
         ResourceDynamicAccess getResourceDynamicAccess();
+
+        /**
+         * Returns the access instance used to register elements for JNI access at runtime. All
+         * registrations should happen in {@link Feature#afterRegistration}.
+         */
+        DynamicJNIAccess getDynamicJNIAccess();
     }
 
     /**

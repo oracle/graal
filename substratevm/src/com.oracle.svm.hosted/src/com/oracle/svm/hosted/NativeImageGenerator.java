@@ -978,8 +978,7 @@ public class NativeImageGenerator {
 
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
-                ReflectionDynamicAccessImpl.setAfterRegistrationFinished();
-                ResourceDynamicAccessImpl.setAfterRegistrationFinished();
+                DynamicAccessSupport.setAfterRegistrationFinished();
                 setDefaultLibCIfMissing();
                 if (!Pair.<Method, CEntryPointData> empty().equals(access.getMainEntryPoint())) {
                     setAndVerifyMainEntryPoint(access, entryPoints);

@@ -42,15 +42,17 @@ public interface ReflectionDynamicAccess {
     void registerClassLookup(RegistrationCondition condition, String className);
 
     /**
-     * Registers the provided methods for reflective invocation at runtime, if the {@code condition}
-     * is satisfied. The methods will be invocable via
+     * Registers the provided methods for reflective invocation at runtime, along with the declaring
+     * classes of those methods, including all their members, for reflection queries at runtime, if
+     * the {@code condition} is satisfied. The methods will be invocable via
      * {@link java.lang.reflect.Method#invoke(java.lang.Object, java.lang.Object...)}.
      */
     void register(RegistrationCondition condition, Executable... methods);
 
     /**
-     * Registers the provided fields for reflective access at runtime, if the {@code condition} is
-     * satisfied. The fields will be accessible via
+     * Registers the provided fields for reflective access at runtime, along with the declaring
+     * classes of those fields, including all their members, for reflection queries at runtime, if
+     * the {@code condition} is satisfied. The fields will be accessible via
      * {@link java.lang.reflect.Field#set(java.lang.Object, java.lang.Object)} and
      * {@link java.lang.reflect.Field#get(Object)}.
      */
@@ -61,10 +63,4 @@ public interface ReflectionDynamicAccess {
      * {@code condition} is satisfied.
      */
     void registerForSerialization(RegistrationCondition condition, Class<?>... classes);
-
-    /**
-     * Registers the provided classes for both JNI access and reflection at runtime, if the
-     * {@code condition} is satisfied.
-     */
-    void registerForJNIAccess(RegistrationCondition condition, Class<?>... classes);
 }
