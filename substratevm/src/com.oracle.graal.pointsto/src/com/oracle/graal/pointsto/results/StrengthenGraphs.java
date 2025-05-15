@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -437,7 +438,7 @@ public abstract class StrengthenGraphs {
                 Object newStampOrConstant = strengthenStampFromTypeFlow(node, parameterFlows[node.index()], anchorPoint, tool);
                 updateStampUsingPiNode(node, newStampOrConstant, anchorPoint, tool);
 
-            } else if (n instanceof LoadFieldNode node) {
+            } else if (n instanceof LoadFieldNode node && node.field() instanceof PointsToAnalysisField field) {
                 /*
                  * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because
                  * then there is no artificial anchor after which the more precise type is
@@ -445,7 +446,7 @@ public abstract class StrengthenGraphs {
                  * update the stamp directly to the stamp that is correct for the whole method and
                  * all inlined methods.
                  */
-                Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, ((AnalysisField) node.field()).getSinkFlow(), node, tool);
+                Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, field.getSinkFlow(), node, tool);
                 if (fieldNewStampOrConstant instanceof JavaConstant) {
                     ConstantNode replacement = ConstantNode.forConstant((JavaConstant) fieldNewStampOrConstant, bb.getMetaAccess(), graph);
                     graph.replaceFixedWithFloating(node, replacement);

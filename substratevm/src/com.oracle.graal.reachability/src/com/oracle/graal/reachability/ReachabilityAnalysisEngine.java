@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -166,24 +166,19 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         assert otherRoots.length == 0 : otherRoots;
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
-            postTask(() -> {
-                if (method.registerAsDirectRootMethod(reason)) {
-                    markMethodImplementationInvoked(method, reason);
-                }
-            });
+            if (method.registerAsDirectRootMethod(reason)) {
+                postTask(() -> markMethodImplementationInvoked(method, reason));
+            }
+
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
-            postTask(() -> {
-                if (method.registerAsDirectRootMethod(reason)) {
-                    markMethodImplementationInvoked(method, reason);
-                }
-            });
+            if (method.registerAsDirectRootMethod(reason)) {
+                postTask(() -> markMethodImplementationInvoked(method, reason));
+            }
         } else {
-            postTask(() -> {
-                if (method.registerAsVirtualRootMethod(reason)) {
-                    markMethodInvoked(method, reason);
-                }
-            });
+            if (method.registerAsVirtualRootMethod(reason)) {
+                postTask(() -> markMethodInvoked(method, reason));
+            }
         }
         return method;
     }
