@@ -101,6 +101,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.runnerNode = insert(nfaNode);
         if (this.regressionTestMode || !backtrackingMode && ast.getOptions().isGenerateDFAImmediately()) {
             switchToLazyDFA();
+            if (!this.regressionTestMode) {
+                nfaNode = null;
+            }
         }
         if (this.regressionTestMode) {
             regressTestBacktrackingNode = new NFARegexSearchNode(
