@@ -260,7 +260,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
         String layerName = SubstrateOptions.Name.getValue(values);
         if (buildingSharedLayer) {
-            writeLayerArchiveSupport = new WriteLayerArchiveSupport(layerName, imageClassLoader.classLoaderSupport.getLayerFile(), builderTempDir, archiveSupport);
+            writeLayerArchiveSupport = new WriteLayerArchiveSupport(layerName, imageClassLoader.classLoaderSupport, builderTempDir, archiveSupport);
         }
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
         SharedLayerSnapshot.Reader snapshot = null;
@@ -268,6 +268,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport);
+            loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport);
             try {
                 graphsChannel = FileChannel.open(loadLayerArchiveSupport.getSnapshotGraphsPath());
 
