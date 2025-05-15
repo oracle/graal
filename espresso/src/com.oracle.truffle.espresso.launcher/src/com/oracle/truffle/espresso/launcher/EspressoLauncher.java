@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.launcher;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,6 +65,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
     private LaunchMode launchMode = LaunchMode.LM_CLASS;
     private boolean pauseOnExit = false;
     private VersionAction versionAction = VersionAction.None;
+    private boolean versionToErr = true;
     private final Map<String, String> espressoOptions = new HashMap<>();
 
     private final class Arguments {
@@ -220,11 +222,18 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-jar":
                     jarFileName = args.getValue(arg, "jar file");
                     break;
+                case "--version":
+                    versionToErr = false;
+                    versionAction = VersionAction.PrintAndExit;
+                    break;
                 case "-version":
                     versionAction = VersionAction.PrintAndExit;
                     break;
-                case "-showversion":
                 case "--show-version":
+                    versionToErr = false;
+                    versionAction = VersionAction.PrintAndContinue;
+                    break;
+                case "-showversion":
                     versionAction = VersionAction.PrintAndContinue;
                     break;
 
@@ -310,7 +319,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-agentpath:")) {
                         String[] split = splitEquals(arg.substring("-agentpath:".length()));
                         espressoOptions.put(AGENT_PATH + split[0], split[1]);
-                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
+                    } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss") || arg.startsWith("-XX:MaxHeapSize=")) {
                         unrecognized.add("--vm." + arg.substring(1));
                     } else if (arg.startsWith("-XX:")) {
                         handleXXArg(arg, unrecognized);
@@ -616,7 +625,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     version = context.getBindings("java").getMember("java.lang.VersionProps");
                     if (version.hasMember("print/(Z)V")) {
                         Value printMethod = version.getMember("print/(Z)V");
-                        printMethod.execute(/* print to stderr = */false);
+                        printMethod.execute(versionToErr);
                     } else {
                         // print is probably private
                         // fallback until we have an embedded API to call private members
@@ -683,9 +692,15 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String javVMInfo = system.invokeMember("getProperty", "java.vm.info").asString();
         String launcherName = "espresso";
 
+        PrintStream output = versionToErr ? getError() : getOutput();
+
         /* First line: platform version. */
-        /* Use a format more in line with GNU conventions */
-        getOutput().println(launcherName + " " + javaVersion + " " + javaVersionDate + (isLTS ? " LTS" : ""));
+        if (versionToErr) {
+            output.println(launcherName + " version \"" + javaVersion + "\" " + javaVersionDate + (isLTS ? " LTS" : ""));
+        } else {
+            /* Use a format more in line with GNU conventions */
+            output.println(launcherName + " " + javaVersion + " " + javaVersionDate + (isLTS ? " LTS" : ""));
+        }
 
         /* Second line: runtime version (ie, libraries). */
         if ("release".equals(debugLevel)) {
@@ -697,10 +712,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
 
         vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
 
-        getOutput().println(javaRuntimeName + vendorVersion + " (" + debugLevel + "build " + javaRuntimeVersion + ")");
+        output.println(javaRuntimeName + vendorVersion + " (" + debugLevel + "build " + javaRuntimeVersion + ")");
 
         /* Third line: JVM information. */
-        getOutput().println(javaVMName + vendorVersion + " (" + debugLevel + "build " + javaVMVersion + ", " + javVMInfo + ")");
+        output.println(javaVMName + vendorVersion + " (" + debugLevel + "build " + javaVMVersion + ", " + javVMInfo + ")");
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {

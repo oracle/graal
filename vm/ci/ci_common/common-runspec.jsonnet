@@ -40,6 +40,14 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ),
   }),
 
+  local espresso_name = task_spec({
+    name: std.join('-', vm_common.job_name_targets(self)
+      + [self.task_name, std.strReplace(self.jdk_name, 'jdk', 'java'), 'guestJava' + self.espresso_java_version]
+      + (if (std.objectHasAll(self, 'os_distro') && self.os_distro != 'ol') then [self.os_distro] else [])
+      + [self.os, self.arch]
+    ),
+  }),
+
   local notify_groups(group) = task_spec({
     notify_groups+: if(std.type(group) == 'string') then [group] else group
   }),
@@ -60,11 +68,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     "jdk21"+: vm.vm_java_21,
     "jdk-latest"+: vm.vm_java_Latest,
   },
-
-  local llvm_jdk(b) = if (b.os != 'windows' && b.arch == 'amd64') then {
-    "jdk21"+: vm.vm_java_21_llvm,
-    "jdk-latest"+: vm.vm_java_Latest_llvm,
-  } else default_jdk(b),
 
   local default_os_arch(b) = {
     local common_vm = graal_common.build_base + vm.vm_setup + vm.custom_vm + {
@@ -115,12 +118,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       default_jdk(b)[b.jdk] + default_os_arch(b)[os][b.arch]
   })),
 
-  local espresso_os_arch_jdk_mixin = task_spec(run_spec.evaluate_late({
-    // this starts with _ on purpose so that it will be evaluated first
-    "_os_arch_jdk": function(b)
-      llvm_jdk(b)[b.jdk] + default_os_arch(b)[b.os][b.arch]
-  })),
-
   local common_os_deploy = deploy + task_spec({
     deploysArtifacts: true,
     packages+: {
@@ -154,24 +151,21 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     mx_env_llvm:: vm.edition + '-llvm-espresso',
     mx_vm_common:: vm.mx_cmd_base_no_env + ['--env', self.mx_env] + self.mx_vm_cmd_suffix,
   }),
-  local maven_deploy_sdk = ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
-  local maven_deploy_sdk_base = maven_deploy_sdk + ['--tags', 'graalvm', vm.binaries_repository],
-  local build_base_graalvm_image = task_spec({ run +: [
-    self.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-    self.mx_vm_common + vm.vm_profiles + ['build'],
-    ['set-export', 'GRAALVM_HOME', self.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
+  local maven_deploy(suite='sdk', tags=['graalvm']) =
+    ['--suite', suite, 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata', '--tags', std.join(',', tags), vm.binaries_repository],
+  local deploy_artifacts(os, suite='sdk', tags=['graalvm']) =
+    ['--suite', suite, 'deploy-artifacts', '--uploader', (if os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'), '--tags', std.join(',', tags)],
+  local build_base_graalvm_image(with_profiles=true) = task_spec({ run +: [
+    self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['graalvm-show'],
+    self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['build', '--targets=GRAALVM'],
+    ['set-export', 'GRAALVM_HOME', self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['--quiet', '--no-warning', 'graalvm-home']],
   ]}),
 
-  local deploy_artifacts_sdk(base_dist_name=null) = task_spec({
-    deploy_artifacts_sdk::(if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if self.os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
-  }),
-
-  local artifact_deploy_sdk_base(base_dist_name=null) = task_spec({
-    artifact_deploy_sdk_base:: self.deploy_artifacts_sdk + ['--tags', 'graalvm'],
-  }),
-
-  local deploy_sdk_base(base_dist_name=null) = deploy_artifacts_sdk(base_dist_name) + artifact_deploy_sdk_base(base_dist_name) + task_spec({
-    run +: [self.mx_vm_common + vm.vm_profiles + maven_deploy_sdk_base, self.mx_vm_common + vm.vm_profiles + self.artifact_deploy_sdk_base] //if(self.os_distro == null) then null else self.os_distro
+  local deploy_sdk_base = task_spec({
+    run +: [
+      self.mx_vm_common + vm.vm_profiles + maven_deploy(),
+      self.mx_vm_common + vm.vm_profiles + deploy_artifacts(self.os)
+    ]
   }),
 
   local check_base_graalvm_image = task_spec({ run +: [
@@ -181,24 +175,45 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local deploy_graalvm_base = svm_common + common_os_deploy + name + task_spec(vm.check_structure) + task_spec({
     run +: vm.collect_profiles(mx_prefix=self.mx_vm_common),
-  }) + build_base_graalvm_image + task_spec({
+  }) + build_base_graalvm_image() + task_spec({
       run +: [
         self.mx_vm_common + vm.vm_profiles + record_file_sizes,
         upload_file_sizes,
       ],
       notify_groups:: ['deploy'],
     },
-  ) + deploy_sdk_base() + check_base_graalvm_image + timelimit("1:00:00"),
+  ) + deploy_sdk_base + check_base_graalvm_image + timelimit("1:00:00"),
 
-  local deploy_graalvm_espresso = svm_common + sulong + common_os_deploy + name + task_spec({
-    mx_env:: if ((self.os == 'linux' || self.os == 'darwin') && self.arch == 'amd64') then self.mx_env_llvm else self.mx_env_espresso,
-    run: vm.collect_profiles() + [['set-export', 'VM_ENV', self.mx_env]],
+  local espresso_java_home(major_version, with_llvm=false) = task_spec({
+    espresso_java_version:: major_version,
+    downloads+: {
+      "ESPRESSO_JAVA_HOME": graal_common["labsjdk" + major_version].downloads["JAVA_HOME"],
+    },
+  } + (if with_llvm then {
+    downloads+: {
+      "ESPRESSO_LLVM_JAVA_HOME": graal_common["labsjdk" + major_version + "LLVM"].downloads["LLVM_JAVA_HOME"],
+    },
+  } else {})),
+
+  local deploy_graalvm_espresso = svm_common + common_os_deploy + espresso_name + task_spec({
     notify_groups:: ['deploy'],
-  }) + build_base_graalvm_image + deploy_sdk_base(base_dist_name='espresso') + task_spec({
+  }) + build_base_graalvm_image(with_profiles=false) + task_spec({
+    espresso_standalone_dist:: if vm.edition == 'ce' then 'GRAALVM_ESPRESSO_COMMUNITY_JAVA21' else 'GRAALVM_ESPRESSO_JAVA21',
+    mx_vm_espresso:: vm.mx_cmd_base_no_env + ['--env', self.mx_env_espresso] + self.mx_vm_cmd_suffix,
     run +:[
-      ['set-export', 'GRAALVM_HOME', self.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
-      ['set-export', 'DACAPO_JAR', self.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
-      ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
+      # $GRAALVM_HOME was built and set by build_base_graalvm_image
+      # Build the espresso standalone with this GraalVM
+      ['set-export', 'BOOTSTRAP_GRAALVM', '$GRAALVM_HOME'],
+      ['set-export', 'VM_ENV', self.mx_env_espresso],
+      self.mx_vm_espresso + ['build', '--targets=' + self.espresso_standalone_dist],
+      # Smoke test the built stabndalone
+      ['set-export', 'ESPRESSO_STANDALONE', self.mx_vm_espresso + ['--quiet', '--no-warning', 'path', '--output', 'ESPRESSO_NATIVE_STANDALONE']],
+      ['set-export', 'DACAPO_JAR', self.mx_vm_espresso + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
+      ['${ESPRESSO_STANDALONE}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
+      # Deploy it to maven
+      self.mx_vm_espresso + maven_deploy(suite='espresso', tags=['standalone']),
+      # Deploy it to the artifact server
+      self.mx_vm_espresso + deploy_artifacts(self.os, suite='espresso', tags=['standalone']),
     ],
   }) + timelimit('1:45:00'),
 
@@ -227,13 +242,13 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     #
     # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
     #
-    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_os_arch_jdk_mixin + platform_spec(no_jobs) + (
+    "vm-espresso": mx_env + deploy_graalvm_espresso + espresso_java_home(21) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
     if vm.deploy_espress_standalone then platform_spec({
-      "linux:amd64:jdk21": weekly,
-      "linux:aarch64:jdk21": weekly,
-      "darwin:amd64:jdk21": weekly,
-      "darwin:aarch64:jdk21": weekly,
-      "windows:amd64:jdk21": weekly,
+      "linux:amd64:jdk-latest": weekly,
+      "linux:aarch64:jdk-latest": weekly,
+      "darwin:amd64:jdk-latest": weekly,
+      "darwin:aarch64:jdk-latest": weekly,
+      "windows:amd64:jdk-latest": weekly,
     }) else {}),
   },
 

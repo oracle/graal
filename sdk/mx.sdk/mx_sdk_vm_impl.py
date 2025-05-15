@@ -797,7 +797,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             return super(BaseGraalVmLayoutDistribution, self).needsUpdate(newestInput)
 
     @staticmethod
-    def _get_metadata(suites, parent_release_file=None):
+    def _get_metadata(suites, parent_release_file=None, java_version=None):
         """
         :type suites: list[mx.Suite]
         :type parent_release_file: str | None
@@ -820,7 +820,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         else:
             _metadata_dict = OrderedDict()
 
-        _metadata_dict.setdefault('JAVA_VERSION', _src_jdk.version)
+        _metadata_dict.setdefault('JAVA_VERSION', java_version or _src_jdk.version)
         _metadata_dict.setdefault('OS_NAME', get_graalvm_os())
         _metadata_dict.setdefault('OS_ARCH', mx.get_arch())
         if mx.get_os_variant():
