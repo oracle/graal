@@ -591,11 +591,6 @@ public class SubstrateOptions {
                 }
             }
         };
-
-        @APIOption(name = "install-exit-handlers", deprecated = "Enabled by default for executables. For shared libraries (when --shared is used), use the experimental option -H:+InstallJavaExitHandlersForSharedLibrary.")//
-        @Option(help = "Provide java.lang.Terminator exit handlers", deprecated = true, deprecationMessage = "Enabled by default for executables. For shared libraries (when --shared is used), use the experimental option -H:+InstallJavaExitHandlersForSharedLibrary.")//
-        protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
-
     }
 
     @Option(help = "Enable detection and runtime container configuration support.")//
@@ -1075,6 +1070,23 @@ public class SubstrateOptions {
     @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
     public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
 
+    @APIOption(name = "install-exit-handlers", deprecated = "--install-exit-handlers is enabled by default for executables and it can likely be removed. To use this option for the shared libraries, please use -H:+InstallExitHandlers.")//
+    @Option(help = "Provide java.lang.Terminator exit handlers. Default value is true for executables and false for shared libraries because this option installs signal handlers.", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return ImageInfo.isExecutable();
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @Fold
     public static boolean supportCompileInIsolates() {
         UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
@@ -1097,15 +1109,6 @@ public class SubstrateOptions {
 
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
-
-    @Option(help = "Provide java.lang.Terminator exit handlers for shared libraries. Note: this flag must be used with -XX:+EnableSignalHandling and will run shutdown hooks only in one isolate.", stability = OptionStability.EXPERIMENTAL, type = Expert)//
-    public static final HostedOptionKey<Boolean> InstallJavaExitHandlersForSharedLibrary = new HostedOptionKey<>(false, key -> {
-        if (key.getValue()) {
-            UserError.guarantee(ImageInfo.isSharedLibrary(), "%s can be used only for shared libraries (when image is built with %s)",
-                            SubstrateOptionsParser.commandArgument(key, "+"),
-                            SubstrateOptionsParser.commandArgument(SharedLibrary, "+"));
-        }
-    });
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
