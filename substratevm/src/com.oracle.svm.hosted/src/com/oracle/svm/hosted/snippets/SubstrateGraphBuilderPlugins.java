@@ -88,7 +88,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -1204,27 +1203,30 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
 
-                if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) &&
-                                ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    /*
-                     * This singleton is only installed in the application layer heap. All other
-                     * layers looks refer to this singleton.
-                     */
-                    b.addPush(JavaKind.Object, LoadImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
-                    return true;
+                var layeredSingletonSupport = LayeredImageSingletonSupport.singleton();
+                if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                    if (ApplicationLayerOnlyImageSingleton.isAssignableFrom(key) &&
+                                    ImageLayerBuildingSupport.buildingSharedLayer()) {
+                        /*
+                         * This singleton is only installed in the application layer heap. All other
+                         * layers looks refer to this singleton.
+                         */
+                        b.addPush(JavaKind.Object, LoadImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
+                        return true;
+                    }
+
+                    if (ImageLayerBuildingSupport.buildingExtensionLayer() && layeredSingletonSupport.isInitialLayerOnlyImageSingleton(key)) {
+                        /*
+                         * This singleton is only installed in the initial layer heap. When allowed,
+                         * all other layers lookups refer to this singleton.
+                         */
+                        JavaConstant initialSingleton = layeredSingletonSupport.getInitialLayerOnlyImageSingleton(key);
+                        b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
+                        return true;
+                    }
                 }
 
-                if (InitialLayerOnlyImageSingleton.class.isAssignableFrom(key) && ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                    /*
-                     * This singleton is only installed in the initial layer heap. When allowed, all
-                     * other layers lookups refer to this singleton.
-                     */
-                    JavaConstant initialSingleton = LayeredImageSingletonSupport.singleton().getInitialLayerOnlyImageSingleton(key);
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
-                    return true;
-                }
-
-                Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
+                Object singleton = layeredSingletonSupport.lookup(key, true, true);
                 LayeredImageSingletonBuilderFlags.validateRuntimeLookup(singleton);
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(singleton), b.getMetaAccess()));
                 return true;

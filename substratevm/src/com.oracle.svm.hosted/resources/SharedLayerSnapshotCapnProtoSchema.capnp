@@ -230,6 +230,7 @@ struct ImageSingletonKey {
   persistFlag @1 :Int32;
   objectId @2 :SingletonObjId;
   constantId @3 :ConstantId;
+  isInitialLayerOnly @4 :Bool;
 }
 
 struct ImageSingletonObject {
