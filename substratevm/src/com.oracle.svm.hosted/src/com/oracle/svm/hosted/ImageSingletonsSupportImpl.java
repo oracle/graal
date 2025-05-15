@@ -83,6 +83,12 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     }
 
     @Override
+    public boolean isInitialLayerOnlyImageSingleton(Class<?> key) {
+        var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
+        return loader.isInitialLayerOnlyImageSingleton(key);
+    }
+
+    @Override
     public JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key) {
         var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
         return loader.loadInitialLayerOnlyImageSingleton(key);

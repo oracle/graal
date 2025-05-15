@@ -53,5 +53,7 @@ public interface LayeredImageSingletonSupport {
 
     void freezeLayeredImageSingletonMetadata();
 
+    boolean isInitialLayerOnlyImageSingleton(Class<?> key);
+
     JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
 }
