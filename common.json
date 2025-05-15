@@ -43,7 +43,7 @@
     "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21.0.2+13-jvmci-23.1-b33-sulong", "platformspecific": true },
     "graalvm-ee-21":      {"name": "graalvm-java21", "version": "23.1.6", "platformspecific": true },
 
-    "oraclejdk23":       {"name": "jpg-jdk",   "version": "23", "build_id": "jdk-23+37", "platformspecific": true, "extrabundles": ["static-libs"]},
+    "oraclejdk24":       {"name": "jpg-jdk",   "version": "24", "build_id": "jdk-24.0.1+9", "platformspecific": true, "extrabundles": ["static-libs"]},
 
     "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25+24", "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25+24-jvmci-b01-20250522180744-ad1cf51180", "platformspecific": true },
