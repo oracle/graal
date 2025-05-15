@@ -76,6 +76,7 @@ public class FutureDefaultsOptions {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void parseAndVerifyOptions() {
         futureDefaults = EconomicSet.create(ALL_VALUES.size());
+        futureDefaults.add(RUN_TIME_INITIALIZE_JDK_NAME);
         var valuesWithOrigin = FutureDefaults.getValue().getValuesWithOrigins();
         valuesWithOrigin.forEach(valueWithOrigin -> {
             String value = valueWithOrigin.value();
