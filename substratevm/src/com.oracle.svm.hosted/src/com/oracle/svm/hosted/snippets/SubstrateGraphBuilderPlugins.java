@@ -686,6 +686,8 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
                 successor = ((AbstractBeginNode) successor).next();
+            } else if (successor instanceof ReachabilityRegistrationNode) {
+                successor = ((ReachabilityRegistrationNode) successor).next();
             } else {
                 return successor;
             }
