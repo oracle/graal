@@ -698,8 +698,7 @@ public final class ObjectKlass extends Klass {
             for (ObjectKlass interf : getSuperInterfaces()) {
                 interf.verify();
             }
-            if (getJavaVersion().java21OrEarlier() &&
-                            meta.sun_reflect_MagicAccessorImpl.isAssignableFrom(this)) {
+            if (isMagicAccessor()) {
                 /*
                  * Hotspot comment:
                  *

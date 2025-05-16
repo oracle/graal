@@ -769,7 +769,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
      * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
-    public static boolean checkAccess(Klass klass, ObjectKlass accessingKlass, boolean ignoreMagicAccessor) {
+    public static boolean checkAccess(Klass klass, ObjectKlass accessingKlass) {
         if (accessingKlass == null) {
             return true;
         }
@@ -795,26 +795,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             }
         }
 
-        if (context.getJavaVersion().java21OrEarlier()) {
-            if (ignoreMagicAccessor) {
-                /*
-                 * Prevents any class inheriting from MagicAccessorImpl to have access to
-                 * MagicAccessorImpl just because it implements MagicAccessorImpl.
-                 *
-                 * Only generated accessors in the {sun|jdk.internal}.reflect package, defined by
-                 * {sun|jdk.internal}.reflect.DelegatingClassLoader(s) have access to
-                 * MagicAccessorImpl.
-                 */
-                ObjectKlass magicAccessorImpl = context.getMeta().sun_reflect_MagicAccessorImpl;
-                return !StaticObject.isNull(accessingKlass.getDefiningClassLoader()) &&
-                                context.getMeta().sun_reflect_DelegatingClassLoader.equals(accessingKlass.getDefiningClassLoader().getKlass()) &&
-                                magicAccessorImpl.getRuntimePackage().equals(accessingKlass.getRuntimePackage()) &&
-                                magicAccessorImpl.isAssignableFrom(accessingKlass);
-            }
-
-            return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
-        }
-        return false;
+        return accessingKlass.isMagicAccessor();
     }
 
     public static boolean doModuleAccessChecks(Klass klass, ObjectKlass accessingKlass, EspressoContext context) {
@@ -1917,7 +1898,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
 
     @Override
     public final boolean isMagicAccessor() {
-        if (getJavaVersion().java21OrEarlier()) {
+        if (getMeta().sun_reflect_MagicAccessorImpl != null) {
             return getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(this);
         }
         return false;
