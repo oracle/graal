@@ -3432,7 +3432,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     ))
     main_dists = {
         'graalvm': [],
-        'graalvm_standalones': [],
     }
     with_non_rebuildable_configs = False
 
@@ -3552,7 +3551,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 else:
                     needs_java_standalone_jimage = True
                     java_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), final_graalvm_distribution, is_jvm=True, defaultBuild=False)
-                    register_main_dist(java_standalone, 'graalvm_standalones')
 
                     # Use `main_component.library_configs` rather than `_get_library_configs(main_component)` because we
                     # need to create a `NativeLibraryLauncherProject` for the JVM standalone even when one of the
@@ -3568,7 +3566,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 only_native_libraries = not main_component.library_configs or (svm_support.is_supported() and not _has_skipped_libraries(main_component))
                 if only_native_launchers and only_native_libraries:
                     native_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), final_graalvm_distribution, is_jvm=False, defaultBuild=False)
-                    register_main_dist(native_standalone, 'graalvm_standalones')
 
     if needs_java_standalone_jimage:
         has_lib_graal = _get_libgraal_component() is not None
@@ -3646,11 +3643,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 jimage_project=final_jimage_project,
         ))
 
-    # Trivial distributions to trigger the build of the final GraalVM distribution and standalones
-    all_main_dists = []
+    # Trivial distributions to trigger the build of the final GraalVM distribution
     for label, dists in main_dists.items():
         if dists:
-            all_main_dists += dists
             register_distribution(mx.LayoutDirDistribution(
                 suite=_suite,
                 name=label.upper(),
@@ -3663,19 +3658,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 theLicense=None,
                 defaultBuild=False,
             ))
-
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="ALL_GRAALVM_ARTIFACTS",
-        deps=all_main_dists,
-        layout={
-            "./deps": "string:" + ",".join(all_main_dists),
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
 
 
 def _needs_stage1_jimage(stage1_dist, final_dist):
@@ -3890,16 +3872,6 @@ def graalvm_home_from_env(extra_mx_args, env, stage1=False, suite=None):
     return out.data.strip()
 
 
-def standalone_home(comp_dir_name, is_jvm):
-    """
-    :type comp_dir_name: str
-    :type is_jvm: bool
-    :rtype: str
-    """
-    _standalone_dist = get_standalone_distribution(comp_dir_name, is_jvm)
-    return join(_standalone_dist.output, _standalone_dist.base_dir_name)
-
-
 def print_graalvm_components(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-components', description='Print the list of GraalVM components')
@@ -3933,15 +3905,6 @@ def print_graalvm_home(args):
     parser.add_argument('--stage1', action='store_true', help='show the home directory of the stage1 distribution')
     args = parser.parse_args(args)
     print(graalvm_home(stage1=args.stage1, fatalIfMissing=False))
-
-
-def print_standalone_home(args):
-    """print the GraalVM standalone home dir"""
-    parser = ArgumentParser(prog='mx standalone-home', description='Print the Standalone home directory')
-    parser.add_argument('--type', default='native', choices=['jvm', 'native'], help='Select the JVM or the Native Standalone')
-    parser.add_argument('comp_dir_name', action='store', help='component dir name', metavar='<comp_dir_name>')
-    args = parser.parse_args(args)
-    print(standalone_home(args.comp_dir_name, is_jvm=(args.type == 'jvm')))
 
 
 def print_graalvm_type(args):
@@ -4221,7 +4184,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
                     for config in cfg['configs']:
                         print(f" {config} (from {cfg['source']})")
             if args.verbose:
-                for dist_name in 'GRAALVM', 'GRAALVM_STANDALONES', 'ALL_GRAALVM_ARTIFACTS':
+                for dist_name in 'GRAALVM':
                     dist = mx.distribution(dist_name, fatalIfMissing=False)
                     if dist is not None:
                         print(f"Dependencies of the '{dist_name}' distribution:\n -", '\n - '.join(sorted(dep.name for dep in dist.deps)))
@@ -4747,5 +4710,4 @@ mx.update_commands(_suite, {
     'graalvm-enter': [graalvm_enter, ''],
     'graalvm-show': [graalvm_show, ''],
     'graalvm-vm-name': [print_graalvm_vm_name, ''],
-    'standalone-home': [print_standalone_home, ['comp-dir-name', 'type']],
 })
