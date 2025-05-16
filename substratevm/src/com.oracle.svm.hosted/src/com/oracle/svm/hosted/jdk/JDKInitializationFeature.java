@@ -150,7 +150,8 @@ public class JDKInitializationFeature implements InternalFeature {
             rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             // because static Path
-            rci.initializeAtRunTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            // rci.initializeAtRunTime("jdk.internal.jrtfs.SystemImage",
+            // FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
 
             rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
@@ -166,6 +167,9 @@ public class JDKInitializationFeature implements InternalFeature {
             // holder for the default file system
             rci.initializeAtRunTime("com.oracle.svm.core.jdk.fs.runtimeinit.DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
             rci.initializeAtRunTime("com.oracle.svm.core.jdk.fs.runtimeinit.SunNioFsDefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // JrtFS support
+            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
 
             // Contains a static File reference
 // rci.initializeAtRunTime("java.lang.ProcessBuilder$Redirect",
