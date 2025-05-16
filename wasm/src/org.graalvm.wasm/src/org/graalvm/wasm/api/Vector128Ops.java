@@ -250,50 +250,28 @@ public class Vector128Ops {
         return result;
     }
 
-    public static byte[] i8x16_splat(byte x) {
-        byte[] result = new byte[BYTES];
-        Arrays.fill(result, x);
-        return result;
+    public static ByteVector i8x16_splat(byte x) {
+        return broadcast(x);
     }
 
-    public static byte[] i16x8_splat(short x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < SHORT_LENGTH; i++) {
-            byteArraySupport.putShort(result, i * Short.BYTES, x);
-        }
-        return result;
+    public static ByteVector i16x8_splat(short x) {
+        return broadcast(x);
     }
 
-    public static byte[] i32x4_splat(int x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < INT_LENGTH; i++) {
-            byteArraySupport.putInt(result, i * Integer.BYTES, x);
-        }
-        return result;
+    public static ByteVector i32x4_splat(int x) {
+        return broadcast(x);
     }
 
-    public static byte[] i64x2_splat(long x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            byteArraySupport.putLong(result, i * Long.BYTES, x);
-        }
-        return result;
+    public static ByteVector i64x2_splat(long x) {
+        return broadcast(x);
     }
 
-    public static byte[] f32x4_splat(float x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < FLOAT_LENGTH; i++) {
-            byteArraySupport.putFloat(result, i * Float.BYTES, x);
-        }
-        return result;
+    public static ByteVector f32x4_splat(float x) {
+        return broadcast(x);
     }
 
-    public static byte[] f64x2_splat(double x) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < DOUBLE_LENGTH; i++) {
-            byteArraySupport.putDouble(result, i * Double.BYTES, x);
-        }
-        return result;
+    public static ByteVector f64x2_splat(double x) {
+        return broadcast(x);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -1308,6 +1286,14 @@ public class Vector128Ops {
 
     public static ByteVector broadcast(long value) {
         return cast(LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsBytes());
+    }
+
+    public static ByteVector broadcast(float value) {
+        return cast(FloatVector.broadcast(FloatVector.SPECIES_128, value).reinterpretAsBytes());
+    }
+
+    public static ByteVector broadcast(double value) {
+        return cast(DoubleVector.broadcast(DoubleVector.SPECIES_128, value).reinterpretAsBytes());
     }
 
     public static byte[] toArray(ByteVector vec) {

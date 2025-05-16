@@ -2938,6 +2938,42 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
+            case Bytecode.VECTOR_I8X16_SPLAT: {
+                int x = popInt(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i8x16_splat((byte) x);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I16X8_SPLAT: {
+                int x = popInt(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i16x8_splat((short) x);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I32X4_SPLAT: {
+                int x = popInt(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i32x4_splat(x);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I64X2_SPLAT: {
+                long x = popLong(frame, --stackPointer);
+                ByteVector result = Vector128Ops.i64x2_splat(x);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F32X4_SPLAT: {
+                float x = popFloat(frame, --stackPointer);
+                ByteVector result = Vector128Ops.f32x4_splat(x);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F64X2_SPLAT: {
+                double x = popDouble(frame, --stackPointer);
+                ByteVector result = Vector128Ops.f64x2_splat(x);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
