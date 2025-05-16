@@ -45,7 +45,6 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import jdk.incubator.vector.ByteVector;
-import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Sizes;
 
 import java.io.IOException;

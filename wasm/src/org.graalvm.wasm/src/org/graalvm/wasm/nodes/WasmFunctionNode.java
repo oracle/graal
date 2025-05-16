@@ -2756,6 +2756,65 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
+            case Bytecode.VECTOR_V128_NOT:
+            case Bytecode.VECTOR_I8X16_ABS:
+            case Bytecode.VECTOR_I8X16_NEG:
+            case Bytecode.VECTOR_I8X16_POPCNT:
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U:
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U:
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U:
+            case Bytecode.VECTOR_I16X8_ABS:
+            case Bytecode.VECTOR_I16X8_NEG:
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U:
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U:
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U:
+            case Bytecode.VECTOR_I32X4_ABS:
+            case Bytecode.VECTOR_I32X4_NEG:
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S:
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S:
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U:
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U:
+            case Bytecode.VECTOR_I64X2_ABS:
+            case Bytecode.VECTOR_I64X2_NEG:
+            case Bytecode.VECTOR_F32X4_CEIL:
+            case Bytecode.VECTOR_F32X4_FLOOR:
+            case Bytecode.VECTOR_F32X4_TRUNC:
+            case Bytecode.VECTOR_F32X4_NEAREST:
+            case Bytecode.VECTOR_F32X4_ABS:
+            case Bytecode.VECTOR_F32X4_NEG:
+            case Bytecode.VECTOR_F32X4_SQRT:
+            case Bytecode.VECTOR_F64X2_CEIL:
+            case Bytecode.VECTOR_F64X2_FLOOR:
+            case Bytecode.VECTOR_F64X2_TRUNC:
+            case Bytecode.VECTOR_F64X2_NEAREST:
+            case Bytecode.VECTOR_F64X2_ABS:
+            case Bytecode.VECTOR_F64X2_NEG:
+            case Bytecode.VECTOR_F64X2_SQRT:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U:
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S:
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO:
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
+            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
+            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO: {
+                ByteVector x = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.unary(x, vectorOpcode);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_I8X16_SWIZZLE:
             case Bytecode.VECTOR_I8X16_EQ:
             case Bytecode.VECTOR_I8X16_NE:

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import jdk.incubator.vector.ByteVector;
-import jdk.incubator.vector.Vector;
 
 import java.nio.ByteOrder;
 
