@@ -31,11 +31,13 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_22_TO_23;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_24_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_25_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_21;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_TO_23;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.between;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.lower;
@@ -898,10 +900,11 @@ public final class Meta extends ContextAccessImpl
         sun_reflect_MagicAccessorImpl = diff() //
                         .klass(VERSION_8_OR_LOWER, Types.sun_reflect_MagicAccessorImpl) //
                         .klass(VERSION_9_TO_21, Types.jdk_internal_reflect_MagicAccessorImpl) //
+                        .klass(VERSION_22_TO_23, Types.jdk_internal_reflect_SerializationConstructorAccessorImpl) //
                         .notRequiredKlass();
         sun_reflect_DelegatingClassLoader = diff() //
                         .klass(VERSION_8_OR_LOWER, Types.sun_reflect_DelegatingClassLoader) //
-                        .klass(VERSION_9_TO_21, Types.jdk_internal_reflect_DelegatingClassLoader) //
+                        .klass(VERSION_9_TO_23, Types.jdk_internal_reflect_DelegatingClassLoader) //
                         .notRequiredKlass();
 
         sun_reflect_MethodAccessorImpl = diff() //

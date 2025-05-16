@@ -46,6 +46,8 @@ public final class JavaVersion implements Comparable<JavaVersion> {
 
         public static final VersionRange ALL = between(0, LATEST_SUPPORTED);
         public static final VersionRange VERSION_9_TO_21 = between(9, 21);
+        public static final VersionRange VERSION_9_TO_23 = between(9, 23);
+        public static final VersionRange VERSION_22_TO_23 = between(22, 23);
 
         private final int low;
         private final int high;

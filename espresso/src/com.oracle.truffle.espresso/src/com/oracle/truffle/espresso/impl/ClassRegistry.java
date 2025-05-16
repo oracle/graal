@@ -582,14 +582,16 @@ public abstract class ClassRegistry {
              *
              * In turn, this ensures that only these classes may be magic accessors.
              */
-            if (!env.loaderIsBoot(getClassLoader()) &&
-                            env.isReflectPackage(superKlass.getRuntimePackage()) &&
-                            !env.loaderIsReflection(getClassLoader())) {
-                throw EspressoClassLoadingException.illegalAccessError(
-                                String.format("class %s loaded by %s cannot access reflection superclass %s",
-                                                klass.getExternalName(),
-                                                loaderDesc(env, context.getMeta(), getClassLoader()),
-                                                superKlass.getExternalName()));
+            if (context.getJavaVersion().java23OrEarlier()) {
+                if (!env.loaderIsBoot(getClassLoader()) &&
+                                env.isReflectPackage(superKlass.getRuntimePackage()) &&
+                                !env.loaderIsReflection(getClassLoader())) {
+                    throw EspressoClassLoadingException.illegalAccessError(
+                                    String.format("class %s loaded by %s cannot access reflection superclass %s",
+                                                    klass.getExternalName(),
+                                                    loaderDesc(env, context.getMeta(), getClassLoader()),
+                                                    superKlass.getExternalName()));
+                }
             }
             if (!Klass.checkAccess(superKlass, klass)) {
                 StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superclass ").append(superKlass.getExternalName());
