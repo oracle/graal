@@ -51,20 +51,21 @@ final class FileSystemProviderRuntimeInitSupport {
 // java.io
 
 @TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_java_io_FileSystem {
+final class Target_java_io_FileSystem_RunTime {
 }
 
 @TargetClass(className = "java.io.File", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_java_io_File {
+@SuppressWarnings("unused")
+final class Target_java_io_File_RunTime {
     @Alias //
     @InjectAccessors(DefaultFileSystemAccessor.class) //
-    private static Target_java_io_FileSystem FS;
+    private static Target_java_io_FileSystem_RunTime FS;
 }
 
 @TargetClass(className = "java.io.DefaultFileSystem", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_java_io_DefaultFileSystem {
+final class Target_java_io_DefaultFileSystem_RunTime {
     @Alias
-    static native Target_java_io_FileSystem getFileSystem();
+    static native Target_java_io_FileSystem_RunTime getFileSystem();
 }
 
 /**
@@ -72,12 +73,12 @@ final class Target_java_io_DefaultFileSystem {
  * {@code JDKInitializationFeature}.
  */
 class DefaultFileSystemHolder {
-    static final Target_java_io_FileSystem FS = Target_java_io_DefaultFileSystem.getFileSystem();// =
+    static final Target_java_io_FileSystem_RunTime FS = Target_java_io_DefaultFileSystem_RunTime.getFileSystem();// =
 }
 
 class DefaultFileSystemAccessor {
     @SuppressWarnings("unused")
-    static Target_java_io_FileSystem get() {
+    static Target_java_io_FileSystem_RunTime get() {
         return DefaultFileSystemHolder.FS;
     }
 }
@@ -85,7 +86,7 @@ class DefaultFileSystemAccessor {
 // sun.nio.fs
 
 @TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_sun_nio_fs_DefaultFileSystemProvider {
+final class Target_sun_nio_fs_DefaultFileSystemProvider_RunTime {
     @Alias
     public static native FileSystem theFileSystem();
 }
@@ -95,7 +96,7 @@ final class Target_sun_nio_fs_DefaultFileSystemProvider {
  * {@code JDKInitializationFeature}.
  */
 class SunNioFsDefaultFileSystemHolder {
-    static final FileSystem FS = Target_sun_nio_fs_DefaultFileSystemProvider.theFileSystem();// =
+    static final FileSystem FS = Target_sun_nio_fs_DefaultFileSystemProvider_RunTime.theFileSystem();// =
 }
 
 @TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = JDKInitializedAtRunTime.class)
