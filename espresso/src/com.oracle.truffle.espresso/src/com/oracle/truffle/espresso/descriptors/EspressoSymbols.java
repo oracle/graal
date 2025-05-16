@@ -279,6 +279,7 @@ public class EspressoSymbols {
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> sun_reflect_MagicAccessorImpl = SYMBOLS.putType("Lsun/reflect/MagicAccessorImpl;");
         public static final Symbol<Type> jdk_internal_reflect_MagicAccessorImpl = SYMBOLS.putType("Ljdk/internal/reflect/MagicAccessorImpl;");
+        public static final Symbol<Type> jdk_internal_reflect_SerializationConstructorAccessorImpl = SYMBOLS.putType("Ljdk/internal/reflect/SerializationConstructorAccessorImpl;");
         // DelegatingClassLoader is not public.
         public static final Symbol<Type> sun_reflect_DelegatingClassLoader = SYMBOLS.putType("Lsun/reflect/DelegatingClassLoader;");
         public static final Symbol<Type> jdk_internal_reflect_DelegatingClassLoader = SYMBOLS.putType("Ljdk/internal/reflect/DelegatingClassLoader;");
@@ -574,6 +575,8 @@ public class EspressoSymbols {
 
         public static final Symbol<Name> main = SYMBOLS.putName("main");
         // Reflection
+        public static final Symbol<Name> jdk_internal_reflect = SYMBOLS.putName("jdk/internal/reflect");
+        public static final Symbol<Name> sun_reflect = SYMBOLS.putName("sun/reflect");
         public static final Symbol<Name> clazz = SYMBOLS.putName("clazz");
         public static final Symbol<Name> getParameterTypes = SYMBOLS.putName("getParameterTypes");
         public static final Symbol<Name> override = SYMBOLS.putName("override");
