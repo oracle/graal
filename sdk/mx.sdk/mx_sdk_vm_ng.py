@@ -1025,6 +1025,16 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         # required but optional for compatibility and when the default *_dist_name are not good enough
         language_id = kw_args.pop('language_id', None)
 
+        # TODO: remove this when language_id is set in those suites
+        mapping = {
+            'graal-js': 'js',
+            'graal-nodejs': 'nodejs',
+            'truffleruby': 'ruby',
+            'graalpython': 'python',
+        }
+        if not language_id and suite.name in mapping:
+            language_id = mapping[suite.name]
+
         # optional, derived from *_archive_name by default. Best left as default to avoid extra folder when extracting with some GUIs.
         community_dir_name = kw_args.pop('community_dir_name', None)
         enterprise_dir_name = kw_args.pop('enterprise_dir_name', None)
