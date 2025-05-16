@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.jdk;
 
+import java.nio.file.FileSystem;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -451,6 +452,8 @@ final class Target_java_io_WinNTFileSystem {
 
 // Substitutions for run time initialization
 
+// java.io
+
 @TargetClass(className = "java.io.File", onlyWith = JDKInitializedAtRunTime.class)
 final class Target_java_io_File {
     @Alias //
@@ -470,6 +473,7 @@ final class Target_java_io_DefaultFileSystem {
 class DefaultFileSystemHolder {
     static final Target_java_io_FileSystem FS = Target_java_io_DefaultFileSystem.getFileSystem();// =
 }
+
 class DefaultFileSystemAccessor {
     @SuppressWarnings("unused")
     static Target_java_io_FileSystem get() {
@@ -477,6 +481,20 @@ class DefaultFileSystemAccessor {
     }
 }
 
+// sun.nio.fs
+
+@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider", onlyWith = JDKInitializedAtRunTime.class)
+final class Target_sun_nio_fs_DefaultFileSystemProvider {
+    @Alias
+    public static native FileSystem theFileSystem();
+}
+
+/**
+ * Holds the default file system. Initialized at run time via {@code JDKInitializationFeature}.
+ */
+class SunNioFsDefaultFileSystemHolder {
+    static final FileSystem FS = Target_sun_nio_fs_DefaultFileSystemProvider.theFileSystem();// =
+}
 // @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider", onlyWith =
 // JDKInitializedAtRunTime.class)
 // @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -500,7 +518,7 @@ final class Target_sun_nio_fs_UnixPath_RunTime {
 
 class UnixFileSystemAccessor {
     static Target_sun_nio_fs_UnixFileSystem_RunTime get(Target_sun_nio_fs_UnixPath_RunTime that) {
-        return SubstrateUtil.cast(DefaultFileSystemHolder.FS, Target_sun_nio_fs_UnixFileSystem_RunTime.class);
+        return SubstrateUtil.cast(SunNioFsDefaultFileSystemHolder.FS, Target_sun_nio_fs_UnixFileSystem_RunTime.class);
     }
 
     static void set(Target_sun_nio_fs_UnixPath_RunTime that, Target_sun_nio_fs_UnixFileSystem_RunTime value) {
