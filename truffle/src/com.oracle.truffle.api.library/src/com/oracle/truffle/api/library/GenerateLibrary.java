@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,7 +89,7 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
  * receiver types of third parties or the JDK. For example the Truffle interop library has default
  * exports for most {@link Number} types, {@link String} and {@link Boolean} type.
  * <p>
- * In order to enable AOT generation for a a library annotate the class with {@link GenerateAOT} and
+ * In order to enable AOT generation for a library annotate the class with {@link GenerateAOT} and
  * enable exports to be used for AOT by setting {@link ExportLibrary#useForAOT()} to
  * <code>true</code>.
  *
@@ -326,7 +326,7 @@ public @interface GenerateLibrary {
     boolean defaultExportLookupEnabled() default false;
 
     /**
-     * Allows the use of {@link DynamicDispatchLibrary} with this library. By default dynamic
+     * Allows the use of {@link DynamicDispatchLibrary} with this library. By default, dynamic
      * dispatch is enabled. If this flag is set to <code>false</code> then the
      * {@link DynamicDispatchLibrary#dispatch(Object) dispatch} method will not be used for this
      * library. Only default exports and exports declared with the receiver type will be used

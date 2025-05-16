@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1370,18 +1370,6 @@ public abstract class Accessor {
         public abstract InternalResource createInternalResource(Object truffleInstrumentProvider, String resourceId);
     }
 
-    public abstract static class DynamicObjectSupport extends Support {
-
-        static final String IMPL_CLASS_NAME = "com.oracle.truffle.object.DynamicObjectSupportImpl";
-
-        protected DynamicObjectSupport() {
-            super(IMPL_CLASS_NAME);
-        }
-
-        public abstract <T> Iterable<T> lookupTruffleService(Class<T> type);
-
-    }
-
     /*
      * We want to avoid exporting {@code jdk.internal.module} and {@code jdk.internal.access} to all
      * classes in the unnamed module. So instead we load it in an isolated class loader and own
@@ -1505,7 +1493,6 @@ public abstract class Accessor {
         private static final Accessor.RuntimeSupport RUNTIME;
         private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
         private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
-        private static final DynamicObjectSupport DYNAMIC_OBJECT;
         private static final Accessor.MemorySupport MEMORY_SUPPORT;
 
         static {
@@ -1524,7 +1511,6 @@ public abstract class Accessor {
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
             LANGUAGE_PROVIDER = loadSupport(LanguageProviderSupport.IMPL_CLASS_NAME);
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
-            DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
             MEMORY_SUPPORT = loadSupport(MemorySupport.IMPL_CLASS_NAME);
             STRINGS = loadSupport(StringsSupport.IMPL_CLASS_NAME);
         }
@@ -1633,10 +1619,6 @@ public abstract class Accessor {
 
     public final InstrumentProviderSupport instrumentProviderSupport() {
         return Constants.INSTRUMENT_PROVIDER;
-    }
-
-    public final DynamicObjectSupport dynamicObjectSupport() {
-        return Constants.DYNAMIC_OBJECT;
     }
 
     public final MemorySupport memorySupport() {

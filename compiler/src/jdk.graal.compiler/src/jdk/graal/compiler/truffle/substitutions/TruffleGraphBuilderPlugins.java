@@ -100,6 +100,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
@@ -133,6 +134,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -167,7 +169,7 @@ public class TruffleGraphBuilderPlugins {
         registerFrameWithoutBoxingPlugins(plugins, types, canDelayIntrinsification);
         registerTruffleSafepointPlugins(plugins, types, canDelayIntrinsification);
         registerNodePlugins(plugins, types, metaAccess, canDelayIntrinsification, providers.getConstantReflection());
-        registerDynamicObjectPlugins(plugins, types, canDelayIntrinsification);
+        registerDynamicObjectPlugins(plugins, types, canDelayIntrinsification, providers.getConstantReflection());
         registerBufferPlugins(plugins, types, canDelayIntrinsification);
         registerMemorySegmentPlugins(plugins, types, canDelayIntrinsification);
     }
@@ -1111,9 +1113,83 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    private static void registerDynamicObjectPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
+    private static void registerDynamicObjectPlugins(InvocationPlugins plugins, KnownTruffleTypes types,
+                    boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection) {
+        if (!types.UnsafeAccess.isInitialized()) {
+            types.UnsafeAccess.initialize();
+        }
+
+        ResolvedJavaField[] staticFields = types.UnsafeAccess.getStaticFields();
+        JavaConstant anyConstant = null;
+        for (ResolvedJavaField field : staticFields) {
+            if (field.getName().equals("ANY_LOCATION")) {
+                anyConstant = constantReflection.readFieldValue(field, null);
+                break;
+            }
+        }
+
+        JavaKind[] usedJavaKinds = {JavaKind.Boolean, JavaKind.Byte, JavaKind.Int, JavaKind.Short, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
+
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.UnsafeAccess));
-        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Long);
+        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, anyConstant, usedJavaKinds);
+        registerUnsafeCast(r, types, canDelayIntrinsification);
+        registerBooleanCast(r);
+        registerArrayCopy(r);
+
+        registerDynamicObjectShapePlugins(plugins, types, canDelayIntrinsification);
+    }
+
+    private static void registerDynamicObjectShapePlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
+        ResolvedJavaType dynamicObjectType = types.DynamicObject;
+        ResolvedJavaType shapeType = types.Shape;
+        ResolvedJavaSymbol dynamicObjectSymbol = new ResolvedJavaSymbol(dynamicObjectType);
+        ResolvedJavaSymbol shapeSymbol = new ResolvedJavaSymbol(shapeType);
+        Registration r = new Registration(plugins, dynamicObjectSymbol);
+        r.register(new RequiredInvocationPlugin("getShapeHelper", shapeSymbol) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode shape) {
+                Stamp piStamp = StampFactory.object(TypeReference.createTrusted(b.getAssumptions(), shapeType), true);
+                ValueNode piNode = PiNode.create(shape, piStamp);
+                b.addPush(JavaKind.Object, piNode);
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("setShapeHelper", Receiver.class, shapeSymbol, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode shape, ValueNode shapeOffset) {
+                if (canDelayIntrinsification) {
+                    return false;
+                }
+                if (!shapeOffset.isConstant()) {
+                    return false;
+                }
+                LocationIdentity locationIdentity = LocationIdentity.any();
+                boolean forceAnyLocation = true;
+                b.add(new RawStoreNode(receiver.get(true), shapeOffset, shape, JavaKind.Object, locationIdentity, true, null, forceAnyLocation));
+                return true;
+            }
+        });
+    }
+
+    private static void registerBooleanCast(Registration r) {
+        r.register(new RequiredInvocationPlugin("booleanCast", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Boolean, value);
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("intCast", boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, value);
+                return true;
+            }
+        });
+    }
+
+    private static void registerArrayCopy(Registration r) {
+        ArrayCopySnippets.registerSystemArraycopyPlugin(r, true);
     }
 
     public static void registerUnsafeCast(Registration r, KnownTruffleTypes types, boolean canDelayIntrinsification) {
