@@ -115,6 +115,7 @@ public class Vector128Ops {
 
     public static ByteVector binary(ByteVector x, ByteVector y, int vectorOpcode) {
         return switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_AND, Bytecode.VECTOR_V128_ANDNOT, Bytecode.VECTOR_V128_OR, Bytecode.VECTOR_V128_XOR -> v128_binop(x, y, vectorOpcode);
             case Bytecode.VECTOR_I32X4_EQ, Bytecode.VECTOR_I32X4_NE, Bytecode.VECTOR_I32X4_LT_S, Bytecode.VECTOR_I32X4_LT_U, Bytecode.VECTOR_I32X4_GT_S, Bytecode.VECTOR_I32X4_GT_U,
                             Bytecode.VECTOR_I32X4_LE_S, Bytecode.VECTOR_I32X4_LE_U, Bytecode.VECTOR_I32X4_GE_S, Bytecode.VECTOR_I32X4_GE_U ->
                 i32x4_relop(x, y, vectorOpcode);
@@ -304,19 +305,17 @@ public class Vector128Ops {
         return result;
     }
 
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] v128_binop(byte[] x, byte[] y, int vectorOpcode) {
-        byte[] result = new byte[BYTES];
-        for (int i = 0; i < BYTES; i++) {
-            result[i] = (byte) switch (vectorOpcode) {
-                case Bytecode.VECTOR_V128_AND -> x[i] & y[i];
-                case Bytecode.VECTOR_V128_ANDNOT -> x[i] & ~y[i];
-                case Bytecode.VECTOR_V128_OR -> x[i] | y[i];
-                case Bytecode.VECTOR_V128_XOR -> x[i] ^ y[i];
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-        }
-        return result;
+    private static ByteVector v128_binop(ByteVector xBytes, ByteVector yBytes, int vectorOpcode) {
+        ByteVector x = cast(xBytes);
+        ByteVector y = cast(yBytes);
+        VectorOperators.Binary op = switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_AND -> VectorOperators.AND;
+            case Bytecode.VECTOR_V128_ANDNOT -> VectorOperators.AND_NOT;
+            case Bytecode.VECTOR_V128_OR -> VectorOperators.OR;
+            case Bytecode.VECTOR_V128_XOR -> VectorOperators.XOR;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(x.lanewise(op, y));
     }
 
     private static ByteVector bitselect(ByteVector xBytes, ByteVector yBytes, ByteVector maskBytes) {
