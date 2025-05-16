@@ -78,7 +78,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
         switch (typeDescriptor.getDescriptorType()) {
             case NAMED -> {
                 String reflectionName = ClassNameSupport.typeNameToReflectionName(((NamedConfigurationTypeDescriptor) typeDescriptor).name());

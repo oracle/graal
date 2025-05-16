@@ -42,7 +42,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
         ConfigurationType type = configuration.get(condition, typeDescriptor);
         /*
          * The type is not immediately set with all elements included. These are added afterwards
