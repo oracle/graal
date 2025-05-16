@@ -70,7 +70,7 @@ public final class FactoryMethod extends NonBytecodeMethod {
      * machine code for allocations is large. Note that this does not preclude later inlining of the
      * method as part of the regular AOT compilation pipeline.
      */
-    @NeverInlineTrivial("FactoryMethod")
+    @NeverInlineTrivial(reason = "FactoryMethod")
     @SuppressWarnings("unused")
     private static void annotationHolder() {
     }
