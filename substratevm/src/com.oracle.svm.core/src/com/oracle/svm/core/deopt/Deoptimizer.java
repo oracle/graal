@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -795,7 +796,7 @@ public final class Deoptimizer {
             gpReturnValueObject = ((Pointer) gpReturnValue).toObject();
         }
 
-        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
+        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject, DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer());
     }
 
     @DeoptStub(stubType = StubType.LazyEntryStub)
@@ -811,7 +812,7 @@ public final class Deoptimizer {
         assert VMThreads.StatusSupport.isStatusJava() : "Deopt stub execution must not be visible to other threads.";
         assert !ExceptionUnwind.getLazyDeoptStubShouldReturnToExceptionHandler();
 
-        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, false, null);
+        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, false, null, DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer());
     }
 
     /**
@@ -821,12 +822,18 @@ public final class Deoptimizer {
      * the codeinfo, and construct the {@link DeoptimizedFrame}.
      */
     @Uninterruptible(reason = "frame will hold objects in unmanaged storage")
-    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject) {
+    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject, CFunctionPointer deoptStubAddress) {
         DeoptimizedFrame deoptFrame;
 
         /* The original return address is at offset 0 from the stack pointer */
         CodePointer originalReturnAddress = framePointer.readWord(0);
         VMError.guarantee(originalReturnAddress.isNonNull());
+
+        /*
+         * Write marker address of lazy deopt stubs to the return address slot, so that stack walks see a
+         * consistent stack.
+         */
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, deoptStubAddress);
 
         try {
             deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, originalReturnAddress, hasException);
