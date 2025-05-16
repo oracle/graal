@@ -71,11 +71,13 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         }
         C condition = conditionResult.get();
 
+        boolean jniParser = checkOption(ConfigurationParserOption.JNI_PARSER);
+        boolean typeJniAccessible = jniParser || data.get("jniAccessible") == Boolean.TRUE;
         /*
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true);
+        TypeResult<T> result = delegate.resolveType(condition, type.get(), true, typeJniAccessible);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
             return;
@@ -85,7 +87,6 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
-        boolean jniParser = checkOption(ConfigurationParserOption.JNI_PARSER);
         delegate.registerDeclaredClasses(queryCondition, clazz);
         delegate.registerPublicClasses(queryCondition, clazz);
         if (!jniParser) {
@@ -101,12 +102,9 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         delegate.registerDeclaredFields(queryCondition, true, jniParser, clazz);
         delegate.registerPublicFields(queryCondition, true, jniParser, clazz);
 
-        boolean typeJniAccessible;
-        if (jniParser) {
-            typeJniAccessible = true;
-        } else {
+        if (!jniParser) {
             registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
-            typeJniAccessible = registerIfNotDefault(data, false, clazz, "jniAccessible", () -> delegate.registerAsJniAccessed(condition, clazz));
+            registerIfNotDefault(data, false, clazz, "jniAccessible", () -> delegate.registerAsJniAccessed(condition, clazz));
         }
 
         registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, typeJniAccessible, clazz));

@@ -294,7 +294,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
         RuntimeProxyCreationSupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
         RuntimeSerializationSupport<ConfigurationCondition> serializationSupport = RuntimeSerializationSupport.singleton();
-        RuntimeJNIAccessSupport jniSupport = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
+        RuntimeJNIAccessSupport jniSupport = SubstrateOptions.JNI.getValue() ? ImageSingletons.lookup(RuntimeJNIAccessSupport.class) : null;
         ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(ConfigurationFile.REFLECTION, true, conditionResolver, reflectionData, proxyRegistry,
                         serializationSupport, jniSupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, access.getImageClassLoader(), "reflection");

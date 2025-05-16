@@ -68,14 +68,14 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
-        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
+        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives, jniAccessible);
         if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
                 String reflectionName = ClassNameSupport.typeNameToReflectionName(namedDescriptor.name());
                 reflectionSupport.registerClassLookupException(condition, reflectionName, classLookupException);
-            } else if (throwMissingRegistrationErrors() && classLookupException instanceof ClassNotFoundException) {
+            } else if (throwMissingRegistrationErrors() && jniAccessible & classLookupException instanceof ClassNotFoundException) {
                 String jniName = ClassNameSupport.typeNameToJNIName(namedDescriptor.name());
                 jniSupport.registerClassLookup(condition, jniName);
             }
