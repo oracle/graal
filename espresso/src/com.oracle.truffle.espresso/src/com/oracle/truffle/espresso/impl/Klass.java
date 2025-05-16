@@ -1898,7 +1898,8 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
 
     @Override
     public final boolean isMagicAccessor() {
-        if (getMeta().sun_reflect_MagicAccessorImpl != null) {
+        if (getJavaVersion().java23OrEarlier()) {
+            assert getMeta().sun_reflect_MagicAccessorImpl != null;
             return getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(this);
         }
         return false;
