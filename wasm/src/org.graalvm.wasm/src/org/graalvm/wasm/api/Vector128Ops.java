@@ -89,56 +89,56 @@ public class Vector128Ops {
 
     public static ByteVector unary(ByteVector x, int vectorOpcode) {
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_NOT -> unop(x, Byte.class, VectorOperators.NOT);
-            case Bytecode.VECTOR_I8X16_ABS -> unop(x, Byte.class, VectorOperators.ABS);
-            case Bytecode.VECTOR_I8X16_NEG -> unop(x, Byte.class, VectorOperators.NEG);
-            case Bytecode.VECTOR_I8X16_POPCNT -> unop(x, Byte.class, VectorOperators.BIT_COUNT);
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> extadd_pairwise(x, Byte.class, VectorOperators.B2S);
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> extadd_pairwise(x, Byte.class, VectorOperators.ZERO_EXTEND_B2S);
-            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> extend(x, 0, Byte.class, VectorOperators.B2S);
-            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> extend(x, 0, Byte.class, VectorOperators.ZERO_EXTEND_B2S);
-            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S -> extend(x, 1, Byte.class, VectorOperators.B2S);
-            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> extend(x, 1, Byte.class, VectorOperators.ZERO_EXTEND_B2S);
-            case Bytecode.VECTOR_I16X8_ABS -> unop(x, Short.class, VectorOperators.ABS);
-            case Bytecode.VECTOR_I16X8_NEG -> unop(x, Short.class, VectorOperators.NEG);
-            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S -> extadd_pairwise(x, Short.class, VectorOperators.S2I);
-            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U -> extadd_pairwise(x, Short.class, VectorOperators.ZERO_EXTEND_S2I);
-            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S -> extend(x, 0, Short.class, VectorOperators.S2I);
-            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U -> extend(x, 0, Short.class, VectorOperators.ZERO_EXTEND_S2I);
-            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S -> extend(x, 1, Short.class, VectorOperators.S2I);
-            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U -> extend(x, 1, Short.class, VectorOperators.ZERO_EXTEND_S2I);
-            case Bytecode.VECTOR_I32X4_ABS -> unop(x, Integer.class, VectorOperators.ABS);
-            case Bytecode.VECTOR_I32X4_NEG -> unop(x, Integer.class, VectorOperators.NEG);
-            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S -> extend(x, 0, Integer.class, VectorOperators.I2L);
-            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U -> extend(x, 0, Integer.class, VectorOperators.ZERO_EXTEND_I2L);
-            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S -> extend(x, 1, Integer.class, VectorOperators.I2L);
-            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U -> extend(x, 1, Integer.class, VectorOperators.ZERO_EXTEND_I2L);
-            case Bytecode.VECTOR_I64X2_ABS -> unop(x, Long.class, VectorOperators.ABS);
-            case Bytecode.VECTOR_I64X2_NEG -> unop(x, Long.class, VectorOperators.NEG);
-            case Bytecode.VECTOR_F32X4_ABS -> unop(x, Float.class, VectorOperators.ABS);
-            case Bytecode.VECTOR_F32X4_NEG -> unop(x, Float.class, VectorOperators.NEG);
-            case Bytecode.VECTOR_F32X4_SQRT -> unop(x, Float.class, VectorOperators.SQRT);
+            case Bytecode.VECTOR_V128_NOT -> unop(x, byte.class, VectorOperators.NOT);
+            case Bytecode.VECTOR_I8X16_ABS -> unop(x, byte.class, VectorOperators.ABS);
+            case Bytecode.VECTOR_I8X16_NEG -> unop(x, byte.class, VectorOperators.NEG);
+            case Bytecode.VECTOR_I8X16_POPCNT -> unop(x, byte.class, VectorOperators.BIT_COUNT);
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> extadd_pairwise(x, byte.class, VectorOperators.B2S);
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> extadd_pairwise(x, byte.class, VectorOperators.ZERO_EXTEND_B2S);
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> extend(x, 0, byte.class, VectorOperators.B2S);
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> extend(x, 0, byte.class, VectorOperators.ZERO_EXTEND_B2S);
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S -> extend(x, 1, byte.class, VectorOperators.B2S);
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> extend(x, 1, byte.class, VectorOperators.ZERO_EXTEND_B2S);
+            case Bytecode.VECTOR_I16X8_ABS -> unop(x, short.class, VectorOperators.ABS);
+            case Bytecode.VECTOR_I16X8_NEG -> unop(x, short.class, VectorOperators.NEG);
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S -> extadd_pairwise(x, short.class, VectorOperators.S2I);
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U -> extadd_pairwise(x, short.class, VectorOperators.ZERO_EXTEND_S2I);
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S -> extend(x, 0, short.class, VectorOperators.S2I);
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U -> extend(x, 0, short.class, VectorOperators.ZERO_EXTEND_S2I);
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S -> extend(x, 1, short.class, VectorOperators.S2I);
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U -> extend(x, 1, short.class, VectorOperators.ZERO_EXTEND_S2I);
+            case Bytecode.VECTOR_I32X4_ABS -> unop(x, int.class, VectorOperators.ABS);
+            case Bytecode.VECTOR_I32X4_NEG -> unop(x, int.class, VectorOperators.NEG);
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S -> extend(x, 0, int.class, VectorOperators.I2L);
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U -> extend(x, 0, int.class, VectorOperators.ZERO_EXTEND_I2L);
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S -> extend(x, 1, int.class, VectorOperators.I2L);
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U -> extend(x, 1, int.class, VectorOperators.ZERO_EXTEND_I2L);
+            case Bytecode.VECTOR_I64X2_ABS -> unop(x, long.class, VectorOperators.ABS);
+            case Bytecode.VECTOR_I64X2_NEG -> unop(x, long.class, VectorOperators.NEG);
+            case Bytecode.VECTOR_F32X4_ABS -> unop(x, float.class, VectorOperators.ABS);
+            case Bytecode.VECTOR_F32X4_NEG -> unop(x, float.class, VectorOperators.NEG);
+            case Bytecode.VECTOR_F32X4_SQRT -> unop(x, float.class, VectorOperators.SQRT);
             case Bytecode.VECTOR_F32X4_CEIL -> f32x4_unop_fallback(x, f -> (float) Math.ceil(f));
             case Bytecode.VECTOR_F32X4_FLOOR -> f32x4_unop_fallback(x, f -> (float) Math.floor(f));
             case Bytecode.VECTOR_F32X4_TRUNC -> f32x4_unop_fallback(x, f -> ExactMath.truncate(f));
             case Bytecode.VECTOR_F32X4_NEAREST -> f32x4_unop_fallback(x, f -> (float) Math.rint(f));
-            case Bytecode.VECTOR_F64X2_ABS -> unop(x, Double.class, VectorOperators.ABS);
-            case Bytecode.VECTOR_F64X2_NEG -> unop(x, Double.class, VectorOperators.NEG);
-            case Bytecode.VECTOR_F64X2_SQRT -> unop(x, Double.class, VectorOperators.SQRT);
+            case Bytecode.VECTOR_F64X2_ABS -> unop(x, double.class, VectorOperators.ABS);
+            case Bytecode.VECTOR_F64X2_NEG -> unop(x, double.class, VectorOperators.NEG);
+            case Bytecode.VECTOR_F64X2_SQRT -> unop(x, double.class, VectorOperators.SQRT);
             case Bytecode.VECTOR_F64X2_CEIL -> f64x2_unop_fallback(x, Math::ceil);
             case Bytecode.VECTOR_F64X2_FLOOR -> f64x2_unop_fallback(x, Math::floor);
             case Bytecode.VECTOR_F64X2_TRUNC -> f64x2_unop_fallback(x, ExactMath::truncate);
             case Bytecode.VECTOR_F64X2_NEAREST -> f64x2_unop_fallback(x, Math::rint);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, Float.class, VectorOperators.F2I);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, float.class, VectorOperators.F2I);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> i32x4_trunc_sat_f32x4(x);
-            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, Integer.class, VectorOperators.I2F);
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> convert(x, int.class, VectorOperators.I2F);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> f32x4_convert_i32x4_u(x);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> convert(x, Double.class, VectorOperators.D2I);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> convert(x, double.class, VectorOperators.D2I);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2_zero(x);
-            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> convert(x, Integer.class, VectorOperators.I2D);
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> convert(x, int.class, VectorOperators.I2D);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> f64x2_convert_low_i32x4_u(x);
-            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> convert(x, Double.class, VectorOperators.D2F);
-            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> convert(x, Float.class, VectorOperators.F2D);
+            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> convert(x, double.class, VectorOperators.D2F);
+            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> convert(x, float.class, VectorOperators.F2D);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -784,15 +784,15 @@ public class Vector128Ops {
         ByteVector x = cast(xBytes);
         ByteVector y = cast(yBytes);
         IntVector z = cast(zBytes).reinterpretAsInts();
-        Vector<Short> xEvens = x.compress(evens(Byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xOdds = x.compress(odds(Byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yEvens = y.compress(evens(Byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yOdds = y.compress(odds(Byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> xEvens = x.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> xOdds = x.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> yEvens = y.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> yOdds = y.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
         Vector<Short> xMulYEvens = xEvens.mul(yEvens);
         Vector<Short> xMulYOdds = xOdds.mul(yOdds);
         Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
-        Vector<Integer> dotEvens = dot.compress(evens(Short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> dotOdds = dot.compress(odds(Short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> dotEvens = dot.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> dotOdds = dot.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
         Vector<Integer> dots = dotEvens.add(dotOdds);
         Vector<Integer> result = dots.add(z);
         return cast(result.reinterpretAsBytes());
@@ -1008,7 +1008,7 @@ public class Vector128Ops {
     }
 
     private static ByteVector f32x4_convert_i32x4_u(ByteVector xBytes) {
-        Vector<Integer> x = in(xBytes, Integer.class);
+        Vector<Integer> x = in(xBytes, int.class);
         Vector<Long> xUnsignedLow = x.convert(VectorOperators.ZERO_EXTEND_I2L, 0);
         Vector<Long> xUnsignedHigh = x.convert(VectorOperators.ZERO_EXTEND_I2L, 1);
         Vector<Float> resultLow = xUnsignedLow.convert(VectorOperators.L2F, 0);
@@ -1030,7 +1030,7 @@ public class Vector128Ops {
     }
 
     private static ByteVector f64x2_convert_low_i32x4_u(ByteVector xBytes) {
-        Vector<Integer> x = in(xBytes, Integer.class);
+        Vector<Integer> x = in(xBytes, int.class);
         Vector<Long> xUnsignedLow = x.convert(VectorOperators.ZERO_EXTEND_I2L, 0);
         Vector<Double> result = xUnsignedLow.convert(VectorOperators.L2D, 0);
         return out(result);

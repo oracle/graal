@@ -43,6 +43,7 @@ package org.graalvm.wasm.nodes;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import jdk.incubator.vector.ByteVector;
+import org.graalvm.wasm.api.Vector128Ops;
 
 public abstract class WasmFrame {
 
@@ -141,11 +142,11 @@ public abstract class WasmFrame {
     public static ByteVector popVector128(VirtualFrame frame, int slot) {
         ByteVector result = (ByteVector) frame.getObjectStatic(slot);
         frame.clearObjectStatic(slot);
-        return result;
+        return Vector128Ops.cast(result);
     }
 
     public static void pushVector128(VirtualFrame frame, int slot, ByteVector value) {
-        frame.setObjectStatic(slot, value);
+        frame.setObjectStatic(slot, Vector128Ops.cast(value));
     }
 
     public static Object popReference(VirtualFrame frame, int slot) {
