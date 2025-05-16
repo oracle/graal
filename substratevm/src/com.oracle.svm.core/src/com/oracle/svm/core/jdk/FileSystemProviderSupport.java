@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import java.nio.file.FileSystem;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,7 +35,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -414,11 +412,10 @@ final class Target_java_io_UnixFileSystem {
     private String userDir;
 }
 
-@TargetClass(className = "java.io.FileSystem")
+@TargetClass(className = "java.io.FileSystem", onlyWith = JDKInitializedAtBuildTime.class)
 final class Target_java_io_FileSystem {
 
     @Alias
-    @TargetElement(onlyWith = JDKInitializedAtBuildTime.class)
     native String normalize(String path);
 }
 
@@ -448,79 +445,4 @@ final class Target_java_io_WinNTFileSystem {
     @Alias //
     @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
-}
-
-// Substitutions for run time initialization
-
-// java.io
-
-@TargetClass(className = "java.io.File", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_java_io_File {
-    @Alias //
-    @InjectAccessors(DefaultFileSystemAccessor.class) //
-    private static Target_java_io_FileSystem FS;
-}
-
-@TargetClass(className = "java.io.DefaultFileSystem", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_java_io_DefaultFileSystem {
-    @Alias
-    static native Target_java_io_FileSystem getFileSystem();
-}
-
-/**
- * Holds the default file system. Initialized at run time via {@code JDKInitializationFeature}.
- */
-class DefaultFileSystemHolder {
-    static final Target_java_io_FileSystem FS = Target_java_io_DefaultFileSystem.getFileSystem();// =
-}
-
-class DefaultFileSystemAccessor {
-    @SuppressWarnings("unused")
-    static Target_java_io_FileSystem get() {
-        return DefaultFileSystemHolder.FS;
-    }
-}
-
-// sun.nio.fs
-
-@TargetClass(className = "sun.nio.fs.DefaultFileSystemProvider", onlyWith = JDKInitializedAtRunTime.class)
-final class Target_sun_nio_fs_DefaultFileSystemProvider {
-    @Alias
-    public static native FileSystem theFileSystem();
-}
-
-/**
- * Holds the default file system. Initialized at run time via {@code JDKInitializationFeature}.
- */
-class SunNioFsDefaultFileSystemHolder {
-    static final FileSystem FS = Target_sun_nio_fs_DefaultFileSystemProvider.theFileSystem();// =
-}
-// @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider", onlyWith =
-// JDKInitializedAtRunTime.class)
-// @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-// final class Target_sun_nio_fs_UnixFileSystemProvider_RunTime {
-// @Alias //
-// static Target_sun_nio_fs_UnixFileSystem_RunTime theFileSystem;
-// }
-
-@TargetClass(className = "sun.nio.fs.UnixFileSystem", onlyWith = JDKInitializedAtRunTime.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_nio_fs_UnixFileSystem_RunTime {
-}
-
-@TargetClass(className = "sun.nio.fs.UnixPath", onlyWith = JDKInitializedAtRunTime.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_nio_fs_UnixPath_RunTime {
-    @Alias //
-    @InjectAccessors(UnixFileSystemAccessor.class) //
-    private Target_sun_nio_fs_UnixFileSystem_RunTime fs;
-}
-
-class UnixFileSystemAccessor {
-    static Target_sun_nio_fs_UnixFileSystem_RunTime get(Target_sun_nio_fs_UnixPath_RunTime that) {
-        return SubstrateUtil.cast(SunNioFsDefaultFileSystemHolder.FS, Target_sun_nio_fs_UnixFileSystem_RunTime.class);
-    }
-
-    static void set(Target_sun_nio_fs_UnixPath_RunTime that, Target_sun_nio_fs_UnixFileSystem_RunTime value) {
-    }
 }
