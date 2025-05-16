@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,6 @@ package com.oracle.truffle.runtime;
 
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
-import java.io.CharArrayWriter;
-import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
@@ -70,7 +68,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.source.Source;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.home.Version;
@@ -127,6 +124,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -486,6 +484,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
         for (String className : new String[]{
                         "com.oracle.truffle.api.strings.TStringOps",
+                        "com.oracle.truffle.api.object.UnsafeAccess", // JDK 25+
+                        // JDK < 25, remove after dropping JDK 21 compatibility (GR-64984):
                         "com.oracle.truffle.object.UnsafeAccess",
         }) {
             try {
@@ -809,10 +809,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     public <T> T getCapability(Class<T> capability) {
         if (capability == TVMCI.class) {
             return capability.cast(tvmci);
-        } else if (capability == com.oracle.truffle.api.object.LayoutFactory.class) {
-            com.oracle.truffle.api.object.LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            ModulesSupport.exportTruffleRuntimeTo(layoutFactory.getClass());
-            return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
         }
@@ -1013,61 +1009,6 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     protected static EngineData getEngineData(RootNode rootNode) {
         return OptimizedTVMCI.getEngineData(rootNode);
-    }
-
-    @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.object.LayoutFactory loadObjectLayoutFactory() {
-        return selectObjectLayoutFactory(loadService(com.oracle.truffle.api.object.LayoutFactory.class));
-    }
-
-    private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
-        ClassLoader runtimeClassLoader = OptimizedTruffleRuntime.class.getClassLoader();
-        ClassLoader appClassLoader = service.getClassLoader();
-        ServiceLoader<T> appLoader = ServiceLoader.load(service, appClassLoader);
-        if (runtimeClassLoader.equals(appClassLoader)) {
-            /*
-             * Primary mode of operation for Truffle consumed from the application module path.
-             */
-            return List.of(appLoader);
-        } else {
-            ServiceLoader<T> runtimeLoader = ServiceLoader.load(service, runtimeClassLoader);
-            /*
-             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
-             * Its module dependencies such as Truffle are supplied via --module-path which means
-             * they are loaded by the app class loader. As such, we need to search the app class
-             * loader path as well.
-             */
-            return List.of(runtimeLoader, appLoader);
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.object.LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<com.oracle.truffle.api.object.LayoutFactory>> availableLayoutFactories) {
-        String layoutFactoryImplName = Services.getSavedProperty("truffle.object.LayoutFactory");
-        com.oracle.truffle.api.object.LayoutFactory bestLayoutFactory = null;
-        for (Iterable<com.oracle.truffle.api.object.LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
-            for (com.oracle.truffle.api.object.LayoutFactory currentLayoutFactory : currentLayoutFactories) {
-                if (layoutFactoryImplName != null) {
-                    if (currentLayoutFactory.getClass().getName().equals(layoutFactoryImplName)) {
-                        return currentLayoutFactory;
-                    }
-                } else {
-                    if (bestLayoutFactory == null) {
-                        bestLayoutFactory = currentLayoutFactory;
-                    } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
-                        assert currentLayoutFactory.getPriority() != bestLayoutFactory.getPriority();
-                        bestLayoutFactory = currentLayoutFactory;
-                    }
-                }
-            }
-        }
-        return bestLayoutFactory;
-    }
-
-    protected String printStackTraceToString(Throwable e) {
-        CharArrayWriter caw = new CharArrayWriter();
-        e.printStackTrace(new PrintWriter(caw));
-        return caw.toString();
     }
 
     public final class KnownMethods {
