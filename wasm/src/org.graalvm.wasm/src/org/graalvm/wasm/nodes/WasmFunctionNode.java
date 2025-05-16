@@ -2639,7 +2639,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 ByteVector result = Vector128Ops.i8x16_shuffle(x, y, indices);
                 pushVector128(frame, stackPointer++, result);
                 break;
-            }            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S:
+            }
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S:
             case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U: {
                 final int laneIndex = rawPeekU8(bytecode, offset);
                 offset++;
@@ -2888,6 +2889,23 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
+            case Bytecode.VECTOR_V128_BITSELECT:
+            case Bytecode.VECTOR_F32X4_RELAXED_MADD:
+            case Bytecode.VECTOR_F32X4_RELAXED_NMADD:
+            case Bytecode.VECTOR_F64X2_RELAXED_MADD:
+            case Bytecode.VECTOR_F64X2_RELAXED_NMADD:
+            case Bytecode.VECTOR_I8X16_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I16X8_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I32X4_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I64X2_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S: {
+                ByteVector z = popVector128(frame, --stackPointer);
+                ByteVector y = popVector128(frame, --stackPointer);
+                ByteVector x = popVector128(frame, --stackPointer);
+                ByteVector result = Vector128Ops.ternary(x, y, z, vectorOpcode);
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_V128_ANY_TRUE:
             case Bytecode.VECTOR_I8X16_ALL_TRUE:
             case Bytecode.VECTOR_I8X16_BITMASK:
@@ -2940,7 +2958,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 final long value = memoryLib.load_i64(memory, this, address);
                 ByteVector bytes = LongVector.zero(LongVector.SPECIES_128).withLane(0, value).reinterpretAsBytes();
                 // Could this be faster?
-                // ByteVector bytes = LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsBytes();
+                // ByteVector bytes = LongVector.broadcast(LongVector.SPECIES_128,
+                // value).reinterpretAsBytes();
                 VectorOperators.Conversion<Byte, Short> conversion = switch (vectorOpcode) {
                     case Bytecode.VECTOR_V128_LOAD8X8_S -> VectorOperators.B2S;
                     case Bytecode.VECTOR_V128_LOAD8X8_U -> VectorOperators.ZERO_EXTEND_B2S;
@@ -2955,7 +2974,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 final long value = memoryLib.load_i64(memory, this, address);
                 ShortVector shorts = LongVector.zero(LongVector.SPECIES_128).withLane(0, value).reinterpretAsShorts();
                 // Could this be faster?
-                // ShortVector shorts = LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsShorts();
+                // ShortVector shorts = LongVector.broadcast(LongVector.SPECIES_128,
+                // value).reinterpretAsShorts();
                 VectorOperators.Conversion<Short, Integer> conversion = switch (vectorOpcode) {
                     case Bytecode.VECTOR_V128_LOAD16X4_S -> VectorOperators.S2I;
                     case Bytecode.VECTOR_V128_LOAD16X4_U -> VectorOperators.ZERO_EXTEND_S2I;
@@ -2970,7 +2990,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 final long value = memoryLib.load_i64(memory, this, address);
                 IntVector ints = LongVector.zero(LongVector.SPECIES_128).withLane(0, value).reinterpretAsInts();
                 // Could this be faster?
-                // IntVector ints = LongVector.broadcast(LongVector.SPECIES_128, value).reinterpretAsInts();
+                // IntVector ints = LongVector.broadcast(LongVector.SPECIES_128,
+                // value).reinterpretAsInts();
                 VectorOperators.Conversion<Integer, Long> conversion = switch (vectorOpcode) {
                     case Bytecode.VECTOR_V128_LOAD32X2_S -> VectorOperators.I2L;
                     case Bytecode.VECTOR_V128_LOAD32X2_U -> VectorOperators.ZERO_EXTEND_I2L;
