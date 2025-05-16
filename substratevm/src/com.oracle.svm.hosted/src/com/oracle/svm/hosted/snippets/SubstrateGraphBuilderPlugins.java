@@ -1019,6 +1019,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(StandardGraphBuilderPlugins.newArrayPlugin("unvalidatedNewArray"));
 
         registerCastExact(r);
     }

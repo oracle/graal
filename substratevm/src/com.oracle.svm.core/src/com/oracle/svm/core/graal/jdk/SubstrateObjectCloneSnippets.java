@@ -112,7 +112,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         if (isArrayLike) {
             if (BranchProbabilityNode.probability(FAST_PATH_PROBABILITY, LayoutEncoding.isArray(layoutEncoding))) {
                 int length = ArrayLengthNode.arrayLength(original);
-                Object newArray = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
+                Object newArray = KnownIntrinsics.unvalidatedNewArray(DynamicHub.toClass(hub.getComponentHub()), length);
                 if (LayoutEncoding.isObjectArray(layoutEncoding)) {
                     JavaMemoryUtil.copyObjectArrayForward(original, 0, newArray, 0, length, layoutEncoding);
                 } else {
