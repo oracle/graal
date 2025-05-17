@@ -72,8 +72,9 @@ public enum AArch64StorageType implements StorageType {
                 yield switch (type.getJavaKind()) {
                     case Int -> NativeType.INT;
                     case Long -> NativeType.LONG;
+                    case Object -> NativeType.POINTER;
                     case Char, Short, Byte, Boolean -> throw EspressoError.shouldNotReachHere("Unexpected sub-word in INTEGER: " + type);
-                    case Double, Float, Object, Void, ReturnAddress, Illegal -> throw EspressoError.shouldNotReachHere("Unexpected kind in INTEGER: " + type);
+                    case Double, Float, Void, ReturnAddress, Illegal -> throw EspressoError.shouldNotReachHere("Unexpected kind in INTEGER: " + type);
                 };
             }
             case VECTOR -> {

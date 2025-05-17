@@ -372,6 +372,15 @@ typedef uint64_t julong;
     /* V(JVM_VirtualThreadMount) */ \
     /* V(JVM_VirtualThreadUnmount) */ \
     /* V(JVM_PrintWarningAtDynamicAgentLoad) */ \
+    /* Java 25 VM Methods */ \
+    V(JVM_SleepNanos) \
+    V(JVM_ExpandStackFrameInfo) \
+    V(JVM_IsContainerized) \
+    V(JVM_GetCDSConfigStatus) \
+    V(JVM_VirtualThreadDisableSuspend) \
+    V(JVM_VirtualThreadPinnedEvent) \
+    V(JVM_TakeVirtualThreadListToUnblock) \
+    V(JVM_IsStaticallyLinked) \
 
 #ifdef __cplusplus
 extern "C" {
@@ -992,6 +1001,21 @@ jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
 
 jboolean (*JVM_IsForeignLinkerSupported)(void);
 
+void (*JVM_SleepNanos)(JNIEnv *env, jclass threadClass, jlong nanos);
+
+void (*JVM_ExpandStackFrameInfo)(JNIEnv *env, jobject obj);
+
+jboolean (*JVM_IsContainerized)(void);
+
+jint (*JVM_GetCDSConfigStatus)();
+
+void (*JVM_VirtualThreadDisableSuspend)(JNIEnv* env, jclass clazz, jboolean enter);
+
+void (*JVM_VirtualThreadPinnedEvent)(JNIEnv* env, jclass clazz, jstring op);
+
+jobject (*JVM_TakeVirtualThreadListToUnblock)(JNIEnv* env, jclass ignored);
+
+jboolean(*JVM_IsStaticallyLinked)(void);
 };
 
 struct MokapotEnv_ {
