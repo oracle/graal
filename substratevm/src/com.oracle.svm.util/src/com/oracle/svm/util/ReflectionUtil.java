@@ -30,6 +30,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 /**
  * This class contains utility methods for commonly used reflection functionality. Note that lookups
@@ -237,5 +238,19 @@ public final class ReflectionUtil {
 
     public static void writeStaticField(Class<?> declaringClass, String fieldName, Object value) {
         writeField(declaringClass, fieldName, null, value);
+    }
+
+    /**
+     * Counts the number of superclasses as returned by {@link Class#getSuperclass()}.
+     * {@link java.lang.Object} and all primitive types are at depth 0 and all interfaces are at
+     * depth 1.
+     */
+    public static int getClassHierarchyDepth(Class<?> clazz) {
+        Objects.requireNonNull(clazz, "Must accept a non-null class argument");
+        int depth = 0;
+        for (var cur = clazz.getSuperclass(); cur != null; cur = cur.getSuperclass()) {
+            depth += 1;
+        }
+        return depth;
     }
 }
