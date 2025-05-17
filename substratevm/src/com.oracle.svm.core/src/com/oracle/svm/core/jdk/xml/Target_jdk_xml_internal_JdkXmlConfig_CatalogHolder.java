@@ -44,17 +44,11 @@ import com.oracle.svm.core.annotate.TargetClass;
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
  */
-@TargetClass(className = "jdk.xml.internal.JdkCatalog")
-public final class Target_jdk_xml_internal_JdkCatalog {
+@TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder")
+public final class Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
-    public static Target_javax_xml_catalog_Catalog catalog;
-
-    @Substitute
-    @SuppressWarnings("unused")
-    public static void init(String resolve) {
-        // initialized at build time
-    }
+    public static Target_javax_xml_catalog_Catalog JDKCATALOG;
 }
 
 @TargetClass(className = "javax.xml.catalog.Catalog")
@@ -75,8 +69,8 @@ final class Target_javax_xml_parsers_SAXParser {
 final class JdkCatalogSupplier implements FieldValueTransformer {
 
     /**
-     * Verifies that {@link Target_jdk_xml_internal_JdkCatalog#catalog} is non-null. The
-     * initialization is triggered in
+     * Verifies that {@link Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder#JDKCATALOG} is
+     * non-null. The initialization is triggered in
      * {@code com.oracle.svm.hosted.xml.JavaxXmlClassAndResourcesLoaderFeature#initializeJdkCatalog()}
      */
     @Override
