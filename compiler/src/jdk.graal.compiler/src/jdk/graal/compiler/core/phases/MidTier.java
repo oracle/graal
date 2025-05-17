@@ -48,7 +48,6 @@ import jdk.graal.compiler.phases.common.OptimizeDivPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.common.VerifyHeapAtReturnPhase;
-import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 
 public class MidTier extends BaseTier<MidTierContext> {
@@ -122,8 +121,6 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(canonicalizer);
-
-        appendPhase(new WriteBarrierAdditionPhase());
     }
 
     @Override

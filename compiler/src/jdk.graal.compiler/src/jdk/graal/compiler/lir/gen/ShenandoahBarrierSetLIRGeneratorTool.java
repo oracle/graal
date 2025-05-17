@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.phases;
+package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
-import jdk.graal.compiler.phases.common.GuardLoweringPhase;
-import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
-import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
-import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
-import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.nodes.gc.shenandoah.ShenandoahLoadRefBarrierNode;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 
-public class EconomyMidTier extends BaseTier<MidTierContext> {
+public interface ShenandoahBarrierSetLIRGeneratorTool extends BarrierSetLIRGeneratorTool {
+    Value emitLoadReferenceBarrier(LIRGeneratorTool tool, Value obj, Value address, ShenandoahLoadRefBarrierNode.ReferenceStrength strength, boolean narrow, boolean notNull);
 
-    @SuppressWarnings("this-escape")
-    public EconomyMidTier() {
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        appendPhase(new RemoveValueProxyPhase(canonicalizer));
-        appendPhase(new LoopSafepointInsertionPhase());
-        appendPhase(new GuardLoweringPhase());
-        appendPhase(new MidTierLoweringPhase(canonicalizer));
-        appendPhase(new FrameStateAssignmentPhase());
-        appendPhase(canonicalizer);
-    }
+    void emitPreWriteBarrier(LIRGeneratorTool lirTool, Value address, AllocatableValue expectedObject, boolean nonNull);
+
+    void emitCardBarrier(LIRGeneratorTool lirTool, Value address);
 }

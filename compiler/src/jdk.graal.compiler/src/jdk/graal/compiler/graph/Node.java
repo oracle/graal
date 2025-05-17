@@ -1167,13 +1167,17 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    public void replaceAtUsages(Node replacement, InputType inputType) {
+        replaceAtUsages(replacement, inputType, (NodePredicate) n -> true);
+    }
+
     /**
      * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
      * if the type of the use is {@code inputType}.
      *
      * @see #replaceAtUsages(Node)
      */
-    public void replaceAtUsages(Node replacement, InputType inputType) {
+    public void replaceAtUsages(Node replacement, InputType inputType, Predicate<Node> filter) {
         checkReplaceWith(replacement);
         int i = 0;
         int usageCount = this.getUsageCount();
@@ -1183,7 +1187,7 @@ public abstract class Node implements Cloneable, Formattable {
         usages: while (i < usageCount) {
             Node usage = this.getUsageAt(i);
             for (Position pos : usage.inputPositions()) {
-                if (pos.getInputType() == inputType && pos.get(usage) == this) {
+                if (pos.getInputType() == inputType && pos.get(usage) == this && filter.test(usage)) {
                     replaceAtUsagePos(replacement, usage, pos);
                     this.movUsageFromEndTo(i);
                     usageCount--;
