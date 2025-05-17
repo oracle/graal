@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,13 +83,12 @@ public class InvokeGraal {
     /**
      * The simplest way to compile a method, using the default behavior for everything.
      */
-    @SuppressWarnings("try")
     protected InstalledCode compileAndInstallMethod(ResolvedJavaMethod method) {
         /* Create a unique compilation identifier, visible in IGV. */
         CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
         DebugContext debug = new Builder(options).build();
-        try (DebugContext.Scope s = debug.scope("compileAndInstallMethod", new DebugDumpScope(String.valueOf(compilationId), true))) {
+        try (DebugContext.Scope _ = debug.scope("compileAndInstallMethod", new DebugDumpScope(String.valueOf(compilationId), true))) {
 
             /*
              * The graph that is compiled. We leave it empty (no nodes added yet). This means that

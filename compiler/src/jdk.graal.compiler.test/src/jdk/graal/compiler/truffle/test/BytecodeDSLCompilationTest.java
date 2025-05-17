@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,9 +58,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
@@ -979,7 +979,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     private Counter attachCounter(Class<?>... tags) {
         Counter c = new Counter();
-        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(tags).build(), (e) -> {
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(tags).build(), (_) -> {
             return new ExecutionEventNode() {
                 @Override
                 public void onEnter(VirtualFrame f) {

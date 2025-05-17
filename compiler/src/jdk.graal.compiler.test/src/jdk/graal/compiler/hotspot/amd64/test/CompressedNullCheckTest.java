@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         c.i.intValue();
     }
 
-    @SuppressWarnings("try")
     private void testImplicit(Integer i) {
         Assume.assumeTrue(runtime().getVMConfig().useCompressedOops);
 
@@ -64,7 +63,6 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         assertEquals(expect, actual);
     }
 
-    @SuppressWarnings("try")
     private void testExplicit(Integer i) {
         Assume.assumeTrue(runtime().getVMConfig().useCompressedOops);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -650,8 +650,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     @Registration(id = SHARED1, name = SHARED1, contextPolicy = ContextPolicy.SHARED)
     public static class Shared1 extends TruffleLanguage<LanguageContext> {
 
-        final ContextLocal<ContextLocalValue> local = locals.createContextLocal((e) -> new ContextLocalValue());
-        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((e, t) -> new ContextLocalValue());
+        final ContextLocal<ContextLocalValue> local = locals.createContextLocal((_) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((_, _) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {
@@ -676,8 +676,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     @Registration(id = SHARED2, name = SHARED2, contextPolicy = ContextPolicy.SHARED)
     public static class Shared2 extends TruffleLanguage<LanguageContext> {
 
-        final ContextLocal<ContextLocalValue> local = locals.createContextLocal((e) -> new ContextLocalValue());
-        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((e, t) -> new ContextLocalValue());
+        final ContextLocal<ContextLocalValue> local = locals.createContextLocal((_) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((_, _) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {

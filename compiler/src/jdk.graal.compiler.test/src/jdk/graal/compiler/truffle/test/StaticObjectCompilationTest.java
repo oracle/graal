@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,6 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.Closeable;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.AddNode;
-import jdk.graal.compiler.nodes.calc.LeftShiftNode;
-import jdk.graal.compiler.nodes.extended.RawLoadNode;
-import jdk.graal.compiler.nodes.extended.RawStoreNode;
-import jdk.graal.compiler.nodes.java.InstanceOfNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
-import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -56,6 +45,18 @@ import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
+
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.extended.RawLoadNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 
 @RunWith(Parameterized.class)
 public class StaticObjectCompilationTest extends PartialEvaluationTest {
@@ -102,20 +103,20 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         FieldBasedStorage fbs = new FieldBasedStorage();
 
         // Property set
-        assertPartialEvalEquals(toRootNode((f) -> fbs.property = 42), toRootNode((f) -> {
+        assertPartialEvalEquals(toRootNode((_) -> fbs.property = 42), toRootNode((_) -> {
             finalProperty.setInt(staticObject, 42);
             return finalProperty.getInt(staticObject);
         }), new Object[0]);
-        assertPartialEvalEquals(toRootNode((f) -> fbs.property = 42), toRootNode((f) -> {
+        assertPartialEvalEquals(toRootNode((_) -> fbs.property = 42), toRootNode((_) -> {
             property.setInt(staticObject, 42);
             return property.getInt(staticObject);
         }), new Object[0]);
 
         finalProperty.setInt(staticObject, 42);
         // Property get
-        assertPartialEvalEquals(toRootNode((f) -> 42), toRootNode((f) -> finalProperty.getInt(staticObject)), new Object[0]);
-        assertPartialEvalEquals(toRootNode((f) -> fbs.finalProperty), toRootNode((f) -> finalProperty.getInt(staticObject)), new Object[0]);
-        assertPartialEvalEquals(toRootNode((f) -> fbs.property), toRootNode((f) -> property.getInt(staticObject)), new Object[0]);
+        assertPartialEvalEquals(toRootNode((_) -> 42), toRootNode((_) -> finalProperty.getInt(staticObject)), new Object[0]);
+        assertPartialEvalEquals(toRootNode((_) -> fbs.finalProperty), toRootNode((_) -> finalProperty.getInt(staticObject)), new Object[0]);
+        assertPartialEvalEquals(toRootNode((_) -> fbs.property), toRootNode((_) -> property.getInt(staticObject)), new Object[0]);
     }
 
     @Test
@@ -136,8 +137,8 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         s1p1.setInt(o2, 24);
         s2p1.setInt(o2, 42);
 
-        assertPartialEvalEquals(toRootNode((f) -> 24), toRootNode((f) -> s1p1.getInt(o2)), new Object[0]);
-        assertPartialEvalEquals(toRootNode((f) -> 42), toRootNode((f) -> s2p1.getInt(o2)), new Object[0]);
+        assertPartialEvalEquals(toRootNode((_) -> 24), toRootNode((_) -> s1p1.getInt(o2)), new Object[0]);
+        assertPartialEvalEquals(toRootNode((_) -> 42), toRootNode((_) -> s2p1.getInt(o2)), new Object[0]);
     }
 
     @Test

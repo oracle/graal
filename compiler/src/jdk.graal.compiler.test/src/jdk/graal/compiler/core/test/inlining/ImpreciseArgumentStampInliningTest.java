@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -145,11 +145,10 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
         return loader;
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph getGraph(final String snippet, Set<String> initialLoadedClasses) {
         DebugContext debug = getDebugContext(new OptionValues(getInitialOptions(), BytecodeParserOptions.InlineDuringParsing, false));
         try (ManualClassLoader loader = getClassLoader(initialLoadedClasses);
-                        DebugContext.Scope s = debug.scope("InliningTest", new DebugDumpScope(snippet, true))) {
+                        DebugContext.Scope _ = debug.scope("InliningTest", new DebugDumpScope(snippet, true))) {
             Class<?> holderClass = loader.loadClass(InlineMethodHolder.class.getName());
             ResolvedJavaMethod method = getResolvedJavaMethod(holderClass, snippet);
             Builder builder = builder(method, AllowAssumptions.YES, debug);
@@ -158,7 +157,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
              * At this point, the return stamp of doNotInlineMe is a plain Object stamp, since
              * UnresolveableClass is unresolved.
              */
-            try (DebugContext.Scope s2 = debug.scope("Inlining", graph)) {
+            try (DebugContext.Scope _ = debug.scope("Inlining", graph)) {
                 debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
                 createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
 

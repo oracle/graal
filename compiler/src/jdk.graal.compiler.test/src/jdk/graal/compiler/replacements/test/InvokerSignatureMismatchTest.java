@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,147 +24,143 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
-import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
+import static java.lang.classfile.ClassFile.ACC_FINAL;
+import static java.lang.classfile.ClassFile.ACC_STATIC;
+import static java.lang.constant.ConstantDescs.CD_Class;
+import static java.lang.constant.ConstantDescs.CD_Exception;
+import static java.lang.constant.ConstantDescs.CD_Integer;
+import static java.lang.constant.ConstantDescs.CD_MethodHandle;
+import static java.lang.constant.ConstantDescs.CD_MethodHandles;
+import static java.lang.constant.ConstantDescs.CD_MethodHandles_Lookup;
+import static java.lang.constant.ConstantDescs.CD_MethodType;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_String;
+import static java.lang.constant.ConstantDescs.CD_float;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.CD_void;
+import static java.lang.constant.ConstantDescs.CLASS_INIT_NAME;
+import static java.lang.constant.ConstantDescs.MTD_void;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
+import java.lang.classfile.Annotation;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.attribute.ExceptionsAttribute;
+import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.reflect.Field;
 
-import jdk.graal.compiler.core.test.CustomizedBytecodePatternTest;
-import jdk.graal.compiler.test.SubprocessUtil;
-import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Type;
 
-public class InvokerSignatureMismatchTest extends CustomizedBytecodePatternTest {
+import jdk.graal.compiler.core.test.CustomizedBytecodePattern;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.test.AddExports;
 
-    @SuppressWarnings("try")
+@AddExports({"java.base/java.lang", "java.base/java.lang.invoke"})
+public class InvokerSignatureMismatchTest extends GraalCompilerTest {
+
+    static String helperClassName = "java.lang.invoke.MethodHandleHelper";
+
     @Test
-    public void test() throws Throwable {
-        List<String> args = withoutDebuggerArguments(getVMCommandLine());
-        try (TemporaryDirectory temp = new TemporaryDirectory(getClass().getSimpleName())) {
-            args.add("--class-path=" + temp);
-            args.add("--patch-module=java.base=" + temp);
-            args.add("-XX:-TieredCompilation");
-            args.add("-XX:+UnlockExperimentalVMOptions");
-            args.add("-XX:+EnableJVMCI");
-            args.add("-XX:+UseJVMCICompiler");
+    public void testInvokeSignatureMismatch() throws Exception {
+        Field trustedLookupField = Lookup.class.getDeclaredField("IMPL_LOOKUP");
+        trustedLookupField.setAccessible(true);
+        Lookup trustedLookup = (Lookup) trustedLookupField.get(null);
 
-            Path invokeDir = Files.createDirectories(temp.path.resolve(Paths.get("java", "lang", "invoke")));
-            Files.write(temp.path.resolve("ISMTest.class"), generateClass("ISMTest"));
-            Files.write(invokeDir.resolve("MethodHandleHelper.class"), generateClass("java/lang/invoke/MethodHandleHelper"));
+        new MethodHandleHelperGen().lookupClass(trustedLookup.in(MethodHandles.class), helperClassName);
+        Class<?> testClass = new ISMTestGen().getClass(InvokerSignatureMismatchTest.class.getName() + "$" + "ISMTest");
+        test(getResolvedJavaMethod(testClass, "main"), null, new Object[]{new String[0]});
+    }
 
-            args.add("ISMTest");
-            Subprocess proc = SubprocessUtil.java(args);
-            if (proc.exitCode != 0) {
-                throw new AssertionError(proc.toString());
-            }
+    static class MethodHandleHelperGen implements CustomizedBytecodePattern {
+        @Override
+        public byte[] generateClass(String className) {
+            // @formatter:off
+            return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                            .withMethod("internalMemberName", MethodTypeDesc.of(CD_Object, CD_MethodHandle), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .with(ExceptionsAttribute.ofSymbols(CD_Exception))
+                                            .withCode(b -> b
+                                                            .aload(0)
+                                                            .invokevirtual(CD_MethodHandle, "internalMemberName", MethodTypeDesc.of(ClassDesc.of("java.lang.invoke.MemberName")))
+                                                            .areturn()))
+                            .withMethod("linkToStatic", MethodTypeDesc.of(CD_int, CD_float, CD_Object), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .with(ExceptionsAttribute.ofSymbols(CD_Exception))
+                                            .withCode(b -> b
+                                                            .fload(0)
+                                                            .aload(1)
+                                                            .invokestatic(CD_MethodHandle, "linkToStatic", MethodTypeDesc.of(CD_int, CD_float, CD_Object))
+                                                            .ireturn()))
+                            .withMethod("invokeBasicI", MethodTypeDesc.of(CD_int, CD_MethodHandle, CD_float), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .with(ExceptionsAttribute.ofSymbols(CD_Exception))
+                                            .withCode(b -> b
+                                                            .aload(0)
+                                                            .fload(1)
+                                                            .invokevirtual(CD_MethodHandle, "invokeBasic", MethodTypeDesc.of(CD_int, CD_float))
+                                                            .ireturn())));
+            // @formatter:on
         }
     }
 
-    @Override
-    protected byte[] generateClass(String className) {
-        String[] exceptions = new String[]{"java/lang/Throwable"};
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, className, null, "java/lang/Object", null);
+    static class ISMTestGen implements CustomizedBytecodePattern {
+        @Override
+        public byte[] generateClass(String className) {
+            ClassDesc thisClass = ClassDesc.of(className);
+            ClassDesc methodHandleHelper = ClassDesc.of(helperClassName);
 
-        if (className.equals("java/lang/invoke/MethodHandleHelper")) {
-            MethodVisitor internalMemberName = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "internalMemberName", "(Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;", null, exceptions);
-            internalMemberName.visitCode();
-            internalMemberName.visitVarInsn(ALOAD, 0);
-            internalMemberName.visitMethodInsn(INVOKEVIRTUAL, "java/lang/invoke/MethodHandle", "internalMemberName", "()Ljava/lang/invoke/MemberName;", false);
-            internalMemberName.visitInsn(ARETURN);
-            internalMemberName.visitMaxs(1, 1);
-            internalMemberName.visitEnd();
-
-            MethodVisitor linkToStatic = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "linkToStatic", "(FLjava/lang/Object;)I", null, exceptions);
-            linkToStatic.visitCode();
-            linkToStatic.visitVarInsn(FLOAD, 0);
-            linkToStatic.visitVarInsn(ALOAD, 1);
-            linkToStatic.visitMethodInsn(INVOKESTATIC, "java/lang/invoke/MethodHandle", "linkToStatic", "(FLjava/lang/Object;)I", false);
-            linkToStatic.visitInsn(IRETURN);
-            linkToStatic.visitMaxs(1, 1);
-            linkToStatic.visitEnd();
-
-            MethodVisitor invokeBasicI = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "invokeBasicI", "(Ljava/lang/invoke/MethodHandle;F)I", null, exceptions);
-            invokeBasicI.visitCode();
-            invokeBasicI.visitVarInsn(ALOAD, 0);
-            invokeBasicI.visitVarInsn(FLOAD, 1);
-            invokeBasicI.visitMethodInsn(INVOKEVIRTUAL, "java/lang/invoke/MethodHandle", "invokeBasic", "(F)I", false);
-            invokeBasicI.visitInsn(IRETURN);
-            invokeBasicI.visitMaxs(1, 1);
-            invokeBasicI.visitEnd();
-
-        } else {
-            assert className.equals("ISMTest") : className;
-            cw.visitField(ACC_FINAL | ACC_STATIC, "INT_MH", "Ljava/lang/invoke/MethodHandle;", null, null).visitAnnotation("Ljava/lang/invoke/Stable.class;", true).visitEnd();
-            MethodVisitor clinit = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, exceptions);
-            clinit.visitCode();
-            clinit.visitInsn(ACONST_NULL);
-            clinit.visitVarInsn(ASTORE, 0);
-            clinit.visitMethodInsn(INVOKESTATIC, "java/lang/invoke/MethodHandles", "lookup", "()Ljava/lang/invoke/MethodHandles$Lookup;", false);
-            clinit.visitLdcInsn(Type.getObjectType(className));
-            clinit.visitLdcInsn("bodyI");
-            clinit.visitFieldInsn(GETSTATIC, "java/lang/Integer", "TYPE", "Ljava/lang/Class;");
-            clinit.visitFieldInsn(GETSTATIC, "java/lang/Integer", "TYPE", "Ljava/lang/Class;");
-            clinit.visitMethodInsn(INVOKESTATIC, "java/lang/invoke/MethodType", "methodType", "(Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/invoke/MethodType;", false);
-            clinit.visitMethodInsn(INVOKEVIRTUAL, "java/lang/invoke/MethodHandles$Lookup", "findStatic",
-                            "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;", false);
-            clinit.visitFieldInsn(PUTSTATIC, className, "INT_MH", "Ljava/lang/invoke/MethodHandle;");
-            clinit.visitInsn(RETURN);
-            clinit.visitMaxs(1, 1);
-            clinit.visitEnd();
-
-            MethodVisitor mainLink = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "mainLink", "(I)I", null, exceptions);
-            mainLink.visitCode();
-            mainLink.visitFieldInsn(GETSTATIC, className, "INT_MH", "Ljava/lang/invoke/MethodHandle;");
-            mainLink.visitMethodInsn(INVOKESTATIC, "java/lang/invoke/MethodHandleHelper", "internalMemberName", "(Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;", false);
-            mainLink.visitVarInsn(ASTORE, 1);
-            mainLink.visitVarInsn(ILOAD, 0);
-            mainLink.visitInsn(I2F);
-            mainLink.visitVarInsn(ALOAD, 1);
-            mainLink.visitMethodInsn(INVOKESTATIC, "java/lang/invoke/MethodHandleHelper", "linkToStatic", "(FLjava/lang/Object;)I", false);
-            mainLink.visitInsn(IRETURN);
-            mainLink.visitMaxs(1, 1);
-            mainLink.visitEnd();
-
-            MethodVisitor mainInvoke = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "mainInvoke", "(I)I", null, exceptions);
-            mainInvoke.visitCode();
-            mainInvoke.visitFieldInsn(GETSTATIC, className, "INT_MH", "Ljava/lang/invoke/MethodHandle;");
-            mainInvoke.visitVarInsn(ILOAD, 0);
-            mainInvoke.visitInsn(I2F);
-            mainInvoke.visitMethodInsn(INVOKESTATIC, "java/lang/invoke/MethodHandleHelper", "invokeBasicI", "(Ljava/lang/invoke/MethodHandle;F)I", false);
-            mainInvoke.visitInsn(IRETURN);
-            mainInvoke.visitMaxs(1, 1);
-            mainInvoke.visitEnd();
-
-            MethodVisitor bodyI = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "bodyI", "(I)I", null, null);
-            bodyI.visitCode();
-            bodyI.visitVarInsn(ILOAD, 0);
-            bodyI.visitIntInsn(SIPUSH, 1023);
-            bodyI.visitInsn(IAND);
-            bodyI.visitInsn(IRETURN);
-            bodyI.visitMaxs(1, 1);
-            bodyI.visitEnd();
-
-            MethodVisitor main = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "main", "([Ljava/lang/String;)V", null, exceptions);
-            main.visitCode();
-            main.visitIntInsn(SIPUSH, 100);
-            main.visitMethodInsn(INVOKESTATIC, "ISMTest", "mainLink", "(I)I", false);
-            main.visitInsn(POP);
-            main.visitIntInsn(SIPUSH, 100);
-            main.visitMethodInsn(INVOKESTATIC, "ISMTest", "mainInvoke", "(I)I", false);
-            main.visitInsn(POP);
-            main.visitInsn(RETURN);
-            main.visitMaxs(1, 1);
-            main.visitEnd();
-
+            // @formatter:off
+            return ClassFile.of().build(thisClass, classBuilder -> classBuilder
+                            .withField("INT_MH", CD_MethodHandle, fieldBuilder -> fieldBuilder
+                                            .withFlags(ACC_FINAL | ACC_STATIC)
+                                            .with(RuntimeVisibleAnnotationsAttribute.of(Annotation.of(ClassDesc.of("jdk.internal.vm.annotation.Stable")))))
+                            .withMethod(CLASS_INIT_NAME, MTD_void, ACC_STATIC, methodBuilder -> methodBuilder
+                                            .withCode(b -> b
+                                                            .aconst_null()
+                                                            .astore(0)
+                                                            .invokestatic(CD_MethodHandles, "lookup", MethodTypeDesc.of(CD_MethodHandles_Lookup))
+                                                            .ldc(thisClass)
+                                                            .ldc("bodyI")
+                                                            .getstatic(CD_Integer, "TYPE", CD_Class)
+                                                            .getstatic(CD_Integer, "TYPE", CD_Class)
+                                                            .invokestatic(CD_MethodType, "methodType", MethodTypeDesc.of(CD_MethodType, CD_Class, CD_Class))
+                                                            .invokevirtual(CD_MethodHandles_Lookup, "findStatic", MethodTypeDesc.of(CD_MethodHandle, CD_Class, CD_String, CD_MethodType))
+                                                            .putstatic(thisClass, "INT_MH", CD_MethodHandle)
+                                                            .return_()))
+                            .withMethod("mainLink", MethodTypeDesc.of(CD_int, CD_int), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .with(ExceptionsAttribute.ofSymbols(CD_Exception))
+                                            .withCode(b -> b
+                                                            .getstatic(thisClass, "INT_MH", CD_MethodHandle)
+                                                            .invokestatic(methodHandleHelper, "internalMemberName", MethodTypeDesc.of(CD_Object, CD_MethodHandle))
+                                                            .astore(1)
+                                                            .iload(0)
+                                                            .i2f()
+                                                            .aload(1)
+                                                            .invokestatic(methodHandleHelper, "linkToStatic", MethodTypeDesc.of(CD_int, CD_float, CD_Object))
+                                                            .ireturn()))
+                            .withMethod("mainInvoke", MethodTypeDesc.of(CD_int, CD_int), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .with(ExceptionsAttribute.ofSymbols(CD_Exception))
+                                            .withCode(b -> b
+                                                            .getstatic(thisClass, "INT_MH", CD_MethodHandle)
+                                                            .iload(0)
+                                                            .i2f()
+                                                            .invokestatic(methodHandleHelper, "invokeBasicI", MethodTypeDesc.of(CD_int, CD_MethodHandle, CD_float))
+                                                            .ireturn()))
+                            .withMethod("bodyI", MethodTypeDesc.of(CD_int, CD_int), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .withCode(b -> b
+                                                            .iload(0)
+                                                            .sipush(1023)
+                                                            .iand()
+                                                            .ireturn()))
+                            .withMethod("main", MethodTypeDesc.of(CD_void, CD_String.arrayType()), ACC_PUBLIC_STATIC, methodBuilder -> methodBuilder
+                                            .withCode(b -> b
+                                                            .sipush(100)
+                                                            .invokestatic(thisClass, "mainLink", MethodTypeDesc.of(CD_int, CD_int))
+                                                            .pop()
+                                                            .sipush(100)
+                                                            .invokestatic(thisClass, "mainInvoke", MethodTypeDesc.of(CD_int, CD_int))
+                                                            .pop()
+                                                            .return_())));
+            // @formatter:on
         }
-        cw.visitEnd();
-        return cw.toByteArray();
     }
 }
