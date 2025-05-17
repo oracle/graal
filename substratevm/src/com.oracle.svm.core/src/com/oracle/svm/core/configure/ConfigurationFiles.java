@@ -84,7 +84,7 @@ public final class ConfigurationFiles {
                         AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User, deprecated = true, //
                         deprecationMessage = "This can be caused by a proxy-config.json file in your META-INF directory. " +
-                                        "Consider including proxy configuration in the reflection section of reachability-metadata.md instead.")//
+                                        "Consider including proxy configuration in the reflection section of reachability-metadata.md instead")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
