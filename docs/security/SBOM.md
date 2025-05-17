@@ -19,7 +19,7 @@ The SBOM is compressed to limit the SBOM's impact on the native executable size.
 The compressed size is typically less than 1/10,000 of the overall image size.
 The SBOM is stored in the `gzip` format with the exported `sbom` symbol referencing its start address and the `sbom_length` symbol referencing its size.
 
-The SBOM feature can be disabled with `--enable-sbom=false`.
+The SBOM feature can be disabled by using `--enable-sbom=false` on the command line.
 
 ## Extracting SBOM Contents
 
