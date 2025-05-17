@@ -44,12 +44,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.ContextClassLoaderScope;
-import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
+import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -65,6 +64,7 @@ import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 
+import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;

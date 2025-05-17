@@ -54,6 +54,8 @@ public class FutureDefaultsOptions {
     private static final String NONE_NAME = "none";
     private static final String RUN_TIME_INITIALIZE_JDK_NAME = "run-time-initialized-jdk";
 
+    public static final String RUN_TIME_INITIALIZE_JDK_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_JDK_NAME + ")";
+
     private static final Set<String> ALL_VALUES = Set.of(RUN_TIME_INITIALIZE_JDK_NAME, ALL_NAME, NONE_NAME);
 
     private static String futureDefaultsAllValues() {
@@ -66,7 +68,7 @@ public class FutureDefaultsOptions {
 
     @APIOption(name = OPTION_NAME, defaultValue = DEFAULT_NAME) //
     @Option(help = "file:doc-files/FutureDefaultsHelp.txt", type = OptionType.User) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
+    static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     private static EconomicSet<String> futureDefaults;
@@ -74,6 +76,7 @@ public class FutureDefaultsOptions {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void parseAndVerifyOptions() {
         futureDefaults = EconomicSet.create(ALL_VALUES.size());
+        futureDefaults.add(RUN_TIME_INITIALIZE_JDK_NAME);
         var valuesWithOrigin = FutureDefaults.getValue().getValuesWithOrigins();
         valuesWithOrigin.forEach(valueWithOrigin -> {
             String value = valueWithOrigin.value();
