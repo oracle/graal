@@ -843,7 +843,7 @@ public class NativeImageGenerator {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
                             featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
                         }
-                        return !config.getAndResetRequireAnalysisIteration();
+                        return !config.getAndResetRequireAnalysisIteration() && !concurrentConfig.getAndResetRequireAnalysisIteration();
                     });
                 } catch (Throwable t) {
                     if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
