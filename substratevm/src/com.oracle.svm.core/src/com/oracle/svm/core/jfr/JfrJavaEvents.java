@@ -35,22 +35,13 @@ import org.graalvm.nativeimage.Platforms;
  */
 public class JfrJavaEvents {
     private static final List<Class<? extends jdk.internal.event.Event>> EVENT_CLASSES = new ArrayList<>();
-    private static final List<Class<? extends jdk.jfr.Event>> JFR_EVENT_CLASSES = new ArrayList<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    @SuppressWarnings("unchecked")
     public static synchronized void registerEventClass(Class<? extends jdk.internal.event.Event> eventClass) {
         EVENT_CLASSES.add(eventClass);
-        if (jdk.jfr.Event.class.isAssignableFrom(eventClass)) {
-            JFR_EVENT_CLASSES.add((Class<? extends jdk.jfr.Event>) eventClass);
-        }
     }
 
     public static List<Class<? extends jdk.internal.event.Event>> getAllEventClasses() {
         return EVENT_CLASSES;
-    }
-
-    public static List<Class<? extends jdk.jfr.Event>> getJfrEventClasses() {
-        return JFR_EVENT_CLASSES;
     }
 }
