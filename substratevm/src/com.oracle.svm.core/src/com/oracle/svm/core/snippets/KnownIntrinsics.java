@@ -88,6 +88,9 @@ public class KnownIntrinsics {
      *
      * Note that this is very dangerous. You have to know what you are doing. The parameters are not
      * checked for correctness in any way.
+     *
+     * Consider that invoking a method or stub this way will result in a missing or corrupt return
+     * address (e.g., the return address is taken from a link register that does not get set here)
      */
     public static native void farReturn(Object result, Pointer sp, CodePointer ip, boolean fromMethodWithCalleeSavedRegisters);
 

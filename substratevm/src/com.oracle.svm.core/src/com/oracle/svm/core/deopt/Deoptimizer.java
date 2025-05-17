@@ -416,7 +416,7 @@ public final class Deoptimizer {
     @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
     private void installDeoptimizedFrame(DeoptimizedFrame deoptimizedFrame) {
         /*
-         * Replace the return address to the deoptimized method with a pointer to the
+         * Replace the return address to the deoptimized method with the entry point of
          * eagerDeoptStub.
          */
         FrameAccess.singleton().writeReturnAddress(deoptState.targetThread, deoptState.sourceSp, DeoptimizationSupport.getEagerDeoptStubPointer());
@@ -822,7 +822,8 @@ public final class Deoptimizer {
      * the codeinfo, and construct the {@link DeoptimizedFrame}.
      */
     @Uninterruptible(reason = "frame will hold objects in unmanaged storage")
-    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject, CFunctionPointer deoptStubAddress) {
+    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject,
+                    CFunctionPointer deoptStubAddress) {
         DeoptimizedFrame deoptFrame;
 
         /* The original return address is at offset 0 from the stack pointer */
@@ -830,8 +831,17 @@ public final class Deoptimizer {
         VMError.guarantee(originalReturnAddress.isNonNull());
 
         /*
-         * Write marker address of lazy deopt stubs to the return address slot, so that stack walks see a
-         * consistent stack.
+         * Set the return address of the frame that we are about to deoptimize to our deopt stub
+         * entry point. It should already have this value, but not always: on aarch64, for example,
+         * our stub's prologue will have set it to the value of the link register, which, if we got
+         * here via a farReturn from ExceptionUnwind, can be from an arbitrary earlier call. (On
+         * amd64, our stub's prologue leaves the existing return address on the stack.)
+         *
+         * We will never actually return using this return address, but it keeps the stack walkable
+         * and it serves to mark the frame as already pending deoptimization for deoptimizations or
+         * code invalidations that trigger in other threads while we are in interruptible code
+         * below. Stack walks recognize our stub entry points in return addresses and know where to
+         * read the frame's original return address (for walking object references, for example).
          */
         FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, deoptStubAddress);
 
@@ -863,6 +873,9 @@ public final class Deoptimizer {
          * deoptimization to happen if the current thread is executing the lazy deopt stub.
          */
         VMError.guarantee(framePointer.readWord(0) == originalReturnAddress, "Eager deoptimization should not occur when lazy deoptimization is in progress");
+
+        CodePointer returnAddressAfter = FrameAccess.singleton().readReturnAddress(CurrentIsolate.getCurrentThread(), framePointer);
+        VMError.guarantee(returnAddressAfter == deoptStubAddress, "Return address must remain unchanged during deoptimization");
 
         recentDeoptimizationEvents.append(deoptFrame.getCompletedMessage());
 
@@ -1084,11 +1097,17 @@ public final class Deoptimizer {
         assert VMOperation.isInProgressAtSafepoint();
         CodePointer oldReturnAddress = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
 
-        // Replace the return address to the deoptimized method with a pointer to the lazyDeoptStub.
+        /*
+         * Replace the return address to the deoptimized method with the entry point of the lazy
+         * deopt stub that is appropriate for the return value.
+         *
+         * Stack walks recognize our stubs in return addresses and know to read the frame's original
+         * return address from another slot (see below), e.g. for walking object references.
+         */
         CodePointer stubAddress = returnValueIsObject ? DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer() : DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer();
         FrameAccess.singleton().writeReturnAddress(targetThread, sourceSp, stubAddress);
         /*
-         * Write the original return address into the slot where the Deoptimized Frame would go in
+         * Write the original return address into the slot where the DeoptimizedFrame would go in
          * the case of eager deoptimization.
          */
         sourceSp.writeWord(0, oldReturnAddress);
@@ -1098,12 +1117,12 @@ public final class Deoptimizer {
     private static void uninstallLazyDeoptStubReturnAddress(Pointer sourceSp, IsolateThread thread) {
         assert Options.LazyDeoptimization.getValue();
         assert VMOperation.isInProgressAtSafepoint();
-        CodePointer oldReturnAddress = sourceSp.readWord(0);
-        assert oldReturnAddress.isNonNull();
-        // Clear the old return address from the deopt slot
+        CodePointer originalReturnAddress = sourceSp.readWord(0);
+        assert originalReturnAddress.isNonNull();
+        // Clear the original return address from the deopt slot
         sourceSp.writeWord(0, Word.nullPointer());
-        // Restore the old return address on the stack
-        FrameAccess.singleton().writeReturnAddress(thread, sourceSp, oldReturnAddress);
+        // Restore the original return address on the stack
+        FrameAccess.singleton().writeReturnAddress(thread, sourceSp, originalReturnAddress);
     }
 
     /**
