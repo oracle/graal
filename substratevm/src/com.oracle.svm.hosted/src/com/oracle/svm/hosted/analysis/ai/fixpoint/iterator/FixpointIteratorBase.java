@@ -5,6 +5,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.WideningOverflowPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -84,8 +85,13 @@ public abstract class FixpointIteratorBase<
 
         abstractState.getState(node).incrementVisitedCount();
         if (state.getVisitedCount() > iteratorPayload.getMaxWidenIterations() + iteratorPayload.getMaxJoinIterations()) {
-            throw AnalysisError.shouldNotReachHere("Exceeded maximum amount of extrapolating iterations." +
-                    " Consider increasing the limit, or refactor your widening/join operator");
+            logger.log("Extrapolation limit exceeded for node: " + node, LoggerVerbosity.INFO);
+            if (iteratorPayload.getIteratorPolicy().wideningOverflowPolicy() == WideningOverflowPolicy.ERROR) {
+                throw AnalysisError.shouldNotReachHere("Exceeded maximum amount of extrapolating iterations." +
+                        " Consider increasing the limit, or refactor your widening/join operator");
+            } else if (iteratorPayload.getIteratorPolicy().wideningOverflowPolicy() == WideningOverflowPolicy.SET_TO_TOP) {
+                state.getPreCondition().setToTop();
+            }
         }
     }
 }

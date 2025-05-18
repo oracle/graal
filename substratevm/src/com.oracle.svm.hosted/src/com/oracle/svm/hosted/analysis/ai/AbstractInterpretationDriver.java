@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
-import com.oracle.svm.hosted.analysis.ai.example.pentagon.IntraProceduralPentagonAnalyzerWrapper;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.set.intra.LeaksIdSetIntraAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
@@ -58,7 +58,7 @@ public class AbstractInterpretationDriver {
         /* We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer}
          *  If we wish to use analyzers during the native image build, we must register them here. What is not registered, will not run.
          */
-        var analyzer = new IntraProceduralPentagonAnalyzerWrapper().getAnalyzer();
+        var analyzer = new LeaksIdSetIntraAnalyzerWrapper().getAnalyzer();
         analyzerManager.registerAnalyzer(analyzer);
 
         /* We can set what methods we want to analyze by engine.setAnalyzeMainOnly(); */
