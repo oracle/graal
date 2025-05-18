@@ -43,7 +43,6 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ExactMath;
-import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
@@ -62,28 +61,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static org.graalvm.wasm.api.Vector128.BYTES;
-import static org.graalvm.wasm.api.Vector128.BYTE_LENGTH;
-import static org.graalvm.wasm.api.Vector128.INT_LENGTH;
-import static org.graalvm.wasm.api.Vector128.LONG_LENGTH;
-import static org.graalvm.wasm.api.Vector128.SHORT_LENGTH;
 
 public class Vector128Ops {
-
-    private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(ByteVector.SPECIES_128).getClass();
-
-    public static final ByteVector cast(ByteVector vec) {
-        return BYTE_128_CLASS.cast(vec);
-    }
-
-    private static <E> Vector<E> in(ByteVector vec, Class<E> elementType) {
-        return BYTE_128_CLASS.cast(vec).reinterpretShape(VectorShape.S_128_BIT.withLanes(elementType), 0);
-    }
-
-    private static <E> ByteVector out(Vector<E> vec) {
-        return BYTE_128_CLASS.cast(vec.reinterpretAsBytes());
-    }
-
-    private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
     public static ByteVector unary(ByteVector x, int vectorOpcode) {
         return switch (vectorOpcode) {
@@ -253,16 +232,16 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F32X4_DIV -> binop(x, y, float.class, VectorOperators.DIV);
             case Bytecode.VECTOR_F32X4_MIN, Bytecode.VECTOR_F32X4_RELAXED_MIN -> binop(x, y, float.class, VectorOperators.MIN);
             case Bytecode.VECTOR_F32X4_MAX, Bytecode.VECTOR_F32X4_RELAXED_MAX -> binop(x, y, float.class, VectorOperators.MAX);
-            case Bytecode.VECTOR_F32X4_PMIN -> f32x4_pmin(x, y);
-            case Bytecode.VECTOR_F32X4_PMAX -> f32x4_pmax(x, y);
+            case Bytecode.VECTOR_F32X4_PMIN -> pmin(x, y, float.class);
+            case Bytecode.VECTOR_F32X4_PMAX -> pmax(x, y, float.class);
             case Bytecode.VECTOR_F64X2_ADD -> binop(x, y, double.class, VectorOperators.ADD);
             case Bytecode.VECTOR_F64X2_SUB -> binop(x, y, double.class, VectorOperators.SUB);
             case Bytecode.VECTOR_F64X2_MUL -> binop(x, y, double.class, VectorOperators.MUL);
             case Bytecode.VECTOR_F64X2_DIV -> binop(x, y, double.class, VectorOperators.DIV);
             case Bytecode.VECTOR_F64X2_MIN, Bytecode.VECTOR_F64X2_RELAXED_MIN -> binop(x, y, double.class, VectorOperators.MIN);
             case Bytecode.VECTOR_F64X2_MAX, Bytecode.VECTOR_F64X2_RELAXED_MAX -> binop(x, y, double.class, VectorOperators.MAX);
-            case Bytecode.VECTOR_F64X2_PMIN -> f64x2_pmin(x, y);
-            case Bytecode.VECTOR_F64X2_PMAX -> f64x2_pmax(x, y);
+            case Bytecode.VECTOR_F64X2_PMIN -> pmin(x, y, double.class);
+            case Bytecode.VECTOR_F64X2_PMAX -> pmax(x, y, double.class);
             case Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S -> i16x8_relaxed_dot_i8x16_i7x16_s(x, y);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
@@ -283,7 +262,14 @@ public class Vector128Ops {
     public static int vectorToInt(ByteVector x, int vectorOpcode) {
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_ANY_TRUE -> v128_any_true(x);
-            case Bytecode.VECTOR_I32X4_ALL_TRUE -> i32x4_all_true(x);
+            case Bytecode.VECTOR_I8X16_ALL_TRUE -> all_true(x, byte.class);
+            case Bytecode.VECTOR_I8X16_BITMASK -> bitmask(x, byte.class);
+            case Bytecode.VECTOR_I16X8_ALL_TRUE -> all_true(x, short.class);
+            case Bytecode.VECTOR_I16X8_BITMASK -> bitmask(x, short.class);
+            case Bytecode.VECTOR_I32X4_ALL_TRUE -> all_true(x, int.class);
+            case Bytecode.VECTOR_I32X4_BITMASK -> bitmask(x, int.class);
+            case Bytecode.VECTOR_I64X2_ALL_TRUE -> all_true(x, long.class);
+            case Bytecode.VECTOR_I64X2_BITMASK -> bitmask(x, long.class);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -384,68 +370,24 @@ public class Vector128Ops {
         return cast(vec.withLane(laneIndex, value).reinterpretAsBytes());
     }
 
-    private static ByteVector i8x16_swizzle(ByteVector valueBytes, ByteVector indexBytes) {
-        ByteVector values = cast(valueBytes);
-        ByteVector indices = cast(indexBytes);
-        ByteVector safeIndices = indices.blend(ByteVector.zero(ByteVector.SPECIES_128), indices.lt((byte) 0).or(indices.lt((byte) BYTES).not()));
-        ByteVector result = values.rearrange(safeIndices.toShuffle());
-        return cast(result);
-    }
-
-    public static ByteVector i8x16_splat(byte x) {
-        return broadcast(x);
-    }
-
-    public static ByteVector i16x8_splat(short x) {
-        return broadcast(x);
-    }
-
-    public static ByteVector i32x4_splat(int x) {
-        return broadcast(x);
-    }
-
-    public static ByteVector i64x2_splat(long x) {
-        return broadcast(x);
-    }
-
-    public static ByteVector f32x4_splat(float x) {
-        return broadcast(x);
-    }
-
-    public static ByteVector f64x2_splat(double x) {
-        return broadcast(x);
-    }
-
-    private static <E> ByteVector binop(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Binary op) {
-        Vector<E> x = in(xBytes, elementType);
-        Vector<E> y = in(yBytes, elementType);
-        Vector<E> result = x.lanewise(op, y);
-        return out(result);
-    }
-
-    private static ByteVector bitselect(ByteVector xBytes, ByteVector yBytes, ByteVector maskBytes) {
-        ByteVector x = cast(xBytes);
-        ByteVector y = cast(yBytes);
-        ByteVector mask = cast(maskBytes);
-        ByteVector result = y.lanewise(VectorOperators.BITWISE_BLEND, x, mask);
-        return cast(result);
-    }
-
-    private static int v128_any_true(ByteVector vec) {
-        return cast(vec).eq((byte) 0).allTrue() ? 0 : 1;
-    }
-
-    private static <E> ByteVector relop(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Comparison comp) {
-        Vector<E> x = in(xBytes, elementType);
-        Vector<E> y = in(yBytes, elementType);
-        Vector<E> result = x.compare(comp, y).toVector();
-        return out(result);
-    }
-
     private static <E> ByteVector unop(ByteVector xBytes, Class<E> elementType, VectorOperators.Unary op) {
         Vector<E> x = in(xBytes, elementType);
         Vector<E> result = x.lanewise(op);
         return out(result);
+    }
+
+    private static <E, F> ByteVector extadd_pairwise(ByteVector xBytes, Class<E> elementType, VectorOperators.Conversion<E, F> conv) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<F> evens = x.compress(evens(elementType)).convert(conv, 0);
+        Vector<F> odds = x.compress(odds(elementType)).convert(conv, 0);
+        Vector<F> result = evens.add(odds);
+        return out(result);
+    }
+
+    private static <E, F> ByteVector extend(ByteVector xBytes, int part, Class<E> elementType, VectorOperators.Conversion<E, F> conv) {
+        Vector<E> x = cast(xBytes).reinterpretShape(VectorShape.S_128_BIT.withLanes(elementType), 0);
+        Vector<F> result = x.convert(conv, part);
+        return cast(result.reinterpretAsBytes());
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -466,286 +408,6 @@ public class Vector128Ops {
             xArray[i] = op.apply(xArray[i]);
         }
         return fromArray(xArray);
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i8x16_all_true(byte[] bytes) {
-        int result = 1;
-        for (int i = 0; i < BYTE_LENGTH; i++) {
-            if (bytes[i] == 0) {
-                result = 0;
-                break;
-            }
-        }
-        return result;
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i8x16_bitmask(byte[] bytes) {
-        int result = 0;
-        for (int i = 0; i < BYTE_LENGTH; i++) {
-            if (bytes[i] < 0) {
-                result |= 1 << i;
-            }
-        }
-        return result;
-    }
-
-    private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Conversion<E, F> conv, long min, long max) {
-        Vector<E> x = in(xBytes, elementType);
-        Vector<E> y = in(yBytes, elementType);
-        Vector<E> xSat = sat(x, min, max);
-        Vector<E> ySat = sat(y, min, max);
-        Vector<F> resultLow = xSat.convert(conv, 0);
-        Vector<F> resultHigh = ySat.convert(conv, -1);
-        Vector<F> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
-        return out(result);
-    }
-
-    private static <E> Vector<E> sat(Vector<E> vec, long min, long max) {
-        Vector<E> vMin = VectorShape.S_128_BIT.withLanes(vec.elementType()).broadcast(min);
-        Vector<E> vMax = VectorShape.S_128_BIT.withLanes(vec.elementType()).broadcast(max);
-        return vec.max(vMin).min(vMax);
-    }
-
-    private static <E> ByteVector shiftop(ByteVector xBytes, int shift, Class<E> elementType, VectorOperators.Binary shiftOp) {
-        Vector<E> x = in(xBytes, elementType);
-        Vector<E> result = x.lanewise(shiftOp, shift);
-        return out(result);
-    }
-
-    private static <E, F> ByteVector upcast_op_downcast(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
-                    BiFunction<Vector<F>, Vector<F>, Vector<F>> op) {
-        Vector<E> x = in(xBytes, upcast.domainType());
-        Vector<E> y = in(yBytes, upcast.domainType());
-        Vector<F> xLow = x.convert(upcast, 0);
-        Vector<F> xHigh = x.convert(upcast, 1);
-        Vector<F> yLow = y.convert(upcast, 0);
-        Vector<F> yHigh = y.convert(upcast, 1);
-        Vector<E> resultLow = op.apply(xLow, yLow).convert(downcast, 0);
-        Vector<E> resultHigh = op.apply(xHigh, yHigh).convert(downcast, -1);
-        Vector<E> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
-        return out(result);
-    }
-
-    private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast, VectorOperators.Binary op,
-                    long min, long max) {
-        return upcast_op_downcast(xBytes, yBytes, upcast, downcast, (x, y) -> {
-            Vector<F> rawResult = x.lanewise(op, y);
-            Vector<F> satResult = sat(rawResult, min, max);
-            return satResult;
-        });
-    }
-
-    private static <E, F> ByteVector avgr(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast) {
-        Vector<F> one = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(1);
-        Vector<F> two = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(2);
-        return upcast_op_downcast(xBytes, yBytes, upcast, downcast, (x, y) -> x.add(y).add(one).div(two));
-    }
-
-    private static <E, F> ByteVector extend(ByteVector xBytes, int part, Class<E> elementType, VectorOperators.Conversion<E, F> conv) {
-        Vector<E> x = cast(xBytes).reinterpretShape(VectorShape.S_128_BIT.withLanes(elementType), 0);
-        Vector<F> result = x.convert(conv, part);
-        return cast(result.reinterpretAsBytes());
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i16x8_all_true(byte[] vec) {
-        int result = 1;
-        for (int i = 0; i < SHORT_LENGTH; i++) {
-            short x = byteArraySupport.getShort(vec, i * Short.BYTES);
-            if (x == 0) {
-                result = 0;
-                break;
-            }
-        }
-        return result;
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i16x8_bitmask(byte[] vec) {
-        int result = 0;
-        for (int i = 0; i < SHORT_LENGTH; i++) {
-            short x = byteArraySupport.getShort(vec, i * Short.BYTES);
-            if (x < 0) {
-                result |= 1 << i;
-            }
-        }
-        return result;
-    }
-
-    private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {
-        return upcast_op_downcast(xBytes, yBytes, VectorOperators.S2I, VectorOperators.I2S, (x, y) -> {
-            Vector<Integer> rawResult = x.mul(y).add(IntVector.broadcast(IntVector.SPECIES_128, 1 << 14)).lanewise(VectorOperators.ASHR, IntVector.broadcast(IntVector.SPECIES_128, 15));
-            Vector<Integer> satResult = sat(rawResult, Short.MIN_VALUE, Short.MAX_VALUE);
-            return satResult;
-        });
-    }
-
-    private static <E, F> ByteVector extmul(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> extend, int part) {
-        Vector<E> x = in(xBytes, extend.domainType());
-        Vector<E> y = in(yBytes, extend.domainType());
-        Vector<F> xExtended = x.convert(extend, part);
-        Vector<F> yExtended = y.convert(extend, part);
-        Vector<F> result = xExtended.mul(yExtended);
-        return out(result);
-    }
-
-    private static ByteVector i16x8_relaxed_dot_i8x16_i7x16_s(ByteVector xBytes, ByteVector yBytes) {
-        ByteVector x = cast(xBytes);
-        ByteVector y = cast(yBytes);
-        Vector<Short> xEvens = x.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xOdds = x.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yEvens = y.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yOdds = y.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xMulYEvens = xEvens.mul(yEvens);
-        Vector<Short> xMulYOdds = xOdds.mul(yOdds);
-        Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
-        return out(dot);
-    }
-
-    private static <E, F> ByteVector extadd_pairwise(ByteVector xBytes, Class<E> elementType, VectorOperators.Conversion<E, F> conv) {
-        Vector<E> x = in(xBytes, elementType);
-        Vector<F> evens = x.compress(evens(elementType)).convert(conv, 0);
-        Vector<F> odds = x.compress(odds(elementType)).convert(conv, 0);
-        Vector<F> result = evens.add(odds);
-        return out(result);
-    }
-
-    private static int i32x4_all_true(ByteVector vecBytes) {
-        IntVector vec = cast(vecBytes).reinterpretAsInts();
-        return vec.eq(0).anyTrue() ? 0 : 1;
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i32x4_bitmask(byte[] vec) {
-        int result = 0;
-        for (int i = 0; i < INT_LENGTH; i++) {
-            int x = byteArraySupport.getInt(vec, i * Integer.BYTES);
-            if (x < 0) {
-                result |= 1 << i;
-            }
-        }
-        return result;
-    }
-
-    private static ByteVector i32x4_dot_i16x8_s(ByteVector xBytes, ByteVector yBytes) {
-        Vector<Short> x = in(xBytes, short.class);
-        Vector<Short> y = in(yBytes, short.class);
-        Vector<Integer> xEvens = x.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> xOdds = x.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> yEvens = y.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> yOdds = y.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> xMulYEvens = xEvens.mul(yEvens);
-        Vector<Integer> xMulYOdds = xOdds.mul(yOdds);
-        Vector<Integer> dot = xMulYEvens.lanewise(VectorOperators.ADD, xMulYOdds);
-        return out(dot);
-    }
-
-    private static ByteVector i32x4_relaxed_dot_i8x16_i7x16_add_s(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes) {
-        ByteVector x = cast(xBytes);
-        ByteVector y = cast(yBytes);
-        IntVector z = cast(zBytes).reinterpretAsInts();
-        Vector<Short> xEvens = x.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xOdds = x.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yEvens = y.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> yOdds = y.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
-        Vector<Short> xMulYEvens = xEvens.mul(yEvens);
-        Vector<Short> xMulYOdds = xOdds.mul(yOdds);
-        Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
-        Vector<Integer> dotEvens = dot.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> dotOdds = dot.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
-        Vector<Integer> dots = dotEvens.add(dotOdds);
-        Vector<Integer> result = dots.add(z);
-        return cast(result.reinterpretAsBytes());
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i64x2_all_true(byte[] vec) {
-        int result = 1;
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            long x = byteArraySupport.getLong(vec, i * Long.BYTES);
-            if (x == 0) {
-                result = 0;
-                break;
-            }
-        }
-        return result;
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static int i64x2_bitmask(byte[] vec) {
-        int result = 0;
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            long x = byteArraySupport.getLong(vec, i * Long.BYTES);
-            if (x < 0) {
-                result |= 1 << i;
-            }
-        }
-        return result;
-    }
-
-    private static ByteVector i64x2_shiftop(ByteVector xBytes, int shift, int vectorOpcode) {
-        LongVector x = cast(xBytes).reinterpretAsLongs();
-        VectorOperators.Binary op = switch (vectorOpcode) {
-            case Bytecode.VECTOR_I64X2_SHL -> VectorOperators.LSHL;
-            case Bytecode.VECTOR_I64X2_SHR_S -> VectorOperators.ASHR;
-            case Bytecode.VECTOR_I64X2_SHR_U -> VectorOperators.LSHR;
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        return cast(x.lanewise(op, shift).reinterpretAsBytes());
-    }
-
-    private static ByteVector f32x4_pmin(ByteVector xBytes, ByteVector yBytes) {
-        Vector<Float> x = in(xBytes, float.class);
-        Vector<Float> y = in(yBytes, float.class);
-        Vector<Float> result = x.blend(y, y.compare(VectorOperators.LT, x));
-        return out(result);
-    }
-
-    private static ByteVector f32x4_pmax(ByteVector xBytes, ByteVector yBytes) {
-        Vector<Float> x = in(xBytes, float.class);
-        Vector<Float> y = in(yBytes, float.class);
-        Vector<Float> result = x.blend(y, x.compare(VectorOperators.LT, y));
-        return out(result);
-    }
-
-    private static ByteVector f32x4_ternop(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes, int vectorOpcode) {
-        FloatVector x = cast(xBytes).reinterpretAsFloats();
-        FloatVector y = cast(yBytes).reinterpretAsFloats();
-        FloatVector z = cast(zBytes).reinterpretAsFloats();
-        FloatVector result = switch (vectorOpcode) {
-            case Bytecode.VECTOR_F32X4_RELAXED_MADD -> x.lanewise(VectorOperators.FMA, y, z);
-            case Bytecode.VECTOR_F32X4_RELAXED_NMADD -> x.neg().lanewise(VectorOperators.FMA, y, z);
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        return cast(result.reinterpretAsBytes());
-    }
-
-    private static ByteVector f64x2_pmin(ByteVector xBytes, ByteVector yBytes) {
-        Vector<Double> x = in(xBytes, double.class);
-        Vector<Double> y = in(yBytes, double.class);
-        Vector<Double> result = x.blend(y, y.compare(VectorOperators.LT, x));
-        return out(result);
-    }
-
-    private static ByteVector f64x2_pmax(ByteVector xBytes, ByteVector yBytes) {
-        Vector<Double> x = in(xBytes, double.class);
-        Vector<Double> y = in(yBytes, double.class);
-        Vector<Double> result = x.blend(y, x.compare(VectorOperators.LT, y));
-        return out(result);
-    }
-
-    private static ByteVector f64x2_ternop(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes, int vectorOpcode) {
-        DoubleVector x = cast(xBytes).reinterpretAsDoubles();
-        DoubleVector y = cast(yBytes).reinterpretAsDoubles();
-        DoubleVector z = cast(zBytes).reinterpretAsDoubles();
-        DoubleVector result = switch (vectorOpcode) {
-            case Bytecode.VECTOR_F64X2_RELAXED_MADD -> x.lanewise(VectorOperators.FMA, y, z);
-            case Bytecode.VECTOR_F64X2_RELAXED_NMADD -> x.neg().lanewise(VectorOperators.FMA, y, z);
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        };
-        return cast(result.reinterpretAsBytes());
     }
 
     private static <E, F> ByteVector convert(ByteVector xBytes, Class<E> elementType, VectorOperators.Conversion<E, F> conv) {
@@ -784,7 +446,212 @@ public class Vector128Ops {
         return out(result);
     }
 
+    private static ByteVector i8x16_swizzle(ByteVector valueBytes, ByteVector indexBytes) {
+        ByteVector values = cast(valueBytes);
+        ByteVector indices = cast(indexBytes);
+        ByteVector safeIndices = indices.blend(ByteVector.zero(ByteVector.SPECIES_128), indices.lt((byte) 0).or(indices.lt((byte) BYTES).not()));
+        ByteVector result = values.rearrange(safeIndices.toShuffle());
+        return cast(result);
+    }
+
+    private static <E> ByteVector binop(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Binary op) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<E> y = in(yBytes, elementType);
+        Vector<E> result = x.lanewise(op, y);
+        return out(result);
+    }
+
+    private static <E> ByteVector relop(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Comparison comp) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<E> y = in(yBytes, elementType);
+        Vector<E> result = x.compare(comp, y).toVector();
+        return out(result);
+    }
+
+    private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Conversion<E, F> conv, long min, long max) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<E> y = in(yBytes, elementType);
+        Vector<E> xSat = sat(x, min, max);
+        Vector<E> ySat = sat(y, min, max);
+        Vector<F> resultLow = xSat.convert(conv, 0);
+        Vector<F> resultHigh = ySat.convert(conv, -1);
+        Vector<F> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
+        return out(result);
+    }
+
+    private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast, VectorOperators.Binary op,
+                    long min, long max) {
+        return upcastOpDowncast(xBytes, yBytes, upcast, downcast, (x, y) -> {
+            Vector<F> rawResult = x.lanewise(op, y);
+            Vector<F> satResult = sat(rawResult, min, max);
+            return satResult;
+        });
+    }
+
+    private static <E, F> ByteVector avgr(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast) {
+        Vector<F> one = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(1);
+        Vector<F> two = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(2);
+        return upcastOpDowncast(xBytes, yBytes, upcast, downcast, (x, y) -> x.add(y).add(one).div(two));
+    }
+
+    private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {
+        return upcastOpDowncast(xBytes, yBytes, VectorOperators.S2I, VectorOperators.I2S, (x, y) -> {
+            Vector<Integer> rawResult = x.mul(y).add(IntVector.broadcast(IntVector.SPECIES_128, 1 << 14)).lanewise(VectorOperators.ASHR, IntVector.broadcast(IntVector.SPECIES_128, 15));
+            Vector<Integer> satResult = sat(rawResult, Short.MIN_VALUE, Short.MAX_VALUE);
+            return satResult;
+        });
+    }
+
+    private static <E, F> ByteVector extmul(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> extend, int part) {
+        Vector<E> x = in(xBytes, extend.domainType());
+        Vector<E> y = in(yBytes, extend.domainType());
+        Vector<F> xExtended = x.convert(extend, part);
+        Vector<F> yExtended = y.convert(extend, part);
+        Vector<F> result = xExtended.mul(yExtended);
+        return out(result);
+    }
+
+    private static ByteVector i32x4_dot_i16x8_s(ByteVector xBytes, ByteVector yBytes) {
+        Vector<Short> x = in(xBytes, short.class);
+        Vector<Short> y = in(yBytes, short.class);
+        Vector<Integer> xEvens = x.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> xOdds = x.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> yEvens = y.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> yOdds = y.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> xMulYEvens = xEvens.mul(yEvens);
+        Vector<Integer> xMulYOdds = xOdds.mul(yOdds);
+        Vector<Integer> dot = xMulYEvens.lanewise(VectorOperators.ADD, xMulYOdds);
+        return out(dot);
+    }
+
+    private static <E> ByteVector pmin(ByteVector xBytes, ByteVector yBytes, Class<E> elementType) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<E> y = in(yBytes, elementType);
+        Vector<E> result = x.blend(y, y.compare(VectorOperators.LT, x));
+        return out(result);
+    }
+
+    private static <E> ByteVector pmax(ByteVector xBytes, ByteVector yBytes, Class<E> elementType) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<E> y = in(yBytes, elementType);
+        Vector<E> result = x.blend(y, x.compare(VectorOperators.LT, y));
+        return out(result);
+    }
+
+    private static ByteVector i16x8_relaxed_dot_i8x16_i7x16_s(ByteVector xBytes, ByteVector yBytes) {
+        ByteVector x = cast(xBytes);
+        ByteVector y = cast(yBytes);
+        Vector<Short> xEvens = x.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> xOdds = x.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> yEvens = y.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> yOdds = y.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> xMulYEvens = xEvens.mul(yEvens);
+        Vector<Short> xMulYOdds = xOdds.mul(yOdds);
+        Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
+        return out(dot);
+    }
+
+    private static ByteVector bitselect(ByteVector xBytes, ByteVector yBytes, ByteVector maskBytes) {
+        ByteVector x = cast(xBytes);
+        ByteVector y = cast(yBytes);
+        ByteVector mask = cast(maskBytes);
+        ByteVector result = y.bitwiseBlend(x, mask);
+        return cast(result);
+    }
+
+    private static ByteVector f32x4_ternop(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes, int vectorOpcode) {
+        FloatVector x = cast(xBytes).reinterpretAsFloats();
+        FloatVector y = cast(yBytes).reinterpretAsFloats();
+        FloatVector z = cast(zBytes).reinterpretAsFloats();
+        FloatVector result = switch (vectorOpcode) {
+            case Bytecode.VECTOR_F32X4_RELAXED_MADD -> x.lanewise(VectorOperators.FMA, y, z);
+            case Bytecode.VECTOR_F32X4_RELAXED_NMADD -> x.neg().lanewise(VectorOperators.FMA, y, z);
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(result.reinterpretAsBytes());
+    }
+
+    private static ByteVector f64x2_ternop(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes, int vectorOpcode) {
+        DoubleVector x = cast(xBytes).reinterpretAsDoubles();
+        DoubleVector y = cast(yBytes).reinterpretAsDoubles();
+        DoubleVector z = cast(zBytes).reinterpretAsDoubles();
+        DoubleVector result = switch (vectorOpcode) {
+            case Bytecode.VECTOR_F64X2_RELAXED_MADD -> x.lanewise(VectorOperators.FMA, y, z);
+            case Bytecode.VECTOR_F64X2_RELAXED_NMADD -> x.neg().lanewise(VectorOperators.FMA, y, z);
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return cast(result.reinterpretAsBytes());
+    }
+
+    private static ByteVector i32x4_relaxed_dot_i8x16_i7x16_add_s(ByteVector xBytes, ByteVector yBytes, ByteVector zBytes) {
+        ByteVector x = cast(xBytes);
+        ByteVector y = cast(yBytes);
+        IntVector z = cast(zBytes).reinterpretAsInts();
+        Vector<Short> xEvens = x.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> xOdds = x.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> yEvens = y.compress(evens(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> yOdds = y.compress(odds(byte.class)).convert(VectorOperators.B2S, 0);
+        Vector<Short> xMulYEvens = xEvens.mul(yEvens);
+        Vector<Short> xMulYOdds = xOdds.mul(yOdds);
+        Vector<Short> dot = xMulYEvens.lanewise(VectorOperators.SADD, xMulYOdds);
+        Vector<Integer> dotEvens = dot.compress(evens(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> dotOdds = dot.compress(odds(short.class)).convert(VectorOperators.S2I, 0);
+        Vector<Integer> dots = dotEvens.add(dotOdds);
+        Vector<Integer> result = dots.add(z);
+        return cast(result.reinterpretAsBytes());
+    }
+
+    private static int v128_any_true(ByteVector vec) {
+        return cast(vec).eq((byte) 0).allTrue() ? 0 : 1;
+    }
+
+    private static <E> int all_true(ByteVector vecBytes, Class<E> elementType) {
+        Vector<E> vec = in(vecBytes, elementType);
+        Vector<E> zero = VectorShape.S_128_BIT.withLanes(elementType).zero();
+        return vec.eq(zero).anyTrue() ? 0 : 1;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static <E> int bitmask(ByteVector vecBytes, Class<E> elementType) {
+        Vector<E> vec = in(vecBytes, elementType);
+        Vector<E> zero = VectorShape.S_128_BIT.withLanes(elementType).zero();
+        VectorMask<E> mask = vec.lt(zero);
+        int bitmask = 0;
+        for (int i = 0; i < mask.length(); i++) {
+            if (mask.laneIsSet(i)) {
+                bitmask |= 1 << i;
+            }
+        }
+        return bitmask;
+    }
+
+    private static <E> ByteVector shiftop(ByteVector xBytes, int shift, Class<E> elementType, VectorOperators.Binary shiftOp) {
+        Vector<E> x = in(xBytes, elementType);
+        Vector<E> result = x.lanewise(shiftOp, shift);
+        return out(result);
+    }
+
     // Checkstyle: resume method name check
+
+    private static final Class<? extends ByteVector> BYTE_128_CLASS = ByteVector.zero(ByteVector.SPECIES_128).getClass();
+
+    public static final ByteVector cast(ByteVector vec) {
+        return BYTE_128_CLASS.cast(vec);
+    }
+
+    private static <E> Vector<E> in(ByteVector vec, Class<E> elementType) {
+        return BYTE_128_CLASS.cast(vec).reinterpretShape(VectorShape.S_128_BIT.withLanes(elementType), 0);
+    }
+
+    private static <E> ByteVector out(Vector<E> vec) {
+        return BYTE_128_CLASS.cast(vec.reinterpretAsBytes());
+    }
+
+    private static <E> Vector<E> sat(Vector<E> vec, long min, long max) {
+        Vector<E> vMin = VectorShape.S_128_BIT.withLanes(vec.elementType()).broadcast(min);
+        Vector<E> vMax = VectorShape.S_128_BIT.withLanes(vec.elementType()).broadcast(max);
+        return vec.max(vMin).min(vMax);
+    }
 
     private static <E, F> Vector<F> truncSatU32(Vector<E> x, VectorOperators.Conversion<E, F> truncOp, long maxRepresentableInt) {
         VectorMask<F> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(VectorShape.S_128_BIT.withLanes(truncOp.rangeType()));
@@ -793,6 +660,20 @@ public class Vector128Ops {
         Vector<F> u32max = VectorShape.S_128_BIT.withLanes(truncOp.rangeType()).broadcast(0xffff_ffff);
         Vector<F> trunc = x.convert(truncOp, 0);
         return trunc.blend(u32max, overflow).blend(zero, underflow);
+    }
+
+    private static <E, F> ByteVector upcastOpDowncast(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
+                    BiFunction<Vector<F>, Vector<F>, Vector<F>> op) {
+        Vector<E> x = in(xBytes, upcast.domainType());
+        Vector<E> y = in(yBytes, upcast.domainType());
+        Vector<F> xLow = x.convert(upcast, 0);
+        Vector<F> xHigh = x.convert(upcast, 1);
+        Vector<F> yLow = y.convert(upcast, 0);
+        Vector<F> yHigh = y.convert(upcast, 1);
+        Vector<E> resultLow = op.apply(xLow, yLow).convert(downcast, 0);
+        Vector<E> resultHigh = op.apply(xHigh, yHigh).convert(downcast, -1);
+        Vector<E> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
+        return out(result);
     }
 
     private static final boolean[] ALTERNATING_BITS;
