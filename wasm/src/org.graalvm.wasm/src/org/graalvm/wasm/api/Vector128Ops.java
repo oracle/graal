@@ -163,18 +163,18 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I64X2_GT_S -> relop(x, y, long.class, VectorOperators.GT);
             case Bytecode.VECTOR_I64X2_LE_S -> relop(x, y, long.class, VectorOperators.LE);
             case Bytecode.VECTOR_I64X2_GE_S -> relop(x, y, long.class, VectorOperators.GE);
-            case Bytecode.VECTOR_F32X4_EQ -> relop(x, y, float.class, VectorOperators.EQ);
-            case Bytecode.VECTOR_F32X4_NE -> relop(x, y, float.class, VectorOperators.NE);
-            case Bytecode.VECTOR_F32X4_LT -> relop(x, y, float.class, VectorOperators.LT);
-            case Bytecode.VECTOR_F32X4_GT -> relop(x, y, float.class, VectorOperators.GT);
-            case Bytecode.VECTOR_F32X4_LE -> relop(x, y, float.class, VectorOperators.LE);
-            case Bytecode.VECTOR_F32X4_GE -> relop(x, y, float.class, VectorOperators.GE);
-            case Bytecode.VECTOR_F64X2_EQ -> relop(x, y, double.class, VectorOperators.EQ);
-            case Bytecode.VECTOR_F64X2_NE -> relop(x, y, double.class, VectorOperators.NE);
-            case Bytecode.VECTOR_F64X2_LT -> relop(x, y, double.class, VectorOperators.LT);
-            case Bytecode.VECTOR_F64X2_GT -> relop(x, y, double.class, VectorOperators.GT);
-            case Bytecode.VECTOR_F64X2_LE -> relop(x, y, double.class, VectorOperators.LE);
-            case Bytecode.VECTOR_F64X2_GE -> relop(x, y, double.class, VectorOperators.GE);
+            case Bytecode.VECTOR_F32X4_EQ -> f32x4_relop(x, y, VectorOperators.EQ);
+            case Bytecode.VECTOR_F32X4_NE -> f32x4_relop(x, y, VectorOperators.NE);
+            case Bytecode.VECTOR_F32X4_LT -> f32x4_relop(x, y, VectorOperators.LT);
+            case Bytecode.VECTOR_F32X4_GT -> f32x4_relop(x, y, VectorOperators.GT);
+            case Bytecode.VECTOR_F32X4_LE -> f32x4_relop(x, y, VectorOperators.LE);
+            case Bytecode.VECTOR_F32X4_GE -> f32x4_relop(x, y, VectorOperators.GE);
+            case Bytecode.VECTOR_F64X2_EQ -> f64x2_relop(x, y, VectorOperators.EQ);
+            case Bytecode.VECTOR_F64X2_NE -> f64x2_relop(x, y, VectorOperators.NE);
+            case Bytecode.VECTOR_F64X2_LT -> f64x2_relop(x, y, VectorOperators.LT);
+            case Bytecode.VECTOR_F64X2_GT -> f64x2_relop(x, y, VectorOperators.GT);
+            case Bytecode.VECTOR_F64X2_LE -> f64x2_relop(x, y, VectorOperators.LE);
+            case Bytecode.VECTOR_F64X2_GE -> f64x2_relop(x, y, VectorOperators.GE);
             case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> narrow(x, y, short.class, VectorOperators.S2B, Byte.MIN_VALUE, Byte.MAX_VALUE);
             case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> narrow(x, y, short.class, VectorOperators.S2B, 0, 0xff);
             case Bytecode.VECTOR_I8X16_ADD -> binop(x, y, byte.class, VectorOperators.ADD);
@@ -418,7 +418,11 @@ public class Vector128Ops {
 
     private static ByteVector i32x4_trunc_sat_f32x4(ByteVector xBytes) {
         FloatVector x = cast(xBytes).reinterpretAsFloats();
-        Vector<Integer> result = truncSatU32(x, VectorOperators.F2I, (long) (float) 0xffff_ffffL);
+        Vector<Double> xLow = x.convert(VectorOperators.F2D, 0);
+        Vector<Double> xHigh = x.convert(VectorOperators.F2D, 1);
+        Vector<Integer> resultLow = truncSatU32(xLow).convert(VectorOperators.L2I, 0);
+        Vector<Integer> resultHigh = truncSatU32(xHigh).convert(VectorOperators.L2I, -1);
+        Vector<Integer> result = resultLow.lanewise(VectorOperators.FIRST_NONZERO, resultHigh);
         return out(result);
     }
 
@@ -434,7 +438,7 @@ public class Vector128Ops {
 
     private static ByteVector i32x4_trunc_sat_f64x2_zero(ByteVector xBytes) {
         DoubleVector x = cast(xBytes).reinterpretAsDoubles();
-        Vector<Long> longResult = truncSatU32(x, VectorOperators.D2L, 0xffff_ffffL);
+        Vector<Long> longResult = truncSatU32(x);
         Vector<Integer> result = longResult.convert(VectorOperators.L2I, 0);
         return out(result);
     }
@@ -449,8 +453,8 @@ public class Vector128Ops {
     private static ByteVector i8x16_swizzle(ByteVector valueBytes, ByteVector indexBytes) {
         ByteVector values = cast(valueBytes);
         ByteVector indices = cast(indexBytes);
-        ByteVector safeIndices = indices.blend(ByteVector.zero(ByteVector.SPECIES_128), indices.lt((byte) 0).or(indices.lt((byte) BYTES).not()));
-        ByteVector result = values.rearrange(safeIndices.toShuffle());
+        VectorMask<Byte> safeIndices = indices.lt((byte) 0).or(indices.lt((byte) BYTES).not()).not();
+        ByteVector result = values.rearrange(indices.toShuffle(), safeIndices);
         return cast(result);
     }
 
@@ -468,6 +472,24 @@ public class Vector128Ops {
         return out(result);
     }
 
+    private static ByteVector f32x4_relop(ByteVector xBytes, ByteVector yBytes, VectorOperators.Comparison comp) {
+        FloatVector x = cast(xBytes).reinterpretAsFloats();
+        FloatVector y = cast(yBytes).reinterpretAsFloats();
+        IntVector zero = IntVector.zero(IntVector.SPECIES_128);
+        IntVector minusOne = IntVector.broadcast(IntVector.SPECIES_128, -1);
+        IntVector result = zero.blend(minusOne, x.compare(comp, y).cast(IntVector.SPECIES_128));
+        return out(result);
+    }
+
+    private static ByteVector f64x2_relop(ByteVector xBytes, ByteVector yBytes, VectorOperators.Comparison comp) {
+        DoubleVector x = cast(xBytes).reinterpretAsDoubles();
+        DoubleVector y = cast(yBytes).reinterpretAsDoubles();
+        LongVector zero = LongVector.zero(LongVector.SPECIES_128);
+        LongVector minusOne = LongVector.broadcast(LongVector.SPECIES_128, -1);
+        LongVector result = zero.blend(minusOne, x.compare(comp, y).cast(LongVector.SPECIES_128));
+        return out(result);
+    }
+
     private static <E, F> ByteVector narrow(ByteVector xBytes, ByteVector yBytes, Class<E> elementType, VectorOperators.Conversion<E, F> conv, long min, long max) {
         Vector<E> x = in(xBytes, elementType);
         Vector<E> y = in(yBytes, elementType);
@@ -481,7 +503,7 @@ public class Vector128Ops {
 
     private static <E, F> ByteVector binop_sat_u(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast, VectorOperators.Binary op,
                     long min, long max) {
-        return upcastOpDowncast(xBytes, yBytes, upcast, downcast, (x, y) -> {
+        return upcastBinopDowncast(xBytes, yBytes, upcast, downcast, (x, y) -> {
             Vector<F> rawResult = x.lanewise(op, y);
             Vector<F> satResult = sat(rawResult, min, max);
             return satResult;
@@ -491,11 +513,11 @@ public class Vector128Ops {
     private static <E, F> ByteVector avgr(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast) {
         Vector<F> one = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(1);
         Vector<F> two = VectorShape.S_128_BIT.withLanes(upcast.rangeType()).broadcast(2);
-        return upcastOpDowncast(xBytes, yBytes, upcast, downcast, (x, y) -> x.add(y).add(one).div(two));
+        return upcastBinopDowncast(xBytes, yBytes, upcast, downcast, (x, y) -> x.add(y).add(one).div(two));
     }
 
     private static ByteVector i16x8_q15mulr_sat_s(ByteVector xBytes, ByteVector yBytes) {
-        return upcastOpDowncast(xBytes, yBytes, VectorOperators.S2I, VectorOperators.I2S, (x, y) -> {
+        return upcastBinopDowncast(xBytes, yBytes, VectorOperators.S2I, VectorOperators.I2S, (x, y) -> {
             Vector<Integer> rawResult = x.mul(y).add(IntVector.broadcast(IntVector.SPECIES_128, 1 << 14)).lanewise(VectorOperators.ASHR, IntVector.broadcast(IntVector.SPECIES_128, 15));
             Vector<Integer> satResult = sat(rawResult, Short.MIN_VALUE, Short.MAX_VALUE);
             return satResult;
@@ -653,16 +675,16 @@ public class Vector128Ops {
         return vec.max(vMin).min(vMax);
     }
 
-    private static <E, F> Vector<F> truncSatU32(Vector<E> x, VectorOperators.Conversion<E, F> truncOp, long maxRepresentableInt) {
-        VectorMask<F> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(VectorShape.S_128_BIT.withLanes(truncOp.rangeType()));
-        VectorMask<F> overflow = x.compare(VectorOperators.GT, maxRepresentableInt).cast(VectorShape.S_128_BIT.withLanes(truncOp.rangeType()));
-        Vector<F> zero = VectorShape.S_128_BIT.withLanes(truncOp.rangeType()).zero();
-        Vector<F> u32max = VectorShape.S_128_BIT.withLanes(truncOp.rangeType()).broadcast(0xffff_ffff);
-        Vector<F> trunc = x.convert(truncOp, 0);
+    private static Vector<Long> truncSatU32(Vector<Double> x) {
+        VectorMask<Long> underflow = x.test(VectorOperators.IS_NAN).or(x.test(VectorOperators.IS_NEGATIVE)).cast(LongVector.SPECIES_128);
+        VectorMask<Long> overflow = x.compare(VectorOperators.GT, 0xffff_ffffL).cast(LongVector.SPECIES_128);
+        Vector<Long> zero = LongVector.SPECIES_128.zero();
+        Vector<Long> u32max = LongVector.SPECIES_128.broadcast(0xffff_ffffL);
+        Vector<Long> trunc = x.convert(VectorOperators.D2L, 0);
         return trunc.blend(u32max, overflow).blend(zero, underflow);
     }
 
-    private static <E, F> ByteVector upcastOpDowncast(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
+    private static <E, F> ByteVector upcastBinopDowncast(ByteVector xBytes, ByteVector yBytes, VectorOperators.Conversion<E, F> upcast, VectorOperators.Conversion<F, E> downcast,
                     BiFunction<Vector<F>, Vector<F>, Vector<F>> op) {
         Vector<E> x = in(xBytes, upcast.domainType());
         Vector<E> y = in(yBytes, upcast.domainType());
