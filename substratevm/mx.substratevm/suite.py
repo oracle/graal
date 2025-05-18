@@ -336,6 +336,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.common",
                 "com.oracle.svm.shaded.org.objectweb.asm",
+                "com.oracle.objectfile",
                 "SVM_CONFIGURE",
             ],
             "requires" : [
@@ -709,7 +710,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.objectfile",
                 "com.oracle.graal.reachability",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.shaded.org.capnproto",
@@ -1126,6 +1126,10 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                     "sun.security.jca",
+                ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
                 ],
             },
             "checkstyle": "com.oracle.svm.test",
@@ -1943,6 +1947,8 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
+                "com.oracle.objectfile.debugentry",
+                "com.oracle.objectfile.debugentry.range",
                 "com.oracle.objectfile.macho",
               ],
 
@@ -2073,6 +2079,7 @@ suite = {
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
+                            "file:debug/include",
                         ],
                     },
                 },
@@ -2081,6 +2088,7 @@ suite = {
                         # on all other os's we don't want libc specific subdirectories
                         "include/": [
                             "dependency:com.oracle.svm.native.libchelper/include/*",
+                            "file:debug/include/*",
                         ],
                         "<os>-<arch>/": [
                             "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",

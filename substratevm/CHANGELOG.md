@@ -19,6 +19,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-60209) New syntax for configuration of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md)
 * (GR-64584) Experimental option `-H:+RelativeCodePointers` to significantly reduce relocation entries in position-independent executables and shared libraries.
 * (GR-60238) JNI registration is now included as part of the `"reflection"` section of _reachability-metadata.json_ using the `"jniAccessible"` attribute. Registrations performed through the `"jni"` section of _reachability-metadata.json_ and through _jni-config.json_ will still be accepted and parsed correctly.
+* (GR-54697) Parallelize debug info generation and add support for run-time debug info generation. `-H:+RuntimeDebugInfo` adds a run-time debug info generator into a native image for use with GDB.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.
