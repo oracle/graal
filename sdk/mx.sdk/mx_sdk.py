@@ -417,4 +417,3 @@ def nativebridge_benchmark(args):
     finally:
         if not parsed_args.isolate_library and not parsed_args.target_folder:
             shutil.rmtree(target_dir)
-

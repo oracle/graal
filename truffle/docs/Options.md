@@ -283,6 +283,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TracePerformanceWarnings` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--engine.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--engine.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
+- `--engine.IsolateLauncher=<path>` : Path to the external isolate launcher.
 - `--engine.IsolateLibrary=<path>` : Path to the isolate library.
 ```
 <!-- END: internal-engine-options -->

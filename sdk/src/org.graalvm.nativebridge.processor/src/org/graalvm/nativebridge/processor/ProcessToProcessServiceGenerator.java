@@ -221,8 +221,7 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             generateSendReceive(builder, scopeVar, binaryOutputVar, binaryInputVar);
             builder.dedent();
             generateStartPointExceptionHandlers(builder, methodData, receiver, processIsolateVar, throwableMarshallerVar);
-            CharSequence resultVar = generateUnmarshallResult(builder, methodData, processIsolateVar, binaryInputVar, resFieldName, false);
-            assert resultVar == resFieldName;
+            generateUnmarshallResult(builder, methodData, processIsolateVar, binaryInputVar, resFieldName, false);
             builder.lineStart().write(cacheSnippets.writeCache(builder, cacheFieldName, receiver, resFieldName)).lineEnd(";");
             generateLeave(builder, scopeVar);
             builder.dedent();

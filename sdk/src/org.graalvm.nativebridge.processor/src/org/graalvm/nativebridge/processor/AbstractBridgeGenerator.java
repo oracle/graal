@@ -78,6 +78,10 @@ abstract class AbstractBridgeGenerator {
     void configureMultipleDefinitions(@SuppressWarnings("unused") List<DefinitionData> otherDefinitions) {
     }
 
+    @SuppressWarnings("unused")
+    void generateFields(CodeBuilder builder, CharSequence targetClassSimpleName) {
+    }
+
     abstract void generateAPI(CodeBuilder builder, CharSequence targetClassSimpleName);
 
     abstract void generateImpl(CodeBuilder builder, CharSequence targetClassSimpleName);

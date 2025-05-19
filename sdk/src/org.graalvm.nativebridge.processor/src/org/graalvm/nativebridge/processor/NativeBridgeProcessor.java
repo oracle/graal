@@ -157,6 +157,9 @@ public final class NativeBridgeProcessor extends AbstractProcessor {
             builder.classStart(EnumSet.of(Modifier.FINAL), targetClassSimpleName, null, Collections.emptyList());
             builder.indent();
             for (AbstractBridgeGenerator generator : generators) {
+                generator.generateFields(builder, targetClassSimpleName);
+            }
+            for (AbstractBridgeGenerator generator : generators) {
                 generator.generateAPI(builder, targetClassSimpleName);
             }
             if (hasCustomDispatch(firstGenerator)) {

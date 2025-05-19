@@ -42,6 +42,8 @@ package org.graalvm.nativebridge;
 
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.NativeBridgeSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordFactory;
 
 import java.util.ArrayList;
@@ -146,11 +148,15 @@ public abstract class Peer {
         } else if (isolate instanceof ProcessIsolate processIsolate) {
             return create(processIsolate, objectHandle);
         } else if (isolate instanceof HSIsolate hsIsolate) {
-            HSIsolateThread isolateThread = hsIsolate.enter();
-            try {
-                return new HSPeer(isolateThread.getJNIEnv(), hsIsolate, WordFactory.pointer(objectHandle));
-            } finally {
-                isolateThread.leave();
+            if (ImageSingletons.contains(NativeBridgeSupport.class)) {
+                HSIsolateThread isolateThread = hsIsolate.enter();
+                try {
+                    return new HSPeer(isolateThread.getJNIEnv(), hsIsolate, WordFactory.pointer(objectHandle));
+                } finally {
+                    isolateThread.leave();
+                }
+            } else {
+                throw new IllegalArgumentException("JNI support is not enabled.");
             }
         } else {
             throw new IllegalArgumentException("Unsupported isolate type " + isolate);

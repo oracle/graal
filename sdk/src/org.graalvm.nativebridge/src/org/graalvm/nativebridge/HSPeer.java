@@ -71,7 +71,7 @@ public final class HSPeer extends Peer {
 
     HSPeer(JNIEnv env, HSIsolate isolate, JObject handle) {
         this.isolate = Objects.requireNonNull(isolate, "Isolate must be non-null");
-        this.handle = NewGlobalRef(env, handle, HSPeer.class.getSimpleName());
+        this.handle = handle.isNonNull() ? NewGlobalRef(env, handle, HSPeer.class.getSimpleName()) : handle;
         this.cleaner = new CleanerImpl(this);
         this.cleaner.register();
     }
@@ -116,7 +116,9 @@ public final class HSPeer extends Peer {
 
         @Override
         protected void cleanUp(IsolateThread isolateThread) {
-            DeleteGlobalRef(((HSIsolateThread) isolateThread).getJNIEnv(), handle);
+            if (handle.isNonNull()) {
+                DeleteGlobalRef(((HSIsolateThread) isolateThread).getJNIEnv(), handle);
+            }
         }
     }
 }

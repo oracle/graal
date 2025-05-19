@@ -81,6 +81,8 @@ public final class NativeToHotSpotServiceParser extends AbstractNativeServicePar
 
     static final class TypeCache extends NativeTypeCache {
 
+        final DeclaredType alwaysIncluded;
+        final DeclaredType booleanSupplier;
         final DeclaredType currentIsolate;
         final DeclaredType jNIEntryPoint;
         final DeclaredType jNIExceptionHandler;
@@ -89,10 +91,13 @@ public final class NativeToHotSpotServiceParser extends AbstractNativeServicePar
         final DeclaredType jNIClassCache;
         final DeclaredType jNIMethod;
         final DeclaredType jValue;
+        final DeclaredType notIncludedAutomatically;
         final DeclaredType runtimeException;
 
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
+            this.alwaysIncluded = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint.AlwaysIncluded");
+            this.booleanSupplier = (DeclaredType) processor.getType("java.util.function.BooleanSupplier");
             this.currentIsolate = (DeclaredType) processor.getType("org.graalvm.nativeimage.CurrentIsolate");
             this.jNIEntryPoint = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIEntryPoint");
             this.jNIExceptionHandler = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler");
@@ -101,6 +106,7 @@ public final class NativeToHotSpotServiceParser extends AbstractNativeServicePar
             this.jNIClassCache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIClassCache");
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.JNICalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
+            this.notIncludedAutomatically = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
         }
     }

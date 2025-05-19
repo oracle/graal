@@ -59,6 +59,8 @@ import org.graalvm.nativebridge.processor.AbstractServiceParser.ServiceDefinitio
 import org.graalvm.nativebridge.processor.AbstractServiceParser.MethodData;
 import org.graalvm.nativebridge.processor.NativeToHotSpotServiceParser.TypeCache;
 
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -72,6 +74,8 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
     private static final String END_POINT_CLASS_FIELD = "endPointClass";
     private static final String START_POINT_SIMPLE_NAME = "NativeToHSStartPoint";
     private static final String REFERENCE_ISOLATE_ADDRESS_NAME = "referenceIsolateAddress";
+    private static final String INCLUDE_NATIVE_TO_HOTSPOT = "INCLUDE_NATIVE_TO_HOTSPOT";
+    private static final String INCLUDE_NATIVE_TO_NATIVE = "INCLUDE_NATIVE_TO_NATIVE";
 
     private final TypeCache typeCache;
     private final FactoryMethodInfo factoryMethod;
@@ -80,6 +84,32 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         super(parser, typeCache, definitionData, BinaryNameCache.create(definitionData, false, parser.types, parser.elements, typeCache));
         this.typeCache = typeCache;
         this.factoryMethod = resolveFactoryMethod(FACTORY_METHOD_NAME, START_POINT_SIMPLE_NAME, END_POINT_SIMPLE_NAME, definitionData.peerConstructorParams.get(0));
+    }
+
+    @Override
+    void generateFields(CodeBuilder builder, CharSequence targetClassSimpleName) {
+        DeclaredType hotSpotToNativePredicate = lookupIncludePredicate(typeCache.generateHSToNativeFactory);
+        DeclaredType nativeToNativePredicate = lookupIncludePredicate(typeCache.generateNativeToNativeFactory);
+        Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        if (needsIncludeField(hotSpotToNativePredicate)) {
+            builder.lineStart().writeModifiers(modifiers).space().write(typeCache.booleanSupplier).space().write(INCLUDE_NATIVE_TO_HOTSPOT).write(" = ").newInstance(hotSpotToNativePredicate).lineEnd(
+                            ";");
+        }
+        if (!types.isSameType(hotSpotToNativePredicate, nativeToNativePredicate) && needsIncludeField(nativeToNativePredicate)) {
+            builder.lineStart().writeModifiers(modifiers).space().write(typeCache.booleanSupplier).space().write(INCLUDE_NATIVE_TO_NATIVE).write(" = ").newInstance(nativeToNativePredicate).lineEnd(
+                            ";");
+        }
+    }
+
+    private DeclaredType lookupIncludePredicate(DeclaredType forFactoryAnnotation) {
+        Element factory = getDefinition().factory.asElement();
+        AbstractServiceParser parser = getParser();
+        AnnotationMirror mirror = parser.processor.getAnnotation(factory, forFactoryAnnotation);
+        return (DeclaredType) parser.getAnnotationValueWithDefaults(mirror, "include");
+    }
+
+    boolean needsIncludeField(DeclaredType predicate) {
+        return !types.isSameType(predicate, typeCache.alwaysIncluded) && !types.isSameType(predicate, typeCache.notIncludedAutomatically);
     }
 
     @Override
@@ -117,20 +147,63 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
 
     @Override
     void generateCommonFactoryReturn(CodeBuilder builder, List<CharSequence> parameters) {
+        DeclaredType hotSpotToNativePredicate = lookupIncludePredicate(typeCache.generateHSToNativeFactory);
+        DeclaredType nativeToNativePredicate = lookupIncludePredicate(typeCache.generateNativeToNativeFactory);
+        if (types.isSameType(hotSpotToNativePredicate, typeCache.alwaysIncluded) || types.isSameType(nativeToNativePredicate, typeCache.alwaysIncluded)) {
+            generateCreateStartPoint(builder, parameters);
+        } else if (types.isSameType(hotSpotToNativePredicate, typeCache.notIncludedAutomatically) && types.isSameType(nativeToNativePredicate, typeCache.notIncludedAutomatically)) {
+            generateThrowException(builder, parameters);
+        } else {
+            CodeBuilder hotSpotToNativeIncluded = needsIncludeField(hotSpotToNativePredicate) ? new CodeBuilder(builder).invoke(INCLUDE_NATIVE_TO_HOTSPOT, "getAsBoolean") : null;
+            CodeBuilder nativeToNativeIncluded = !types.isSameType(hotSpotToNativePredicate, nativeToNativePredicate) && needsIncludeField(nativeToNativePredicate)
+                            ? new CodeBuilder(builder).invoke(INCLUDE_NATIVE_TO_NATIVE, "getAsBoolean")
+                            : null;
+            builder.lineStart("if (");
+            if (hotSpotToNativeIncluded != null) {
+                builder.write(hotSpotToNativeIncluded.build());
+                if (nativeToNativeIncluded != null) {
+                    builder.write(" || ");
+                }
+            }
+            if (nativeToNativeIncluded != null) {
+                builder.write(nativeToNativeIncluded.build());
+            }
+            builder.lineEnd(") {");
+            builder.indent();
+            generateCreateStartPoint(builder, parameters);
+            builder.dedent();
+            builder.line("} else {");
+            builder.indent();
+            generateThrowException(builder, parameters);
+            builder.dedent();
+            builder.line("}");
+        }
+    }
+
+    private void generateCreateStartPoint(CodeBuilder builder, List<CharSequence> parameters) {
         CharSequence hsPeerVar = parameters.getLast();
         CharSequence hsIsolateThreadVar = "isolateThread";
         CodeBuilder hsIsolate = new CodeBuilder(builder).invoke(hsPeerVar, "getIsolate");
         builder.lineStart().write(typeCache.hsIsolateThread).space().write(hsIsolateThreadVar).write(" = ").invoke(hsIsolate.build(), "enter").lineEnd(";");
         builder.line("try {");
         builder.indent();
-        parameters.add(new CodeBuilder(builder).invoke(hsIsolateThreadVar, "getJNIEnv").build());
-        builder.lineStart("return ").invoke(null, AbstractBridgeGenerator.FACTORY_METHOD_NAME, parameters.toArray(new CharSequence[0])).lineEnd(";");
+        CharSequence[] constructorParameters = new CharSequence[parameters.size() + 1];
+        parameters.toArray(constructorParameters);
+        constructorParameters[constructorParameters.length - 1] = new CodeBuilder(builder).invoke(hsIsolateThreadVar, "getJNIEnv").build();
+        builder.lineStart("return ").invoke(null, AbstractBridgeGenerator.FACTORY_METHOD_NAME, constructorParameters).lineEnd(";");
         builder.dedent();
         builder.line("} finally {");
         builder.indent();
         builder.lineStart().invoke(hsIsolateThreadVar, "leave").lineEnd(";");
         builder.dedent();
         builder.line("}");
+    }
+
+    private void generateThrowException(CodeBuilder builder, List<CharSequence> parameters) {
+        CharSequence hsPeerVar = parameters.getLast();
+        CharSequence message = new CodeBuilder(builder).invokeStatic(typeCache.string, "format",
+                        "\"Invalid peer: `%s`, native to hotspot start points are disabled by the factory include attribute.\"", hsPeerVar).build();
+        builder.lineStart("throw ").newInstance(typeCache.illegalArgumentException, message).lineEnd(";");
     }
 
     @Override
