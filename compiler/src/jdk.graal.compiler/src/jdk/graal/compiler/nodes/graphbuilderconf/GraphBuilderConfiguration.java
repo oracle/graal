@@ -42,6 +42,7 @@ public final class GraphBuilderConfiguration {
         private TypePlugin[] typePlugins;
         private InlineInvokePlugin[] inlineInvokePlugins;
         private ClassInitializationPlugin classInitializationPlugin;
+        private MethodParsingPlugin[] methodPlugins;
 
         /**
          * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
@@ -55,6 +56,7 @@ public final class GraphBuilderConfiguration {
             this.typePlugins = copyFrom.typePlugins;
             this.inlineInvokePlugins = copyFrom.inlineInvokePlugins;
             this.classInitializationPlugin = copyFrom.classInitializationPlugin;
+            this.methodPlugins = copyFrom.methodPlugins;
         }
 
         public Plugins(Plugins copyFrom) {
@@ -73,6 +75,7 @@ public final class GraphBuilderConfiguration {
             this.parameterPlugins = new ParameterPlugin[0];
             this.typePlugins = new TypePlugin[0];
             this.inlineInvokePlugins = new InlineInvokePlugin[0];
+            this.methodPlugins = new MethodParsingPlugin[0];
         }
 
         public InvocationPlugins getInvocationPlugins() {
@@ -156,6 +159,22 @@ public final class GraphBuilderConfiguration {
                 }
             }
             return null;
+        }
+
+        public void appendMethodParsingPlugin(MethodParsingPlugin plugin) {
+            methodPlugins = Arrays.copyOf(methodPlugins, methodPlugins.length + 1);
+            methodPlugins[methodPlugins.length - 1] = plugin;
+        }
+
+        public void prependMethodParsingPlugin(MethodParsingPlugin plugin) {
+            MethodParsingPlugin[] newPlugins = new MethodParsingPlugin[methodPlugins.length + 1];
+            System.arraycopy(methodPlugins, 0, newPlugins, 1, methodPlugins.length);
+            newPlugins[0] = plugin;
+            methodPlugins = newPlugins;
+        }
+
+        public MethodParsingPlugin[] getMethodParsingPlugins() {
+            return methodPlugins;
         }
     }
 
