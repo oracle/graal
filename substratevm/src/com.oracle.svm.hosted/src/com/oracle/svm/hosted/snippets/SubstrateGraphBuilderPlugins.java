@@ -36,8 +36,13 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.strictconstantanalysis.InferredDynamicAccessLoggingFeature;
+import com.oracle.svm.hosted.strictconstantanalysis.StrictConstantAnalysisFeature;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -248,12 +253,25 @@ public class SubstrateGraphBuilderPlugins {
 
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
-                    String pattern = asConstantObject(b, String.class, patternNode);
-                    if (pattern != null) {
+                    Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                        String pattern = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
+                        if (pattern == null) {
+                            return false;
+                        }
                         b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
+                        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, null, new Object[]{pattern});
                         return true;
-                    }
-                    return false;
+                    };
+                    BooleanSupplier graphModeRoutine = () -> {
+                        String pattern = asConstantObject(b, String.class, patternNode);
+                        if (pattern == null) {
+                            return false;
+                        }
+                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
+                        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, null, new Object[]{pattern});
+                        return true;
+                    };
+                    return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
                 }
             });
 
@@ -267,12 +285,15 @@ public class SubstrateGraphBuilderPlugins {
 
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode) {
-                        Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
-                        if (clazz != null) {
-                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
-                            return true;
-                        }
-                        return false;
+                        Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                            Class<?> clazz = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, Class.class);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz);
+                        };
+                        BooleanSupplier graphModeRoutine = () -> {
+                            Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz);
+                        };
+                        return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
                     }
                 });
 
@@ -284,17 +305,45 @@ public class SubstrateGraphBuilderPlugins {
 
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode constructorNode) {
-                        var clazz = asConstantObject(b, Class.class, clazzNode);
-                        var constructor = asConstantObject(b, Constructor.class, constructorNode);
-                        if (clazz != null && constructor != null) {
-                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
-                            return true;
-                        }
-                        return false;
+                        Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                            Class<?> clazz = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, Class.class);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz);
+                        };
+                        BooleanSupplier graphModeRoutine = () -> {
+                            Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
+                            Constructor<?> constructor = asConstantObject(b, Constructor.class, constructorNode);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz, constructor);
+                        };
+                        return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
                     }
                 });
             }
         }
+    }
+
+    private static boolean tryToRegisterForSerialization(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz) {
+        if (clazz == null) {
+            return false;
+        }
+        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
+        /*
+         * Create arguments for logging based on which version of newConstructorForSerialization was
+         * called.
+         */
+        Object[] arguments = targetMethod.getParameters().length == 2
+                        ? new Object[]{clazz, InferredDynamicAccessLoggingFeature.ignoredArgument()}
+                        : new Object[]{clazz};
+        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, InferredDynamicAccessLoggingFeature.ignoredArgument(), arguments);
+        return true;
+    }
+
+    private static boolean tryToRegisterForSerialization(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz, Constructor<?> constructor) {
+        if (clazz == null || constructor == null) {
+            return false;
+        }
+        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
+        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, InferredDynamicAccessLoggingFeature.ignoredArgument(), new Object[]{clazz, constructor});
+        return true;
     }
 
     public static <T> T asConstantObject(GraphBuilderContext b, Class<T> type, ValueNode node) {
@@ -467,51 +516,64 @@ public class SubstrateGraphBuilderPlugins {
 
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                Runnable proxyRegistrationRunnable = interceptProxyInterfaces(b, targetMethod, annotationSubstitutions, args[1]);
-                if (proxyRegistrationRunnable != null) {
-                    Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
-                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass);
-                    if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
-                        b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
-                        return true;
-                    }
-
-                    proxyRegistrationRunnable.run();
-                    return false;
-                }
-                return false;
+                Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                    Class<?>[] interfaces = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 1, Class[].class);
+                    return registerProxyCreation(b, targetMethod, reason, interfaces);
+                };
+                BooleanSupplier graphModeRoutine = () -> {
+                    Class<?>[] interfaces = extractClassArray(b, annotationSubstitutions, args[1]);
+                    return registerProxyCreation(b, targetMethod, reason, interfaces);
+                };
+                return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
             }
         });
     }
 
-    /**
-     * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
-     * in the {@link DynamicProxyRegistry}.
-     */
-    private static Runnable interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
-        Class<?>[] interfaces = extractClassArray(b, annotationSubstitutions, interfacesNode);
-        if (interfaces != null) {
-            var caller = b.getGraph().method();
-            var method = b.getMethod();
-            var bci = b.bci();
+    private static boolean registerProxyCreation(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ParsingReason reason, Class<?>[] interfaces) {
+        if (interfaces == null) {
+            if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
+                System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
+            }
+            return false;
+        }
+        Runnable proxyRegistrationRunnable = interceptProxyInterfaces(b, targetMethod, interfaces);
+        Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
+        boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass);
+        if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+            b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
+            Object ignoredArgument = InferredDynamicAccessLoggingFeature.ignoredArgument();
+            Object[] logArguments = targetMethod.getParameters().length == 3
+                            ? new Object[]{ignoredArgument, interfaces, ignoredArgument}
+                            : new Object[]{ignoredArgument, interfaces};
+            InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, null, logArguments);
+            return true;
+        }
 
-            return () -> {
-                /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-                RuntimeProxyCreation.register(interfaces);
-                if (ImageSingletons.contains(FallbackFeature.class)) {
-                    ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(method, bci);
-                }
-                if (Options.DynamicProxyTracing.getValue()) {
-                    System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                                    " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
-                }
-            };
-        }
-        if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
-            System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                            " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
-        }
-        return null;
+        proxyRegistrationRunnable.run();
+        return false;
+    }
+
+    /**
+     * Intercept proxy interfaces passed in as literal constants, and register the interfaces in the
+     * {@link DynamicProxyRegistry}.
+     */
+    private static Runnable interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Class<?>[] interfaces) {
+        var caller = b.getGraph().method();
+        var method = b.getMethod();
+        var bci = b.bci();
+
+        return () -> {
+            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+            RuntimeProxyCreation.register(interfaces);
+            if (ImageSingletons.contains(FallbackFeature.class)) {
+                ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(method, bci);
+            }
+            if (Options.DynamicProxyTracing.getValue()) {
+                System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                                " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
+            }
+        };
     }
 
     /**
@@ -686,6 +748,8 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
                 successor = ((AbstractBeginNode) successor).next();
+            } else if (successor instanceof ReachabilityRegistrationNode) {
+                successor = ((ReachabilityRegistrationNode) successor).next();
             } else {
                 return successor;
             }
