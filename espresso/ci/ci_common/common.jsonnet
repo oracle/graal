@@ -178,14 +178,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   _mx(env, args): ['mx', '--env', env] + args,
 
   build_espresso(env, debug=false, extra_mx_args=[], default_env_traget=true, extra_targets=[], extra_dynamic_imports=[]): {
-    local targets = (if default_env_traget then (
-        if std.startsWith(env, 'jvm') then ['ESPRESSO_JVM_STANDALONE'] else ['ESPRESSO_NATIVE_STANDALONE']
-    ) else []) + extra_targets,
+    local standalone = if std.startsWith(env, 'jvm') then 'ESPRESSO_JVM_STANDALONE' else 'ESPRESSO_NATIVE_STANDALONE',
+    local targets = (if default_env_traget then [standalone] else []) + extra_targets,
     local targets_args = if std.length(targets) > 0 then ['--targets=' + std.join(',', targets)] else [],
     local extra_dynamic_imports_args = if std.length(extra_dynamic_imports) > 0 then ['--dynamicimports', std.join(',', extra_dynamic_imports)] else [],
     run+: [
       ['mx'] + extra_dynamic_imports_args + ['sversions'],
       that._mx(env, (if debug then ['--debug-images'] else []) + extra_mx_args + extra_dynamic_imports_args + ['build'] + targets_args),
+      ['set-export', 'ESPRESSO_HOME', that._mx(env, ['--quiet', '--no-warning'] + extra_mx_args + extra_dynamic_imports_args + ['path', '--output', standalone])],
     ],
   },
 
