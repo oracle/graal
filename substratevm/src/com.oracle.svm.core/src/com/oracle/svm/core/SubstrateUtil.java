@@ -520,4 +520,18 @@ public class SubstrateUtil {
             return defaultClass;
         }
     }
+
+    /** Sanitizes a name to be used in a file name. Special characters are replaced with '_'. */
+    public static String sanitizeForFileName(String name) {
+        StringBuilder buf = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || (c >= '0' && c <= '9')) {
+                buf.append(c);
+            } else {
+                buf.append('_');
+            }
+        }
+        return buf.toString();
+    }
 }
