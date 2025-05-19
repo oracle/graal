@@ -218,4 +218,8 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
             return wrapped.getStaticArguments().stream().map(WrappedConstantPool.this::lookupConstant).collect(Collectors.toList());
         }
     }
+
+    public ConstantPool getWrapped() {
+        return wrapped;
+    }
 }
