@@ -30,16 +30,14 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * Substitution to initialize {@link #catalog} at build time.
+ * Substitution to initialize {@link #JDKCATALOG} at build time.
  *
  * JDK-8306055 introduced a built-in Catalog to JDK XML module in JDK 22. Without special treatment,
  * the initialization code would pull intermediate types (e.g. {@code CatalogReader}) into the image
- * heap. To avoid this, we initialize the catalog at build time and substitute the {@link #init}
- * method to be empty.
+ * heap. To avoid this, we initialize the catalog at build time.
  *
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
