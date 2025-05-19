@@ -125,7 +125,29 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         this.loader = loader;
     }
 
-    public void setConfigurationSealed(boolean sealed) {
+    /**
+     * Seal the configuration, blocking if another thread is trying to seal the configuration or an
+     * unsealed-configuration window is currently open in another thread.
+     */
+    public synchronized void sealConfiguration() {
+        setConfigurationSealed(true);
+    }
+
+    /**
+     * Run the action in an unsealed-configuration window, blocking if another thread is trying to
+     * seal the configuration or an unsealed-configuration window is currently open in another
+     * thread. The window is reentrant, i.e., it will not block the thread that opened the window
+     * from trying to reenter the window. Note that if the configuration was not sealed when the
+     * window was opened this will not affect the seal status.
+     */
+    public synchronized void withUnsealedConfiguration(Runnable action) {
+        var previouslySealed = configurationSealed;
+        setConfigurationSealed(false);
+        action.run();
+        setConfigurationSealed(previouslySealed);
+    }
+
+    private void setConfigurationSealed(boolean sealed) {
         configurationSealed = sealed;
         if (configurationSealed && ClassInitializationOptions.PrintClassInitialization.getValue()) {
             List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
