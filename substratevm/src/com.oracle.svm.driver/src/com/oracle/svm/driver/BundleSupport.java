@@ -450,6 +450,11 @@ final class BundleSupport {
             return rootDir.resolve(previousRelativeSubstitutedPath);
         }
 
+        if (!this.writeBundle && destinationDir != auxiliaryOutputDir) {
+            /* If this is bundle-apply only, no new substitutions needed for input paths. */
+            return origPath;
+        }
+
         if (origPath.startsWith(nativeImage.config.getJavaHome())) {
             /* If origPath comes from native-image itself, substituting is not needed. */
             return origPath;
