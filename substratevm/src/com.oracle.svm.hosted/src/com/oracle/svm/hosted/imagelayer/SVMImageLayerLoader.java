@@ -69,6 +69,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -166,6 +167,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private HostedUniverse hostedUniverse;
 
+    /** Maps from the previous layer element id to the linked elements in this layer. */
     protected final Map<Integer, AnalysisType> types = new ConcurrentHashMap<>();
     protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
     protected final Map<Integer, AnalysisField> fields = new ConcurrentHashMap<>();
@@ -679,6 +681,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             /* The type was not reachable in the base image */
             return -1;
         }
+        initializeBaseLayerTypeBeforePublishing(type, typeData);
         int id = typeData.getId();
         int hubIdentityHashCode = typeData.getHubIdentityHashCode();
         typeToHubIdentityHashCode.put(id, hubIdentityHashCode);
@@ -696,6 +699,39 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return findType(typeId);
     }
 
+    /**
+     * This method is invoked *before* the {@link AnalysisType} is published in the
+     * {@link AnalysisUniverse}. The side effects of this method are visible to other threads that
+     * are consuming the {@link AnalysisType} object.
+     */
+    @SuppressWarnings("try")
+    private void initializeBaseLayerTypeBeforePublishing(AnalysisType type, PersistedAnalysisType.Reader typeData) {
+        assert !(type.getWrapped() instanceof BaseLayerType);
+        /*
+         * For types reachable in this layer register the *computed* initialization kind extracted
+         * from the previous layer. This will cause base layer types to have a *strict*
+         * initialization kind in this layer which will prevent further changes to the
+         * initialization kind, even in ways that would otherwise be considered compatible, e.g.,
+         * RUN_TIME -> BUILD_TIME. Similarly, if a different initialization kind was already
+         * registered in this layer registration will fail.
+         * 
+         * Note that this is done after the app-layer class initialization specification is applied,
+         * so we don't have to traverse all types. Moreover, for package-level specification this
+         * should also be OK, because package-level specification is only a suggestion and the
+         * base-layer will always win as it is going over user classes.
+         */
+        Class<?> clazz = OriginalClassProvider.getJavaClass(type);
+        if (typeData.getIsInitialized()) {
+            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtBuildTime(clazz, "computed in a previous layer"));
+        } else {
+            classInitializationSupport.withUnsealedConfiguration(() -> classInitializationSupport.initializeAtRunTime(clazz, "computed in a previous layer"));
+        }
+    }
+
+    /**
+     * This method is invoked *after* the {@link AnalysisType} is published in the
+     * {@link AnalysisUniverse} and it may execute concurrently with other threads using the type.
+     */
     @Override
     public void initializeBaseLayerType(AnalysisType type) {
         int id = getBaseLayerTypeId(type);
@@ -1304,6 +1340,19 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             throw GraalError.shouldNotReachHere("The constant was not reachable in the base image");
         }
 
+        /*
+         * Important: If this is a constant originating from a static final field ensure that the
+         * field declaring type is initialized before the field type is accessed below. This is to
+         * avoid issue with class initialization execution order in class initialization cycles.
+         */
+        if (baseLayerConstant.isObject() && !baseLayerConstant.getIsSimulated()) {
+            Relinking.Reader relinking = baseLayerConstant.getObject().getRelinking();
+            if (relinking.isFieldConstant()) {
+                AnalysisField analysisField = getAnalysisFieldForBaseLayerId(relinking.getFieldConstant().getOriginFieldId());
+                VMError.guarantee(analysisField.getDeclaringClass().isInitialized());
+            }
+        }
+
         AnalysisType type = getAnalysisTypeForBaseLayerId(baseLayerConstant.getTypeId());
 
         long objectOffset = baseLayerConstant.getObjectOffset();
@@ -1581,31 +1630,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         } else if (relinking.isFieldConstant()) {
             var fieldConstant = relinking.getFieldConstant();
             AnalysisField analysisField = getAnalysisFieldForBaseLayerId(fieldConstant.getOriginFieldId());
-            if (!(analysisField.getWrapped() instanceof BaseLayerField) && !AnnotationAccess.isAnnotationPresent(analysisField, Delete.class)) {
-                VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Should not alter the initialization status for simulated constants.");
+            if (shouldRelinkField(analysisField)) {
+                VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Cannot relink simulated constants.");
                 /*
                  * The declaring type of relinked fields was already initialized in the previous
                  * layer (see SVMImageLayerWriter#shouldRelinkField).
                  */
-                if (fieldConstant.getRequiresLateLoading()) {
-                    /*
-                     * Fields with a field value transformer are relinked later, after all possible
-                     * transformers have been registered. *Guarantee* that the declaring type has
-                     * been initialized by now. Note that reading the field below will prevent a
-                     * transformer to be installed at a later time.
-                     */
-                    VMError.guarantee(analysisField.getDeclaringClass().isInitialized());
-                } else {
-                    /*
-                     * All other fields are relinked earlier, before the constant is needed. *Force*
-                     * the build time initialization of the declaring type before reading the field
-                     * value.
-                     */
-                    Class<?> fieldDeclaringClass = analysisField.getDeclaringClass().getJavaClass();
-                    classInitializationSupport.initializeAtBuildTime(fieldDeclaringClass, "Already initialized in base layer.");
-                }
+                VMError.guarantee(analysisField.getDeclaringClass().isInitialized());
                 /* Read fields through the hostedValueProvider and apply object replacement. */
-                return hostedValuesProvider.readFieldValueWithReplacement(analysisField, null);
+                JavaConstant javaConstant = hostedValuesProvider.readFieldValueWithReplacement(analysisField, null);
+                VMError.guarantee(javaConstant.isNonNull(), "Found NULL_CONSTANT when reading the hosted value of relinked field %s. " +
+                                "Since relinked fields should have a concrete non-null value there may be a class initialization mismatch.", analysisField);
+                return javaConstant;
             }
         } else if (clazz.equals(Class.class)) {
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
@@ -1628,6 +1664,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return hostedValuesProvider.forObject(enumValue);
         }
         return null;
+    }
+
+    private static boolean shouldRelinkField(AnalysisField field) {
+        VMError.guarantee(field.isInBaseLayer());
+        return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationAccess.isAnnotationPresent(field, Delete.class);
     }
 
     @SuppressWarnings("unchecked")

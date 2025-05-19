@@ -1,3 +1,7 @@
+# Schema file for the layer snapshot.
+# After modifying this file regenerate the schema SharedLayerSnapshotCapnProtoSchemaHolder.java file with:
+# mx capnp-compile
+
 @0x9eb32e19f86ee174;
 using Java = import "/capnp/java.capnp";
 $Java.package("com.oracle.svm.hosted.imagelayer");
@@ -21,6 +25,7 @@ struct PersistedAnalysisType {
   # Most of these fields apply only to instances and could be in a union or a separate structure:
   isInterface @7 :Bool;
   isEnum @8 :Bool;
+  # True if the type's initialization status was computed as BUILD_TIME. Build-time initialized types are not simulated.
   isInitialized @9 :Bool;
   isLinked @10 :Bool;
   sourceFileName @11 :Text;

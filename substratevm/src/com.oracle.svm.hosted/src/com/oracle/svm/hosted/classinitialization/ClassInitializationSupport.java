@@ -409,19 +409,22 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
 
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason, true);
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
-        if (ImageLayerBuildingSupport.buildingApplicationLayer() && initKind == InitKind.RUN_TIME) {
-            /*
-             * Special case for application layer building. If a base layer class was configured
-             * with --initialize-at-build-time but its initialization failed, then the computed init
-             * kind will be RUN_TIME, different from its configured init kind of BUILD_TIME. In the
-             * app layer the computed init kind from the previous layer is registered as the
-             * configured init kind, but if the --initialize-at-build-time was already processed for
-             * the class then it will already have a conflicting configured init kind of BUILD_TIME.
-             * Update the configuration registry to allow the RUN_TIME registration coming from the
-             * base layer. (GR-65405)
-             */
+        if (initKind == InitKind.RUN_TIME) {
             assert allowInitializationErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz);
-            classInitializationConfiguration.updateStrict(clazz.getTypeName(), InitKind.BUILD_TIME, InitKind.RUN_TIME, "Build time initialization failed.");
+            if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+                /*
+                 * Special case for application layer building. If a base layer class was configured
+                 * with --initialize-at-build-time but its initialization failed, then the computed
+                 * init kind will be RUN_TIME, different from its configured init kind of
+                 * BUILD_TIME. In the app layer the computed init kind from the previous layer is
+                 * registered as the configured init kind, but if the --initialize-at-build-time was
+                 * already processed for the class then it will already have a conflicting
+                 * configured init kind of BUILD_TIME. Update the configuration registry to allow
+                 * the RUN_TIME registration coming from the base layer. (GR-65405)
+                 */
+                classInitializationConfiguration.updateStrict(clazz.getTypeName(), InitKind.BUILD_TIME, InitKind.RUN_TIME,
+                                "Allow the registration of the computed run time initialization kind from a previous layer for classes whose build time initialization fails.");
+            }
         }
         classInitKinds.put(clazz, initKind);
 

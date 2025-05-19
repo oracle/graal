@@ -363,10 +363,12 @@ public abstract class ImageHeapScanner {
 
     public void registerBaseLayerValue(ImageHeapConstant constant, Object reason) {
         JavaConstant hostedValue = constant.getHostedObject();
+        AnalysisError.guarantee(hostedValue.isNonNull(), "A relinked constant cannot have a NULL_CONSTANT hosted value.");
         Object existingSnapshot = imageHeap.getSnapshot(hostedValue);
         if (existingSnapshot != null) {
             AnalysisError.guarantee(existingSnapshot == constant || existingSnapshot instanceof AnalysisFuture<?> task && task.ensureDone() == constant,
-                            "Found unexpected snapshot value for base layer value. Reason: %s.", reason);
+                            "Found unexpected snapshot value for base layer value.%nExisting value: %s.%nNew value: %s.%nHosted value: %s.%nReason: %s.",
+                            existingSnapshot, constant, hostedValue, reason);
         } else {
             imageHeap.setValue(hostedValue, constant);
         }
