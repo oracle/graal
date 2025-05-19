@@ -269,6 +269,7 @@ import java.util.List;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.nodes.graphbuilderconf.MethodParsingPlugin;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.word.LocationIdentity;
@@ -1099,6 +1100,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 assert getParent() != null || method.equals(graph.method());
                 // Record method dependency in the graph
                 graph.recordMethod(method);
+            }
+
+            for (MethodParsingPlugin plugin : graphBuilderConfig.getPlugins().getMethodParsingPlugins()) {
+                plugin.execute(method, intrinsicContext);
             }
 
             // compute the block map, setup exception handlers and get the entrypoint(s)
