@@ -73,6 +73,9 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
+import jdk.graal.compiler.vector.lir.amd64.AMD64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.lir.hotspot.amd64.AMD64HotSpotVectorLIRGenerator;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -102,12 +105,20 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new AMD64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
+        if (((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
+            return new AMD64HotSpotVectorLIRGenerator(getProviders(), config, lirGenRes);
+        } else {
+            return new AMD64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
+        }
     }
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64NodeMatchRules(lirGen));
+        if (lirGen.getArithmetic() instanceof VectorLIRGeneratorTool) {
+            return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64VectorNodeMatchRules(lirGen));
+        } else {
+            return new AMD64HotSpotNodeLIRBuilder(graph, lirGen, new AMD64NodeMatchRules(lirGen));
+        }
     }
 
     @Override
