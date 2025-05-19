@@ -25,7 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
-import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
@@ -1121,11 +1121,11 @@ public class SubstrateOptions {
 
         /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
         @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, IsolateCreationOnly);
+        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new RuntimeOptionKey<>(true, RegisterForIsolateArgumentParser);
 
         /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
         @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
-        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, IsolateCreationOnly);
+        public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, RegisterForIsolateArgumentParser);
 
         /** Use {@link SubstrateOptions#maxJavaStackTraceDepth()} instead. */
         @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
@@ -1147,7 +1147,7 @@ public class SubstrateOptions {
         protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
-        public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
+        public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
         /** Use {@link SubstrateOptions#getAllocatePrefetchStyle()} instead. */
         @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
@@ -1176,7 +1176,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
-    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, IsolateCreationOnly, RelevantForCompilationIsolates);
+    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, RegisterForIsolateArgumentParser, RelevantForCompilationIsolates);
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);

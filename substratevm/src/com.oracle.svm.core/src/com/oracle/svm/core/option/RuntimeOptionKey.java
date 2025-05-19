@@ -112,11 +112,16 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
     }
 
     public boolean isImmutable() {
-        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.Immutable) || EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.IsolateCreationOnly);
+        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.Immutable) || EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.IsolateCreationOnly) ||
+                        EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser);
     }
 
     public boolean isIsolateCreationOnly() {
-        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.IsolateCreationOnly);
+        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.IsolateCreationOnly) || EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser);
+    }
+
+    public boolean shouldRegisterForIsolateArgumentParser() {
+        return EnumBitmask.hasBit(flags, RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser);
     }
 
     @Fold
@@ -137,10 +142,17 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
         /**
          * If this flag is set, then the option is parsed during isolate creation and its value can
          * typically only be set during isolate creation. This implies {@link #Immutable}.
+         */
+        IsolateCreationOnly,
+        /**
+         * If this flag is set, then the option is always included in the image. The option is also
+         * registered for being parsed by {@link IsolateArgumentParser} and its value can typically
+         * only be set during isolate creation. This implies {@link #Immutable} and
+         * {@link #IsolateCreationOnly}.
          * <p>
          * See {@link IsolateArgumentParser#verifyOptionValues()} for the validation that these
          * options are not changed after isolate creation and potential exceptions to the rule.
          */
-        IsolateCreationOnly
+        RegisterForIsolateArgumentParser,
     }
 }
