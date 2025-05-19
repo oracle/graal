@@ -36,8 +36,13 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.strictconstantanalysis.InferredDynamicAccessLoggingFeature;
+import com.oracle.svm.hosted.strictconstantanalysis.StrictConstantAnalysisFeature;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -248,12 +253,25 @@ public class SubstrateGraphBuilderPlugins {
 
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
-                    String pattern = asConstantObject(b, String.class, patternNode);
-                    if (pattern != null) {
+                    Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                        String pattern = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, String.class);
+                        if (pattern == null) {
+                            return false;
+                        }
                         b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
+                        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, null, new Object[]{pattern});
                         return true;
-                    }
-                    return false;
+                    };
+                    BooleanSupplier graphModeRoutine = () -> {
+                        String pattern = asConstantObject(b, String.class, patternNode);
+                        if (pattern == null) {
+                            return false;
+                        }
+                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
+                        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, null, new Object[]{pattern});
+                        return true;
+                    };
+                    return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
                 }
             });
 
@@ -267,12 +285,15 @@ public class SubstrateGraphBuilderPlugins {
 
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode) {
-                        Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
-                        if (clazz != null) {
-                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
-                            return true;
-                        }
-                        return false;
+                        Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                            Class<?> clazz = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, Class.class);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz);
+                        };
+                        BooleanSupplier graphModeRoutine = () -> {
+                            Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz);
+                        };
+                        return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
                     }
                 });
 
@@ -284,17 +305,39 @@ public class SubstrateGraphBuilderPlugins {
 
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode constructorNode) {
-                        var clazz = asConstantObject(b, Class.class, clazzNode);
-                        var constructor = asConstantObject(b, Constructor.class, constructorNode);
-                        if (clazz != null && constructor != null) {
-                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
-                            return true;
-                        }
-                        return false;
+                        Predicate<ConstantExpressionRegistry> strictModeRoutine = (registry) -> {
+                            Class<?> clazz = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 0, Class.class);
+                            Constructor<?> constructor = registry.getArgument(b.getMethod(), b.bci(), targetMethod, 1, Constructor.class);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz, constructor);
+                        };
+                        BooleanSupplier graphModeRoutine = () -> {
+                            Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
+                            Constructor<?> constructor = asConstantObject(b, Constructor.class, constructorNode);
+                            return tryToRegisterForSerialization(b, reason, targetMethod, clazz, constructor);
+                        };
+                        return StrictConstantAnalysisFeature.tryToInfer(strictModeRoutine, graphModeRoutine);
                     }
                 });
             }
         }
+    }
+
+    private static boolean tryToRegisterForSerialization(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz) {
+        if (clazz == null) {
+            return false;
+        }
+        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
+        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, InferredDynamicAccessLoggingFeature.ignoredArgument(), new Object[]{clazz});
+        return true;
+    }
+
+    private static boolean tryToRegisterForSerialization(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Class<?> clazz, Constructor<?> constructor) {
+        if (clazz == null || constructor == null) {
+            return false;
+        }
+        b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
+        InferredDynamicAccessLoggingFeature.logRegistration(b, reason, targetMethod, InferredDynamicAccessLoggingFeature.ignoredArgument(), new Object[]{clazz, constructor});
+        return true;
     }
 
     public static <T> T asConstantObject(GraphBuilderContext b, Class<T> type, ValueNode node) {
@@ -686,6 +729,8 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
                 successor = ((AbstractBeginNode) successor).next();
+            } else if (successor instanceof ReachabilityRegistrationNode) {
+                successor = ((ReachabilityRegistrationNode) successor).next();
             } else {
                 return successor;
             }
