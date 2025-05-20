@@ -41,10 +41,6 @@
 name: Weekly Native Image Layer Building Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/ni-layers.yml'
-      - 'vm/tests/gh_workflows/NILayerTests/**'
   pull_request:
     paths:
       - '.github/workflows/ni-layers.yml'

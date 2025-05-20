@@ -41,9 +41,6 @@
 name: Weekly Reachability Metadata Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/reachability-metadata.yml'
   pull_request:
     paths:
       - '.github/workflows/reachability-metadata.yml'
