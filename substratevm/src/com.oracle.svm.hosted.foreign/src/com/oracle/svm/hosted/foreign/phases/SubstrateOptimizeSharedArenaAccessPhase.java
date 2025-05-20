@@ -645,10 +645,9 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
         // Compute the graph with all the necessary data about scoped memory accesses.
         EconomicSet<DominatedCall> calls = EconomicSet.create();
         EconomicMap<Node, List<ScopedAccess>> sugaredGraph = enumerateScopedAccesses(cfg, context, calls);
-        if (sugaredGraph == null) {
-            return null;
+        if (sugaredGraph != null) {
+            ReentrantBlockIterator.apply(new MinimalSessionChecks(graph, sugaredGraph, cfg, calls), cfg.getStartBlock());
         }
-        ReentrantBlockIterator.apply(new MinimalSessionChecks(graph, sugaredGraph, cfg, calls), cfg.getStartBlock());
         return calls;
     }
 
