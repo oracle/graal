@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,44 +42,20 @@ package org.graalvm.nativeimage.impl;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
+
 /**
- * A condition that describes if a reflectively-accessed element in Native Image is visible by the
- * user at run time.
- * <p>
- * Currently, there is only two types of condition:
- * <li><code>typeReached</code> (the default) that signifies that the type must be both reachable by
- * static analysis at build time, and reached at run time. A type is reached at run time, right
- * before the class-initialization routine starts for that type, or any of the type's subtypes are
- * reached.</li>
- * <li><code>typeReachable</code> (legacy) that signifies that the type must be reachable by static
- * analysis at build time.</li>
- * <p>
- * When {@link ConfigurationCondition#runtimeChecked} is <code>true</code> denotes that this is a
+ * Type that represents both type-reached and type-reachable condition. When
+ * {@link TypeReachabilityCondition#runtimeChecked} is <code>true</code> denotes that this is a
  * <code>typeReached</code> condition.
  */
-public final class ConfigurationCondition {
+public class TypeReachabilityCondition implements RegistrationCondition {
 
     /* Cached to save space: it is used as a marker for all non-conditional elements */
-    private static final ConfigurationCondition JAVA_LANG_OBJECT_REACHED = new ConfigurationCondition(Object.class, true);
-
-    public static ConfigurationCondition alwaysTrue() {
-        return JAVA_LANG_OBJECT_REACHED;
-    }
-
+    public static final TypeReachabilityCondition JAVA_LANG_OBJECT_REACHED = new TypeReachabilityCondition(Object.class, true);
     private final Class<?> type;
 
-    private final boolean runtimeChecked;
-
-    /**
-     * Creates the default type-reached condition that is satisfied when the type is reached at
-     * runtime.
-     *
-     * @param type that has to be reached for this condition to be satisfied
-     * @return instance of the condition
-     */
-    public static ConfigurationCondition create(Class<?> type) {
-        return create(type, true);
-    }
+    public final boolean runtimeChecked;
 
     /**
      * Creates either a type-reached condition ({@code runtimeChecked = true}) or a type-reachable
@@ -89,29 +65,25 @@ public final class ConfigurationCondition {
      * @param runtimeChecked makes this a type-reachable condition when false
      * @return instance of the condition
      */
-    public static ConfigurationCondition create(Class<?> type, boolean runtimeChecked) {
+    public static TypeReachabilityCondition create(Class<?> type, boolean runtimeChecked) {
         Objects.requireNonNull(type);
-        if (JAVA_LANG_OBJECT_REACHED.getType().equals(type)) {
-            return JAVA_LANG_OBJECT_REACHED;
+        if (TypeReachabilityCondition.JAVA_LANG_OBJECT_REACHED.getKey().equals(type)) {
+            return TypeReachabilityCondition.JAVA_LANG_OBJECT_REACHED;
         }
-        return new ConfigurationCondition(type, runtimeChecked);
+        return new TypeReachabilityCondition(type, runtimeChecked);
     }
 
     public boolean isAlwaysTrue() {
-        return ConfigurationCondition.alwaysTrue().equals(this);
+        return RegistrationCondition.always().equals(this);
     }
 
-    private ConfigurationCondition(Class<?> type, boolean runtimeChecked) {
+    public TypeReachabilityCondition(Class<?> type, boolean runtimeChecked) {
         this.runtimeChecked = runtimeChecked;
         this.type = type;
     }
 
-    public Class<?> getType() {
+    public Class<?> getKey() {
         return type;
-    }
-
-    public boolean isRuntimeChecked() {
-        return runtimeChecked;
     }
 
     @Override
@@ -122,7 +94,7 @@ public final class ConfigurationCondition {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ConfigurationCondition that = (ConfigurationCondition) o;
+        TypeReachabilityCondition that = (TypeReachabilityCondition) o;
         return runtimeChecked == that.runtimeChecked && Objects.equals(type, that.type);
     }
 
@@ -133,9 +105,13 @@ public final class ConfigurationCondition {
 
     @Override
     public String toString() {
-        return "ConfigurationCondition(" +
+        return "TypeReachabilityCondition(" +
                         "type=" + type +
                         ", runtimeChecked=" + runtimeChecked +
                         ')';
+    }
+
+    public boolean isRuntimeChecked() {
+        return runtimeChecked;
     }
 }

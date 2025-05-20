@@ -32,7 +32,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -41,32 +42,32 @@ public abstract class ConditionalConfigurationRegistry {
     private Feature.BeforeAnalysisAccess beforeAnalysisAccess;
     private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
-    protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
+    protected void registerConditionalConfiguration(RegistrationCondition condition, Consumer<RegistrationCondition> consumer) {
         Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");
         Objects.requireNonNull(consumer, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
-        if (condition.isRuntimeChecked() && !condition.isAlwaysTrue()) {
+        if (((TypeReachabilityCondition) condition).isRuntimeChecked() && !((TypeReachabilityCondition) condition).isAlwaysTrue()) {
             /*
              * We do this before the type is reached as the handler runs during analysis when it is
              * too late to register types for reached tracking. If the type is never reached, there
              * is no damage as subtypes will also never be reached.
              */
-            ClassInitializationSupport.singleton().addForTypeReachedTracking(condition.getType());
+            ClassInitializationSupport.singleton().addForTypeReachedTracking(((TypeReachabilityCondition) condition).getKey());
         }
-        if (ConfigurationCondition.alwaysTrue().equals(condition)) {
+        if (RegistrationCondition.always().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
-            consumer.accept(ConfigurationCondition.alwaysTrue());
+            consumer.accept(RegistrationCondition.always());
         } else {
-            ConfigurationCondition runtimeCondition;
-            if (condition.isRuntimeChecked()) {
+            RegistrationCondition runtimeCondition;
+            if (((TypeReachabilityCondition) condition).isRuntimeChecked()) {
                 runtimeCondition = condition;
             } else {
-                runtimeCondition = ConfigurationCondition.alwaysTrue();
+                runtimeCondition = RegistrationCondition.always();
             }
             if (beforeAnalysisAccess == null) {
-                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
+                Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(((TypeReachabilityCondition) condition).getKey(), key -> new ConcurrentLinkedQueue<>());
                 handlers.add(() -> consumer.accept(runtimeCondition));
             } else {
-                beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), condition.getType());
+                beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), ((TypeReachabilityCondition) condition).getKey());
             }
 
         }
