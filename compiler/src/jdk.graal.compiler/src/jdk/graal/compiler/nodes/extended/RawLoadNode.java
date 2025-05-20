@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -176,7 +177,27 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                                 return;
                             }
                         }
-                        tool.replaceWith(entry);
+                        JavaKind kind = accessKind();
+                        ValueNode replacement = tool.getAlias(entry);
+
+                        if (kind.getStackKind() == JavaKind.Int) {
+                            /*
+                             * Get the value as it would be actually stored in memory or in other
+                             * words only the bytes we are interested in. The type is defined by the
+                             * access kind, e.g. for the access kind byte and the value 0xF0F0F0F0
+                             * we actually want to have 0xF0.
+                             */
+                            ValueNode narrowed = DefaultJavaLoweringProvider.implicitPrimitiveStoreConvert(kind, replacement);
+                            /*
+                             * Expand the value to 32 bits again and perform boolean coercion if
+                             * necessary.
+                             */
+                            ValueNode extended = DefaultJavaLoweringProvider.implicitPrimitiveLoadConvert(kind, narrowed);
+                            replacement = DefaultJavaLoweringProvider.performBooleanCoercionIfNecessary(extended, kind, graph(), false);
+                        }
+
+                        tool.ensureAdded(replacement);
+                        tool.replaceWith(replacement);
                     }
                 }
             }
