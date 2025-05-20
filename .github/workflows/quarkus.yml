@@ -41,9 +41,6 @@
 name: Weekly Quarkus Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/quarkus.yml'
   pull_request:
     paths:
       - '.github/workflows/quarkus.yml'
