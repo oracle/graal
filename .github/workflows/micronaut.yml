@@ -41,9 +41,6 @@
 name: Weekly Micronaut Tests
 
 on:
-  push:
-    paths:
-      - '.github/workflows/micronaut.yml'
   pull_request:
     paths:
       - '.github/workflows/micronaut.yml'

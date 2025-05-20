@@ -52,8 +52,8 @@ import com.oracle.truffle.espresso.vm.VM;
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true, flags = {IsTrivial})
-    public static int hashCode(@JavaType(Object.class) StaticObject self, @Inject EspressoLanguage lang) {
-        return VM.JVM_IHashCode(self, lang);
+    public static int hashCode(@JavaType(Object.class) StaticObject self, @Inject Meta meta, @Inject EspressoLanguage lang) {
+        return VM.JVM_IHashCode(self, meta, lang);
     }
 
     @Substitution(hasReceiver = true, flags = {IsTrivial})

@@ -82,12 +82,13 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
             return;
         }
 
+        boolean jniAccessible = checkOption(ConfigurationParserOption.JNI_PARSER);
         /*
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
         C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, typeDescriptor, true);
+        TypeResult<T> result = delegate.resolveType(condition, typeDescriptor, true, jniAccessible);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + typeDescriptor + " for reflection configuration.", result.getException());
             return;
@@ -97,7 +98,6 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
-        boolean jniAccessible = checkOption(ConfigurationParserOption.JNI_PARSER);
         registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, jniAccessible, clazz));
         registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, jniAccessible, clazz));
         registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, jniAccessible, clazz));

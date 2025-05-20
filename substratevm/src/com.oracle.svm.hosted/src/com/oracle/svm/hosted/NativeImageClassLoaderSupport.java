@@ -143,6 +143,10 @@ public final class NativeImageClassLoaderSupport {
         preserveAllOrigin = null;
     }
 
+    public boolean isPreserveMode() {
+        return !preserveSelectors.classpathEntries.isEmpty() || !preserveSelectors.moduleNames.isEmpty() || !preserveSelectors.packages.isEmpty() || preserveAll;
+    }
+
     public IncludeSelectors getPreserveSelectors() {
         return preserveSelectors;
     }

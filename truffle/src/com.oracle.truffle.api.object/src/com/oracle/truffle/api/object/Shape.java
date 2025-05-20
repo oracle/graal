@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ import com.oracle.truffle.api.dsl.NonIdempotent;
  * @see Property
  * @since 0.8 or earlier
  */
-public abstract class Shape {
+public abstract sealed class Shape permits ShapeImpl {
     static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     static final int OBJECT_FLAGS_SHIFT = 0;
     static final int OBJECT_SHARED = 1 << 16;
@@ -461,7 +461,7 @@ public abstract class Shape {
             }
 
             int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Shape shape = Layout.getFactory().createShape(new Object[]{
+            Shape shape = Layout.getFactory().createShape(
                             layoutClass,
                             implicitCastFlags,
                             dynamicType,
@@ -469,7 +469,7 @@ public abstract class Shape {
                             flags,
                             properties,
                             singleContextAssumption,
-                            layoutLookup});
+                            layoutLookup);
 
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
@@ -833,24 +833,13 @@ public abstract class Shape {
     public abstract boolean check(DynamicObject subject);
 
     /**
-     * Get the shape's layout.
-     *
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Use {@link #getLayoutClass()} to get the layout class.
-     */
-    @Deprecated(since = "24.2")
-    @SuppressWarnings("deprecation")
-    protected abstract Layout getLayout();
-
-    /**
      * Get the shape's layout class.
      *
      * @see Shape.Builder#layout(Class, Lookup)
      * @since 21.1
      */
-    @SuppressWarnings("deprecation")
     public Class<? extends DynamicObject> getLayoutClass() {
-        return getLayout().getType();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -892,6 +881,7 @@ public abstract class Shape {
      * {@link DynamicObjectLibrary#markShared(DynamicObject)} instead.
      *
      * @return a cached and shared variant of this shape
+     * @throws UnsupportedOperationException if this shape is already shared
      * @see #isShared()
      * @see DynamicObjectLibrary#markShared(DynamicObject)
      * @since 0.18

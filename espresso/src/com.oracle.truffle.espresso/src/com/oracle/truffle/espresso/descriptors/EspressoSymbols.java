@@ -928,6 +928,8 @@ public class EspressoSymbols {
         public static final Symbol<Name> entrySet = SYMBOLS.putName("entrySet");
         public static final Symbol<Name> hasNext = SYMBOLS.putName("hasNext");
         public static final Symbol<Name> toArray = SYMBOLS.putName("toArray");
+        // j.l.Object
+        public static final Symbol<Name> HIDDEN_SYSTEM_IHASHCODE = SYMBOLS.putName("0HIDDEN_SYSTEM_IHASHCODE");
         // MemberName
         public static final Symbol<Name> HIDDEN_VMINDEX = SYMBOLS.putName("0HIDDEN_VMINDEX");
         public static final Symbol<Name> HIDDEN_VMTARGET = SYMBOLS.putName("0HIDDEN_VMTARGET");

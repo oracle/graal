@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,25 +40,28 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.lang.invoke.MethodHandles;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
+
+import com.oracle.truffle.api.Assumption;
+
 /**
  * Implementation class.
- *
- * @since 0.8 or earlier
- * @deprecated Implementation detail.
  */
-@SuppressWarnings("deprecation")
-@Deprecated(since = "22.2")
-public interface LayoutFactory {
+interface LayoutFactory {
 
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
     Property createProperty(Object id, Location location, int flags);
 
-    /** @since 22.2 */
-    default Shape createShape(@SuppressWarnings("unused") Object arg0) {
-        throw new UnsupportedOperationException();
-    }
+    Shape createShape(Class<? extends DynamicObject> layoutClass,
+                    int implicitCastFlags,
+                    Object dynamicType,
+                    Object sharedData,
+                    int shapeFlags,
+                    EconomicMap<Object, Pair<Object, Integer>> constantProperties,
+                    Assumption singleContextAssumption,
+                    MethodHandles.Lookup layoutLookup);
 
-    /** @since 0.8 or earlier */
     int getPriority();
 }

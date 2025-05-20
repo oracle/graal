@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,7 +125,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     // truffle.api.object
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
     public final ResolvedJavaType DynamicObject = lookupType("com.oracle.truffle.api.object.DynamicObject");
-    public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.object.UnsafeAccess");
+    public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.api.object.UnsafeAccess");
 
     // truffle.api.string
     public final ResolvedJavaType TruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");

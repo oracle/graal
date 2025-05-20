@@ -1112,10 +1112,13 @@ public abstract class TypeFlow<T> {
         } else {
             for (TypeFlow<?> use : getUses()) {
                 /*
-                 * The type state of saturated flows is not updated anymore. FormalReceiverTypeFlow
-                 * has a special update method.
+                 * In the following cases, we cannot assume that the type state of the use is
+                 * accurate: (1) disabled flows do not execute their on{Input|Observed}Saturated
+                 * callbacks, so their state might not be up to date, (2) the type state of
+                 * saturated flows is not updated anymore, (3) FormalReceiverTypeFlow has a special
+                 * update method.
                  */
-                if (use.isSaturated() || use instanceof FormalReceiverTypeFlow) {
+                if (!use.isFlowEnabled() || use.isSaturated() || use instanceof FormalReceiverTypeFlow) {
                     continue;
                 }
                 /*
