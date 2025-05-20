@@ -142,6 +142,40 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
 
+        /* FileSystemProviders related */
+        if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
+            rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            // because static Path
+            // rci.initializeAtRunTime("jdk.internal.jrtfs.SystemImage",
+            // FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.util.zip.ZipFile$Source", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // rci.initializeAtRunTime("java.io.File",
+            // FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.FileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.FileSystem$CurrentWorkingDirectoryHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("java.io.UnixFileSystem", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            rci.initializeAtBuildTime("java.io.File", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtBuildTime("sun.nio.fs.UnixPath", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            // holder for the default file system
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.fs.runtimeinit.DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.fs.runtimeinit.SunNioFsDefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // JrtFS support
+            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+
+            // Contains a static File reference
+// rci.initializeAtRunTime("java.lang.ProcessBuilder$Redirect",
+// FutureDefaultsOptions.RUN_TIME_INITIALIZE_JDK_REASON);
+        }
+
         /* XML-related */
         if (FutureDefaultsOptions.isJDKInitializedAtRunTime()) {
             // GR-50683 should remove this part

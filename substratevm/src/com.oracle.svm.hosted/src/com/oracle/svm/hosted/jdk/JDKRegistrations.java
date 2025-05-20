@@ -65,6 +65,7 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
          * a `Random` object and the temporary directory in a static final field.
          */
         initializeAtRunTime(a, "sun.nio.ch.UnixDomainSockets");
+        initializeAtRunTime(a, "sun.nio.ch.UnixDomainSockets$UnnamedHolder");
 
         initializeAtRunTime(a, "java.util.concurrent.ThreadLocalRandom$ThreadLocalRandomProxy");
 
