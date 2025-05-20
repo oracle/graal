@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
         return new TestClass(val + 2);
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph getMidTierGraph(String snippet, Suites suites) {
         StructuredGraph g = parseEager(snippet, AllowAssumptions.NO, getInitialOptions());
         suites.getHighTier().apply(g, getDefaultHighTierContext());
@@ -77,7 +76,6 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testVerificationFailsWithoutPublish() {
         Suites s = createSuites(getInitialOptions());
         s.getMidTier().appendPhase(new BasePhase<>() {
@@ -98,7 +96,7 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
 
         StructuredGraph g = getMidTierGraph("allocate", s);
         assertNotInGraph(g, PublishWritesNode.class);
-        try (DebugContext.Scope scope = getDebugContext().disable()) {
+        try (DebugContext.Scope _ = getDebugContext().disable()) {
             new InitMemoryVerificationPhase().apply(g, getDefaultLowTierContext());
             throw new GraalError("Should fail init memory verification");
         } catch (VerifyPhase.VerificationError e) {
@@ -107,7 +105,6 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testVerificationFailsWithoutMembar() {
         Suites s = createSuites(getInitialOptions());
         s.getMidTier().appendPhase(new BasePhase<>() {
@@ -126,7 +123,7 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
 
         StructuredGraph g = getMidTierGraph("allocate", s);
         assertNotInGraph(g, GraphUtil.class);
-        try (DebugContext.Scope scope = getDebugContext().disable()) {
+        try (DebugContext.Scope _ = getDebugContext().disable()) {
             new InitMemoryVerificationPhase().apply(g, getDefaultLowTierContext());
             throw new GraalError("Should fail init memory verification");
         } catch (VerifyPhase.VerificationError e) {

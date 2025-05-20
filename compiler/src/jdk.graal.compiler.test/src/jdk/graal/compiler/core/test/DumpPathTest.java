@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,6 @@ public class DumpPathTest extends GraalCompilerTest {
         return new String("snippet");
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testDump() throws Exception {
         assumeManagementLibraryIsLoadable();
@@ -67,7 +66,7 @@ public class DumpPathTest extends GraalCompilerTest {
             overrides.put(GraalCompilerOptions.DumpHeapAfter, "<compilation>:Schedule");
             overrides.put(DebugOptions.MethodFilter, null);
 
-            try (AutoCloseable c = new TTY.Filter()) {
+            try (AutoCloseable _ = new TTY.Filter()) {
                 // Generate dump files.
                 test(new OptionValues(getInitialOptions(), overrides), "snippet");
             }

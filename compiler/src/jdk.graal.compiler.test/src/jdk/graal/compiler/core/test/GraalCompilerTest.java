@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -525,7 +525,6 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@code actual} in its context so that these graphs are dumped when the comparison
      *            fails and {@code DumpOnError=true}
      */
-    @SuppressWarnings("try")
     protected void assertEquals(StructuredGraph expected,
                     StructuredGraph actual,
                     boolean excludeVirtual,
@@ -539,7 +538,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         String mismatchString = compareGraphStrings(expected, expectedString, actual, actualString);
 
         // Open a scope so that `expected` and `actual` are dumped if DumpOnError=true
-        try (DebugContext.Scope scope = addGraphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
+        try (DebugContext.Scope _ = addGraphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
             if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(actual)) {
                 debug.dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
                 debug.dump(DebugContext.BASIC_LEVEL, actual, "Node count not matching - actual");
@@ -1132,7 +1131,6 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param installAsDefault specifies whether to install as the default implementation
      * @param options the options that will be used in {@link #parseForCompile(ResolvedJavaMethod)}
      */
-    @SuppressWarnings("try")
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
@@ -1157,12 +1155,12 @@ public abstract class GraalCompilerTest extends GraalTest {
             StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner, id, options) : graph;
             DebugContext debug = graphToCompile.getDebug();
 
-            try (AllocSpy spy = AllocSpy.open(installedCodeOwner); DebugContext.Scope ds = debug.scope("Compiling", graph)) {
+            try (AllocSpy _ = AllocSpy.open(installedCodeOwner); DebugContext.Scope _ = debug.scope("Compiling", graph)) {
                 CompilationPrinter printer = CompilationPrinter.begin(options, id, installedCodeOwner, INVOCATION_ENTRY_BCI);
                 CompilationResult compResult = compile(installedCodeOwner, graphToCompile, new CompilationResult(graphToCompile.compilationId()), id, options);
 
-                try (DebugContext.Scope s = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
-                                DebugContext.Activation a = debug.activate()) {
+                try (DebugContext.Scope _ = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
+                                DebugContext.Activation _ = debug.activate()) {
                     try {
                         if (installAsDefault) {
                             installedCode = addDefaultMethod(debug, installedCodeOwner, compResult);
@@ -1301,12 +1299,11 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param compilationId
      */
-    @SuppressWarnings("try")
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult, CompilationIdentifier compilationId, OptionValues options) {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner, compilationId, options) : graph;
         lastCompiledGraph = graphToCompile;
         DebugContext debug = graphToCompile.getDebug();
-        try (DebugContext.Scope s = debug.scope("Compile", graphToCompile)) {
+        try (DebugContext.Scope _ = debug.scope("Compile", graphToCompile)) {
             assert options != null;
 
             Suites suites = createSuites(options);
@@ -1340,10 +1337,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph;
     }
 
-    @SuppressWarnings("try")
     protected void applyFrontEnd(StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope("FrontEnd", graph)) {
+        try (DebugContext.Scope _ = debug.scope("FrontEnd", graph)) {
             GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), getOptimisticOptimizations(), graph.getProfilingInfo(), createSuites(graph.getOptions()));
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -1586,7 +1582,6 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     };
 
-    @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
         builder.speculationLog(getSpeculationLog());
@@ -1604,7 +1599,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope ds = debug.scope("Parsing", javaMethod, graph)) {
+        try (DebugContext.Scope _ = debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             Object[] args = getArgumentToBind();
             if (args != null) {

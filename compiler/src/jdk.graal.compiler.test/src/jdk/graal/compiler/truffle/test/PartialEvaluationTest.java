@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -264,7 +264,6 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return partialEval(compilable, arguments, listener);
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, Graph.NodeEventListener nodeEventListener) {
         // Executed AST so that all classes are loaded and initialized.
         if (!preventProfileCalls) {
@@ -287,7 +286,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         TruffleCompilationTask task = newTask();
         TruffleCompilerImpl compiler = getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
-            try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(task, compilable))) {
+            try (DebugContext.Scope _ = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(task, compilable))) {
                 SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
                 if (speculationLog != null) {
                     speculationLog.collectFailedSpeculations();
@@ -305,7 +304,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                                     compilation.getCompilationId(), speculationLog,
                                     task,
                                     handler);
-                    try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
+                    try (Graph.NodeEventScope _ = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
                         truffleTier.apply(context.graph, context);
                         lastCompiledGraph = context.graph;
                         return context.graph;

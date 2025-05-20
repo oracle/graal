@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public class BeginNodeOptimizationTest extends PartialEvaluationTest {
     }
 
     static TestRootNode createTreeWithBlockOfSize(int count) {
-        return new TestRootNode(new WithChildrenNode(IntStream.range(0, count).mapToObj(i -> new LeafNode()).toArray(TestNode[]::new)));
+        return new TestRootNode(new WithChildrenNode(IntStream.range(0, count).mapToObj(_ -> new LeafNode()).toArray(TestNode[]::new)));
     }
 
     static class TestRootNode extends RootNode {
