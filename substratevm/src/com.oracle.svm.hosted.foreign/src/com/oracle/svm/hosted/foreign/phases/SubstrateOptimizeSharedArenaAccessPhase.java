@@ -754,16 +754,6 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
      * are not needed any more.
      */
     private void cleanupClusterNodes(StructuredGraph graph, MidTierContext context, EconomicSet<DominatedCall> calls) {
-        if (VERIFY_NO_DOMINATED_CALLS) {
-            if (calls != null) {
-                for (DominatedCall call : calls) {
-                    if (call.invoke.isAlive()) {
-                        throw GraalError.shouldNotReachHere("After inserting all session checks call " + call.invoke + " was not inlined and could access a session");
-                    }
-                }
-            }
-        }
-
         for (MemoryArenaValidInScopeNode scopeNode : graph.getNodes().filter(MemoryArenaValidInScopeNode.class).snapshot()) {
             scopeNode.delete(0);
         }
@@ -775,6 +765,17 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
         }
         canonicalizer.apply(graph, context);
         scheduleVerify(graph);
+
+        if (VERIFY_NO_DOMINATED_CALLS) {
+            if (calls != null) {
+                for (DominatedCall call : calls) {
+                    if (call.invoke.isAlive()) {
+                        throw GraalError.shouldNotReachHere("After inserting all session checks call " + call.invoke + " was not inlined and could access a session");
+                    }
+                }
+            }
+        }
+
     }
 
     /**
