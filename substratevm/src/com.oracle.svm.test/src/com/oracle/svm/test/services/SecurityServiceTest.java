@@ -29,7 +29,6 @@ import java.security.Provider;
 import java.security.Security;
 
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
@@ -59,16 +58,26 @@ public class SecurityServiceTest {
 
         @Override
         public void duringSetup(final DuringSetupAccess access) {
-            // we use these (application) classes during Native image build
-            RuntimeClassInitialization.initializeAtBuildTime(NoOpService.class);
-            RuntimeClassInitialization.initializeAtBuildTime(NoOpProvider.class);
-            RuntimeClassInitialization.initializeAtBuildTime(NoOpProviderTwo.class);
-
             // register the service implementation for reflection explicitly,
             // non-standard services are not processed automatically
             RuntimeReflection.register(NoOpImpl.class);
             RuntimeReflection.register(NoOpImpl.class.getDeclaredConstructors());
         }
+    }
+
+    /**
+     * This test ensures that the list of security providers is populated at run time, and not at
+     * build time.
+     */
+    @Test
+    public void testSecurityProviderRuntimeRegistration() {
+        Provider notRegistered = Security.getProvider("no-op-provider");
+        Assert.assertNull("Provider is registered.", notRegistered);
+
+        Security.addProvider(new NoOpProvider());
+
+        Provider registered = Security.getProvider("no-op-provider");
+        Assert.assertNotNull("Provider is not registered.", registered);
     }
 
     /**
@@ -80,6 +89,8 @@ public class SecurityServiceTest {
      */
     @Test
     public void testUnknownSecurityServices() throws Exception {
+        /* Register the provider at run time. */
+        Security.addProvider(new NoOpProvider());
         final Provider registered = Security.getProvider("no-op-provider");
         Assert.assertNotNull("Provider is not registered", registered);
         final Object impl = registered.getService("NoOp", "no-op-algo").newInstance(null);
@@ -90,6 +101,8 @@ public class SecurityServiceTest {
     @Test
     public void testAutomaticSecurityServiceRegistration() {
         try {
+            /* Register the provider at run time. */
+            Security.addProvider(new NoOpProviderTwo());
             JCACompliantNoOpService service = JCACompliantNoOpService.getInstance("no-op-algo-two");
             Assert.assertNotNull("No service instance was created", service);
             MatcherAssert.assertThat("Unexpected service implementation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
