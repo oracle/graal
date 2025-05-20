@@ -1,0 +1,9 @@
+Enables metadata tracing at run time. This option is only supported if -H:MetadataTracingSupport is enabled when building the image.
+The value of this option is a comma-separated list of arguments specified as key-value pairs. The following arguments are supported:
+
+- path=<trace-output-directory> (required): Specifies the directory to write traced metadata to.
+- mode=<tracing-mode> (optional): Specifies the tracing mode, which can be one of:
+  - default: Traces without conditions.
+  - conditional: Traces and infers conditions for each metadata element. An element (a type, resource, etc.) is only reachable in the image if the associated condition is satisfied, which can reduce image size and improve analysis results.
+
+Example usage: -H:RecordMetadata=path=tracing_output,mode=default
