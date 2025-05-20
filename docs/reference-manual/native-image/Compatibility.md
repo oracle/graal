@@ -51,15 +51,6 @@ Native Image implements some Java features differently to the Java VM.
 
 `java.lang.System#setSecurityManager(SecurityManager)` invoked with a non-null argument throws a `java.lang.SecurityException` if `-Djava.security.manager` is set to anything but `disallow` at program startup.
 
-### Signal Handlers
-
-Registering a signal handler requires a new thread to start that handles the signal and invokes shutdown hooks.
-By default, no signal handlers are registered when building a native image, unless they are registered explicitly by the user.
-For example, it is not recommended to register the default signal handlers when building a shared library, but it is desirable to include signal handlers when building a native executable for containerized environments, such as Docker containers.
-
-To register the default signal handlers, pass the `--install-exit-handlers` option to the `native-image` builder.
-This option gives you the same signal handlers as a Java VM.
-
 ### Class Initializers
 
 By default, classes are initialized at run time.
