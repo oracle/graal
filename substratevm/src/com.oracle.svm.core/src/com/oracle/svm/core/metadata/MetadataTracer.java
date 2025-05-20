@@ -28,7 +28,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -37,6 +40,7 @@ import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -53,22 +57,24 @@ import jdk.graal.compiler.options.Option;
 /**
  * Implements reachability metadata tracing during native image execution. Enabling
  * {@link Options#MetadataTracingSupport} at build time will generate code to trace all accesses of
- * reachability metadata. When {@link Options#RecordMetadata} is specified at run time, the image
- * will trace and emit metadata to the specified path.
+ * reachability metadata, and then the run-time option {@link Options#RecordMetadata} enables
+ * tracing.
  */
 public final class MetadataTracer {
 
     public static class Options {
-        @Option(help = "Enables the run-time code to trace reachability metadata accesses in the produced native image by using -XX:RecordMetadata=<path>.")//
+        @Option(help = "Generate an image that supports reachability metadata access tracing. " +
+                        "When tracing is supported, use the -XX:RecordMetadata option to enable tracing at run time.")//
         public static final HostedOptionKey<Boolean> MetadataTracingSupport = new HostedOptionKey<>(false);
 
-        @Option(help = "The path of the directory to write traced metadata to. Metadata tracing is enabled only when this option is provided.")//
-        public static final RuntimeOptionKey<String> RecordMetadata = new RuntimeOptionKey<>("");
+        @Option(help = "file:doc-files/RecordMetadataHelp.txt")//
+        public static final RuntimeOptionKey<String> RecordMetadata = new RuntimeOptionKey<>(null);
     }
 
+
+    private RecordOptions options;
     private volatile ConfigurationSet config;
 
-    private Path recordMetadataPath;
 
     @Fold
     public static MetadataTracer singleton() {
@@ -80,7 +86,7 @@ public final class MetadataTracer {
      */
     public boolean enabled() {
         VMError.guarantee(Options.MetadataTracingSupport.getValue());
-        return recordMetadataPath != null;
+        return options != null;
     }
 
     /**
@@ -146,20 +152,21 @@ public final class MetadataTracer {
         }
     }
 
-    private static void initialize() {
+    private static void initialize(String recordMetadataValue) {
         assert Options.MetadataTracingSupport.getValue();
-        MetadataTracer singleton = MetadataTracer.singleton();
-        String recordMetadataValue = Options.RecordMetadata.getValue();
-        if (recordMetadataValue.isEmpty()) {
-            throw new IllegalArgumentException("Empty path provided for " + Options.RecordMetadata.getName() + ".");
-        }
-        Path recordMetadataPath = Paths.get(recordMetadataValue);
+
+        RecordOptions parsedOptions = RecordOptions.parse(recordMetadataValue);
         try {
-            Files.createDirectories(recordMetadataPath);
+            Files.createDirectories(parsedOptions.path());
         } catch (IOException ex) {
-            throw new IllegalArgumentException("Exception occurred creating the output directory for tracing (" + recordMetadataPath + ")", ex);
+            throw new IllegalArgumentException("Exception occurred creating the output directory for tracing (" + parsedOptions.path() + ")", ex);
         }
-        singleton.recordMetadataPath = recordMetadataPath;
+        if (parsedOptions.mode() != RecordMode.DEFAULT) {
+            throw new IllegalArgumentException("Mode " + parsedOptions.mode() + " is not yet supported.");
+        }
+
+        MetadataTracer singleton = MetadataTracer.singleton();
+        singleton.options = parsedOptions;
         singleton.config = new ConfigurationSet();
     }
 
@@ -170,10 +177,10 @@ public final class MetadataTracer {
         singleton.config = null; // clear config so that shutdown events are not traced.
         if (config != null) {
             try {
-                config.writeConfiguration(configFile -> singleton.recordMetadataPath.resolve(configFile.getFileName()));
+                config.writeConfiguration(configFile -> singleton.options.path().resolve(configFile.getFileName()));
             } catch (IOException ex) {
                 Log log = Log.log();
-                log.string("Failed to write out reachability metadata to directory ").string(singleton.recordMetadataPath.toString());
+                log.string("Failed to write out reachability metadata to directory ").string(singleton.options.path().toString());
                 log.string(":").string(ex.getMessage());
                 log.newline();
             }
@@ -187,7 +194,7 @@ public final class MetadataTracer {
             }
             VMError.guarantee(Options.MetadataTracingSupport.getValue());
             if (Options.RecordMetadata.hasBeenSet()) {
-                initialize();
+                initialize(Options.RecordMetadata.getValue());
             }
         };
     }
@@ -217,9 +224,62 @@ public final class MetadataTracer {
                 throw new IllegalArgumentException(
                                 "The option " + Options.RecordMetadata.getName() + " can only be used if metadata tracing is enabled at build time (using " +
                                                 hostedOptionCommandArgument + ").");
-
             }
         };
+    }
+}
+
+enum RecordMode {
+    DEFAULT,
+    CONDITIONAL
+}
+
+record RecordOptions(Path path, RecordMode mode) {
+
+    static RecordOptions parse(String recordMetadataOptions) {
+        if (recordMetadataOptions.isEmpty()) {
+            throw parseError("Empty string provided for " + MetadataTracer.Options.RecordMetadata.getName() + ".");
+        }
+
+        Map<String, String> parsedOptions = new HashMap<>();
+        Set<String> allOptions = Set.of("path", "mode");
+        for (String option : recordMetadataOptions.split(",")) {
+            String[] parts = SubstrateUtil.split(option, "=", 2);
+            if (parts.length != 2) {
+                throw badOptionError(option, "Option should be a key-value pair separated by '='.");
+            } else if (!allOptions.contains(parts[0])) {
+                throw badOptionError(option, "Option should be one of " + allOptions);
+            } else if (parsedOptions.containsKey(parts[0])) {
+                throw badOptionError(option, "Option was already specified with value " + parsedOptions.get(parts[0]));
+            }
+            parsedOptions.put(parts[0], parts[1]);
+        }
+
+        String path = requiredOption(parsedOptions, "path");
+        String mode = optionalOption(parsedOptions, "mode", "default");
+        return new RecordOptions(Paths.get(path), RecordMode.valueOf(mode.toUpperCase()));
+    }
+
+    private static IllegalArgumentException parseError(String message) {
+        return new IllegalArgumentException(message + " Sample usage: -XX:" + MetadataTracer.Options.RecordMetadata.getName() + "=path=<trace-output-directory>[,mode=<mode>]");
+    }
+
+    private static IllegalArgumentException badOptionError(String option, String message) {
+        throw parseError("Bad option provided for " + MetadataTracer.Options.RecordMetadata.getName() + ": " + option + ". " + message);
+    }
+
+    private static String requiredOption(Map<String, String> options, String optionKey) {
+        if (options.containsKey(optionKey)) {
+            return options.get(optionKey);
+        }
+        throw parseError(MetadataTracer.Options.RecordMetadata.getName() + " missing required option '" + optionKey + "'");
+    }
+
+    private static String optionalOption(Map<String, String> options, String optionKey, String defaultValue) {
+        if (options.containsKey(optionKey)) {
+            return options.get(optionKey);
+        }
+        return defaultValue;
     }
 }
 
