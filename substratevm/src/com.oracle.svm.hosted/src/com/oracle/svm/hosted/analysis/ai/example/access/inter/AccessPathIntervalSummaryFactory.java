@@ -44,7 +44,7 @@ public class AccessPathIntervalSummaryFactory implements SummaryFactory<AccessPa
             if (arg.getStackKind().isNumericInteger()) {
                 AccessPathBase base = new PlaceHolderAccessPathBase(AccessPathConstants.PARAM_PREFIX + i);
                 AccessPath paramAccessPath = new AccessPath(base);
-                preCondition.put(paramAccessPath, domainArguments.get(i).getOnlyDataValue());
+                preCondition.put(paramAccessPath, domainArguments.get(i).getNodeDataValue(args.get(i), new IntInterval()));
             }
             /* Ad 2. */
             else if (arg.getStackKind().isObject()) {

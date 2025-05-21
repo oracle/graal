@@ -125,12 +125,10 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
                 AccessPath key = getAccessPathFromAccessFieldNode(loadFieldNode, abstractState);
                 IntInterval keyInterval = new IntInterval();
 
-                logger.log("Key: " + key, LoggerVerbosity.INFO);
                 if (preCondition.containsAccessPath(key)) {
                     keyInterval = preCondition.get(key);
                 } else {
                     for (AccessPath path : abstractState.getStartNodeState().getPreCondition().getAccessPaths()) {
-                        logger.log("AccessPath from init: " + path, LoggerVerbosity.INFO);
                         if (path.getElements().isEmpty() || !path.getElements().getLast().equals(key.getElements().getLast())) {
                             continue;
                         }
@@ -139,8 +137,6 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
                         break;
                     }
                 }
-
-                logger.log("LoadFieldNode interval: " + keyInterval, LoggerVerbosity.INFO);
                 computedPostCondition.put(new AccessPath(loadFieldNode), keyInterval);
             }
 
