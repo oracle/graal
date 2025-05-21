@@ -700,8 +700,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         });
     }
 
-    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object, ScanReason reason) {
-        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<T> c) -> c.doCallback(access, object, reason));
+    public <T> void notifyObjectReachable(T object, ScanReason reason) {
+        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater,
+                        (ObjectReachableCallback<T> c) -> c.doCallback(universe.getConcurrentAnalysisAccess(), object, reason));
     }
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
