@@ -6,6 +6,9 @@ import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathConstants;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.access.ClassAccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.Invoke;
@@ -52,8 +55,10 @@ public class AccessPathIntervalSummary implements Summary<AccessPathMap<IntInter
     }
 
     @Override
-    public void finalizeSummary(AccessPathMap<IntInterval> calleePostCondition) {
-
+    public void finalizeSummary(AbstractState<AccessPathMap<IntInterval>> calleeAbstractState) {
+        AccessPathMap<IntInterval> calleePostCondition = calleeAbstractState.getReturnDomain();
+        var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("CalleePostCondition: " + calleePostCondition, LoggerVerbosity.DEBUG);
         if (calleePostCondition.isBot()) {
             postCondition.setToBot();
             return;
@@ -68,7 +73,7 @@ public class AccessPathIntervalSummary implements Summary<AccessPathMap<IntInter
           This method should prepare the abstract context to be propagated back to the caller.
           We need to remove all the parts that can't escape back to the caller.
           We will only keep: 1. Objects that were passed as arguments to the callee, and all access paths that have these objects as their base.
-                             2. Static fields that were accessible in the callee ( they could have changed in the method )
+                             2. Static fields that were accessible in the callee
                              3. Object that is returned from the callee ( if the return type is an object ) and all access paths with the returned object as their base.
                              4. IntInterval that is returned from the callee ( if the return type is an int )
          */
@@ -108,8 +113,8 @@ public class AccessPathIntervalSummary implements Summary<AccessPathMap<IntInter
         }
 
         /* Ad 4. */
-        if (invoke.getTargetMethod().getSignature().getReturnKind().isPrimitive()) {
-            /* We retrieve the return# access paths -> we will have only one, retrieve its value */
+        if (invoke.getTargetMethod().getSignature().getReturnKind().isNumericInteger()) {
+            /* We retrieve the return# access path -> we will have only one, retrieve its value */
             List<AccessPath> accessPaths = calleePostCondition.getAccessPathsWithBasePrefix(AccessPathConstants.RETURN_PREFIX);
             AccessPath path = accessPaths.getFirst();
             this.postCondition.put(path, calleePostCondition.get(path));

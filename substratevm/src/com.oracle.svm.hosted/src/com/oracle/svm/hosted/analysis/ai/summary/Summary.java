@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.nodes.Invoke;
 
 /**
@@ -59,16 +60,14 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      */
     boolean subsumesSummary(Summary<Domain> other);
 
-    // TODO: here we should have the entire abstract state
-
     /**
      * This method is called by the framework after the fixpoint computation of the method body.
      * It should finalize the summary by correctly modifying the post-condition of the summary.
      * It needs to handle the case when the callee post-condition is {BOT or TOP}.
      *
-     * @param calleePostCondition the post-condition of the method body
+     * @param calleeAbstractState the computed abstract state of the callee
      */
-    void finalizeSummary(Domain calleePostCondition);
+    void finalizeSummary(AbstractState<Domain> calleeAbstractState);
 
     /**
      * This method simulates applying the summary to the {@code domain}.

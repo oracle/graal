@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.example.leaks.set.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -45,7 +46,8 @@ public class LeaksIdSetSummary implements Summary<SetDomain<ResourceId>> {
     }
 
     @Override
-    public void finalizeSummary(SetDomain<ResourceId> calleePostCondition) {
+    public void finalizeSummary(AbstractState<SetDomain<ResourceId>> calleeAbstractState) {
+        var calleePostCondition = calleeAbstractState.getReturnDomain();
         for (ResourceId id : calleePostCondition.getSet()) {
             if (id.toString().startsWith("return#")) {
                 ResourceId newResourceId = id.getWithRemovedReturnPrefix();

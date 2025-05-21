@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -43,8 +44,8 @@ public class LeakPairSummary implements Summary<PairDomain<CountDomain, BooleanO
     }
 
     @Override
-    public void finalizeSummary(PairDomain<CountDomain, BooleanOrDomain> postCondition) {
-        this.postCondition = postCondition.copyOf();
+    public void finalizeSummary(AbstractState<PairDomain<CountDomain, BooleanOrDomain>> calleeAbstractState) {
+        this.postCondition = calleeAbstractState.getReturnDomain().copyOf();
     }
 
     @Override

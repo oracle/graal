@@ -56,12 +56,13 @@ public class AbstractInterpretationDriver {
         logger.log("Hello from the abstract interpretation", LoggerVerbosity.INFO);
 
         /* We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer}
-         *  If we wish to use analyzers during the native image build, we must register them here. What is not registered, will not run.
-         */
+         * If we wish to use analyzers during the native image build, we must register them here. What is not registered, will not run.
+         * To get started quickly, we can use the sample analyzer wrappers provided in the package {@link com.oracle.svm.hosted.analysis.ai.example}.
+         * */
         var analyzer = new LeaksIdSetIntraAnalyzerWrapper().getAnalyzer();
         analyzerManager.registerAnalyzer(analyzer);
 
         /* We can set what methods we want to analyze by engine.setAnalyzeMainOnly(); */
-        engine.setAnalyzeMainOnly(false);
+        engine.setAnalyzeMainOnly(true);
     }
 }

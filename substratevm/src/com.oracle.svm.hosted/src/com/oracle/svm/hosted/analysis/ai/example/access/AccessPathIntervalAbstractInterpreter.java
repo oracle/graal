@@ -118,12 +118,29 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
             case StoreFieldNode storeFieldNode -> {
                 AccessPath key = getAccessPathFromAccessFieldNode(storeFieldNode, abstractState);
                 var storeFieldEnv = execAndGet(storeFieldNode.value(), abstractState, invokeCallBack);
-                computedPostCondition.put(key, storeFieldEnv.get(new AccessPath(storeFieldNode.value())));
+                computedPostCondition.put(key, storeFieldEnv.getNodeDataValue(storeFieldNode.value(), new IntInterval()));
             }
 
             case LoadFieldNode loadFieldNode -> {
                 AccessPath key = getAccessPathFromAccessFieldNode(loadFieldNode, abstractState);
-                IntInterval keyInterval = preCondition.get(key);
+                IntInterval keyInterval = new IntInterval();
+
+                logger.log("Key: " + key, LoggerVerbosity.INFO);
+                if (preCondition.containsAccessPath(key)) {
+                    keyInterval = preCondition.get(key);
+                } else {
+                    for (AccessPath path : abstractState.getStartNodeState().getPreCondition().getAccessPaths()) {
+                        logger.log("AccessPath from init: " + path, LoggerVerbosity.INFO);
+                        if (path.getElements().isEmpty() || !path.getElements().getLast().equals(key.getElements().getLast())) {
+                            continue;
+                        }
+
+                        keyInterval = abstractState.getStartNodeState().getPreCondition().get(path);
+                        break;
+                    }
+                }
+
+                logger.log("LoadFieldNode interval: " + keyInterval, LoggerVerbosity.INFO);
                 computedPostCondition.put(new AccessPath(loadFieldNode), keyInterval);
             }
 

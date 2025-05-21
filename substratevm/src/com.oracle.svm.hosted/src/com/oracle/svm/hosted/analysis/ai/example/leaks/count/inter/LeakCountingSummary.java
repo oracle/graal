@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.count.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -46,8 +47,8 @@ public class LeakCountingSummary implements Summary<CountDomain> {
     }
 
     @Override
-    public void finalizeSummary(CountDomain postCondition) {
-        this.postCondition = postCondition;
+    public void finalizeSummary(AbstractState<CountDomain> calleeAbstractState) {
+        this.postCondition = calleeAbstractState.getReturnDomain().copyOf();
     }
 
     @Override

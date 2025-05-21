@@ -107,8 +107,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
         fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
         logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
         AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
-        Domain returnDomain = invokeAbstractState.getReturnDomain();
-        summary.finalizeSummary(returnDomain);
+        summary.finalizeSummary(invokeAbstractState);
         summaryManager.putSummary(calleeMethod, summary);
         callStack.pop();
 
