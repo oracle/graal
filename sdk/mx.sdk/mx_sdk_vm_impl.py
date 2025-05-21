@@ -3952,12 +3952,6 @@ def _infer_env(graalvm_dist):
     elif isinstance(disableInstallables, bool):
         disableInstallables = [str(disableInstallables)]
 
-    enableInstallables = _enabled_installables()
-    if enableInstallables is None:
-        enableInstallables = []
-    elif isinstance(enableInstallables, bool):
-        enableInstallables = [str(enableInstallables)]
-
     non_rebuildable_images = _non_rebuildable_images()
     if isinstance(non_rebuildable_images, bool):
         non_rebuildable_images = [str(non_rebuildable_images)]
@@ -4550,37 +4544,20 @@ def _disabled_installables():
     """
     :rtype: bool
     """
-    disabled_installables = _parse_cmd_arg('disable_installables')
-    assert disabled_installables is None or _parse_cmd_arg('installables') is None, "Cannot set both '--disable-installables'/'$DISABLE_INSTALLABLES' (got '{}') and '--installables'/'$INSTALLABLES' (got: '{}')".format(disabled_installables, _parse_cmd_arg('installables'))
-    return disabled_installables
+    return True
 
 
 def _enabled_installables():
     """
     :rtype: bool
     """
-    enabled_installables = _parse_cmd_arg('installables')
-    assert enabled_installables is None or _parse_cmd_arg('disable_installables') is None, "Cannot set both '--installables'/'$INSTALLABLES' (got '{}') and '--disable-installables'/'$DISABLE_INSTALLABLES' (got: '{}')".format(enabled_installables, _parse_cmd_arg('disable_installables'))
-    return enabled_installables
+    return None
 
 
 def _disable_installable(component):
     """ :type component: mx_sdk.GraalVmComponent """
     assert isinstance(component, mx_sdk.GraalVmComponent)
-    disabled = _disabled_installables()
-    if disabled is None:
-        enabled = _enabled_installables()
-        if enabled is None:
-            return not has_vm_suite()
-        if isinstance(enabled, bool):
-            return not enabled
-        else:
-            return not any((name in enabled for name in [component.name, component.short_name]))
-    else:
-        if isinstance(disabled, bool):
-            return disabled
-        else:
-            return any((name in disabled for name in [component.name, component.short_name]))
+    return True
 
 
 def _has_forced_launchers(component):
