@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.collections.EconomicMap;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
@@ -185,59 +185,50 @@ public class NativeImageOptions {
         }
     }
 
+    private static int availableProcessors() {
+        return Runtime.getRuntime().availableProcessors();
+    }
+
     /**
      * Configures the number of threads of the common pool.
      */
     private static final String PARALLELISM_OPTION_NAME = "parallelism";
     @APIOption(name = PARALLELISM_OPTION_NAME)//
     @Option(help = "The maximum number of threads the build process is allowed to use.")//
-    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
+    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(availableProcessors(), 32), key -> {
         int numberOfThreads = key.getValue();
         if (numberOfThreads < 1) {
             throw UserError.abort("The number of threads was set to %s. Please set the '--%s' option to at least 1.", numberOfThreads, PARALLELISM_OPTION_NAME);
         }
+        int numAvailableProcessors = availableProcessors();
+        if (numberOfThreads > numAvailableProcessors) {
+            LogUtils.warning("Specified parallelism exceeds the number of available processors (%d).", numAvailableProcessors);
+        }
     });
 
     public static int getActualNumberOfThreads() {
-        int commonThreadParallelism = ForkJoinPool.getCommonPoolParallelism();
-        if (NumberOfThreads.getValue() == 1) {
-            /*
-             * Overriding zero parallelism must ensure at least one worker, but due to other
-             * backward compatibility constraints, it ensures two.
-             */
-            assert commonThreadParallelism == 2 : "The common pool with zero parallelism has two worker threads.";
-            /* The common pool with zero parallelism has no actual threads. */
-            commonThreadParallelism = 0;
+        String commonParallelismProperty = System.getProperty("java.util.concurrent.ForkJoinPool.common.parallelism");
+        if (commonParallelismProperty != null) {
+            return Integer.parseInt(commonParallelismProperty);
+        } else {
+            return NumberOfThreads.getValue();
         }
-        /*
-         * Main thread plus common pool threads. setCommonPoolParallelism() asserts that this number
-         * matches NumberOfThreads.
-         */
-        return 1 + commonThreadParallelism;
     }
 
-    /**
-     * The --parallelism flag controls the number of threads used during native image builds.
-     * <p>
-     * There are two ways to apply this value to set the thread count in the common pool: using
-     * system properties (though this approach is strongly discouraged in recent JDK versions), and
-     * using the {@link ForkJoinPool#setParallelism} method.
-     * <p>
-     * By default, the common pool's parallelism level (without explicitly setting it via system
-     * properties or method) equals the number of available processors minus one.
-     * <p>
-     * If zero parallelism is desired, the flag should be set to {@code 1} (main thread only). While
-     * this value can be assigned to the common pool, note that when using
-     * {@link CompletableFuture}, the minimal effective parallelism becomes two due to its internal
-     * pool requirements (see CompletableFuture#ASYNC_POOL). Therefore, the actual thread count must
-     * be incremented by one.
-     */
     public static void setCommonPoolParallelism(OptionValues optionValues) {
-        int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValueOrDefault(optionValues.getMap());
-        if (numberOfCommonPoolThreads == 1) {
-            numberOfCommonPoolThreads += 1;
+        int targetParallelism = Math.max(1, NumberOfThreads.getValueOrDefault(optionValues.getMap()) - 1);
+        if (ForkJoinPool.commonPool().getParallelism() == targetParallelism) {
+            /* Nothing to do. */
+            return;
         }
-        ForkJoinPool.commonPool().setParallelism(numberOfCommonPoolThreads);
+
+        try {
+            ForkJoinPool.commonPool().setParallelism(targetParallelism);
+        } catch (UnsupportedOperationException e) {
+            if (NumberOfThreads.hasBeenSet(optionValues)) {
+                LogUtils.warning("Could not apply the '--parallelism' option due to the `java.util.concurrent.ForkJoinPool.common.parallelism` system property being set as the same time.");
+            }
+        }
     }
 
     @Option(help = "Deprecated, option no longer has any effect", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
