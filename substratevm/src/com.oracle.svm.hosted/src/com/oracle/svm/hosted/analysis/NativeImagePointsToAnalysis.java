@@ -128,7 +128,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onFieldAccessed(AnalysisField field) {
-        customTypeFieldHandler.handleField(field);
+        postTask(() -> customTypeFieldHandler.handleField(field));
     }
 
     @Override

@@ -802,6 +802,13 @@ public class NativeImageGenerator {
     @SuppressWarnings("try")
     protected boolean runPointsToAnalysis(String imageName, OptionValues options, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("run analysis")) {
+            /*
+             * Set the ConcurrentAnalysisAccessImpl before Feature.beforeAnalysis is executed. Some
+             * features may already execute some pre-analysis tasks, e.g., reading a hosted field
+             * value, that can trigger reachability callbacks.
+             */
+            ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
+            aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
@@ -819,8 +826,6 @@ public class NativeImageGenerator {
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
-                    ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
-                    aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
                     if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                         /*
                          * All the field value transformers should be installed by this point.
@@ -829,6 +834,8 @@ public class NativeImageGenerator {
                          */
                         HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
                     }
+                    /* All pre-analysis set-up is done and the fixed-point analysis can start. */
+                    BuildPhaseProvider.markAnalysisStarted();
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
