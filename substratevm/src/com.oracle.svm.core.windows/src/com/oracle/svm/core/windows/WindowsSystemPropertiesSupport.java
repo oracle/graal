@@ -28,10 +28,8 @@ import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -58,7 +56,8 @@ import com.oracle.svm.core.windows.headers.WinVer;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
-@Platforms(Platform.WINDOWS.class)
+import jdk.graal.compiler.word.Word;
+
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /* Null-terminated wide-character string constants. */
@@ -392,7 +391,6 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
 @AutomaticallyRegisteredFeature
 class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override

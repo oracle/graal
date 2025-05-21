@@ -1223,7 +1223,7 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#hasDumpRuntimeCompiledMethodsSupport()} instead. */
         @Option(help = "Dump the instructions of runtime compiled methods in temporary files.") //
         public static final RuntimeOptionKey<Boolean> DumpRuntimeCompiledMethods = new RuntimeOptionKey<>(false, key -> {
-            if (key.hasBeenSet() && Platform.includedIn(Platform.WINDOWS.class)) {
+            if (key.hasBeenSet() && Platform.includedIn(Platform.WINDOWS_BASE.class)) {
                 throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
             }
         });
@@ -1557,7 +1557,7 @@ public class SubstrateOptions {
     }
 
     public static boolean hasDumpRuntimeCompiledMethodsSupport() {
-        return !Platform.includedIn(Platform.WINDOWS.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
+        return !Platform.includedIn(Platform.WINDOWS_BASE.class) && ConcealedOptions.DumpRuntimeCompiledMethods.getValue();
     }
 
     @Option(help = "file:doc-files/TrackDynamicAccessHelp.txt")//

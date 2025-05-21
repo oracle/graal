@@ -26,7 +26,7 @@
 package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platform.WINDOWS_BASE;
 
 import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -58,7 +58,7 @@ final class RegisterSigQuitHandlerStartupHook implements RuntimeSupport.Hook {
         }
 
         if (isFirstIsolate) {
-            String signal = Platform.includedIn(WINDOWS.class) ? "BREAK" : "QUIT";
+            String signal = Platform.includedIn(WINDOWS_BASE.class) ? "BREAK" : "QUIT";
             Signal.handle(new Signal(signal), new SigQuitHandler());
         }
     }

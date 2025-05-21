@@ -162,7 +162,7 @@ class ThreadLocalServiceKeyComputer implements FieldValueTransformer {
     }
 }
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms(Platform.WINDOWS_BASE.class)
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider_Windows {
 

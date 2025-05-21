@@ -113,7 +113,7 @@ public class VMFeature implements InternalFeature {
             });
         }
 
-        if (!Platform.includedIn(Platform.WINDOWS.class)) {
+        if (!Platform.includedIn(Platform.WINDOWS_BASE.class)) {
             CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(Word.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
             CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
         }

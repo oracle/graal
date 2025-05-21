@@ -514,7 +514,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         if (sep == null) {
             if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
                 sep = ":";
-            } else if (Platform.includedIn(Platform.WINDOWS.class)) {
+            } else if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
                 sep = "[:;]";
             } else {
                 warn("Running on unknown platform. Could not process classpath.");
