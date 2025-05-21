@@ -261,6 +261,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    default_to_jvmci=default_to_jvmci)
 
 class GraalVMJDKConfig(mx.JDKConfig):
+
+    # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
+    # However, the Graal compiler is disabled by default and must be explicitly
+    # enabled using the -XX:+UseGraalJIT option.
+    libgraal_additional_vm_args = [
+        '-XX:+UnlockExperimentalVMOptions',
+        '-XX:+EnableJVMCI',
+        '-XX:+UseGraalJIT',
+        '-XX:-UnlockExperimentalVMOptions'
+    ]
     """
     A JDKConfig that configures the built GraalVM as a JDK config.
     """
@@ -270,11 +280,8 @@ class GraalVMJDKConfig(mx.JDKConfig):
             graalvm_home = default_jdk.home
             additional_vm_args = []
         elif GraalVMJDKConfig.is_libgraal_jdk(default_jdk.home):
-            # Oracle JDK includes the libjvmci compiler, allowing it to function as GraalVM.
-            # However, the Graal compiler is disabled by default and must be explicitly enabled using the -XX:+UseJVMCICompiler option.
             graalvm_home = default_jdk.home
-            # GR-58388: Switch '-XX:+UseJVMCINativeLibrary' to '-XX:+UseGraalJIT'
-            additional_vm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
+            additional_vm_args = GraalVMJDKConfig.libgraal_additional_vm_args
         else:
             graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
             additional_vm_args = []
