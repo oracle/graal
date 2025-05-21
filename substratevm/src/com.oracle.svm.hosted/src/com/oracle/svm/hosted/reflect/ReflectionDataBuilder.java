@@ -554,15 +554,24 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerAllDeclaredFieldsQuery(condition, false, clazz);
     }
 
+    private record AllDeclaredFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
+    }
+
+    private Set<AllDeclaredFieldsQuery> existingAllDeclaredFieldsQuery = ConcurrentHashMap.newKeySet();
+
     public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
-        runConditionalInAnalysisTask(condition, (cnd) -> {
-            setQueryFlag(clazz, ALL_DECLARED_FIELDS_FLAG);
-            try {
-                registerFields(cnd, queriedOnly, clazz.getDeclaredFields());
-            } catch (LinkageError e) {
-                registerLinkageError(clazz, e, fieldLookupExceptions);
-            }
-        });
+        final var query = new AllDeclaredFieldsQuery(condition, queriedOnly, clazz);
+        if (!existingAllDeclaredFieldsQuery.contains(query)) {
+            runConditionalInAnalysisTask(condition, (cnd) -> {
+                setQueryFlag(clazz, ALL_DECLARED_FIELDS_FLAG);
+                try {
+                    registerFields(cnd, queriedOnly, clazz.getDeclaredFields());
+                } catch (LinkageError e) {
+                    registerLinkageError(clazz, e, fieldLookupExceptions);
+                }
+            });
+            existingAllDeclaredFieldsQuery.add(query);
+        }
     }
 
     private void registerFields(ConfigurationCondition cnd, boolean queriedOnly, Field[] reflectFields) {
@@ -1137,6 +1146,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!throwMissingRegistrationErrors()) {
             pendingRecordClasses = null;
         }
+        existingAllDeclaredFieldsQuery = null;
     }
 
     @Override
