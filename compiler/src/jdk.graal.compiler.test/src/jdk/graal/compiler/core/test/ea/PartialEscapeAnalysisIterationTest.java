@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.core.test.ea;
 
-import java.lang.ref.WeakReference;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -66,7 +66,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
     public static String moveIntoBranchBox(int id) {
         Double box = object1 + 1;
         if (id == 0) {
-            obj1 = new WeakReference<>(box);
+            obj1 = new AtomicReference<>(box);
         }
         return "value";
     }
@@ -74,7 +74,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
     public static String moveIntoBranch(int id) {
         AllocatedObject box = new AllocatedObject(object2.value + 1);
         if (id == 0) {
-            obj1 = new WeakReference<>(box);
+            obj1 = new AtomicReference<>(box);
         }
         return "value";
     }
@@ -104,7 +104,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
         Double box = object1 + 1;
         for (int i = 0; i < 100; i++) {
             if (id == i) {
-                obj1 = new WeakReference<>(box);
+                obj1 = new AtomicReference<>(box);
             }
         }
         return "value";
@@ -114,7 +114,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
         AllocatedObject box = new AllocatedObject(object2.value + 1);
         for (int i = 0; i < 100; i++) {
             if (id == i) {
-                obj1 = new WeakReference<>(box);
+                obj1 = new AtomicReference<>(box);
             }
         }
         return "value";
@@ -124,7 +124,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
         AllocatedObject box = new AllocatedObject();
         for (int i = 0; i < 100; i++) {
             if (id == i) {
-                obj1 = new WeakReference<>(box);
+                obj1 = new AtomicReference<>(box);
             }
         }
         return "value";
