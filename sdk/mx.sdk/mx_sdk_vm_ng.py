@@ -1077,6 +1077,8 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         }
         self.standalone_dir_dist = standalone_dir_dist
         maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
+        assert theLicense is None, "the 'license' attribute is ignored for DeliverableStandaloneArchive"
+        theLicense = ['GFTC' if is_enterprise() else 'UPL']
         super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
 
@@ -1085,7 +1087,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         resolved = [self.standalone_dir_dist]
         self._resolveDepsHelper(resolved)
         self.standalone_dir_dist = resolved[0]
-        self.theLicense = self.standalone_dir_dist.theLicense
 
     def get_artifact_metadata(self):
         return {'edition': 'ee' if is_enterprise() else 'ce', 'type': 'standalone', 'project': 'graal'}
