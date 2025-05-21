@@ -163,7 +163,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          *
          * https://developer.android.com/ndk/guides/abis#arm64-v8a
          */
-        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class) || Platform.includedIn(Platform.ANDROID.class)) {
+        if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS_BASE.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
         }
         allocatableRegs = List.copyOf(regs);

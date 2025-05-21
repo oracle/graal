@@ -31,7 +31,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platform.WINDOWS_BASE;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.dump.HeapDumping;
@@ -94,7 +94,7 @@ public final class VMInspectionOptions {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void notSupportedOnWindows(HostedOptionKey<Boolean> optionKey) {
-        if (Platform.includedIn(WINDOWS.class) && optionKey.getValue()) {
+        if (Platform.includedIn(WINDOWS_BASE.class) && optionKey.getValue()) {
             String msg = String.format("the option '%s' is not supported on Windows and will be ignored.", optionKey.getName());
             LogUtils.warning(msg);
         }
@@ -119,7 +119,7 @@ public final class VMInspectionOptions {
                             MONITORING_ALLOWED_VALUES_TEXT);
         }
 
-        if (Platform.includedIn(WINDOWS.class)) {
+        if (Platform.includedIn(WINDOWS_BASE.class)) {
             Set<String> notSupported = getEnabledMonitoringFeatures();
             notSupported.retainAll(NOT_SUPPORTED_ON_WINDOWS);
             if (!notSupported.isEmpty()) {
@@ -158,7 +158,7 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasHeapDumpSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     public static boolean dumpImageHeap() {
@@ -186,22 +186,22 @@ public final class VMInspectionOptions {
      */
     @Fold
     public static boolean hasJfrSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     @Fold
     public static boolean hasJvmstatSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JVMSTAT_NAME) && !Platform.includedIn(WINDOWS.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JVMSTAT_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     @Fold
     public static boolean hasJmxServerSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXSERVER_NAME) && !Platform.includedIn(WINDOWS.class) && ManagementAgentModule.isPresent();
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXSERVER_NAME) && !Platform.includedIn(WINDOWS_BASE.class) && ManagementAgentModule.isPresent();
     }
 
     @Fold
     public static boolean hasJmxClientSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXCLIENT_NAME) && !Platform.includedIn(WINDOWS.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXCLIENT_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     @Fold
@@ -216,7 +216,7 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasJCmdSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JCMD_NAME) && !Platform.includedIn(WINDOWS.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JCMD_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     static class DeprecatedOptions {

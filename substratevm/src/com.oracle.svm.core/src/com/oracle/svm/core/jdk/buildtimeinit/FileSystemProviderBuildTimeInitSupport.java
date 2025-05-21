@@ -439,7 +439,7 @@ final class Target_java_io_FileSystem_BuildTime {
 class UserDirAccessors {
     @SuppressWarnings("unused")
     static String getUserDir(Target_java_io_FileSystem_BuildTime that) {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
             /*
              * Note that on Windows, we normalize the property value (JDK-8198997) and do not use
              * the `StaticProperty.userDir()` like the rest (JDK-8066709).

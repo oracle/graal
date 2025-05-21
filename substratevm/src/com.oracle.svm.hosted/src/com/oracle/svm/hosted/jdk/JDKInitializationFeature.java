@@ -110,7 +110,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.net", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
             rci.initializeAtRunTime("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
         }
 

@@ -297,7 +297,7 @@ public final class NativeLibraries {
     }
 
     private static String getStaticLibraryName(String libraryName) {
-        boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+        boolean targetWindows = Platform.includedIn(Platform.WINDOWS_BASE.class);
         String prefix = targetWindows ? "" : "lib";
         String suffix = targetWindows ? ".lib" : ".a";
         return prefix + libraryName + suffix;
@@ -495,7 +495,7 @@ public final class NativeLibraries {
 
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
-        String libSuffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
+        String libSuffix = Platform.includedIn(Platform.WINDOWS_BASE.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
                 paths.filter(Files::isRegularFile)
