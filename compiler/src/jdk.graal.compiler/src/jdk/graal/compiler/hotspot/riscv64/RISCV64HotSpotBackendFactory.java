@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -150,7 +150,7 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     protected Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
-        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
+        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters());
         // Removing callee-saved registers.
         /* General Purpose Registers. */
         callerSave.remove(RISCV64.x2);

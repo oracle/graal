@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -147,7 +147,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     protected Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
-        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
+        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters());
         // Removing callee-saved registers.
         /* General Purpose Registers. */
         callerSave.remove(AArch64.r19);
