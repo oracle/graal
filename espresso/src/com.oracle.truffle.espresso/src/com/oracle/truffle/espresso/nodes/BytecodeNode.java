@@ -290,10 +290,8 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -1816,9 +1814,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+    public void prepareForInstrumentation(Set<Class<?>> tags) {
         InstrumentationSupport info = this.instrumentation;
-        if (info == null && materializedTags.contains(StatementTag.class)) {
+        if (info == null && tags.contains(StatementTag.class)) {
             Lock lock = getLock();
             lock.lock();
             try {
@@ -1826,7 +1824,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // double checked locking
                 if (info == null) {
                     generifyBytecodeLevelInlining();
-                    this.instrumentation = info = insert(new InstrumentationSupport(getMethodVersion(), frameDescriptor));
+                    this.instrumentation = info = insert(new InstrumentationSupport(getMethodVersion()));
                     // the debug info contains instrumentable nodes so we need to notify for
                     // instrumentation updates.
                     notifyInserted(info);
@@ -1835,7 +1833,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 lock.unlock();
             }
         }
-        return this;
     }
 
     private static boolean takeBranchRef1(StaticObject operand, int opcode) {
@@ -2018,15 +2015,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, REPORT_LOOP_STRIDE)) {
                     livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
                     Object osrResult;
-                    StoredWrapperNode storedWrapperNode = null;
                     try {
-                        storedWrapperNode = storeWrapperNodeIfSet(frame, instrument);
                         osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), null, frame);
                     } catch (Throwable any) {
                         // Has already been guest-handled in OSR. Shortcut out of the method.
                         throw new EspressoOSRReturnException(any);
-                    } finally {
-                        restoreWrapperNode(frame, storedWrapperNode, instrument);
                     }
                     if (osrResult != null) {
                         throw new EspressoOSRReturnException(osrResult);
@@ -2037,32 +2030,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
         livenessAnalysis.performOnEdge(frame, curBCI, targetBCI, skipLivenessActions);
         return nextStatementIndex;
-    }
-
-    private static void restoreWrapperNode(VirtualFrame frame, StoredWrapperNode storedWrapperNode, InstrumentationSupport instrument) {
-        // restore wrapper nodes after OSR
-        if (storedWrapperNode != null) {
-            frame.setAuxiliarySlot(instrument.wrapperSlotIndex, storedWrapperNode.storedWrapperNode());
-            if (InstrumentationSupport.assertionsEnabled()) {
-                frame.setAuxiliarySlot(instrument.indexSlotIndex, storedWrapperNode.storedIndex());
-            }
-        }
-    }
-
-    private static StoredWrapperNode storeWrapperNodeIfSet(VirtualFrame frame, InstrumentationSupport instrument) {
-        // check if we have stores wrapper nodes and index in the frame and store if so
-        if (instrument != null) {
-            Object storedWrapperNode = frame.getAuxiliarySlot(instrument.wrapperSlotIndex);
-            int storedIndex = 0;
-            if (InstrumentationSupport.assertionsEnabled()) {
-                storedIndex = (int) frame.getAuxiliarySlot(instrument.indexSlotIndex);
-            }
-            return new StoredWrapperNode(storedWrapperNode, storedIndex);
-        }
-        return null;
-    }
-
-    private record StoredWrapperNode(Object storedWrapperNode, int storedIndex) {
     }
 
     @ExplodeLoop
@@ -2938,8 +2905,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     static final class InstrumentationSupport extends EspressoNode {
         static final int NO_STATEMENT = -1;
-        private static final Object WRAPPER_SLOT_KEY = new Object();
-        private static final Object WRAPPER_INDEX_SLOT_KEY = new Object();
 
         @SuppressWarnings("all")
         private static boolean assertionsEnabled() {
@@ -2948,21 +2913,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return areAssertionsEnabled;
         }
 
-        @Children private final EspressoBaseStatementNode[] statementNodes;
+        @Children private final EspressoStatementNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
         private final EspressoContext context;
         private final MethodVersion method;
 
-        private final int wrapperSlotIndex;
-        private final int indexSlotIndex;
-
-        InstrumentationSupport(MethodVersion method, FrameDescriptor frameDescriptor) {
+        InstrumentationSupport(MethodVersion method) {
             this.method = method;
             this.context = method.getMethod().getContext();
-
-            this.wrapperSlotIndex = frameDescriptor.findOrAddAuxiliarySlot(WRAPPER_SLOT_KEY);
-            this.indexSlotIndex = frameDescriptor.findOrAddAuxiliarySlot(WRAPPER_INDEX_SLOT_KEY);
 
             LineNumberTableAttribute table = method.getLineNumberTableAttribute();
 
@@ -2974,9 +2933,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 Arrays.fill(seenLines, -1);
                 int maxSeenLine = -1;
 
-                this.statementNodes = new EspressoBaseStatementNode[entries.size()];
-                this.hookBCIToNodeIndex = new MapperBCI(table);
-
+                EspressoStatementNode[] statements = new EspressoStatementNode[entries.size()];
+                MapperBCI mapper = new MapperBCI(table);
                 for (int i = 0; i < entries.size(); i++) {
                     LineNumberTableAttribute.Entry entry = entries.get(i);
                     int lineNumber = entry.getLineNumber();
@@ -2991,11 +2949,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                     }
                     if (!seen) {
-                        statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), lineNumber);
+                        statements[mapper.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), method.getMethod().getSource().createSection(lineNumber));
                         seenLines[i] = lineNumber;
                         maxSeenLine = Math.max(maxSeenLine, lineNumber);
                     }
                 }
+                this.hookBCIToNodeIndex = mapper;
+                this.statementNodes = statements;
             } else {
                 this.statementNodes = null;
                 this.hookBCIToNodeIndex = null;
@@ -3040,22 +3000,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         void notifyExceptionAt(VirtualFrame frame, Throwable t, int statementIndex) {
-            assert (int) frame.getAuxiliarySlot(indexSlotIndex) == statementIndex;
-            WrapperNode wrapperNode = (WrapperNode) frame.getAuxiliarySlot(wrapperSlotIndex);
-            if (wrapperNode == null) {
+            ProbeNode probeNode = getProbeAt(statementIndex);
+            if (probeNode == null) {
                 return;
             }
-            ProbeNode probeNode = wrapperNode.getProbeNode();
             probeNode.onReturnExceptionalOrUnwind(frame, t, false);
         }
 
         void notifyYieldAt(VirtualFrame frame, Object o, int statementIndex) {
-            assert (int) frame.getAuxiliarySlot(indexSlotIndex) == statementIndex;
-            WrapperNode wrapperNode = (WrapperNode) frame.getAuxiliarySlot(wrapperSlotIndex);
-            if (wrapperNode == null) {
+            ProbeNode probeNode = getProbeAt(statementIndex);
+            if (probeNode == null) {
                 return;
             }
-            ProbeNode probeNode = wrapperNode.getProbeNode();
             probeNode.onYield(frame, o);
         }
 
@@ -3076,21 +3032,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         private void enterAt(VirtualFrame frame, int index) {
-            WrapperNode wrapperNode = getWrapperAt(index);
-            /*
-             * We need to store this wrapper node in the frame to make sure we exit on the same
-             * wrapper. Wrapper nodes can be replaced at arbitrary time for example when the
-             * debugger is disposed and the session is ended.
-             */
-            frame.setAuxiliarySlot(wrapperSlotIndex, wrapperNode);
-            // only add wrapper index in frame when assertions enabled
-            if (assertionsEnabled()) {
-                frame.setAuxiliarySlot(indexSlotIndex, index);
-            }
-            if (wrapperNode == null) {
+            ProbeNode probeNode = getProbeAt(index);
+            if (probeNode == null) {
                 return;
             }
-            ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onEnter(frame);
             } catch (Throwable t) {
@@ -3109,21 +3054,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         private void resumeAt(VirtualFrame frame, int index) {
-            WrapperNode wrapperNode = getWrapperAt(index);
-            /*
-             * We need to store this wrapper node in the frame to make sure we exit on the same
-             * wrapper. Wrapper nodes can be replaced at arbitrary time for example when the
-             * debugger is disposed and the session is ended.
-             */
-            frame.setAuxiliarySlot(wrapperSlotIndex, wrapperNode);
-            // only add wrapper index in frame when assertions enabled
-            if (assertionsEnabled()) {
-                frame.setAuxiliarySlot(indexSlotIndex, index);
-            }
-            if (wrapperNode == null) {
+            ProbeNode probeNode = getProbeAt(index);
+            if (probeNode == null) {
                 return;
             }
-            ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onResume(frame);
             } catch (Throwable t) {
@@ -3142,12 +3076,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         private void exitAt(VirtualFrame frame, int index, Object returnValue) {
-            assert (int) frame.getAuxiliarySlot(indexSlotIndex) == index;
-            WrapperNode wrapperNode = (WrapperNode) frame.getAuxiliarySlot(wrapperSlotIndex);
-            if (wrapperNode == null) {
+            ProbeNode probeNode = getProbeAt(index);
+            if (probeNode == null) {
                 return;
             }
-            ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onReturnValue(frame, returnValue);
             } catch (Throwable t) {
@@ -3190,21 +3122,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return hookBCIToNodeIndex.lookupBucket(startBci);
         }
 
-        /*
-         * This method must only be called when entering a node. The returned node should be stored
-         * in the frame in the WRAPPER_SLOT along with the index. This is needed to make sure that
-         * we always exit on the same wrapper.
-         */
-        private WrapperNode getWrapperAt(int index) {
+        private ProbeNode getProbeAt(int index) {
             if (statementNodes == null || index < 0) {
                 return null;
             }
-            EspressoBaseStatementNode node = statementNodes[index];
-            if (!(node instanceof WrapperNode)) {
+            EspressoStatementNode node = statementNodes[index];
+            if (node == null) {
                 return null;
             }
             CompilerAsserts.partialEvaluationConstant(node);
-            return ((WrapperNode) node);
+            return node.findProbe();
         }
     }
 
