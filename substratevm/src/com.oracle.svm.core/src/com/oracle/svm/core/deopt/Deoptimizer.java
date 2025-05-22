@@ -295,15 +295,25 @@ public final class Deoptimizer {
      */
     public static boolean testEagerDeoptInLazyDeoptFatalError = false;
 
+    /**
+     * If true, then we call lazy deoptimization from within {@link #lazyDeoptStubCore}, which
+     * should recognize that the frame is already pending deoptimization and have no effect. This is
+     * only set to true for testing.
+     */
+    public static boolean testLazyDeoptInLazyDeopt = false;
+
     public static void maybeTestGC() {
         if (testGCinDeoptimizer) {
             Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
         }
     }
 
-    private static void maybeTestEagerDeoptInLazyDeoptFatalError(Deoptimizer deoptimizer, CodePointer pc) {
+    private static void maybeTestDeoptDuringLazyDeopt(Deoptimizer deoptimizer, CodePointer pc) {
+        VMError.guarantee(!(testEagerDeoptInLazyDeoptFatalError && testLazyDeoptInLazyDeopt), "Cannot test both eager deopt and lazy deopt");
         if (testEagerDeoptInLazyDeoptFatalError) {
             deoptimizer.deoptSourceFrameEagerly(pc, false);
+        } else if (testLazyDeoptInLazyDeopt) {
+            deoptimizeFrame(deoptimizer.deoptState.sourceSp, false, null);
         }
     }
 
@@ -939,7 +949,7 @@ public final class Deoptimizer {
         CodeInfoQueryResult sourceChunk = CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
         maybeTestGC();
         Deoptimizer deoptimizer = new Deoptimizer(sourceSp, sourceChunk, CurrentIsolate.getCurrentThread(), CurrentIsolate.getCurrentThread());
-        maybeTestEagerDeoptInLazyDeoptFatalError(deoptimizer, ip);
+        maybeTestDeoptDuringLazyDeopt(deoptimizer, ip);
         DeoptimizedFrame deoptFrame = deoptimizer.doDeoptSourceFrame(ip, true, false);
         if (hasException) {
             deoptFrame.takeException();
