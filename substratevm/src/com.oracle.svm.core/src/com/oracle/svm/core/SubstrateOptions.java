@@ -1431,8 +1431,8 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Preserve = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Ignore classes or packages (comma separated) from the ones included with '-H:Preserve'. This can be used to workaround potential issues related to '-H:Preserve'.", type = OptionType.Debug) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
     public static final HostedOptionKey<Boolean> UseBaseLayerInclusionPolicy = new HostedOptionKey<>(false);
 
