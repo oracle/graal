@@ -510,6 +510,22 @@ public final class DebuggerController implements ContextsListener {
 
                 fine(() -> "Waking up thread: " + getThreadName(thread));
                 threadSuspension.removeHardSuspendedThread(thread);
+
+                Thread hostThread = context.asHostThread(thread);
+                if (!context.isSteppingInProgress(hostThread)) {
+                    // We need to notify the Truffle debugger session that this thread is resumed.
+                    // Otherwise, we risk losing an update to the stepping strategy, which causes a
+                    // major slowdown due to frame materialization required for e.g. onReturn
+                    // notifications.
+                    fine(() -> "calling underlying resume method for guestThread: " + getThreadName(thread));
+
+                    try {
+                        debuggerSession.resume(hostThread);
+                    } catch (IllegalStateException e) {
+                        // debugger session is closed. Safe to ignore
+                    }
+                }
+
                 lock.release();
                 lock.notifyAll();
                 return true;
