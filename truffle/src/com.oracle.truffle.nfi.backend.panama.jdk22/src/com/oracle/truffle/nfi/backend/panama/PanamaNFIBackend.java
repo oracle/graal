@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.SymbolLookup;
+import java.util.EnumMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -53,18 +57,14 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadDefaultNodeGen;
+import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadLibraryNodeGen;
 import com.oracle.truffle.nfi.backend.panama.PanamaSignature.PanamaSignatureBuilder;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
-import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadDefaultNodeGen;
-import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadLibraryNodeGen;
-
-import java.lang.foreign.SymbolLookup;
-import java.util.EnumMap;
-import java.util.Map;
 
 @ExportLibrary(NFIBackendLibrary.class)
 @SuppressWarnings("static-method")
@@ -163,6 +163,7 @@ final class PanamaNFIBackend implements NFIBackend {
         return simpleTypes.get(type);
     }
 
+    @SuppressWarnings("unused")
     @ExportMessage
     Object getArrayType(NativeSimpleType type) {
         // TODO

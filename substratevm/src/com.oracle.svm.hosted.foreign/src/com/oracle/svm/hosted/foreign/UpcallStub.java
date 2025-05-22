@@ -174,7 +174,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert ExplicitCallingConvention.Util.getCallingConventionKind(method, false) == SubstrateCallingConventionKind.Custom;
         assert Uninterruptible.Utils.isUninterruptible(method);
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
 
         /*
          * Read all relevant values, i.e. the MH to call, the current Isolate, the
@@ -286,7 +286,8 @@ class HighLevelUpcallStub extends UpcallStub {
                     "invokeWithArguments",
                     Object[].class);
 
-    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowType) {
+    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowTypeParam) {
+        MethodType lowType = lowTypeParam;
         /* Inject return buffer */
         if (jep.buffersReturn()) {
             lowType = lowType.insertParameterTypes(0, long.class);
@@ -301,7 +302,7 @@ class HighLevelUpcallStub extends UpcallStub {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         MetaAccessProvider metaAccess = kit.getMetaAccess();
         FrameStateBuilder frame = kit.getFrameState();
 
@@ -336,7 +337,8 @@ class HighLevelUpcallStub extends UpcallStub {
  */
 class HighLevelDirectUpcallStub extends UpcallStub {
 
-    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowType) {
+    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowTypeParam) {
+        MethodType lowType = lowTypeParam;
         /* Inject return buffer */
         if (jep.buffersReturn()) {
             lowType = lowType.insertParameterTypes(0, long.class);
@@ -355,7 +357,7 @@ class HighLevelDirectUpcallStub extends UpcallStub {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
         FrameStateBuilder frame = kit.getFrameState();
 
         List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());

@@ -95,6 +95,7 @@ record UpcallStubFactoryDecorator(UpcallStubFactory delegate, FunctionDescriptor
 @TargetClass(value = SysVx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
         return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.x64.sysv.CallArranger.arrangeUpcall(targetType, function, options), function, options);
@@ -104,6 +105,7 @@ final class Target_jdk_internal_foreign_abi_x64_sysv_SysVx64Linker {
 @TargetClass(value = Windowsx64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
         return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.x64.windows.CallArranger.arrangeUpcall(targetType, function, options), function, options);
@@ -113,6 +115,7 @@ final class Target_jdk_internal_foreign_abi_x64_windows_Windowsx64Linker {
 @TargetClass(value = MacOsAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
         return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.MACOS.arrangeUpcall(targetType, function, options), function, options);
@@ -122,6 +125,7 @@ final class Target_jdk_internal_foreign_abi_aarch64_macos_MacOsAArch64Linker {
 @TargetClass(value = LinuxAArch64Linker.class, onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
 final class Target_jdk_internal_foreign_abi_aarch64_linux_LinuxAArch64Linker {
 
+    @SuppressWarnings("static-method")
     @Substitute
     UpcallStubFactory arrangeUpcall(MethodType targetType, FunctionDescriptor function, LinkerOptions options) {
         return new UpcallStubFactoryDecorator(jdk.internal.foreign.abi.aarch64.CallArranger.LINUX.arrangeUpcall(targetType, function, options), function, options);

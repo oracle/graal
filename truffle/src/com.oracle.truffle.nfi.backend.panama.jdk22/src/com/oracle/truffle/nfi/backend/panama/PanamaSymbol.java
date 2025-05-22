@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.MemorySegment;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-
-import java.lang.foreign.MemorySegment;
 
 @ExportLibrary(InteropLibrary.class)
 final class PanamaSymbol implements TruffleObject {
@@ -56,6 +56,7 @@ final class PanamaSymbol implements TruffleObject {
         this.symbol = symbol;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isPointer() {
         return true;
