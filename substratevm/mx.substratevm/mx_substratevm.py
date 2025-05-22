@@ -510,7 +510,7 @@ def svm_gate_body(args, tasks):
 
             json_and_schema_file_pairs = [
                 ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
-                ('build-output.json', 'build-output-schema-v0.9.3.json'),
+                ('build-output.json', 'build-output-schema-v0.9.4.json'),
             ]
 
             build_output_file = join(svmbuild_dir(), 'build-output.json')
