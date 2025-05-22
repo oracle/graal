@@ -605,6 +605,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         } else {
             constructorToCall = customConstructorToCall;
         }
+        if (constructorToCall == null) {
+            return null;
+        }
         ConstructorAccessor acc = getConstructorAccessor(serializationTargetClass, constructorToCall);
         JavaLangReflectAccess langReflectAccess = ReflectionUtil.readField(ReflectionFactory.class, "langReflectAccess", ReflectionFactory.getReflectionFactory());
         Method newConstructorWithAccessor = ReflectionUtil.lookupMethod(JavaLangReflectAccess.class, "newConstructorWithAccessor", Constructor.class, ConstructorAccessor.class);
