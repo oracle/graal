@@ -192,8 +192,8 @@ public interface CollectionPolicy {
     UnsignedWord getMaximumOldSize();
 
     /**
-     * The maximum number of bytes that should be kept readily available for allocation or copying
-     * during collections.
+     * The maximum number of bytes that should be kept readily available for allocations after a
+     * collection. This may consider memory needed during a future collection as well.
      */
     UnsignedWord getMaximumFreeAlignedChunksSize();
 
