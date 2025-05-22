@@ -42,6 +42,13 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
    * [Windows x64](https://gds.oracle.com/download/espresso/archive/espresso-java21-24.2.0-windows-amd64.zip)
 
 2. Unzip the archive:
+
+   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+
+   Extract:
     ```shell
     tar -xzf <archive>.tar.gz
     ```
