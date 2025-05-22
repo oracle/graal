@@ -1017,6 +1017,10 @@ else:
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
     def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
+        # mx deploy-artifacts takes the version from the suite, we ensure it is the same version as SDK.
+        # This also checks the release field because release_version() is '...-dev' when release: False.
+        assert suite.release_version() == _suite.release_version(), f"version from {suite.name} ({suite.release_version()}) does not match version in sdk ({_suite.release_version()})"
+
         # required
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
