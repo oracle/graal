@@ -316,7 +316,7 @@ public class SVMImageLayerSnapshotUtil {
      */
     private static String getGeneratedSerializationName(AnalysisType type) {
         Class<?> constructorAccessor = type.getJavaClass();
-        SerializationSupport serializationRegistry = SerializationSupport.singleton();
+        SerializationSupport serializationRegistry = SerializationSupport.currentLayer();
         SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);
         return generatedSerializationClassName(serializationLookupKey);
     }

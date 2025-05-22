@@ -170,11 +170,11 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
     }
 
     public static boolean isGeneratedSerializationClassLoader(ClassLoader classLoader) {
-        return SerializationSupport.singleton().isGeneratedSerializationClassLoader(classLoader);
+        return SerializationSupport.currentLayer().isGeneratedSerializationClassLoader(classLoader);
     }
 
     public static String getClassLoaderSerializationLookupKey(ClassLoader classLoader) {
-        return GENERATED_SERIALIZATION_KEY + SerializationSupport.singleton().getClassLoaderSerializationLookupKey(classLoader);
+        return GENERATED_SERIALIZATION_KEY + SerializationSupport.currentLayer().getClassLoaderSerializationLookupKey(classLoader);
     }
 
     /**
