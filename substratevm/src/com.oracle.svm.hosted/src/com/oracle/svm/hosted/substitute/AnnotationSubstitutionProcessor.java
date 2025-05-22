@@ -48,6 +48,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.oracle.svm.hosted.SVMHost;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -915,30 +916,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             return true;
         }
 
-        for (Class<?> onlyWithClass : targetElementAnnotation.onlyWith()) {
-            Object onlyWithProvider;
-            try {
-                onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
-            } catch (ReflectionUtilError ex) {
-                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for %s cannot be loaded or instantiated: %s", annotatedElement, onlyWithClass.getTypeName());
-            }
-
-            boolean onlyWithResult;
-            if (onlyWithProvider instanceof BooleanSupplier) {
-                onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
-            } else if (onlyWithProvider instanceof Predicate) {
-                @SuppressWarnings("unchecked")
-                Predicate<Class<?>> onlyWithPredicate = (Predicate<Class<?>>) onlyWithProvider;
-                onlyWithResult = onlyWithPredicate.test(originalClass);
-            } else {
-                throw UserError.abort("Class specified as onlyWith for %s does not implement %s or %s", annotatedElement, BooleanSupplier.class.getSimpleName(), Predicate.class.getSimpleName());
-            }
-
-            if (!onlyWithResult) {
-                return false;
-            }
-        }
-        return true;
+        return SVMHost.evaluateOnlyWith(targetElementAnnotation.onlyWith(), annotatedElement.toString(), originalClass);
     }
 
     private static <T> void register(Map<T, T> substitutions, T annotated, T original, T target) {
