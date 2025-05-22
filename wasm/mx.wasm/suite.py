@@ -90,7 +90,7 @@ suite = {
         "jdk.incubator.vector", # Vector API
       ],
       "checkstyleVersion" : "10.21.0",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
@@ -103,7 +103,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "license" : "UPL",
     },
 
@@ -116,7 +116,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "BSD-new",
@@ -133,7 +133,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "BSD-new",
@@ -159,7 +159,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
@@ -185,7 +185,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "workingSets" : "WebAssembly",
       "testProject" : True,
@@ -200,7 +200,7 @@ suite = {
         "org.graalvm.wasm.utils",
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "testProject" : True,
     },
@@ -213,7 +213,7 @@ suite = {
         "JOL",
       ],
       "workingSets": "WebAssembly",
-      "javaCompliance" : "19+",
+      "javaCompliance" : "21+",
       "defaultBuild": False,
     },
 
@@ -275,6 +275,13 @@ suite = {
         "requires": [
           "org.graalvm.collections",
         ],
+        "exports" : [
+          "* to org.graalvm.wasm.test",
+          # Export internals to official test runner
+          "* to com.oracle.truffle.wasm.closedtestcases",
+          # Export internals to debug tests
+          "* to com.oracle.truffle.wasm.debugtests",
+        ]
       },
       "subDir" : "src",
       "dependencies" : [
@@ -292,6 +299,7 @@ suite = {
         "tag": ["default", "public"],
       },
       "noMavenJavadoc": True,
+      "useModulePath": True,
     },
 
     "WASM_POM": {
@@ -325,12 +333,27 @@ suite = {
       "distDependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
-      "mainClass" : "org.graalvm.wasm.WasmLauncher",
+      "mainClass" : "org.graalvm.wasm.launcher.WasmLauncher",
       "license" : "UPL",
       "maven" : False,
+      "useModulePath": True,
     },
 
     "WASM_TESTS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.test",
+        "exports" : [
+          # Export everything to junit and dependent test distributions.
+          "org.graalvm.wasm.test*",
+          # Export utils to JMH benchmarks
+          "org.graalvm.wasm.utils*",
+        ],
+        "requires" : [
+          "org.graalvm.polyglot",
+          "org.graalvm.collections",
+          "org.graalvm.truffle",
+        ],
+      },
       "dependencies" : [
         "org.graalvm.wasm.test",
         "org.graalvm.wasm.utils",
@@ -344,10 +367,22 @@ suite = {
         "WASM",
       ],
       "maven" : False,
+      "useModulePath": True,
       "unittestConfig": "wasm",
     },
 
     "WASM_TESTCASES" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.testcases",
+        "exports" : [
+          # Export everything to junit
+          "org.graalvm.wasm.testcases* to junit",
+        ],
+        "opens" : [
+          "test.c",
+          "test.wat",
+        ],
+      },
       "description" : "Tests compiled from the source code.",
       "dependencies" : [
         "org.graalvm.wasm.testcases",
@@ -361,11 +396,18 @@ suite = {
       ],
       "defaultBuild" : False,
       "maven" : False,
+      "useModulePath" : True,
       "testDistribution" : True,
       "unittestConfig": "wasm",
     },
 
     "WASM_BENCHMARKS" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.benchmark",
+        "requires" : [
+          "java.compiler",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.benchmark",
@@ -378,6 +420,7 @@ suite = {
         "WASM_TESTS",
       ],
       "maven" : False,
+      "useModulePath": True,
       "testDistribution" : True,
     },
 
