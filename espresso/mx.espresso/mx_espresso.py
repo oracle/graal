@@ -48,7 +48,7 @@ from mx_truffle import resolve_truffle_dist_names
 _suite = mx.suite('espresso')
 
 # re-export custom mx project classes, so they can be used from suite.py
-from mx_sdk_shaded import ShadedLibraryProject
+from mx_sdk_shaded import ShadedLibraryProject  # pylint: disable=unused-import
 from mx_sdk_vm_ng import NativeImageLibraryProject, ThinLauncherProject, JavaHomeDependency, DynamicPOMDistribution, ExtractedEngineResources, DeliverableStandaloneArchive, StandaloneLicenses  # pylint: disable=unused-import
 
 # JDK compiled with the Sulong toolchain.
@@ -214,10 +214,12 @@ def _run_verify_imports(s):
     # Find invalid files
     invalid_files = []
     for project in s.projects:
-        if isinstance(project, ShadedLibraryProject):
-            # Ignore shaded libraries
-            continue
+        output_root = project.get_output_root()
         for src_dir in project.source_dirs():
+            if src_dir.startswith(output_root):
+                # ignore source that are under the output root since
+                # those are probably generated
+                continue
             invalid_files += verify_order(src_dir, prefix_order)
 
     if invalid_files:
@@ -245,6 +247,7 @@ def _espresso_gate_runner(args, tasks):
     with Task('Espresso: verify import order', tasks, tags=[EspressoTags.imports]) as t:
         if t:
             _run_verify_imports(_suite)
+            _run_verify_imports(mx.suite('espresso-shared'))
 
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
@@ -436,7 +439,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
     dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
-    truffle_jars=['espresso:ESPRESSO'],
+    truffle_jars=['espresso:ESPRESSO', 'espresso-shared:ESPRESSO_SHARED'],
     support_distributions=['espresso:ESPRESSO_GRAALVM_SUPPORT'],
     library_configs=[espresso_library_config],
     polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],

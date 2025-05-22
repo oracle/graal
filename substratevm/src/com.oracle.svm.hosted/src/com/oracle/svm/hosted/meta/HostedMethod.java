@@ -398,6 +398,15 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return name;
     }
 
+    /**
+     * Returns the original name of the method, without any suffix that might have been added by
+     * {@link HostedMethodNameFactory}.
+     */
+    public String getReflectionName() {
+        VMError.guarantee(this.isOriginalMethod());
+        return wrapped.getName();
+    }
+
     @Override
     public ResolvedSignature<HostedType> getSignature() {
         return signature;

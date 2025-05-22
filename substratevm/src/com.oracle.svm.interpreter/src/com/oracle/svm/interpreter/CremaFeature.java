@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.CremaSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.VMError;
@@ -71,6 +72,7 @@ public class CremaFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(CremaSupport.class, new CremaSupportImpl());
+        VMError.guarantee(!RuntimeClassLoading.isSupported() || ClassForNameSupport.respectClassLoader());
     }
 
     private static boolean assertionsEnabled() {

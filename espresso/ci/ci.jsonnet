@@ -24,10 +24,18 @@
     },
   },
 
+  local espresso_shared_gate = common.eclipse + common.jdt + common.predicates(false, false, false, false) +
+   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-shared-style-jdkLatest-linux-amd64') + {
+    setup+: [
+      ['cd', "../espresso-shared"],
+    ],
+  },
+
   local _builds = common.builds + [
     # [GR-64739] move espresso JDK 21 gates to on demand
     # common.jdk21_gate_linux_amd64 + espresso_compiler_stub_gate,
     common.jdk21_on_demand_linux + espresso_compiler_stub_gate,
+    common.jdkLatest_gate_linux_amd64 + espresso_shared_gate,
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21onLatest-linux-amd64'},
