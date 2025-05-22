@@ -150,7 +150,6 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
         final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
 
@@ -178,20 +177,29 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 proxy.addProxyClass(always, c);
             }
 
-            jni.register(ConfigurationCondition.alwaysTrue(), c);
             try {
-                for (Method declaredMethod : c.getDeclaredMethods()) {
-                    jni.register(always, false, declaredMethod);
-                }
-                for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                    jni.register(always, false, declaredConstructor);
-                }
                 for (Field declaredField : c.getDeclaredFields()) {
-                    jni.register(always, false, declaredField);
                     reflection.register(always, false, declaredField);
                 }
             } catch (LinkageError e) {
-                /* If we can't link we can not register for JNI and reflection */
+                /* If we can't link we can not register for reflection */
+            }
+            if (SubstrateOptions.JNI.getValue()) {
+                final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
+                jni.register(always, c);
+                try {
+                    for (Method declaredMethod : c.getDeclaredMethods()) {
+                        jni.register(always, false, declaredMethod);
+                    }
+                    for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
+                        jni.register(always, false, declaredConstructor);
+                    }
+                    for (Field declaredField : c.getDeclaredFields()) {
+                        jni.register(always, false, declaredField);
+                    }
+                } catch (LinkageError e) {
+                    /* If we can't link we can not register for JNI and reflection */
+                }
             }
 
             // if we register as unsafe allocated earlier there are build-time

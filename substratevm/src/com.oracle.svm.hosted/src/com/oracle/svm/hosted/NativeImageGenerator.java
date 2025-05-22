@@ -1112,7 +1112,9 @@ public class NativeImageGenerator {
                                 new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
-                PreserveOptionsSupport.registerPreservedClasses(loader.classLoaderSupport);
+                if (loader.classLoaderSupport.isPreserveMode()) {
+                    PreserveOptionsSupport.registerPreservedClasses(loader.classLoaderSupport);
+                }
 
                 registerEntryPointStubs(entryPoints);
             }
