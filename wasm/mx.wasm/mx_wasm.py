@@ -642,11 +642,13 @@ def wasm(args, **kwargs):
 
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
-        "org.graalvm.wasm",
-        "org.graalvm.wasm.launcher",
+        "WASM",
+        "WASM_LAUNCHER",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
 
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
+    main_dist = mx.distribution('WASM_LAUNCHER')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
+    return mx.run_java(vmArgs + path_args + [main_class_arg] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
 def wasm_memory_layout(args, **kwargs):
