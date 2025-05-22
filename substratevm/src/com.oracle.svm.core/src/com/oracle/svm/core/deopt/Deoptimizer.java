@@ -542,16 +542,39 @@ public final class Deoptimizer {
          * run in any different thread.
          */
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
-        DeoptimizedFrame deoptFrame = Deoptimizer.checkEagerDeoptimized(targetThread, sp);
-        if (deoptFrame != null) {
+
+        if (checkDeoptimizedThenRegisterSpeculationFailure(deoptEagerly, targetThread, sp, speculation)) {
             /* Already deoptimized, so nothing to do. */
-            registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
             return;
         }
 
         VMOperation.guaranteeNotInProgress("With a VM Operation in progress, we cannot determine the thread requesting deoptimization.");
         DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sp, ignoreNonDeoptimizable, speculation, targetThread, deoptEagerly, CurrentIsolate.getCurrentThread());
         vmOp.enqueue();
+    }
+
+    private static boolean checkDeoptimizedThenRegisterSpeculationFailure(boolean deoptEagerly, IsolateThread targetThread, Pointer sp, SpeculationReason speculation) {
+        DeoptimizedFrame deoptFrame = checkEagerDeoptimized(targetThread, sp);
+        if (deoptFrame != null) {
+            /*
+             * Register the failed speculation even when the frame has already been deoptimized
+             * because it might have originally been deoptimized for a different reason.
+             */
+            registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
+            return true;
+        }
+        if (!deoptEagerly && checkLazyDeoptimized(targetThread, sp)) {
+            /*
+             * This cannot race with eager deoptimization because either we are in a VM operation,
+             * or we are in the thread to which the frame belongs, and with lazy deoptimization
+             * enabled, only that thread may deoptimize it eagerly.
+             */
+            CodePointer originalReturnAddress = sp.readWord(0);
+            SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(originalReturnAddress);
+            registerSpeculationFailure(installedCode, speculation);
+            return true;
+        }
+        return false;
     }
 
     private static class DeoptimizeFrameOperation extends JavaVMOperation {
@@ -584,18 +607,15 @@ public final class Deoptimizer {
 
         @Override
         protected void operate() {
-            CodePointer ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
-            /*
-             * These checks for pre-existing deoptimizations are necessary because the code before
-             * entering this VM Operation is interruptible, and deoptimizeFrame expects the IP to be
-             * the address of the deopt source method.
-             */
-            if (checkEagerDeoptimized(targetThread, sourceSp) != null) {
+            /* Recheck if deoptimization already happened just before entering this VM operation. */
+            if (checkDeoptimizedThenRegisterSpeculationFailure(deoptEagerly, targetThread, sourceSp, speculation)) {
                 return;
-            } else if (checkLazyDeoptimized(targetThread, sourceSp)) {
-                uninstallLazyDeoptStubReturnAddress(sourceSp, targetThread);
-                ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
             }
+            if (checkLazyDeoptimized(targetThread, sourceSp)) {
+                assert deoptEagerly;
+                uninstallLazyDeoptStubReturnAddress(sourceSp, targetThread);
+            }
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
             deoptimizeFrame(targetThread, sourceSp, ip, ignoreNonDeoptimizable, speculation, deoptEagerly, requestingThread);
         }
     }
@@ -640,12 +660,22 @@ public final class Deoptimizer {
      * runtime compiled method, since there is no {@link InstalledCode} for native image methods.
      */
     public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation) {
+        VMError.guarantee(thread == CurrentIsolate.getCurrentThread());
+
         CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
+        if (checkLazyDeoptimized(ip)) {
+            /*
+             * This cannot race with eager deoptimization because with lazy deoptimization enabled,
+             * only the thread to which the frame belongs to may deoptimize it eagerly, which is the
+             * current thread.
+             */
+            ip = sp.readWord(0);
+        }
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
         /*
          * We look up the installedCode before checking if the frame is deoptimized to avoid race
-         * conditions. We are not in a VMOperation here. When a deoptimization happens, e.g., at a
-         * safepoint taken at the method exit of checkDeoptimized, then the result value
+         * conditions. We are not in a VMOperation here. When an eager deoptimization happens, e.g.,
+         * at a safepoint taken at the method exit of checkDeoptimized, then the result value
          * deoptimizedFrame will be null but the return address is already patched to the deoptStub.
          * We would not be able to find the installedCode in such a case. Invalidating the same
          * installedCode multiple times in case of a race is not a problem because the actual
@@ -654,17 +684,13 @@ public final class Deoptimizer {
         DeoptimizedFrame deoptimizedFrame = checkEagerDeoptimized(thread, sp);
         if (deoptimizedFrame != null) {
             installedCode = deoptimizedFrame.getSourceInstalledCode();
-        }
-
-        if (installedCode == null) {
-            boolean alreadyDeoptimized = deoptimizedFrame != null || checkLazyDeoptimized(thread, sp);
-            if (alreadyDeoptimized) {
-                /* All the metadata might already be gone. */
+            if (installedCode == null) {
+                /* When the method was invalidated before, all the metadata can be gone by now. */
                 return;
             }
+        } else if (installedCode == null) {
             throw VMError.shouldNotReachHere("Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sp.rawValue()) + ", returnAddress = " + Long.toHexString(ip.rawValue()));
         }
-
         registerSpeculationFailure(installedCode, speculation);
         VMOperation.guaranteeNotInProgress("invalidateMethodOfFrame: running user code that can block");
         installedCode.invalidate();
@@ -676,7 +702,6 @@ public final class Deoptimizer {
             if (speculationLog != null) {
                 speculationLog.addFailedSpeculation(speculation);
             }
-
         }
     }
 
