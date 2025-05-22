@@ -38,6 +38,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.word.BarrieredAccess;
 
@@ -380,6 +381,12 @@ final class Target_java_lang_reflect_Array {
             }
         }
         throw new IllegalArgumentException();
+    }
+
+    @Substitute
+    private static Object newArray(Class<?> componentType, int length)
+                    throws NegativeArraySizeException {
+        return KnownIntrinsics.unvalidatedNewArray(componentType, length);
     }
 
     @Substitute
