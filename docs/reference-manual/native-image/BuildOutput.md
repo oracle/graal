@@ -33,11 +33,9 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  - 13.24GB of memory (42.7% of system memory, using available memory)
  - 16 thread(s) (100.0% of 16 available processor(s), determined at start)
 [2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
-    3,163 reachable types   (72.5% of    4,364 total)
-    3,801 reachable fields  (50.3% of    7,553 total)
-   15,183 reachable methods (45.5% of   33,405 total)
-      957 types,    81 fields, and   480 methods registered for reflection
-       57 types,    55 fields, and    52 methods registered for JNI access
+    3,158 types,   3,625 fields, and  14,804 methods found reachable
+    1,012 types,      36 fields, and     377 methods registered for reflection
+       57 types,      57 fields, and      52 methods registered for JNI access
         4 native libraries: dl, pthread, rt, z
 [3/8] Building universe...                                       (0.8s @ 0.99GB)
 [4/8] Parsing methods...      [*]                                (0.6s @ 0.75GB)
@@ -160,9 +158,11 @@ The progress indicator visualizes the number of analysis iterations.
 A large number of iterations can indicate problems in the analysis likely caused by misconfiguration or a misbehaving feature.
 
 #### <a name="glossary-reachability"></a>Reachable Types, Fields, and Methods
-The number of types (primitives, classes, interfaces, and arrays), fields, and methods that are reachable versus the total number of types, fields, and methods loaded as part of the build process.
-A significantly larger number of loaded elements that are not reachable can indicate a configuration problem.
-To reduce overhead, please ensure that your class path and module path only contain entries that are needed for building the application.
+The number of types (primitives, classes, interfaces, and arrays), fields, and methods that are found reachable by the static analysis.
+The reachability metrics give an impression of how small or large the application is.
+These metrics can be helpful when compared before and after merging code changes or adding, removing, or upgrading dependencies of an application.
+This can help to understand the impact that certain code changes or dependencies have on the overall native binary.
+A larger number of reachable types, fields, and methods will also result in a larger native binary.
 
 #### <a name="glossary-reflection-registrations"></a>Reflection Registrations
 The number of types, fields, and methods that are registered for reflection.
@@ -391,7 +391,7 @@ This schema also contains descriptions for each possible artifact type and expla
 
 The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
 Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in JSON format that can be used, for example, for building monitoring tools.
-Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.3.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
+Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.4.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.4.json).
 Note that a JSON file is produced if and only if a build succeeds.
 
 The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:
