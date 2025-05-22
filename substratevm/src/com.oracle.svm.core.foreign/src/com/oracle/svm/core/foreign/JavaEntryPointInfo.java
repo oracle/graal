@@ -53,7 +53,7 @@ public final class JavaEntryPointInfo {
         return new JavaEntryPointInfo(mt, conv.argRegs(), conv.retRegs(), returnBufferSize);
     }
 
-    static JavaEntryPointInfo make(MethodHandle mh, ABIDescriptor abi, Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs conv,
+    static JavaEntryPointInfo make(MethodHandle mh, @SuppressWarnings("unused") ABIDescriptor abi, Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs conv,
                     boolean needsReturnBuffer, long returnBufferSize) {
         return make(mh.type(), conv, needsReturnBuffer, returnBufferSize);
     }
