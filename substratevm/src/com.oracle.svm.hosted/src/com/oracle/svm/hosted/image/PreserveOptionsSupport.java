@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.svm.core.SubstrateOptions;
@@ -151,6 +152,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
+        final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
         final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
 
         /*
@@ -215,7 +217,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         classesToPreserve.reversed().forEach(c -> {
             reflection.registerAllFields(always, c);
             reflection.registerAllMethodsQuery(always, false, c);
-            // RuntimeSerialization.register(c);
+            serialization.register(always, c);
         });
 
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
