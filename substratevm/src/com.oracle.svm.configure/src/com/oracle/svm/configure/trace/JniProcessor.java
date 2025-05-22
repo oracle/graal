@@ -66,15 +66,17 @@ class JniProcessor extends AbstractProcessor {
         // Special: FindClass and DefineClass take the class in question as a string argument
         if (function.equals("FindClass") || function.equals("DefineClass")) {
             String jniName = singleElement(args);
-            ConfigurationTypeDescriptor type = NamedConfigurationTypeDescriptor.fromJNIName(jniName);
-            LazyValue<String> reflectionName = lazyValue(ClassNameSupport.jniNameToReflectionName(jniName));
-            if (!advisor.shouldIgnore(reflectionName, callerClassLazyValue, entry)) {
-                if (function.equals("FindClass")) {
-                    if (!advisor.shouldIgnoreJniLookup(function, reflectionName, lazyNull(), lazyNull(), callerClassLazyValue, entry)) {
-                        configurationSet.getReflectionConfiguration().getOrCreateType(condition, type).setJniAccessible();
+            if (ClassNameSupport.isValidJNIName(jniName)) {
+                ConfigurationTypeDescriptor type = NamedConfigurationTypeDescriptor.fromJNIName(jniName);
+                LazyValue<String> reflectionName = lazyValue(ClassNameSupport.jniNameToReflectionName(jniName));
+                if (!advisor.shouldIgnore(reflectionName, callerClassLazyValue, entry)) {
+                    if (function.equals("FindClass")) {
+                        if (!advisor.shouldIgnoreJniLookup(function, reflectionName, lazyNull(), lazyNull(), callerClassLazyValue, entry)) {
+                            configurationSet.getReflectionConfiguration().getOrCreateType(condition, type).setJniAccessible();
+                        }
+                    } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(jniName).matches()) { // DefineClass
+                        LogUtils.warning("Unsupported JNI function DefineClass used to load class " + jniName);
                     }
-                } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(jniName).matches()) { // DefineClass
-                    LogUtils.warning("Unsupported JNI function DefineClass used to load class " + jniName);
                 }
             }
             return;

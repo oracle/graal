@@ -180,14 +180,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
             if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
-                if (clazz == null && ClassNameSupport.isValidReflectionName(name.toString()) && dictionary.classesByName.containsKey(ClassNameSupport.reflectionNameToJNIName(name.toString()))) {
-                    clazz = NEGATIVE_CLASS_LOOKUP;
-                }
-                if (clazz == null && ClassNameSupport.isValidTypeName(name.toString()) && dictionary.classesByName.containsKey(ClassNameSupport.typeNameToJNIName(name.toString()))) {
-                    clazz = NEGATIVE_CLASS_LOOKUP;
-                }
+                clazz = NEGATIVE_CLASS_LOOKUP;
             }
-            clazz = checkClass(clazz, name);
+            clazz = checkClass(clazz, name.toString());
             if (clazz != null) {
                 return clazz.getClassObject();
             }
@@ -196,9 +191,9 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
         return null;
     }
 
-    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
+    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, String name) {
         if (throwMissingRegistrationErrors() && clazz == null) {
-            MissingJNIRegistrationUtils.forClass(name.toString());
+            MissingJNIRegistrationUtils.forClass(name);
         } else if (clazz != null && clazz.isNegative()) {
             return null;
         }

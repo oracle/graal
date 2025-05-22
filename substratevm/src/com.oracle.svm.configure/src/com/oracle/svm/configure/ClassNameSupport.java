@@ -182,7 +182,13 @@ public class ClassNameSupport {
                     return false;
                 }
                 lastPackageSeparatorIndex = i;
-            } else if (!Character.isJavaIdentifierPart(current)) {
+            } else if (current == '.' || current == ';' || current == '[' || current == '/') {
+                /*
+                 * Some special characters are allowed in class files while not being permitted as
+                 * code identifiers (e.g. '+', '-', ',').
+                 *
+                 * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.2.2
+                 */
                 return false;
             }
         }
