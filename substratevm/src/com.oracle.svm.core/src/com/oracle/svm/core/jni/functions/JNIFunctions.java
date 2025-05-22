@@ -72,7 +72,8 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -1110,13 +1111,10 @@ public final class JNIFunctions {
             throw new ClassFormatError();
         }
         String name = Utf8.utf8ToString(cname);
-        if (name != null) { // inverse to HotSpot fixClassname():
-            name = name.replace('/', '.');
-        }
         ClassLoader classLoader = JNIObjectHandles.getObject(loader);
         byte[] data = new byte[bufLen];
         CTypeConversion.asByteBuffer(buf, bufLen).get(data);
-        Class<?> clazz = PredefinedClassesSupport.loadClass(classLoader, name, data, 0, data.length, null);
+        Class<?> clazz = RuntimeClassLoading.defineClass(classLoader, name, data, 0, data.length, ClassDefinitionInfo.EMPTY);
         return JNIObjectHandles.createLocal(clazz);
     }
 

@@ -1233,6 +1233,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     builder_jar_distributions=[
         'substratevm:SVM',
         'substratevm:SVM_CONFIGURE',
+        'espresso-shared:ESPRESSO_SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:SVM_CAPNPROTO_RUNTIME',

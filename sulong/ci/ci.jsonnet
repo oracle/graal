@@ -43,6 +43,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/tools/**",
         # substratevm and its dependencies
         "<graal>/substratevm/**",
+        "<graal>/espresso-shared/**",
         # vm and its dependencies
         "<graal>/vm/**",
       ] else []) + (if style then [

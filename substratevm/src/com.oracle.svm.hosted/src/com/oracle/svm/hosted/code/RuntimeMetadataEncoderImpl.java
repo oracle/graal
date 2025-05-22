@@ -445,7 +445,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     public void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod hostedMethod, ConditionalRuntimeValue<Executable> conditionalMethod, Object accessor) {
         boolean isMethod = !hostedMethod.isConstructor();
         HostedType declaringType = hostedMethod.getDeclaringClass();
-        String name = isMethod ? hostedMethod.getName() : null;
+        String name = isMethod ? hostedMethod.getReflectionName() : null;
         HostedType[] parameterTypes = getParameterTypes(hostedMethod);
         /* Reflect method because substitution of Object.hashCode() is private */
         Executable reflectMethod = conditionalMethod.getValueUnconditionally();
@@ -643,7 +643,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     public void addReachableExecutableMetadata(HostedMethod executable) {
         boolean isMethod = !executable.isConstructor();
         HostedType declaringType = executable.getDeclaringClass();
-        String name = isMethod ? executable.getName() : null;
+        String name = isMethod ? executable.getReflectionName() : null;
         String[] parameterTypeNames = getParameterTypeNames(executable);
 
         /* Fill encoders with the necessary values. */

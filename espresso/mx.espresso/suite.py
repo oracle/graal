@@ -74,6 +74,10 @@ suite = {
                 "name" : "sdk",
                 "subdir": True,
             },
+            {
+                "name" : "espresso-shared",
+                "subdir": True,
+            },
         ],
     },
 
@@ -122,32 +126,6 @@ suite = {
             "license": "UPL",
         },
 
-        # Shared .class file parser
-        "com.oracle.truffle.espresso.classfile": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "requires": [
-            ],
-            "javaCompliance" : "17+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
-
-        # Shared link resolver
-        "com.oracle.truffle.espresso.shared": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.truffle.espresso.classfile",
-            ],
-            "requires": [
-            ],
-            "javaCompliance" : "17+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
-
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -156,7 +134,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
                 "com.oracle.truffle.espresso.shadowed.asm",
-                "com.oracle.truffle.espresso.shared",
+                "espresso-shared:ESPRESSO_SHARED",
             ],
             "requires": [
                 "java.logging",
@@ -224,7 +202,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.truffle.espresso.classfile",
+                "espresso-shared:ESPRESSO_SHARED",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
@@ -476,6 +454,7 @@ suite = {
                   "org.graalvm.collections",
                   "org.graalvm.nativeimage",
                   "org.graalvm.polyglot",
+                  "org.graalvm.espresso.shared",
                 ],
             },
             "description" : "Core module of the Java on Truffle (aka Espresso): a Java bytecode interpreter",
@@ -486,6 +465,7 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "espresso-shared:ESPRESSO_SHARED",
             ],
             "maven" : {
                 "artifactId" : "espresso-language",

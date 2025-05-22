@@ -31,6 +31,10 @@ suite = {
                 "name": "compiler",
                 "subdir": True,
             },
+            {
+                "name": "espresso-shared",
+                "subdir": True,
+            },
         ]
     },
 
@@ -337,6 +341,7 @@ suite = {
                 "com.oracle.svm.common",
                 "com.oracle.svm.shaded.org.objectweb.asm",
                 "SVM_CONFIGURE",
+                "espresso-shared:ESPRESSO_SVM",
             ],
             "requires" : [
                 "java.compiler",
@@ -1726,6 +1731,7 @@ suite = {
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "SVM_CONFIGURE",
+                "espresso-shared:ESPRESSO_SVM",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -1776,7 +1782,8 @@ suite = {
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
                     "org.graalvm.nativeimage.configure",
-                    "org.graalvm.nativeimage.libgraal"
+                    "org.graalvm.nativeimage.libgraal",
+                    "org.graalvm.espresso.shared.svm",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
