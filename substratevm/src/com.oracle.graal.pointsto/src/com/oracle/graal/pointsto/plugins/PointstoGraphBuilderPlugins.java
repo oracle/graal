@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.plugins;
 
+import java.lang.reflect.Array;
+
 import com.oracle.graal.pointsto.nodes.AnalysisObjectCloneNode;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -32,12 +34,18 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class PointstoGraphBuilderPlugins {
+
+    public static void registerArrayPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Array.class);
+        r.register(StandardGraphBuilderPlugins.newArrayPlugin("newInstance"));
+    }
 
     public static void registerSystemPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class).setAllowOverwrite(true);
