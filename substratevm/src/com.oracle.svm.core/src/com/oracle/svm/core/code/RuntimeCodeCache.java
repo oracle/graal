@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,8 +64,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.word.Word;
-
-import java.text.SimpleDateFormat;
 
 public class RuntimeCodeCache {
 
@@ -174,11 +172,18 @@ public class RuntimeCodeCache {
     }
 
     private static void dumpMethod(CodeInfo info) {
-        String methodName = CodeInfoAccess.getName(info);
-        int tier = CodeInfoAccess.getTier(info);
-        String date = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date());
         String tmpDirPath = getFileSupport().getTempDirectory();
-        String filePath = tmpDirPath + "/" + date + "_" + methodName + "_" + tier + ".bin";
+        String prefix = System.nanoTime() + "_";
+        String methodName = SubstrateUtil.sanitizeForFileName(CodeInfoAccess.getName(info));
+        String suffix = "_" + CodeInfoAccess.getTier(info) + ".bin";
+
+        // Check that the file name size does not exceed the 255 chars
+        int maxMethodNameSize = 255 - prefix.length() - suffix.length();
+        if (methodName.length() > maxMethodNameSize) {
+            methodName = methodName.substring(maxMethodNameSize);
+        }
+
+        String filePath = tmpDirPath + "/" + prefix + methodName + suffix;
 
         RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(filePath, CREATE_OR_REPLACE, WRITE);
         if (!getFileSupport().isValid(fd)) {
