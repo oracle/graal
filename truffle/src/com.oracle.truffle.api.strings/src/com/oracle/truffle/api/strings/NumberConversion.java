@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
-import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,45 +53,35 @@ import com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason
 
 final class NumberConversion {
 
-    private static final byte[] INT_MIN_VALUE_BYTES = {'-', '2', '1', '4', '7', '4', '8', '3', '6', '4', '8'};
-    private static final byte[] LONG_MIN_VALUE_BYTES = {'-', '9', '2', '2', '3', '3', '7', '2', '0', '3', '6', '8', '5', '4', '7', '7', '5', '8', '0', '8'};
-    private static final byte[] DIGITS = {
-                    '0', '1', '2', '3', '4', '5',
-                    '6', '7', '8', '9', 'a', 'b',
-                    'c', 'd', 'e', 'f', 'g', 'h',
-                    'i', 'j', 'k', 'l', 'm', 'n',
-                    'o', 'p', 'q', 'r', 's', 't',
-                    'u', 'v', 'w', 'x', 'y', 'z'
-    };
-    private static final byte[] DIGIT_TENS = {
-                    '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
-                    '1', '1', '1', '1', '1', '1', '1', '1', '1', '1',
-                    '2', '2', '2', '2', '2', '2', '2', '2', '2', '2',
-                    '3', '3', '3', '3', '3', '3', '3', '3', '3', '3',
-                    '4', '4', '4', '4', '4', '4', '4', '4', '4', '4',
-                    '5', '5', '5', '5', '5', '5', '5', '5', '5', '5',
-                    '6', '6', '6', '6', '6', '6', '6', '6', '6', '6',
-                    '7', '7', '7', '7', '7', '7', '7', '7', '7', '7',
-                    '8', '8', '8', '8', '8', '8', '8', '8', '8', '8',
-                    '9', '9', '9', '9', '9', '9', '9', '9', '9', '9',
-    };
-    private static final byte[] DIGIT_ONES = {
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    };
-
     private static final double MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
     private static final double MIN_SAFE_INTEGER = -MAX_SAFE_INTEGER;
     private static final long MAX_SAFE_INTEGER_LONG = (long) Math.pow(2, 53) - 1;
     private static final long MIN_SAFE_INTEGER_LONG = (long) MIN_SAFE_INTEGER;
+
+    /**
+     * See jdk.internal.util.DecimalDigits. Using a String so that the array is treated as stable.
+     * Each element of the char[] array represents the packaging of two ascii characters.
+     *
+     * @see #digitPair(int)
+     * @see #digitPairHi(char)
+     * @see #digitPairLo(char)
+     */
+    private static final String DIGIT_PAIRS;
+
+    static {
+        char[] digits = new char[10 * 10];
+        for (int i = 0; i < 10; i++) {
+            char hi = (char) (i + '0');
+            for (int j = 0; j < 10; j++) {
+                char lo = (char) ((j + '0') << 8);
+                digits[i * 10 + j] = (char) (hi | lo);
+            }
+        }
+        DIGIT_PAIRS = new String(digits);
+    }
+
+    private NumberConversion() {
+    }
 
     static int parseInt(Node node, TruffleStringIterator it, TruffleString.Encoding encoding, int radix, InlinedBranchProfile errorProfile,
                     TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
@@ -269,9 +258,6 @@ final class NumberConversion {
 
     @InliningCutoff
     static byte[] longToString(long i, int length) {
-        if (i == Long.MIN_VALUE) {
-            return LONG_MIN_VALUE_BYTES;
-        }
         byte[] buf = new byte[length];
         writeLongToBytesIntl(i, length, buf, 0);
         return buf;
@@ -313,7 +299,13 @@ final class NumberConversion {
                     0x8FA0A1F00L, 0x8FA0A1F00L, 0x8FA0A1F00L, 0x9C4653600L, 0x9C4653600L, 0x9C4653600L, 0xA00000000L, 0xA00000000L
     };
 
+    /**
+     * Calculates <code>floor(log<sub>2</sub>(x))</code> for all positive x. Returns 0 for
+     * <code>x == 0</code>, and 63 for all <code>x < 0</code>, which happens to be the expected
+     * result for <code>floor(log<sub>2</sub>(abs(Long.MIN_VALUE)))</code> (only).
+     */
     private static int floorLog2(long n) {
+        assert n >= 0 || n == Long.MIN_VALUE : n;
         return 63 ^ Long.numberOfLeadingZeros(n | 1);
     }
 
@@ -337,9 +329,6 @@ final class NumberConversion {
     }
 
     static int stringLengthLong(long longValue) {
-        if (longValue == Long.MIN_VALUE) {
-            return LONG_MIN_VALUE_BYTES.length;
-        }
         long n = longValue;
         final int sign;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, n < 0)) {
@@ -348,121 +337,143 @@ final class NumberConversion {
         } else {
             sign = 0;
         }
+        // Works for Long.MIN_VALUE, too (floorLog2(MIN_VALUE) == 63)
         final int bits = floorLog2(n);
         final int digits = (int) ((LONG_LENGTH_TABLE[bits] + (n >> (bits >> 2))) >> 52);
         return sign + digits;
     }
 
-    @InliningCutoff
-    static void writeLongToBytes(Node location, long i, byte[] buf, int stride, int fromIndex, int length) {
-        if (i == Long.MIN_VALUE) {
-            TStringOps.arraycopyWithStride(location,
-                            LONG_MIN_VALUE_BYTES, byteArrayBaseOffset(), 0, 0,
-                            buf, byteArrayBaseOffset(), stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
-        } else {
-            writeLongToBytesIntl(i, fromIndex + length, buf, stride);
-        }
+    static void writeLongToBytes(long i, byte[] buf, int stride, int fromIndex, int length) {
+        writeLongToBytesIntl(i, fromIndex + length, buf, stride);
     }
 
     /**
-     * Copied from {@link Long}, adapted for {@code byte[]}.
+     * Write decimal string representation of the long value into the target buffer backwards
+     * starting with the least significant digit at the specified index (exclusive).
+     *
+     * @implNote See jdk.internal.util.DecimalDigits#getCharsLatin1(long, int, byte[]). This method
+     *           converts positive inputs into negative values, to cover the Long.MIN_VALUE case.
+     *
+     * @param value value to convert to string
+     * @param index next index, after the least significant digit
+     * @param buf target buffer
+     * @param stride target buffer stride (0, 1, or 2)
      */
     private static void writeLongToBytesIntl(long value, int index, byte[] buf, int stride) {
         long i = value;
-        long q;
-        int r;
-        int bytePos = index;
-        byte sign = 0;
-
-        if (i < 0) {
-            sign = '-';
+        boolean negative = i < 0;
+        if (!negative) {
             i = -i;
         }
 
         // Get 2 digits/iteration using longs until quotient fits into an int
-        while (i > Integer.MAX_VALUE) {
-            q = i / 100;
-            // really: r = i - (q * 100);
-            r = (int) (i - ((q << 6) + (q << 5) + (q << 2)));
+        int bytePos = index;
+        while (i < Integer.MIN_VALUE) {
+            long q = i / 100;
+            int r = (int) ((q * 100) - i);
             i = q;
-            writeToByteArray(buf, stride, --bytePos, DIGIT_ONES[r]);
-            writeToByteArray(buf, stride, --bytePos, DIGIT_TENS[r]);
+            bytePos -= 2;
+            writeDigitPairToByteArray(buf, stride, bytePos, r);
         }
 
         // Get 2 digits/iteration using ints
-        int q2;
         int i2 = (int) i;
-        while (i2 >= 65536) {
-            q2 = i2 / 100;
-            // really: r = i2 - (q * 100);
-            r = i2 - ((q2 << 6) + (q2 << 5) + (q2 << 2));
-            i2 = q2;
-            writeToByteArray(buf, stride, --bytePos, DIGIT_ONES[r]);
-            writeToByteArray(buf, stride, --bytePos, DIGIT_TENS[r]);
+        while (i2 <= -100) {
+            int q = i2 / 100;
+            int r = (q * 100) - i2;
+            i2 = q;
+            bytePos -= 2;
+            writeDigitPairToByteArray(buf, stride, bytePos, r);
         }
 
-        // Fall thru to fast mode for smaller numbers
-        // assert(i2 <= 65536, i2);
-        do {
-            q2 = (i2 * 52429) >>> (16 + 3);
-            r = i2 - ((q2 << 3) + (q2 << 1));  // r = i2-(q2*10) ...
-            writeToByteArray(buf, stride, --bytePos, DIGITS[r]);
-            i2 = q2;
-        } while (i2 != 0);
-        if (sign != 0) {
-            writeToByteArray(buf, stride, --bytePos, sign);
+        // We know there are at most two digits and at least one digit left at this point.
+        if (i2 < -9) {
+            int r = -i2;
+            bytePos -= 2;
+            writeDigitPairToByteArray(buf, stride, bytePos, r);
+        } else {
+            int r = '0' - i2;
+            writeToByteArray(buf, stride, --bytePos, r);
+        }
+        if (negative) {
+            writeToByteArray(buf, stride, --bytePos, '-');
         }
     }
 
-    static void writeIntToBytes(Node location, int i, byte[] buf, int stride, int fromIndex, int length) {
-        if (i == Integer.MIN_VALUE) {
-            TStringOps.arraycopyWithStride(location,
-                            INT_MIN_VALUE_BYTES, byteArrayBaseOffset(), 0, 0,
-                            buf, byteArrayBaseOffset(), stride, fromIndex, INT_MIN_VALUE_BYTES.length);
+    static void writeIntToBytes(int i, byte[] buf, int stride, int fromIndex, int length) {
+        writeIntToBytesIntl(i, fromIndex + length, buf, stride);
+    }
+
+    /**
+     * Write decimal string representation of the int value into the target buffer backwards
+     * starting with the least significant digit at the specified index (exclusive).
+     *
+     * @implNote See jdk.internal.util.DecimalDigits#getCharsLatin1(int, int, byte[]). This method
+     *           converts positive inputs into negative values, to cover the Integer.MIN_VALUE case.
+     *
+     * @param value value to convert to string
+     * @param index next index, after the least significant digit
+     * @param buf target buffer
+     * @param stride target buffer stride (0, 1, or 2)
+     */
+    private static void writeIntToBytesIntl(int value, int index, byte[] buf, int stride) {
+        int i = value;
+        boolean negative = i < 0;
+        if (!negative) {
+            i = -i;
+        }
+
+        int bytePos = index;
+        // Get 2 digits/iteration using ints
+        while (i <= -100) {
+            int q = i / 100;
+            int r = (q * 100) - i;
+            i = q;
+            bytePos -= 2;
+            writeDigitPairToByteArray(buf, stride, bytePos, r);
+        }
+
+        // We know there are at most two digits and at least one digit left at this point.
+        if (i < -9) {
+            int r = -i;
+            bytePos -= 2;
+            writeDigitPairToByteArray(buf, stride, bytePos, r);
         } else {
-            writeIntToBytesIntl(i, fromIndex + length, buf, stride);
+            writeToByteArray(buf, stride, --bytePos, ('0' - i));
+        }
+        if (negative) {
+            writeToByteArray(buf, stride, --bytePos, '-');
         }
     }
 
     /**
-     * Copied from {@link Integer}, adapted for {@code byte[]}.
-     * <p>
-     * Places characters representing the integer i into the character array buf. The characters are
-     * placed into the buffer backwards starting with the least significant digit at the specified
-     * index (exclusive), and working backwards from there.
-     * <p>
-     * Will fail if i == Integer.MIN_VALUE
+     * Converts an integer value to a two digit character pair.
      */
-    private static void writeIntToBytesIntl(int value, int index, byte[] buf, int stride) {
-        int i = value;
-        int q;
-        int r;
-        int bytePos = index;
-        byte sign = 0;
-        if (i < 0) {
-            sign = '-';
-            i = -i;
-        }
-        // Generate two digits per iteration
-        while (i >= 65536) {
-            q = i / 100;
-            // really: r = i - (q * 100);
-            r = i - ((q << 6) + (q << 5) + (q << 2));
-            i = q;
-            writeToByteArray(buf, stride, --bytePos, DIGIT_ONES[r]);
-            writeToByteArray(buf, stride, --bytePos, DIGIT_TENS[r]);
-        }
-        // Fall thru to fast mode for smaller numbers
-        // assert(i <= 65536, i);
-        do {
-            q = (i * 52429) >>> (16 + 3);
-            r = i - ((q << 3) + (q << 1));  // r = i-(q*10) ...
-            writeToByteArray(buf, stride, --bytePos, DIGITS[r]);
-            i = q;
-        } while (i != 0);
-        if (sign != 0) {
-            writeToByteArray(buf, stride, --bytePos, sign);
-        }
+    private static char digitPair(int i) {
+        assert 0 <= i && i <= 99 : i;
+        return DIGIT_PAIRS.charAt(i);
     }
 
+    /**
+     * Extracts the leading (more significant) digit from a digit pair.
+     */
+    private static int digitPairHi(char digitPair) {
+        return (digitPair & 0xff);
+    }
+
+    /**
+     * Extracts the trailing (less significant) digit from a digit pair.
+     */
+    private static int digitPairLo(char digitPair) {
+        return (digitPair >>> 8);
+    }
+
+    /**
+     * Writes the integer as a two-decimal-digit sequence into the buffer at the specified position.
+     */
+    private static void writeDigitPairToByteArray(byte[] buf, int stride, int bufPos, int r) {
+        var digitPair = digitPair(r);
+        writeToByteArray(buf, stride, bufPos, digitPairHi(digitPair));
+        writeToByteArray(buf, stride, bufPos + 1, digitPairLo(digitPair));
+    }
 }
