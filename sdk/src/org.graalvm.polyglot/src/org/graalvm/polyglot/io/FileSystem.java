@@ -447,8 +447,8 @@ public interface FileSystem {
      * @throws SecurityException if the {@link FileSystem} implementation denied the operation
      * @since 25.0.0
      */
-    default long getTotalSpace(Path path) throws IOException {
-        throw new UnsupportedOperationException("TotalSpace is not supported");
+    default long getFileStoreTotalSpace(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreTotalSpace is not supported");
     }
 
     /**
@@ -467,15 +467,15 @@ public interface FileSystem {
      * @throws SecurityException if the {@link FileSystem} implementation denied the operation
      * @since 25.0.0
      */
-    default long getUnallocatedSpace(Path path) throws IOException {
-        throw new UnsupportedOperationException("UnallocatedSpace is not supported");
+    default long getFileStoreUnallocatedSpace(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreUnallocatedSpace is not supported");
     }
 
     /**
      * Returns the number of bytes available to this Java virtual machine on the file store that
-     * contains the given {@code path}. Unlike {@link #getUnallocatedSpace(Path)}, this method
-     * accounts for operating system-level restrictions, user quotas, and file system permissions,
-     * and therefore may return a smaller value. If the available space exceeds
+     * contains the given {@code path}. Unlike {@link #getFileStoreUnallocatedSpace(Path)}, this
+     * method accounts for operating system level restrictions, user quotas, and file system
+     * permissions, and therefore may return a smaller value. If the available space exceeds
      * {@link Long#MAX_VALUE}, {@code Long.MAX_VALUE} is returned. Note that the returned value may
      * be imprecise, as it can change at any time due to external I/O activity, including operations
      * performed outside this virtual machine.
@@ -488,8 +488,41 @@ public interface FileSystem {
      * @throws SecurityException if the {@link FileSystem} implementation denied the operation
      * @since 25.0.0
      */
-    default long getUsableSpace(Path path) throws IOException {
-        throw new UnsupportedOperationException("UsableSpace is not supported");
+    default long getFileStoreUsableSpace(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreUsableSpace is not supported");
+    }
+
+    /**
+     * Returns the number of bytes per block in the file store that contains the given {@code path}.
+     *
+     * @param path the path whose file store is to be queried
+     * @return the block size
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default long getFileStoreBlockSize(Path path) throws IOException {
+        throw new UnsupportedOperationException("GetFileStoreBlockSize is not supported");
+    }
+
+    /**
+     * Determines whether the file store containing the given {@code path} is read-only.
+     * <p>
+     * Note that even if the file store is not read-only, individual write operations may still be
+     * denied due to restrictions imposed by the {@link FileSystem} implementation, operating system
+     * level policies, user quotas, or file system permissions.
+     *
+     * @param path the path whose file store is to be queried
+     * @throws UnsupportedOperationException if the file system does not support retrieving file
+     *             store information
+     * @throws IOException if an I/O error occurs while accessing the file store
+     * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+     * @since 25.0.0
+     */
+    default boolean isFileStoreReadOnly(Path path) throws IOException {
+        throw new UnsupportedOperationException("IsFileStoreReadOnly is not supported");
     }
 
     /**

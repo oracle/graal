@@ -432,18 +432,28 @@ public final class MemoryFileSystem implements FileSystem {
     }
 
     @Override
-    public long getTotalSpace(Path path) {
+    public long getFileStoreTotalSpace(Path path) {
         return Runtime.getRuntime().maxMemory();
     }
 
     @Override
-    public long getUnallocatedSpace(Path path) {
+    public long getFileStoreUnallocatedSpace(Path path) {
         return Runtime.getRuntime().freeMemory();
     }
 
     @Override
-    public long getUsableSpace(Path path) {
-        return getUnallocatedSpace(path);
+    public long getFileStoreUsableSpace(Path path) {
+        return getFileStoreUnallocatedSpace(path);
+    }
+
+    @Override
+    public long getFileStoreBlockSize(Path path) {
+        return 1024;
+    }
+
+    @Override
+    public boolean isFileStoreReadOnly(Path path) {
+        return false;
     }
 
     private static Object[] parse(String attributesSelector) {

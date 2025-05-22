@@ -617,18 +617,28 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) throws IOException {
-            return delegate.getTotalSpace(PreInitializePath.unwrap(path));
+        public long getFileStoreTotalSpace(Path path) throws IOException {
+            return delegate.getFileStoreTotalSpace(PreInitializePath.unwrap(path));
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) throws IOException {
-            return delegate.getUnallocatedSpace(PreInitializePath.unwrap(path));
+        public long getFileStoreUnallocatedSpace(Path path) throws IOException {
+            return delegate.getFileStoreUnallocatedSpace(PreInitializePath.unwrap(path));
         }
 
         @Override
-        public long getUsableSpace(Path path) throws IOException {
-            return delegate.getUsableSpace(PreInitializePath.unwrap(path));
+        public long getFileStoreUsableSpace(Path path) throws IOException {
+            return delegate.getFileStoreUsableSpace(PreInitializePath.unwrap(path));
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            return delegate.getFileStoreBlockSize(PreInitializePath.unwrap(path));
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) throws IOException {
+            return delegate.isFileStoreReadOnly(PreInitializePath.unwrap(path));
         }
 
         @Override
@@ -1077,24 +1087,38 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) throws IOException {
+        public long getFileStoreTotalSpace(Path path) throws IOException {
             Objects.requireNonNull(path);
             Path resolved = resolveRelative(path);
             return fileSystemProvider.getFileStore(resolved).getTotalSpace();
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) throws IOException {
+        public long getFileStoreUnallocatedSpace(Path path) throws IOException {
             Objects.requireNonNull(path);
             Path resolved = resolveRelative(path);
             return fileSystemProvider.getFileStore(resolved).getUnallocatedSpace();
         }
 
         @Override
-        public long getUsableSpace(Path path) throws IOException {
+        public long getFileStoreUsableSpace(Path path) throws IOException {
             Objects.requireNonNull(path);
             Path resolved = resolveRelative(path);
             return fileSystemProvider.getFileStore(resolved).getUsableSpace();
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            Objects.requireNonNull(path);
+            Path resolved = resolveRelative(path);
+            return fileSystemProvider.getFileStore(resolved).getBlockSize();
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) throws IOException {
+            Objects.requireNonNull(path);
+            Path resolved = resolveRelative(path);
+            return fileSystemProvider.getFileStore(resolved).isReadOnly();
         }
 
         private Path resolveRelative(Path path) {
@@ -1280,17 +1304,27 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) throws IOException {
+        public long getFileStoreTotalSpace(Path path) throws IOException {
             throw forbidden(path);
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) throws IOException {
+        public long getFileStoreUnallocatedSpace(Path path) throws IOException {
             throw forbidden(path);
         }
 
         @Override
-        public long getUsableSpace(Path path) throws IOException {
+        public long getFileStoreUsableSpace(Path path) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) throws IOException {
             throw forbidden(path);
         }
     }
@@ -1460,18 +1494,28 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) throws IOException {
-            return delegate.getTotalSpace(path);
+        public long getFileStoreTotalSpace(Path path) throws IOException {
+            return delegate.getFileStoreTotalSpace(path);
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) throws IOException {
-            return delegate.getUnallocatedSpace(path);
+        public long getFileStoreUnallocatedSpace(Path path) throws IOException {
+            return delegate.getFileStoreUnallocatedSpace(path);
         }
 
         @Override
-        public long getUsableSpace(Path path) throws IOException {
-            return delegate.getUsableSpace(path);
+        public long getFileStoreUsableSpace(Path path) throws IOException {
+            return delegate.getFileStoreUsableSpace(path);
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            return delegate.getFileStoreBlockSize(path);
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) throws IOException {
+            return delegate.isFileStoreReadOnly(path);
         }
     }
 
@@ -1739,21 +1783,33 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) throws IOException {
+        public long getFileStoreTotalSpace(Path path) throws IOException {
             FileSystemInfo fileSystemInfo = selectFileSystem(path);
-            return fileSystemInfo.fileSystem.getTotalSpace(fileSystemInfo.path);
+            return fileSystemInfo.fileSystem.getFileStoreTotalSpace(fileSystemInfo.path);
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) throws IOException {
+        public long getFileStoreUnallocatedSpace(Path path) throws IOException {
             FileSystemInfo fileSystemInfo = selectFileSystem(path);
-            return fileSystemInfo.fileSystem.getUnallocatedSpace(fileSystemInfo.path);
+            return fileSystemInfo.fileSystem.getFileStoreUnallocatedSpace(fileSystemInfo.path);
         }
 
         @Override
-        public long getUsableSpace(Path path) throws IOException {
+        public long getFileStoreUsableSpace(Path path) throws IOException {
             FileSystemInfo fileSystemInfo = selectFileSystem(path);
-            return fileSystemInfo.fileSystem.getUsableSpace(fileSystemInfo.path);
+            return fileSystemInfo.fileSystem.getFileStoreUsableSpace(fileSystemInfo.path);
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            FileSystemInfo fileSystemInfo = selectFileSystem(path);
+            return fileSystemInfo.fileSystem.getFileStoreBlockSize(fileSystemInfo.path);
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) throws IOException {
+            FileSystemInfo fileSystemInfo = selectFileSystem(path);
+            return fileSystemInfo.fileSystem.isFileStoreReadOnly(fileSystemInfo.path);
         }
 
         private FileSystemInfo selectFileSystem(Path path) {
@@ -1934,32 +1990,52 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) throws IOException {
+        public long getFileStoreTotalSpace(Path path) throws IOException {
             if (allowFileStoreInfo) {
-                return delegateFileSystem.getTotalSpace(path);
+                return delegateFileSystem.getFileStoreTotalSpace(path);
             } else {
                 // throws SecurityException
-                return super.getTotalSpace(path);
+                return super.getFileStoreTotalSpace(path);
             }
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) throws IOException {
+        public long getFileStoreUnallocatedSpace(Path path) throws IOException {
             if (allowFileStoreInfo) {
-                return delegateFileSystem.getUnallocatedSpace(path);
+                return delegateFileSystem.getFileStoreUnallocatedSpace(path);
             } else {
                 // throws SecurityException
-                return super.getUnallocatedSpace(path);
+                return super.getFileStoreUnallocatedSpace(path);
             }
         }
 
         @Override
-        public long getUsableSpace(Path path) throws IOException {
+        public long getFileStoreUsableSpace(Path path) throws IOException {
             if (allowFileStoreInfo) {
-                return delegateFileSystem.getUsableSpace(path);
+                return delegateFileSystem.getFileStoreUsableSpace(path);
             } else {
                 // throws SecurityException
-                return super.getUsableSpace(path);
+                return super.getFileStoreUsableSpace(path);
+            }
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            if (allowFileStoreInfo) {
+                return delegateFileSystem.getFileStoreBlockSize(path);
+            } else {
+                // throws SecurityException
+                return super.getFileStoreBlockSize(path);
+            }
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) throws IOException {
+            if (allowFileStoreInfo) {
+                return delegateFileSystem.isFileStoreReadOnly(path);
+            } else {
+                // throws SecurityException
+                return super.isFileStoreReadOnly(path);
             }
         }
     }
@@ -2111,17 +2187,27 @@ final class FileSystems {
         }
 
         @Override
-        public long getTotalSpace(Path path) {
+        public long getFileStoreTotalSpace(Path path) {
             throw forbidden(path);
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) {
+        public long getFileStoreUnallocatedSpace(Path path) {
             throw forbidden(path);
         }
 
         @Override
-        public long getUsableSpace(Path path) {
+        public long getFileStoreUsableSpace(Path path) {
+            throw forbidden(path);
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) throws IOException {
+            throw forbidden(path);
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) {
             throw forbidden(path);
         }
     }

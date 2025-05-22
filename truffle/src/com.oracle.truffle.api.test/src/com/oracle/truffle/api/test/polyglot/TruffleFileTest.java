@@ -1202,6 +1202,8 @@ public class TruffleFileTest {
             // Unallocated space may change after retrieval; use a weak assertion to account for
             // fluctuations.
             assertInTolerance(fileStore.getUsableSpace(), fsInfo.getUsableSpace());
+            assertEquals(fileStore.getBlockSize(), fsInfo.getBlockSize());
+            assertEquals(fileStore.isReadOnly(), fsInfo.isReadOnly());
             return null;
         }
 
@@ -1486,17 +1488,27 @@ public class TruffleFileTest {
         }
 
         @Override
-        public long getTotalSpace(Path path) {
+        public long getFileStoreTotalSpace(Path path) {
             throw fail();
         }
 
         @Override
-        public long getUnallocatedSpace(Path path) {
+        public long getFileStoreUnallocatedSpace(Path path) {
             throw fail();
         }
 
         @Override
-        public long getUsableSpace(Path path) {
+        public long getFileStoreUsableSpace(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public long getFileStoreBlockSize(Path path) {
+            throw fail();
+        }
+
+        @Override
+        public boolean isFileStoreReadOnly(Path path) {
             throw fail();
         }
 

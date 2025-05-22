@@ -2106,7 +2106,7 @@ public final class TruffleFile {
         @TruffleBoundary
         public long getTotalSpace() throws IOException {
             try {
-                return fileSystemContext.fileSystem.getTotalSpace(normalizedPath);
+                return fileSystemContext.fileSystem.getFileStoreTotalSpace(normalizedPath);
             } catch (IOException | SecurityException | UnsupportedOperationException e) {
                 throw e;
             } catch (Throwable t) {
@@ -2132,7 +2132,7 @@ public final class TruffleFile {
         @TruffleBoundary
         public long getUnallocatedSpace() throws IOException {
             try {
-                return fileSystemContext.fileSystem.getUnallocatedSpace(normalizedPath);
+                return fileSystemContext.fileSystem.getFileStoreUnallocatedSpace(normalizedPath);
             } catch (IOException | SecurityException | UnsupportedOperationException e) {
                 throw e;
             } catch (Throwable t) {
@@ -2159,7 +2159,52 @@ public final class TruffleFile {
         @TruffleBoundary
         public long getUsableSpace() throws IOException {
             try {
-                return fileSystemContext.fileSystem.getUsableSpace(normalizedPath);
+                return fileSystemContext.fileSystem.getFileStoreUsableSpace(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
+
+        /**
+         * Returns the number of bytes per block in the file store.
+         *
+         * @return the block size
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public long getBlockSize() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.getFileStoreBlockSize(normalizedPath);
+            } catch (IOException | SecurityException | UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw wrapHostException(t);
+            }
+        }
+
+        /**
+         * Determines whether the file store is read-only.
+         * <p>
+         * Note that even if the file store is not read-only, individual write operations may still
+         * be denied due to restrictions imposed by the {@link FileSystem} implementation, operating
+         * system level policies, user quotas, or file system permissions.
+         *
+         * @throws UnsupportedOperationException if the file system does not support retrieving file
+         *             store information
+         * @throws IOException if an I/O error occurs while accessing the file store
+         * @throws SecurityException if the {@link FileSystem} implementation denied the operation
+         * @since 25.0.0
+         */
+        @TruffleBoundary
+        public boolean isReadOnly() throws IOException {
+            try {
+                return fileSystemContext.fileSystem.isFileStoreReadOnly(normalizedPath);
             } catch (IOException | SecurityException | UnsupportedOperationException e) {
                 throw e;
             } catch (Throwable t) {

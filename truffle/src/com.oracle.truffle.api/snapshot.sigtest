@@ -440,6 +440,8 @@ hfds delegate,queriedAttributes
 
 CLSS public final com.oracle.truffle.api.TruffleFile$FileStoreInfo
  outer com.oracle.truffle.api.TruffleFile
+meth public boolean isReadOnly() throws java.io.IOException
+meth public long getBlockSize() throws java.io.IOException
 meth public long getTotalSpace() throws java.io.IOException
 meth public long getUnallocatedSpace() throws java.io.IOException
 meth public long getUsableSpace() throws java.io.IOException
