@@ -71,7 +71,7 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
     private final boolean nonNull;
 
     public AArch64HotSpotShenandoahSATBBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                                                 AllocatableValue address, AllocatableValue expectedObject, AllocatableValue temp, AllocatableValue temp2, ForeignCallLinkage callTarget, boolean nonNull) {
+                    AllocatableValue address, AllocatableValue expectedObject, AllocatableValue temp, AllocatableValue temp2, ForeignCallLinkage callTarget, boolean nonNull) {
         super(TYPE);
         this.config = config;
         this.providers = providers;

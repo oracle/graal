@@ -72,9 +72,9 @@ public class AMD64HotSpotShenandoahSATBBarrierOp extends AMD64LIRInstruction {
     @Temp private Value temp3;
 
     public AMD64HotSpotShenandoahSATBBarrierOp(GraalHotSpotVMConfig config, HotSpotProviders providers,
-                                               AllocatableValue address, AllocatableValue expectedObject,
-                                               AllocatableValue temp, AllocatableValue temp2, AllocatableValue temp3,
-                                               ForeignCallLinkage callTarget, boolean nonNull) {
+                    AllocatableValue address, AllocatableValue expectedObject,
+                    AllocatableValue temp, AllocatableValue temp2, AllocatableValue temp3,
+                    ForeignCallLinkage callTarget, boolean nonNull) {
         super(TYPE);
         this.config = config;
         this.providers = providers;

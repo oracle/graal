@@ -43,12 +43,11 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 /**
- * Shenandoah SATB barrier. Supports concurrent marking, by implementing
- * the so-called snapshot-at-the-beginning (SATB). The barrier ensures
- * that we see a consistent and complete marking bitmap after concurrent
- * marking, that has at least all objects marked live that have been live
- * at the beginning of marking (hence the name). This barrier is very
- * similar to G1's pre-write-barrier.
+ * Shenandoah SATB barrier. Supports concurrent marking, by implementing the so-called
+ * snapshot-at-the-beginning (SATB). The barrier ensures that we see a consistent and complete
+ * marking bitmap after concurrent marking, that has at least all objects marked live that have been
+ * live at the beginning of marking (hence the name). This barrier is very similar to G1's
+ * pre-write-barrier.
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public final class ShenandoahSATBBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {

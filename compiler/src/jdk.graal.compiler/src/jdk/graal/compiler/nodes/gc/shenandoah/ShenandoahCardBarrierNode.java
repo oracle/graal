@@ -36,9 +36,8 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
 /**
- * Shenandoah card barriers. Those are added after reference-writes
- * and serve to dirty cards in the card-table. Only needed for
- * generational Shenandoah.
+ * Shenandoah card barriers. Those are added after reference-writes and serve to dirty cards in the
+ * card-table. Only needed for generational Shenandoah.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_4)
 public class ShenandoahCardBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {

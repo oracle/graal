@@ -38,10 +38,9 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 /**
- * A special case of the SATB barrier, needed to support soft and weak
- * references. They are added after reads of referents of SoftReference
- * and WeakReference objects, and ensure that such referents are marked
- * live during concurrent marking.
+ * A special case of the SATB barrier, needed to support soft and weak references. They are added
+ * after reads of referents of SoftReference and WeakReference objects, and ensure that such
+ * referents are marked live during concurrent marking.
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class ShenandoahReferentFieldReadBarrierNode extends ObjectWriteBarrierNode implements LIRLowerable {

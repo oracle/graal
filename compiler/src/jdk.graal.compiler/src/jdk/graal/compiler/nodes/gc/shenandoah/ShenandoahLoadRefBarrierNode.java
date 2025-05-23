@@ -43,12 +43,10 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 /**
- * Shenandoah load-reference barriers. Those are added after
- * reference-loads, and are used to canonicalize references during
- * concurrent evacuation. During concurrent evacuation we might
- * see both from- and to-space references to the same objects, and
- * this barrier ensures that we only see to-space references.
- * (a.k.a. To-space invariant).
+ * Shenandoah load-reference barriers. Those are added after reference-loads, and are used to
+ * canonicalize references during concurrent evacuation. During concurrent evacuation we might see
+ * both from- and to-space references to the same objects, and this barrier ensures that we only see
+ * to-space references. (a.k.a. To-space invariant).
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public final class ShenandoahLoadRefBarrierNode extends ValueNode implements LIRLowerable {
