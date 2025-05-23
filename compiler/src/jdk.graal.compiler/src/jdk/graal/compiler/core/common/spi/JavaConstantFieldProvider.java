@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.common.spi;
 import java.util.Arrays;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.vm.ci.meta.JavaConstant;
@@ -196,5 +197,10 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
             }
         }
         return field.equals(stringValueField);
+    }
+
+    @Override
+    public boolean isTrustedFinal(CanonicalizerTool tool, ResolvedJavaField field) {
+        return false;
     }
 }
