@@ -106,7 +106,7 @@ public abstract class DynamicObjectLibrary extends Library {
     /**
      * @since 20.2.0
      */
-    protected DynamicObjectLibrary() {
+    DynamicObjectLibrary() {
     }
 
     /**
