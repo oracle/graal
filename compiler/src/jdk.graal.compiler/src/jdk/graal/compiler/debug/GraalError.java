@@ -296,10 +296,7 @@ public class GraalError extends Error {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append(super.toString());
-        str.append(context());
-        return str.toString();
+        return super.toString() + context();
     }
 
     public String context() {
@@ -317,9 +314,11 @@ public class GraalError extends Error {
                 if (args[i] instanceof Iterable<?>) {
                     ArrayList<Object> list = new ArrayList<>();
                     for (Object o : (Iterable<?>) args[i]) {
-                        list.add(o);
+                        list.add(Assertions.decorateObjectErrorContext(o));
                     }
                     args[i] = list.toString();
+                } else {
+                    args[i] = Assertions.decorateObjectErrorContext(args[i]);
                 }
             }
         }

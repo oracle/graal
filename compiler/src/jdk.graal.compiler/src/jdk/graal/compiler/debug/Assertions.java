@@ -77,7 +77,7 @@ public class Assertions {
         for (int i = 0; i < args.length; i += 2) {
             Object val = args[i + 1];
             sb.append(args[i]).append("=");
-            formatObjectContext(sb, val);
+            sb.append(decorateObjectErrorContext(val));
             if (++entriesDone < entries) {
                 sb.append(";");
             }
@@ -85,22 +85,24 @@ public class Assertions {
         return sb.toString();
     }
 
-    private static void formatObjectContext(StringBuilder sb, Object val) {
+    public static Object decorateObjectErrorContext(Object o) {
         try {
-            if (val instanceof HIRBlock b) {
-                sb.append(b.toString(Verbosity.All));
-            } else if (val instanceof ValueNode v) {
+            if (o instanceof HIRBlock b) {
+                return b.toString(Verbosity.All);
+            } else if (o instanceof ValueNode v) {
+                StringBuilder sb = new StringBuilder();
                 sb.append(v.toString(Verbosity.All));
                 sb.append("/");
                 Stamp stamp = v.stamp(NodeView.DEFAULT);
                 sb.append(stamp).append(" ");
                 sb.append(v.getStackKind());
                 sb.append("\\");
+                return sb;
             } else {
-                sb.append(val);
+                return o;
             }
         } catch (Throwable e) {
-            sb.append("Error calling toString on object ").append(e.getMessage());
+            return "Error calling toString on object " + e.getMessage();
         }
     }
 
@@ -111,7 +113,7 @@ public class Assertions {
         for (int i = 0; i < args.length; i++) {
             Object val = args[i];
             sb.append("[").append(i).append("]=");
-            formatObjectContext(sb, val);
+            sb.append(decorateObjectErrorContext(val));
             if (++entriesDone < entries) {
                 sb.append(";");
             }
