@@ -51,7 +51,7 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         NotApplicable.ifApplied(this, stage, graphState),
-                        NotApplicable.unlessRunAfter(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunAfter(this, stage == StageFlag.BARRIER_ADDITION ? StageFlag.MID_TIER_LOWERING : StageFlag.LOW_TIER_LOWERING, graphState),
                         NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState));
     }
 
