@@ -137,6 +137,10 @@ public class EspressoThreadLocalState {
         stepInProgress = value;
     }
 
+    public boolean isSteppingInProgress() {
+        return stepInProgress;
+    }
+
     public boolean disableSingleStepping(boolean forceDisable) {
         if (forceDisable || stepInProgress) {
             singleSteppingDisabledCounter++;
