@@ -101,7 +101,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 public abstract class DynamicObjectLibrary extends Library {
 
     private static final LibraryFactory<DynamicObjectLibrary> FACTORY = LibraryFactory.resolve(DynamicObjectLibrary.class);
-    private static final DynamicObjectLibrary UNCACHED = FACTORY.getUncached();
+    private static final DynamicObjectLibrary UNCACHED = DynamicObjectLibraryImpl.getUncached();
 
     /**
      * @since 20.2.0
