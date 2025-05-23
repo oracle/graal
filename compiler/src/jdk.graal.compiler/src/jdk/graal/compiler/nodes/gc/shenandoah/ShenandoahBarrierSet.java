@@ -64,18 +64,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This generates 3 kinds of barriers:
  *
  * <ul>
- * <li>Load-reference barriers after reference-loads. The purpose is
- *   to canonicalize references during concurrent collection,
- *   where we might otherwise see both from- and to-space references
- *   to the same object.</li>
+ * <li>Load-reference barriers after reference-loads. The purpose is to canonicalize references
+ * during concurrent collection, where we might otherwise see both from- and to-space references to
+ * the same object.</li>
  *
- * <li>SATB barriers before reference writes. Those support concurrent
- *   marking, similar to how this is done in G1. Reference.get-barriers
- *   are a special form of this, to support (weak,soft,phantom-) references.</li>
+ * <li>SATB barriers before reference writes. Those support concurrent marking, similar to how this
+ * is done in G1. Reference.get-barriers are a special form of this, to support (weak,soft,phantom-)
+ * references.</li>
  *
- * <li>Card barriers, only needed for generational Shenandoah. Those
- *   are inserted after reference-writes and dirty cards. Similar
- *   to their counterparts in Serial and Parallel GC.</li>
+ * <li>Card barriers, only needed for generational Shenandoah. Those are inserted after
+ * reference-writes and dirty cards. Similar to their counterparts in Serial and Parallel GC.</li>
  * </ul>
  */
 public class ShenandoahBarrierSet implements BarrierSet {
