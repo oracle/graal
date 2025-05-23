@@ -30,31 +30,23 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * Substitution to initialize {@link #catalog} at build time.
+ * Substitution to initialize {@link #JDKCATALOG} at build time.
  *
  * JDK-8306055 introduced a built-in Catalog to JDK XML module in JDK 22. Without special treatment,
  * the initialization code would pull intermediate types (e.g. {@code CatalogReader}) into the image
- * heap. To avoid this, we initialize the catalog at build time and substitute the {@link #init}
- * method to be empty.
+ * heap. To avoid this, we initialize the catalog at build time.
  *
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
  */
-@TargetClass(className = "jdk.xml.internal.JdkCatalog")
-public final class Target_jdk_xml_internal_JdkCatalog {
+@TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder")
+public final class Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
-    public static Target_javax_xml_catalog_Catalog catalog;
-
-    @Substitute
-    @SuppressWarnings("unused")
-    public static void init(String resolve) {
-        // initialized at build time
-    }
+    public static Target_javax_xml_catalog_Catalog JDKCATALOG;
 }
 
 @TargetClass(className = "javax.xml.catalog.Catalog")
@@ -75,8 +67,8 @@ final class Target_javax_xml_parsers_SAXParser {
 final class JdkCatalogSupplier implements FieldValueTransformer {
 
     /**
-     * Verifies that {@link Target_jdk_xml_internal_JdkCatalog#catalog} is non-null. The
-     * initialization is triggered in
+     * Verifies that {@link Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder#JDKCATALOG} is
+     * non-null. The initialization is triggered in
      * {@code com.oracle.svm.hosted.xml.JavaxXmlClassAndResourcesLoaderFeature#initializeJdkCatalog()}
      */
     @Override
