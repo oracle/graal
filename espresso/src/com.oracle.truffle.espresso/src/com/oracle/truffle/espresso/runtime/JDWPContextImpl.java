@@ -275,13 +275,10 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void steppingInProgress(Thread t, boolean value) {
-        Object previous = null;
-        try {
-            previous = controller.enterTruffleContext();
+        performInContext(() -> {
             context.getLanguage().getThreadLocalStateFor(t).setSteppingInProgress(value);
-        } finally {
-            controller.leaveTruffleContext(previous);
-        }
+            return null;
+        });
     }
 
     @Override
@@ -302,14 +299,14 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public String getStringValue(Object object) {
         if (object instanceof StaticObject staticObject) {
-            return (String) InteropLibrary.getUncached().toDisplayString(staticObject, false);
+            return performInContext(() -> (String) UNCACHED.toDisplayString(staticObject, false));
         }
         return object.toString();
     }
 
     @Override
     public MethodVersionRef getMethodFromRootNode(RootNode root) {
-        if (root != null && root instanceof EspressoRootNode) {
+        if (root instanceof EspressoRootNode) {
             return ((EspressoRootNode) root).getMethodVersion();
         }
         return null;
@@ -414,15 +411,17 @@ public final class JDWPContextImpl implements JDWPContext {
         StaticObject staticObject = (StaticObject) array;
         EspressoLanguage language = context.getLanguage();
         if (staticObject.isForeignObject()) {
-            try {
-                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject(language));
-                if (arrayLength > Integer.MAX_VALUE) {
-                    return -1;
+            long arrayLength = performInContext(() -> {
+                try {
+                    return UNCACHED.getArraySize(staticObject.rawForeignObject(language));
+                } catch (UnsupportedMessageException e) {
+                    return (long) -1;
                 }
-                return (int) arrayLength;
-            } catch (UnsupportedMessageException e) {
+            });
+            if (arrayLength > Integer.MAX_VALUE) {
                 return -1;
             }
+            return (int) arrayLength;
         }
         return staticObject.length(language);
     }
@@ -476,17 +475,19 @@ public final class JDWPContextImpl implements JDWPContext {
         Klass componentType = ((ArrayKlass) arrayRef.getKlass()).getComponentType();
         Meta meta = componentType.getMeta();
         if (arrayRef.isForeignObject()) {
-            Object value = null;
-            try {
-                value = InteropLibrary.getUncached().readArrayElement(arrayRef.rawForeignObject(arrayRef.getKlass().getLanguage()), index);
-                return ToEspressoNode.getUncachedToEspresso(componentType, meta).execute(value);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere("readArrayElement on a non-array foreign object", e);
-            } catch (InvalidArrayIndexException e) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-            } catch (UnsupportedTypeException e) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, componentType.getTypeAsString());
-            }
+            return performInContext(() -> {
+                Object value = null;
+                try {
+                    value = UNCACHED.readArrayElement(arrayRef.rawForeignObject(arrayRef.getKlass().getLanguage()), index);
+                    return ToEspressoNode.getUncachedToEspresso(componentType, meta).execute(value);
+                } catch (UnsupportedMessageException e) {
+                    throw EspressoError.shouldNotReachHere("readArrayElement on a non-array foreign object", e);
+                } catch (InvalidArrayIndexException e) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+                } catch (UnsupportedTypeException e) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, componentType.getTypeAsString());
+                }
+            });
         } else if (componentType.isPrimitive()) {
             // primitive array type needs wrapping
             Object boxedArray = getUnboxedArray(array);
@@ -502,19 +503,24 @@ public final class JDWPContextImpl implements JDWPContext {
         Klass componentType = ((ArrayKlass) arrayRef.getKlass()).getComponentType();
         Meta meta = componentType.getMeta();
         if (arrayRef.isForeignObject()) {
-            try {
-                Object unWrappedValue = value;
-                if (value instanceof StaticObject staticObject) {
-                    unWrappedValue = staticObject.isForeignObject() ? staticObject.rawForeignObject(meta.getLanguage()) : staticObject;
-                }
-                InteropLibrary.getUncached().writeArrayElement(arrayRef.rawForeignObject(arrayRef.getKlass().getLanguage()), index, unWrappedValue);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere("writeArrayElement on a non-array foreign object", e);
-            } catch (InvalidArrayIndexException e) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-            } catch (UnsupportedTypeException e) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, componentType.getTypeAsString());
+            Object unWrappedValue;
+            if (value instanceof StaticObject staticObject) {
+                unWrappedValue = staticObject.isForeignObject() ? staticObject.rawForeignObject(meta.getLanguage()) : staticObject;
+            } else {
+                unWrappedValue = value;
             }
+            performInContext(() -> {
+                try {
+                    UNCACHED.writeArrayElement(arrayRef.rawForeignObject(arrayRef.getKlass().getLanguage()), index, unWrappedValue);
+                    return null;
+                } catch (UnsupportedMessageException e) {
+                    throw EspressoError.shouldNotReachHere("writeArrayElement on a non-array foreign object", e);
+                } catch (UnsupportedTypeException e) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, componentType.getTypeAsString());
+                } catch (InvalidArrayIndexException e) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+                }
+            });
         } else if (componentType.isPrimitive()) {
             // primitive array type needs wrapping
             Object boxedArray = getUnboxedArray(array);
@@ -601,24 +607,18 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        Object previous = null;
-        try {
-            previous = controller.enterTruffleContext();
+        performInContext(() -> {
             context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
-        } finally {
-            controller.leaveTruffleContext(previous);
-        }
+            return null;
+        });
     }
 
     @Override
     public void interruptThread(Object thread) {
-        Object previous = null;
-        try {
-            previous = controller.enterTruffleContext();
+        performInContext(() -> {
             context.interruptThread((StaticObject) thread);
-        } finally {
-            controller.leaveTruffleContext(previous);
-        }
+            return null;
+        });
     }
 
     @Override
@@ -628,13 +628,10 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void exit(int exitCode) {
-        Object previous = null;
-        try {
-            previous = controller.enterTruffleContext();
+        performInContext(() -> {
             context.truffleExit(null, exitCode);
-        } finally {
-            controller.leaveTruffleContext(previous);
-        }
+            return null;
+        });
     }
 
     @Override
@@ -833,5 +830,20 @@ public final class JDWPContextImpl implements JDWPContext {
 
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
         return context.getClassRedefinition().redefineClasses(redefineInfos, false, true);
+    }
+
+    private <R> R performInContext(InContextAction<R> action) {
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            return action.call();
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
+    }
+
+    @FunctionalInterface
+    private interface InContextAction<R> {
+        R call();
     }
 }
