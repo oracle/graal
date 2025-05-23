@@ -502,5 +502,7 @@ public interface JDWPContext {
 
     void steppingInProgress(Thread t, boolean value);
 
+    boolean isSteppingInProgress(Thread t);
+
     void replaceController(DebuggerController newController);
 }

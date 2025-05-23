@@ -285,6 +285,17 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public boolean isSteppingInProgress(Thread t) {
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            return context.getLanguage().getThreadLocalStateFor(t).isSteppingInProgress();
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
+    }
+
+    @Override
     public Object[] getAllGuestThreads() {
         StaticObject[] activeThreads = context.getActiveThreads();
         ArrayList<StaticObject> result = new ArrayList<>(activeThreads.length);
