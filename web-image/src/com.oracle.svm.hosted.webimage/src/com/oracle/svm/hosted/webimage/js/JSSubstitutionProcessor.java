@@ -32,10 +32,17 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Methods annotated with {@link JS @JS} are substituted with {@link JSStubMethod}.
+ * <p>
+ * The {@link JSObjectAccessMethod} is implicitly annotated with {@link JS @JS} and is also
+ * substituted here.
+ */
 public class JSSubstitutionProcessor extends SubstitutionProcessor {
 
     private final Map<ResolvedJavaMethod, CustomSubstitutionMethod> callWrappers = new ConcurrentHashMap<>();
@@ -50,9 +57,8 @@ public class JSSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private static boolean isJSStubMethod(ResolvedJavaMethod method) {
-        if (AnnotationAccess.isAnnotationPresent(method, JS.class)) {
-            return true;
-        }
-        return false;
+        // If AnalysisMethods appeared here, they would first need to be unwrapped
+        assert !(method instanceof AnalysisMethod) : method;
+        return method instanceof JSObjectAccessMethod || AnnotationAccess.isAnnotationPresent(method, JS.class);
     }
 }
