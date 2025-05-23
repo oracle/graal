@@ -51,7 +51,7 @@ import jdk.graal.compiler.word.Word;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+12/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L963-L1180")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+6/src/hotspot/share/gc/parallel/psScavenge.cpp#L321-L637")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L415")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
 class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     /*
@@ -61,7 +61,6 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
      * Don't change these values individually without carefully going over their occurrences in
      * HotSpot source code, there are dependencies between them that are not handled in our code.
      */
-    private static final int ADAPTIVE_TIME_WEIGHT = DEFAULT_TIME_WEIGHT;
     private static final int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
     private static final int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
     private static final int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
