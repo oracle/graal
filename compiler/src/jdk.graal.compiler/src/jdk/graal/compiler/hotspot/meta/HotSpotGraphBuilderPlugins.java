@@ -200,6 +200,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
@@ -299,6 +300,9 @@ public class HotSpotGraphBuilderPlugins {
                 registerPoly1305Plugins(invocationPlugins, config, replacements);
                 registerChaCha20Plugins(invocationPlugins, config, replacements);
                 registerP256Plugins(invocationPlugins, config, replacements);
+                if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
+                    VectorAPIIntrinsics.registerPlugins(plugins.getInvocationPlugins(), replacements);
+                }
             }
 
         });

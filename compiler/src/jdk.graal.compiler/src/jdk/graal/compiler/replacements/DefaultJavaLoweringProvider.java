@@ -167,6 +167,8 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -184,7 +186,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * VM-independent lowerings for standard Java nodes. VM-specific methods are abstract and must be
  * implemented by VM-specific subclasses.
  */
-public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
+public abstract class DefaultJavaLoweringProvider implements LoweringProvider, VectorLoweringProvider {
 
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
@@ -192,6 +194,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
+    protected final VectorArchitecture vectorArchitecture;
     protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
@@ -202,13 +205,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
-                    TargetDescription target, boolean useCompressedOops) {
+                    TargetDescription target, boolean useCompressedOops, VectorArchitecture vectorArchitecture) {
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;
         this.barrierSet = platformConfig.getBarrierSet();
         this.metaAccessExtensionProvider = metaAccessExtensionProvider;
         this.target = target;
         this.useCompressedOops = useCompressedOops;
+        this.vectorArchitecture = vectorArchitecture;
     }
 
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
@@ -1439,5 +1443,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @Override
     public boolean supportsOptimizedFilling(OptionValues options) {
         return false;
+    }
+
+    @Override
+    public VectorArchitecture getVectorArchitecture() {
+        return vectorArchitecture;
+    }
+
+    @Override
+    public DefaultJavaLoweringProvider getBasicLoweringProvider() {
+        return this;
     }
 }
