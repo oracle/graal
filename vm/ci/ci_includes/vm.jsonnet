@@ -81,11 +81,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       'weekly-deploy-vm-base-java21-linux-aarch64',
       'weekly-deploy-vm-base-java21-linux-amd64',
       'weekly-deploy-vm-base-java21-windows-amd64',
-      'weekly-deploy-vm-standalones-java21-darwin-aarch64',
-      'weekly-deploy-vm-standalones-java21-darwin-amd64',
-      'weekly-deploy-vm-standalones-java21-linux-aarch64',
-      'weekly-deploy-vm-standalones-java21-linux-amd64',
-      'weekly-deploy-vm-standalones-java21-windows-amd64',
     ],
     notify_groups:: ['deploy'],
   },
@@ -200,39 +195,20 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 
     #
-    # Deploy GraalVM Base and Standalones
+    # Deploy Truffle Languages Standalones
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
 
     # Linux/AMD64
-    # - JDK-Latest
     vm_common.deploy_vm_standalones_javaLatest_linux_amd64,
-    # - JDK21
-    vm_common.deploy_vm_standalones_java21_linux_amd64,
-
     # Linux/AARCH64
-    # - JDK-Latest
     vm_common.deploy_vm_standalones_javaLatest_linux_aarch64,
-    # - JDK21
-    vm_common.deploy_vm_standalones_java21_linux_aarch64,
-
     # Darwin/AMD64
-    # - JDK-Latest
     vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
-    # - JDK21
-    vm_common.deploy_vm_standalones_java21_darwin_amd64,
-
     # Darwin/AARCH64
-    # - JDK-Latest
     vm_common.deploy_vm_standalones_javaLatest_darwin_aarch64,
-    # - JDK21
-    vm_common.deploy_vm_standalones_java21_darwin_aarch64,
-
     # Windows/AMD64
-    # - JDK-Latest
     vm_common.deploy_vm_standalones_javaLatest_windows_amd64,
-    # - JDK21
-    vm_common.deploy_vm_standalones_java21_windows_amd64,
     # Trigger the releaser service and notify the indexer
     self.vm_notifier_daily,
     self.vm_notifier_weekly,

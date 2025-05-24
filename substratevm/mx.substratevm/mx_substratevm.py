@@ -143,7 +143,7 @@ class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, 
         return new_config
 
     def mx_args(self):
-        args = ['--disable-installables=true']
+        args = []
         if self.dynamicimports:
             args += ['--dynamicimports', ','.join(self.dynamicimports)]
         if self.exclude_components:

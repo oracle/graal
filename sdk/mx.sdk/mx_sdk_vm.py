@@ -334,14 +334,10 @@ class GraalVmComponent(object):
         self.priority = priority or 0
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
-        if installable is None:
-            installable = isinstance(self, GraalVmLanguage)
-        self.installable = installable
-        if standalone is None:
-            standalone = installable
-        self.standalone = standalone
-        self.post_install_msg = post_install_msg
-        self.installable_id = installable_id or self.dir_name
+        self.installable = None
+        self.standalone = None
+        self.post_install_msg = None
+        self.installable_id = None
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
