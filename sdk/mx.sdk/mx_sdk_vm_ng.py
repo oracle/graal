@@ -1017,6 +1017,10 @@ else:
 
 class DeliverableStandaloneArchive(DeliverableArchiveSuper):
     def __init__(self, suite, name=None, deps=None, excludedLibs=None, platformDependent=True, theLicense=None, defaultBuild=True, **kw_args):
+        # mx deploy-artifacts takes the version from the suite, we ensure it is the same version as SDK.
+        # This also checks the release field because release_version() is '...-dev' when release: False.
+        assert suite.release_version() == _suite.release_version(), f"version from {suite.name} ({suite.release_version()}) does not match version in sdk ({_suite.release_version()})"
+
         # required
         standalone_dir_dist = _require(kw_args, 'standalone_dist', suite, name)
         community_archive_name = _require(kw_args, 'community_archive_name', suite, name)
@@ -1024,6 +1028,16 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
 
         # required but optional for compatibility and when the default *_dist_name are not good enough
         language_id = kw_args.pop('language_id', None)
+
+        # TODO: remove this when language_id is set in those suites
+        mapping = {
+            'graal-js': 'js',
+            'graal-nodejs': 'nodejs',
+            'truffleruby': 'ruby',
+            'graalpython': 'python',
+        }
+        if not language_id and suite.name in mapping:
+            language_id = mapping[suite.name]
 
         # optional, derived from *_archive_name by default. Best left as default to avoid extra folder when extracting with some GUIs.
         community_dir_name = kw_args.pop('community_dir_name', None)
@@ -1067,6 +1081,8 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         }
         self.standalone_dir_dist = standalone_dir_dist
         maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
+        assert theLicense is None, "the 'license' attribute is ignored for DeliverableStandaloneArchive"
+        theLicense = ['GFTC' if is_enterprise() else 'UPL']
         super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
         self.buildDependencies.append(standalone_dir_dist)
 
@@ -1075,7 +1091,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         resolved = [self.standalone_dir_dist]
         self._resolveDepsHelper(resolved)
         self.standalone_dir_dist = resolved[0]
-        self.theLicense = self.standalone_dir_dist.theLicense
 
     def get_artifact_metadata(self):
         return {'edition': 'ee' if is_enterprise() else 'ce', 'type': 'standalone', 'project': 'graal'}

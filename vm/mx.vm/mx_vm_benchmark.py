@@ -34,6 +34,7 @@ import mx_benchmark
 import mx_sdk_benchmark
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_vm_ng
 from mx_benchmark import DataPoint, DataPoints
 from mx_sdk_benchmark import GraalVm, NativeImageVM
 
@@ -344,7 +345,6 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
-        vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
         host_vm = None
         if isinstance(vm, mx_benchmark.GuestVm):
             host_vm = vm.host_vm()
@@ -359,21 +359,34 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
         }
 
-        out = ""
-        output_root = mx_sdk_vm_impl.get_final_graalvm_distribution().get_output_root()
-
         def get_size_message(image_name, image_location):
-            return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(os.path.join(output_root, image_location)), image_location, output_root)
+            return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(image_location), image_location)
 
-        for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=True, include_launchers=False, abs_path=False):
-            lib_name = 'lib:' + mx_sdk_vm_impl.remove_lib_prefix_suffix(basename(location))
-            out += get_size_message(lib_name, location)
-        for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=False, include_launchers=True, abs_path=False):
-            launcher_name = mx_sdk_vm_impl.remove_exe_suffix(basename(location))
-            out += get_size_message(launcher_name, location)
+        bmSuiteArgs = bmSuiteArgs or ['base']
+        out = ""
+
+        for arg in bmSuiteArgs:
+            if arg == 'standalones':
+                # Standalones
+                for project in mx.projects():
+                    if isinstance(project, mx_sdk_vm_ng.NativeImageProject):
+                        native_image = project.output_file()
+                        if os.path.exists(native_image):
+                            out += get_size_message(project.options_file_name(), native_image)
+            elif arg == 'base':
+                # GraalVM base
+                output_root = mx_sdk_vm_impl.get_final_graalvm_distribution().get_output_root()
+                for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=True, include_launchers=False, abs_path=False):
+                    lib_name = 'lib:' + mx_sdk_vm_impl.remove_lib_prefix_suffix(basename(location))
+                    out += get_size_message(lib_name, os.path.join(output_root, location))
+                for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=False, include_launchers=True, abs_path=False):
+                    launcher_name = mx_sdk_vm_impl.remove_exe_suffix(basename(location))
+                    out += get_size_message(launcher_name, os.path.join(output_root, location))
+            else:
+                mx.abort("FileSizeBenchmarkSuite expects 'base' or 'standalones' in bench suite arguments but got " + arg)
+
         if out:
             mx.log(out, end='')
-        dims.update(vm.dimensions(output_root, bmSuiteArgs, 0, out))
         return 0, out, dims
 
     def rules(self, output, benchmarks, bmSuiteArgs):

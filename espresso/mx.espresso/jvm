@@ -2,5 +2,4 @@
 DYNAMIC_IMPORTS=/compiler,/tools,/regex
 COMPONENTS=cmp,sdkc,tflc
 NATIVE_IMAGES=false
-DISABLE_INSTALLABLES=true
 JVM_STANDALONE_WITH_LLVM=false
