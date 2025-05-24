@@ -21,6 +21,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-60238) JNI registration is now included as part of the `"reflection"` section of _reachability-metadata.json_ using the `"jniAccessible"` attribute. Registrations performed through the `"jni"` section of _reachability-metadata.json_ and through _jni-config.json_ will still be accepted and parsed correctly.
 * (GR-65008) Remove the sequential reachability handler. The only remaining variant is the concurrent reachability handler, which has been the default implementation since its introduction. Additionally, remove the `-H:-RunReachabilityHandlersConcurrently` option which was introduced to simplify migration and has been deprecated since Version 24.0.0.
 * (GR-53985) Add experimental option `ClassForNameRespectsClassLoader` that makes `Class.forName(...)` respect the class loader hierarchy.
+* (GR-59869) Implemented initial optimization of Java Vector API (JEP 338) operations in native images. See the compiler changelog for more details.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

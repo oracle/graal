@@ -347,4 +347,7 @@ public final class GraalOptions {
     @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
                     "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Debug)
     public static final OptionKey<Integer> TypeCheckMaxHints = new OptionKey<>(2);
+
+    @Option(help = "Enables target-specific lowering and legalization of SIMD operations. Required for SIMD code generation.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TargetVectorLowering = new OptionKey<>(true);
 }

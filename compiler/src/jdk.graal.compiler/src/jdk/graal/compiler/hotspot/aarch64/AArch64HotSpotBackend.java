@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,9 +75,17 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorArithmeticLIRGenerator;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorMoveFactory;
+import jdk.graal.compiler.vector.lir.aarch64.AArch64VectorNodeMatchRules;
+import jdk.graal.compiler.vector.lir.hotspot.aarch64.AArch64HotSpotSimdLIRKindTool;
+import jdk.graal.compiler.vector.lir.hotspot.aarch64.AArch64HotSpotVectorLIRGenerator;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
@@ -96,9 +104,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * HotSpot AArch64 specific backend.
  */
 public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGenerationProvider {
+    protected final boolean neonSupported;
 
     public AArch64HotSpotBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(config, runtime, providers);
+        neonSupported = ((AArch64) providers.getCodeCache().getTarget().arch).getFeatures().contains(AArch64.CPUFeature.ASIMD);
     }
 
     @Override
@@ -110,12 +120,26 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        return new AArch64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
+        if (neonSupported) {
+            return new AArch64HotSpotVectorLIRGenerator(
+                            new AArch64HotSpotSimdLIRKindTool(),
+                            new AArch64VectorArithmeticLIRGenerator(null),
+                            new AArch64VectorMoveFactory(new AArch64HotSpotMoveFactory(), new MoveFactory.BackupSlotProvider(lirGenRes.getFrameMapBuilder())),
+                            getProviders(),
+                            config,
+                            lirGenRes);
+        } else {
+            return new AArch64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
+        }
     }
 
     @Override
     public NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen) {
-        return new AArch64HotSpotNodeLIRBuilder(graph, lirGen, new AArch64NodeMatchRules(lirGen));
+        if (lirGen.getArithmetic() instanceof VectorLIRGeneratorTool) {
+            return new AArch64HotSpotNodeLIRBuilder(graph, lirGen, new AArch64VectorNodeMatchRules(lirGen));
+        } else {
+            return new AArch64HotSpotNodeLIRBuilder(graph, lirGen, new AArch64NodeMatchRules(lirGen));
+        }
     }
 
     @Override
