@@ -575,19 +575,45 @@ suite = {
             "maven": False,
         },
 
+        "ESPRESSO_JVM_STANDALONE_JAVA_LINKS": {
+            "type": "dir",
+            "platformDependent": True,
+            "platforms": "local",
+            "os": {
+                "windows": {
+                    "layout": {
+                        "bin/java.cmd": "file:mx.espresso/launchers/java.cmd",
+                        "bin/javac.cmd": "file:mx.espresso/launchers/javac.cmd",
+                    },
+                },
+                "<others>": {
+                    "layout": {
+                        "bin/java": "file:mx.espresso/launchers/java.sh",
+                        "bin/javac": "file:mx.espresso/launchers/javac.sh",
+                    },
+                },
+            },
+            "maven": False,
+        },
+
         "ESPRESSO_JVM_STANDALONE": {
             "type": "dir",
             "pruning_mode": "optional",
             "description": "Espresso JVM standalone distribution for testing",
             "platformDependent": True,
             "platforms": "local",
+            "defaultDereference": "never",
             "layout": {
-                "bin/": ["dependency:espresso:espresso"],
+                "bin/": [
+                    "dependency:espresso:espresso",
+                    "dependency:ESPRESSO_JVM_STANDALONE_JAVA_LINKS/bin/*",
+                ],
                 "./": [{
                         "source_type": "dependency",
                         "dependency": "espresso:JAVA_HOME",
                         "path": "*",
                         "exclude": [
+                            "bin",  # those can't run without <jdk_lib_dir>/server
                             "lib/jfr",
                             "lib/static",
                             "<jdk_lib_dir>/server",
