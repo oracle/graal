@@ -76,11 +76,11 @@ public final class EspressoJVMCIRuntime implements JVMCIRuntime {
             case "x86_64":
                 EnumSet<AMD64.CPUFeature> x8664v2 = EnumSet.of(AMD64.CPUFeature.CMOV, AMD64.CPUFeature.CX8, AMD64.CPUFeature.FXSR, AMD64.CPUFeature.MMX, AMD64.CPUFeature.SSE, AMD64.CPUFeature.SSE2,
                                 AMD64.CPUFeature.POPCNT, AMD64.CPUFeature.SSE3, AMD64.CPUFeature.SSE4_1, AMD64.CPUFeature.SSE4_2, AMD64.CPUFeature.SSSE3);
-                arch = new AMD64(x8664v2, EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountTrailingZerosInstruction));
+                arch = new AMD64(x8664v2);
                 break;
             case "aarch64":
             case "arm64":
-                arch = new AArch64(EnumSet.of(AArch64.CPUFeature.FP), EnumSet.noneOf(AArch64.Flag.class));
+                arch = new AArch64(EnumSet.of(AArch64.CPUFeature.FP));
                 break;
             default:
                 throw JVMCIError.unimplemented(archString);
