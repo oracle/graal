@@ -832,6 +832,9 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
             if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
+                # -XX:+EnableJVMCI must be explicitly specified to the java launcher to add
+                # jdk.internal.vm.ci to the root set (JDK-8345826)
+                vm_options.append('-XX:+EnableJVMCI')
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
                 if default_to_jvmci == 'lib':

@@ -343,7 +343,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         AArch64SaveRegistersOp save = null;
         Stub stub = getStub();
         if (destroysRegisters && stub != null && stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED) {
-            Register[] savedRegisters = getRegisterConfig().getAllocatableRegisters().toArray();
+            Register[] savedRegisters = getRegisterConfig().getAllocatableRegisters().toArray(Register[]::new);
             save = emitSaveAllRegisters(savedRegisters);
         }
 

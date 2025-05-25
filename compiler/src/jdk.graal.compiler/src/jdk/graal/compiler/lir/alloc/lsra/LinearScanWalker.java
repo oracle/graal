@@ -1004,7 +1004,7 @@ class LinearScanWalker extends IntervalWalker {
         if (allocatableRegisters == null) {
             throw new OutOfRegistersException("There are no allocatable registers for kind " + interval.kind().getPlatformKind() + ", consider assigning fixed registers.");
         }
-        availableRegs = allocatableRegisters.allocatableRegisters;
+        availableRegs = allocatableRegisters.allocatableRegisters.toArray(Register[]::new);
         minReg = allocatableRegisters.minRegisterNumber;
         maxReg = allocatableRegisters.maxRegisterNumber;
     }

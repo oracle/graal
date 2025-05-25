@@ -151,7 +151,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     protected Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
-        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
+        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters());
         // Removing callee-saved registers.
         /* General Purpose Registers. */
         callerSave.remove(AArch64.r19);

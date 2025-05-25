@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,16 +29,16 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.util.EnumSet;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.aarch64.test.AArch64TestMacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.test.GraalTest;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
@@ -59,16 +59,11 @@ public class AArch64AddressingModeTest extends GraalTest {
         return features;
     }
 
-    private static EnumSet<AArch64.Flag> computeFlags() {
-        EnumSet<AArch64.Flag> flags = EnumSet.noneOf(AArch64.Flag.class);
-        return flags;
-    }
-
     private static TargetDescription createTarget() {
         final int stackFrameAlignment = 16;
         final int implicitNullCheckLimit = 4096;
         final boolean inlineObjects = true;
-        Architecture arch = new AArch64(computeFeatures(), computeFlags());
+        Architecture arch = new AArch64(computeFeatures());
         return new TargetDescription(arch, true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 

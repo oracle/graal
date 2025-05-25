@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.common.alloc;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -33,7 +34,6 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.PlatformKind;
 
@@ -44,18 +44,18 @@ import jdk.vm.ci.meta.PlatformKind;
 public class RegisterAllocationConfig {
 
     public static final class AllocatableRegisters {
-        public final Register[] allocatableRegisters;
+        public final List<Register> allocatableRegisters;
         public final int minRegisterNumber;
         public final int maxRegisterNumber;
 
-        public AllocatableRegisters(RegisterArray allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
-            this.allocatableRegisters = allocatableRegisters.toArray();
+        public AllocatableRegisters(List<Register> allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
+            this.allocatableRegisters = allocatableRegisters;
             this.minRegisterNumber = minRegisterNumber;
             this.maxRegisterNumber = maxRegisterNumber;
             assert verify(allocatableRegisters, minRegisterNumber, maxRegisterNumber);
         }
 
-        private static boolean verify(RegisterArray allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
+        private static boolean verify(List<Register> allocatableRegisters, int minRegisterNumber, int maxRegisterNumber) {
             int min = Integer.MAX_VALUE;
             int max = Integer.MIN_VALUE;
             for (Register reg : allocatableRegisters) {
@@ -79,7 +79,7 @@ public class RegisterAllocationConfig {
      * after the register name in the {@code spec}. In this case, {@code null} is returned instead
      * of throwing an exception.
      */
-    private static Register findRegister(String spec, RegisterArray all) {
+    private static Register findRegister(String spec, List<Register> all) {
         boolean optional = false;
         String name = spec;
         if (spec.endsWith("?")) {
@@ -97,7 +97,7 @@ public class RegisterAllocationConfig {
         throw new IllegalArgumentException("register " + name + " is not allocatable");
     }
 
-    protected RegisterArray initAllocatable(RegisterArray registers) {
+    protected List<Register> initAllocatable(List<Register> registers) {
         if (allocationRestrictedTo != null) {
             Register[] regs = new Register[allocationRestrictedTo.length];
             int i = 0;
@@ -109,7 +109,7 @@ public class RegisterAllocationConfig {
                     regs[i++] = register;
                 }
             }
-            return new RegisterArray(regs);
+            return List.of(regs);
         }
 
         return registers;
@@ -118,7 +118,7 @@ public class RegisterAllocationConfig {
     protected final RegisterConfig registerConfig;
     private final EconomicMap<PlatformKind.Key, AllocatableRegisters> categorized = EconomicMap.create(Equivalence.DEFAULT);
     private final String[] allocationRestrictedTo;
-    private RegisterArray cachedRegisters;
+    private List<Register> cachedRegisters;
 
     /**
      * @param allocationRestrictedTo if not {@code null}, register allocation will be restricted to
@@ -153,10 +153,10 @@ public class RegisterAllocationConfig {
      * @return {@code null} if there are no allocatable registers for the given kind
      */
     public RegisterCategory getRegisterCategory(PlatformKind kind) {
-        return getAllocatableRegisters(kind).allocatableRegisters[0].getRegisterCategory();
+        return getAllocatableRegisters(kind).allocatableRegisters.get(0).getRegisterCategory();
     }
 
-    private static AllocatableRegisters createAllocatableRegisters(RegisterArray registers) {
+    private static AllocatableRegisters createAllocatableRegisters(List<Register> registers) {
         if (registers.size() == 0) {
             return null;
         }
@@ -177,7 +177,7 @@ public class RegisterAllocationConfig {
     /**
      * Gets the set of registers that can be used by the register allocator.
      */
-    public RegisterArray getAllocatableRegisters() {
+    public List<Register> getAllocatableRegisters() {
         if (cachedRegisters == null) {
             cachedRegisters = initAllocatable(registerConfig.getAllocatableRegisters());
         }
