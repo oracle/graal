@@ -50,13 +50,62 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
- * This class provides methods that can be called during native image generation to register
- * classes, methods, and fields for JNI access at run time.
+ * This interface is used to register classes, methods, and fields for JNI access at runtime. An
+ * instance of this interface is acquired via
+ * {@link Feature.AfterRegistrationAccess#getRuntimeJNIAccess()}.
+ *
+ * All methods in {@link RuntimeJNIAccess} require a {@link AccessCondition} as their first
+ * parameter. A class and its members will be registered for JNI access only if the specified
+ * condition is satisfied.
+ *
+ * <h3>How to use</h3>
+ *
+ * {@link RuntimeJNIAccess} should only be used during {@link Feature#afterRegistration}. Any
+ * attempt to register metadata in any other phase will result in an error.
+ * <p>
+ * <strong>Example:</strong>
+ * 
+ * <pre>{@code @Override
+ * public void afterRegistration(AfterRegistrationAccess access) {
+ *     RuntimeJNIAccess jniAccess = access.getRuntimeJNIAccess();
+ *     AccessCondition condition = AccessCondition.typeReached(Condition.class);
+ *     jniAccess.register(condition, Foo.class);
+ *     jniAccess.register(condition, Foo.class.getMethod("method"));
+ *     jniAccess.register(condition, Foo.class.getField("field"));
+ * }
+ * }</pre>
+ *
+ * @see <a href=https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html>Java docs -
+ *      JNI functions</a>
  *
  * @since 22.3
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class RuntimeJNIAccess {
+public interface RuntimeJNIAccess {
+
+    /**
+     * Registers the provided classes for JNI access at runtime, if the {@code condition} is
+     * satisfied.
+     *
+     * @since 25.0
+     */
+    void register(AccessCondition condition, Class<?>... classes);
+
+    /**
+     * Registers the provided methods for JNI access at runtime, if the {@code condition} is
+     * satisfied.
+     *
+     * @since 25.0
+     */
+    void register(AccessCondition condition, Executable... methods);
+
+    /**
+     * Registers the provided fields for JNI access at runtime, if the {@code condition} is
+     * satisfied.
+     *
+     * @since 25.0
+     */
+    void register(AccessCondition condition, Field... fields);
 
     /**
      * Makes the provided classes available for JNI access at run time. Needed when native code
@@ -65,7 +114,7 @@ public final class RuntimeJNIAccess {
      *
      * @since 22.3
      */
-    public static void register(Class<?>... classes) {
+    static void register(Class<?>... classes) {
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.alwaysTrue(), classes);
     }
 
@@ -78,7 +127,7 @@ public final class RuntimeJNIAccess {
      *
      * @since 22.3
      */
-    public static void register(Executable... methods) {
+    static void register(Executable... methods) {
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.alwaysTrue(), false, methods);
     }
 
@@ -91,10 +140,7 @@ public final class RuntimeJNIAccess {
      *
      * @since 22.3
      */
-    public static void register(Field... fields) {
+    static void register(Field... fields) {
         ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.alwaysTrue(), false, fields);
-    }
-
-    private RuntimeJNIAccess() {
     }
 }
