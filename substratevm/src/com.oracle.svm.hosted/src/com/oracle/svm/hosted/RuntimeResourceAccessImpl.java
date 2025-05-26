@@ -24,16 +24,27 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.util.UserError;
+import org.graalvm.nativeimage.hosted.AccessCondition;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
-public final class DynamicAccessSupport {
-    private static boolean afterRegistrationFinished = false;
+public final class RuntimeResourceAccessImpl implements RuntimeResourceAccess {
 
-    static void setAfterRegistrationFinished() {
-        afterRegistrationFinished = true;
+    private final InternalRuntimeResourceAccess rdaInstance;
+
+    RuntimeResourceAccessImpl() {
+        rdaInstance = new InternalRuntimeResourceAccess();
     }
 
-    public static void printUserError(String registrationEntry) {
-        UserError.guarantee(!afterRegistrationFinished, "Registration for runtime access after Feature#afterRegistration is not allowed. You tried to register %s", registrationEntry);
+    @Override
+    public void register(AccessCondition condition, Module module, String pattern) {
+        DynamicAccessSupport.printUserError(pattern);
+        rdaInstance.register(condition, module, pattern);
     }
+
+    @Override
+    public void registerResourceBundle(AccessCondition condition, Module module, String bundleName) {
+        DynamicAccessSupport.printUserError(bundleName);
+        rdaInstance.registerResourceBundle(condition, module, bundleName);
+    }
+
 }
