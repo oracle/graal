@@ -140,6 +140,10 @@ public class VectorAPIFeature implements InternalFeature {
          * for fields declared in AbstractSpecies.
          */
         EconomicMap<Object, MaxVectorSizes> maxVectorSizes = EconomicMap.create();
+        EconomicMap<Object, Object> dummyVectors = EconomicMap.create();
+
+        Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
+        UNSAFE.ensureClassInitialized(speciesClass);
 
         for (Class<?> vectorElement : vectorElements) {
             String elementName = vectorElement.getName().substring(0, 1).toUpperCase(Locale.ROOT) + vectorElement.getName().substring(1);
@@ -170,11 +174,24 @@ public class VectorAPIFeature implements InternalFeature {
                             (receiver, originalValue) -> makeIotaVector(maxVectorClass, vectorElement, laneCount));
         }
 
-        Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCount"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::laneCount));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCountLog2P1"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::laneCountLog2P1));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorBitSize"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::vectorBitSize));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::vectorByteSize));
+        for (String elementName : vectorElementNames) {
+            String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
+            Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
+            UNSAFE.ensureClassInitialized(vectorClass);
+            for (String size : vectorSizes) {
+                String fieldName = "SPECIES_" + size.toUpperCase(Locale.ROOT);
+                Object species = ReflectionUtil.readStaticField(vectorClass, fieldName);
+                Method makeDummyVector = ReflectionUtil.lookupMethod(speciesClass, "makeDummyVector");
+                Object dummyVector = ReflectionUtil.invokeMethod(makeDummyVector, species);
+                dummyVectors.put(species, dummyVector);
+            }
+        }
+
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCount"), new OverrideFromMap<>(maxVectorSizes, MaxVectorSizes::laneCount));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCountLog2P1"), new OverrideFromMap<>(maxVectorSizes, MaxVectorSizes::laneCountLog2P1));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorBitSize"), new OverrideFromMap<>(maxVectorSizes, MaxVectorSizes::vectorBitSize));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap<>(maxVectorSizes, MaxVectorSizes::vectorByteSize));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "dummyVector"), new OverrideFromMapSimple(dummyVectors));
 
         /*
          * Manually initialize some inner classes and mark them as reachable. Due to the way we
@@ -280,14 +297,21 @@ public class VectorAPIFeature implements InternalFeature {
      * the instances appearing as keys in {@code map}, return the associated value computed via the
      * {@code accessor}. Otherwise, return the field's original value unchanged.
      */
-    private record OverrideFromMap(EconomicMap<Object, MaxVectorSizes> map, Function<MaxVectorSizes, Object> accessor) implements FieldValueTransformer {
+    private record OverrideFromMap<E>(EconomicMap<Object, E> map, Function<E, Object> accessor) implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            MaxVectorSizes overridingValues = map.get(receiver);
+            E overridingValues = map.get(receiver);
             if (overridingValues != null) {
                 return accessor.apply(overridingValues);
             }
             return originalValue;
+        }
+    }
+
+    private record OverrideFromMapSimple(EconomicMap<Object, Object> map) implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return map.get(receiver);
         }
     }
 
