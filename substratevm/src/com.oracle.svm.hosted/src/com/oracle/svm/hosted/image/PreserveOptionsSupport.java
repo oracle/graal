@@ -160,7 +160,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * registration.
          */
         classesToPreserve.forEach(c -> {
-            reflection.register(always, false, c);
+            reflection.register(always, c);
 
             reflection.registerAllDeclaredFields(always, c);
             reflection.registerAllDeclaredMethodsQuery(always, false, c);
@@ -206,7 +206,9 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
-            reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), c);
+            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+                reflection.registerUnsafeAllocation(always, c);
+            }
         });
 
         /*

@@ -106,7 +106,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(RegistrationCondition condition, Class<?>... interfaces) {
+    public synchronized Class<?> addProxyClass(RegistrationCondition condition, Class<?>... interfaces) {
         VMError.guarantee(((TypeReachabilityCondition) condition).isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the
@@ -114,17 +114,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
          */
         Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
-
+        Object proxyClass;
         if (!proxyCache.containsKey(key)) {
-            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), createProxyClass(intfs)));
+            proxyClass = createProxyClass(intfs);
+            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), proxyClass));
+        } else {
+            proxyClass = proxyCache.get(key).getValueUnconditionally();
         }
         proxyCache.get(key).getConditions().addCondition(condition);
-    }
-
-    @Override
-    public Class<?> registerProxyClass(RegistrationCondition condition, Class<?>... interfaces) {
-        addProxyClass(condition, interfaces);
-        return createProxyClassFromImplementedInterfaces(interfaces);
+        return (proxyClass instanceof Throwable) ? null : (Class<?>) proxyClass;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

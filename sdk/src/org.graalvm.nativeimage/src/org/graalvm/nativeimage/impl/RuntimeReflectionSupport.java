@@ -74,4 +74,5 @@ public interface RuntimeReflectionSupport extends ReflectionRegistry {
 
     void registerClassLookupException(RegistrationCondition condition, String typeName, Throwable t);
 
+    void registerUnsafeAllocation(RegistrationCondition condition, Class<?>... classes);
 }

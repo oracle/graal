@@ -199,9 +199,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(RegistrationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
+    public void register(RegistrationCondition condition, Class<?> clazz) {
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
-        runConditionalInAnalysisTask(condition, (cnd) -> registerClass(cnd, clazz, unsafeInstantiated, true));
+        runConditionalInAnalysisTask(condition, (cnd) -> registerClass(cnd, clazz, true));
     }
 
     @Override
@@ -214,7 +214,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         /* Malformed inner classes can have no declaring class */
                         innerClasses.computeIfAbsent(innerClass.getDeclaringClass(), c -> ConcurrentHashMap.newKeySet()).add(innerClass);
                     }
-                    registerClass(cnd, innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
+                    registerClass(cnd, innerClass, !MissingRegistrationUtils.throwMissingRegistrationErrors());
                 }
             } catch (LinkageError e) {
                 registerLinkageError(clazz, e, classLookupExceptions);
@@ -229,7 +229,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             try {
                 for (Class<?> innerClass : clazz.getDeclaredClasses()) {
                     innerClasses.computeIfAbsent(clazz, c -> ConcurrentHashMap.newKeySet()).add(innerClass);
-                    registerClass(cnd, innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
+                    registerClass(cnd, innerClass, !MissingRegistrationUtils.throwMissingRegistrationErrors());
                 }
             } catch (LinkageError e) {
                 registerLinkageError(clazz, e, classLookupExceptions);
@@ -237,17 +237,23 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerClass(RegistrationCondition condition, Class<?> clazz, boolean unsafeInstantiated, boolean allowForName) {
+    @Override
+    public void registerUnsafeAllocation(RegistrationCondition condition, Class<?>... classes) {
+        for (Class<?> clazz : classes) {
+            AnalysisType type = metaAccess.lookupJavaType(clazz);
+            type.registerAsReachable("Is registered for unsafe allocation.");
+            type.registerAsUnsafeAllocated("Is registered via reflection metadata.");
+            classForNameSupport.registerUnsafeAllocated(condition, clazz);
+        }
+    }
+
+    private void registerClass(RegistrationCondition condition, Class<?> clazz, boolean allowForName) {
         if (shouldExcludeClass(clazz)) {
             return;
         }
 
         AnalysisType type = metaAccess.lookupJavaType(clazz);
         type.registerAsReachable("Is registered for reflection.");
-        if (unsafeInstantiated) {
-            type.registerAsUnsafeAllocated("Is registered via reflection metadata.");
-            classForNameSupport.registerUnsafeAllocated(condition, clazz);
-        }
 
         if (allowForName) {
             classForNameSupport.registerClass(condition, clazz, ClassLoaderFeature.getRuntimeClassLoader(clazz.getClassLoader()));
@@ -281,7 +287,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerClassLookup(RegistrationCondition condition, String typeName) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             try {
-                registerClass(cnd, Class.forName(typeName, false, ClassLoader.getSystemClassLoader()), false, true);
+                registerClass(cnd, Class.forName(typeName, false, ClassLoader.getSystemClassLoader()), true);
             } catch (ClassNotFoundException e) {
                 classForNameSupport.registerNegativeQuery(cnd, typeName);
             } catch (Throwable t) {
@@ -304,7 +310,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             setQueryFlag(clazz, ALL_PERMITTED_SUBCLASSES_FLAG);
             if (clazz.isSealed()) {
                 for (Class<?> permittedSubclass : clazz.getPermittedSubclasses()) {
-                    registerClass(condition, permittedSubclass, false, false);
+                    registerClass(condition, permittedSubclass, false);
                 }
             }
         });
@@ -316,7 +322,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             setQueryFlag(clazz, ALL_NEST_MEMBERS_FLAG);
             for (Class<?> nestMember : clazz.getNestMembers()) {
                 if (nestMember != clazz) {
-                    registerClass(condition, nestMember, false, false);
+                    registerClass(condition, nestMember, false);
                 }
             }
         });
@@ -537,6 +543,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private Set<AllDeclaredFieldsQuery> existingAllDeclaredFieldsQuery = ConcurrentHashMap.newKeySet();
 
+    @Override
     public void registerAllDeclaredFieldsQuery(RegistrationCondition condition, boolean queriedOnly, Class<?> clazz) {
         final var query = new AllDeclaredFieldsQuery(condition, queriedOnly, clazz);
         if (!existingAllDeclaredFieldsQuery.contains(query)) {
