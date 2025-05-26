@@ -38,6 +38,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Formatter;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -436,6 +438,9 @@ public abstract class CompilationWrapper<T> {
     private static final long COMPILATION_FAILURE_DETECTION_PERIOD_NS = TimeUnit.SECONDS.toNanos(2);
     private static final int MIN_COMPILATIONS_FOR_FAILURE_DETECTION = 25;
 
+    // Ensures the system compilation failure warning is printed once per VM process.
+    private static final GlobalAtomicLong SYSTEMIC_COMPILATION_FAILURE_WARNED = new GlobalAtomicLong("SYSTEMIC_COMPILATION_FAILURE_WARNED", 0L);
+
     /**
      * Gets the start of the current compilation period, initializing it to {@code initialValue} if
      * this is the first period.
@@ -487,17 +492,23 @@ public abstract class CompilationWrapper<T> {
         // Wait for period to expire or some minimum amount of compilations
         // before detecting systemic failure.
         if (rate > maxRate && (periodExpired || total > MIN_COMPILATIONS_FOR_FAILURE_DETECTION)) {
-            Formatter msg = new Formatter();
-            String option = GraalCompilerOptions.SystemicCompilationFailureRate.getName();
-            msg.format("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]. ",
-                            failed, total, rate, TimeUnit.NANOSECONDS.toMillis(periodNS), option, maxRateValue);
-            msg.format("To mitigate systemic compilation failure detection, set %s to a higher value. ", option);
-            msg.format("To disable systemic compilation failure detection, set %s to 0. ", option);
-            msg.format("To get more information on compilation failures, set %s to Print or Diagnose. ", GraalCompilerOptions.CompilationFailureAction.getName());
-            TTY.println(msg.toString());
-            if (maxRateValue < 0) {
-                // A negative value means the VM should be exited
-                return true;
+            if (SYSTEMIC_COMPILATION_FAILURE_WARNED.compareAndSet(0L, 1L)) {
+                Formatter msg = new Formatter();
+                String option = GraalCompilerOptions.SystemicCompilationFailureRate.getName();
+                msg.format("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]. ",
+                                failed, total, rate, TimeUnit.NANOSECONDS.toMillis(periodNS), option, maxRateValue);
+                msg.format("To mitigate systemic compilation failure detection, set %s to a higher value. ", option);
+                msg.format("To disable systemic compilation failure detection, set %s to 0. ", option);
+                msg.format("To get more information on compilation failures, set %s to Print or Diagnose. ", GraalCompilerOptions.CompilationFailureAction.getName());
+                StringWriter sw = new StringWriter();
+                cause.printStackTrace(new PrintWriter(sw));
+                msg.format("Current failure: %s", sw.toString().replace("\n", "\\n").replace("\t", "\\t"));
+                TTY.println(msg.toString());
+
+                if (maxRateValue < 0) {
+                    // A negative value means the VM should be exited
+                    return true;
+                }
             }
             periodExpired = true;
         }
