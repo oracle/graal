@@ -243,7 +243,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Re
     @Override
     public void registerUnsafeAllocated(RegistrationCondition condition, Class<?> clazz) {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
-            registry.register(condition, true, clazz);
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerUnsafeAllocation(condition, clazz);
             /*
              * Ignore otherwise as the implementation of allocateInstance will anyhow throw an
              * exception.

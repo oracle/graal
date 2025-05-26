@@ -226,8 +226,7 @@ public class JNIAccessFeature implements Feature {
                     implements RuntimeJNIAccessSupport, LayeredImageSingleton {
 
         @Override
-        public void register(RegistrationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
-            assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
+        public void register(RegistrationCondition condition, Class<?> clazz) {
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
@@ -259,7 +258,7 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void registerClassLookup(RegistrationCondition condition, String reflectionName) {
             try {
-                register(condition, false, Class.forName(reflectionName));
+                register(condition, Class.forName(reflectionName));
             } catch (ClassNotFoundException e) {
                 String jniName = ClassNameSupport.reflectionNameToJNIName(reflectionName);
                 newNegativeClassLookups.add(jniName);

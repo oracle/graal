@@ -22,55 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.hosted.webimage;
+package com.oracle.svm.hosted;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
-/**
- * No-op implementation of {@link RuntimeJNIAccessSupport}.
- * <p>
- * Web Image does not support JNI and thus does not need any special support for handling
- * JNI-accessed types, fields, etc. The {@link RuntimeJNIAccessSupport} image singleton may be
- * accessed occasionally, so an implementation is still required.
- */
-public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport {
+public final class RuntimeJNIAccessImpl implements RuntimeJNIAccess {
+
     @Override
-    public void register(RegistrationCondition condition, Class<?> clazz) {
-        // Do nothing.
+    public void register(RegistrationCondition condition, Class<?>... classes) {
+        DynamicAccessSupport.printUserError("following classes for JNI access: " + Arrays.toString(classes));
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, classes);
     }
 
     @Override
-    public void register(RegistrationCondition condition, boolean queriedOnly, Executable... methods) {
-        // Do nothing.
+    public void register(RegistrationCondition condition, Executable... methods) {
+        DynamicAccessSupport.printUserError("following methods for JNI access: " + Arrays.toString(methods));
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, methods);
     }
 
     @Override
-    public void register(RegistrationCondition condition, boolean finalIsWritable, Field... fields) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerClassLookup(RegistrationCondition condition, String typeName) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerFieldLookup(RegistrationCondition condition, Class<?> declaringClass, String fieldName) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerMethodLookup(RegistrationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-        // Do nothing.
-    }
-
-    @Override
-    public void registerConstructorLookup(RegistrationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
-        // Do nothing.
+    public void register(RegistrationCondition condition, Field... fields) {
+        DynamicAccessSupport.printUserError("following fields for JNI access: " + Arrays.toString(fields));
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, fields);
     }
 }

@@ -47,13 +47,12 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.hosted.DynamicJNIAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.hosted.ReflectionDynamicAccess;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.hosted.ResourceDynamicAccess;
+import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -100,6 +99,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
@@ -195,18 +195,23 @@ public class FeatureImpl {
         }
 
         @Override
-        public ReflectionDynamicAccess getReflectionDynamicAccess() {
-            return new ReflectionDynamicAccessImpl();
+        public RuntimeReflectionImpl getRuntimeReflection() {
+            return new RuntimeReflectionImpl();
         }
 
         @Override
-        public ResourceDynamicAccess getResourceDynamicAccess() {
-            return new ResourceDynamicAccessImpl();
+        public RuntimeResourceAccess getRuntimeResourceAccess() {
+            return new RuntimeResourceAccessImpl();
         }
 
         @Override
-        public DynamicJNIAccess getDynamicJNIAccess() {
-            return new DynamicJNIAccessImpl();
+        public RuntimeJNIAccess getRuntimeJNIAccess() {
+            return new RuntimeJNIAccessImpl();
+        }
+
+        @Override
+        public RuntimeForeignAccess getRuntimeForeignAccess() {
+            return new RuntimeForeignAccessImpl();
         }
     }
 

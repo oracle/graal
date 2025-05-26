@@ -48,10 +48,10 @@ import org.graalvm.nativeimage.hosted.RegistrationCondition;
 
 public interface ReflectionRegistry {
     default void register(RegistrationCondition condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
+        Arrays.stream(classes).forEach(clazz -> register(condition, clazz));
     }
 
-    void register(RegistrationCondition condition, boolean unsafeAllocated, Class<?> clazz);
+    void register(RegistrationCondition condition, Class<?> clazz);
 
     void register(RegistrationCondition condition, boolean queriedOnly, Executable... methods);
 
