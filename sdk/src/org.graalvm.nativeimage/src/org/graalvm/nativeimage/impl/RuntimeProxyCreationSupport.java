@@ -43,7 +43,5 @@ package org.graalvm.nativeimage.impl;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface RuntimeProxyCreationSupport {
-    void addProxyClass(AccessCondition condition, Class<?>... interfaces);
-
-    Class<?> registerProxyClass(AccessCondition condition, Class<?>... interfaces);
+    Class<?> addProxyClass(AccessCondition condition, Class<?>... interfaces);
 }
