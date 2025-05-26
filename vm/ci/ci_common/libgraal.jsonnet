@@ -107,7 +107,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     if (os_arch == 'windows-amd64') then
       c.svm_common_windows_amd64(jdk)
     else
-      c.svm_common,
+      graal_common.deps.svm,
 
   local all_os_arches = [
     "linux-amd64",

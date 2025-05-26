@@ -23,7 +23,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   vm_bench_common: self.vm_bench_base(machine_name='x52') + { capabilities+: ['tmpfs25g'] },
 
-  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm.custom_vm + self.vm_bench_common + {
+  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_Latest + common.deps.svm + common.deps.sulong + vm.custom_vm + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}'],
     setup+: [
@@ -59,7 +59,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
   },
 
-  vm_bench_polybenchmarks_linux_build: vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
+  vm_bench_polybenchmarks_linux_build: common.deps.svm + common.deps.truffleruby + common.deps.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
     setup+: [
       self.base_cmd + ['sforceimports'],
     ],
@@ -80,7 +80,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
   # TODO (GR-60584): re-enable espresso polybench jobs once polybench is unchained
-  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:~r[.*jar]', shape=null): vm_common.svm_common + vm_common.truffleruby + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape=shape) + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
+  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:~r[.*jar]', shape=null): common.deps.svm + common.deps.truffleruby + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape=shape) + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
       self.base_cmd + ['sforceimports'],
@@ -106,7 +106,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit:      if (is_gate) then '1:00:00' else '1:30:00',
   } + (if is_gate then self.vm_bench_base(machine_name=null) else self.vm_bench_common),
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.svm_common + vm_common.truffleruby + vm_common.graalpy + vm.custom_vm + vm_common.wasm {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + common.deps.svm + common.deps.truffleruby + common.deps.graalpy + common.deps.wasm + vm.custom_vm {
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (fail_fast) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +
@@ -275,7 +275,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['compiler_bench']
   },
 
-  vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + vm_common.svm_common + self.vm_bench_polybench_nfi,
+  vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + common.deps.svm + self.vm_bench_polybench_nfi,
 
   local builds = [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
