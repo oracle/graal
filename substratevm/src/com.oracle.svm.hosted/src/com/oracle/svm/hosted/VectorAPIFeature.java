@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -116,8 +115,9 @@ public class VectorAPIFeature implements InternalFeature {
          */
         int maxVectorBits = Math.max(VectorAPISupport.singleton().getMaxVectorBytes() * Byte.SIZE, 64);
 
-        Class<?>[] vectorElements = new Class<?>[]{byte.class, short.class, int.class, float.class, double.class};
-        String[] vectorElementNames = new String[]{"Byte", "Short", "Int", "Long", "Float", "Double"};
+        Class<?>[] vectorElements = new Class<?>[]{float.class, double.class, byte.class, short.class, int.class, long.class};
+        String[] vectorElementNames = new String[]{"Float", "Double", "Byte", "Short", "Int", "Long"};
+        int[] elementSizes = new int[]{32, 64, 8, 16, 32, 64};
         String[] vectorSizes = new String[]{"64", "128", "256", "512", "Max"};
 
         Object maxBitShape = ReflectionUtil.readStaticField(vectorShapeClass, "S_Max_BIT");
@@ -139,7 +139,11 @@ public class VectorAPIFeature implements InternalFeature {
          * IntVector.SPECIES_MAX, etc.) in this map, then use this data in FieldValueTransformers
          * for fields declared in AbstractSpecies.
          */
-        EconomicMap<Object, MaxVectorSizes> maxVectorSizes = EconomicMap.create();
+        EconomicMap<Object, AbstractSpeciesStableFields> speciesStableFields = EconomicMap.create();
+
+        Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
+        Object speciesCache = Array.newInstance(speciesClass, 7, 6);
+        UNSAFE.ensureClassInitialized(speciesClass);
 
         for (Class<?> vectorElement : vectorElements) {
             String elementName = vectorElement.getName().substring(0, 1).toUpperCase(Locale.ROOT) + vectorElement.getName().substring(1);
@@ -147,12 +151,6 @@ public class VectorAPIFeature implements InternalFeature {
             String generalVectorName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
             Class<?> vectorClass = ReflectionUtil.lookupClass(generalVectorName);
             UNSAFE.ensureClassInitialized(vectorClass);
-            Object speciesMax = ReflectionUtil.readStaticField(vectorClass, "SPECIES_MAX");
-            maxVectorSizes.put(speciesMax, new MaxVectorSizes(
-                            VectorAPISupport.singleton().getMaxLaneCount(vectorElement),
-                            Integer.numberOfTrailingZeros(VectorAPISupport.singleton().getMaxLaneCount(vectorElement)) + 1,
-                            maxVectorBits,
-                            maxVectorBits / Byte.SIZE));
             Method species = ReflectionUtil.lookupMethod(vectorClass, "species", vectorShapeClass);
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(vectorClass, "SPECIES_PREFERRED"),
                             (receiver, originalValue) -> ReflectionUtil.invokeMethod(species, null, preferredShape));
@@ -170,11 +168,41 @@ public class VectorAPIFeature implements InternalFeature {
                             (receiver, originalValue) -> makeIotaVector(maxVectorClass, vectorElement, laneCount));
         }
 
-        Class<?> speciesClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".AbstractSpecies");
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCount"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::laneCount));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCountLog2P1"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::laneCountLog2P1));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorBitSize"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::vectorBitSize));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap(maxVectorSizes, MaxVectorSizes::vectorByteSize));
+        Class<?> laneTypeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".LaneType");
+        UNSAFE.ensureClassInitialized(laneTypeClass);
+
+        for (int laneTypeIndex = 0; laneTypeIndex < vectorElementNames.length; laneTypeIndex++) {
+            String elementName = vectorElementNames[laneTypeIndex];
+            Class<?> vectorElement = vectorElements[laneTypeIndex];
+            int laneTypeSwitchKey = laneTypeIndex + 1;
+            String vectorClassName = VECTOR_API_PACKAGE_NAME + "." + elementName + "Vector";
+            Class<?> vectorClass = ReflectionUtil.lookupClass(vectorClassName);
+            for (int vectorShapeIndex = 0; vectorShapeIndex < vectorSizes.length; vectorShapeIndex++) {
+                String size = vectorSizes[vectorShapeIndex];
+                int vectorShapeSwitchKey = vectorShapeIndex + 1;
+                String fieldName = "SPECIES_" + size.toUpperCase(Locale.ROOT);
+                Object species = ReflectionUtil.readStaticField(vectorClass, fieldName);
+
+                int vectorBitSize = vectorShapeIndex == vectorSizes.length - 1 ? maxVectorBits : Integer.parseInt(size);
+                int vectorByteSize = vectorBitSize / Byte.SIZE;
+                int laneCount = vectorShapeIndex == vectorSizes.length - 1 ? VectorAPISupport.singleton().getMaxLaneCount(vectorElement) : vectorBitSize / elementSizes[laneTypeIndex];
+                int laneCountLog2P1 = Integer.numberOfTrailingZeros(laneCount) + 1;
+                Method makeDummyVector = ReflectionUtil.lookupMethod(speciesClass, "makeDummyVector");
+                Object dummyVector = ReflectionUtil.invokeMethod(makeDummyVector, species);
+                Object laneType = ReflectionUtil.readStaticField(laneTypeClass, elementName.toUpperCase(Locale.ROOT));
+                speciesStableFields.put(species, new AbstractSpeciesStableFields(laneCount, laneCountLog2P1, vectorBitSize, vectorByteSize, dummyVector, laneType));
+
+                Array.set(Array.get(speciesCache, laneTypeSwitchKey), vectorShapeSwitchKey, species);
+            }
+        }
+
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCount"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneCount));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneCountLog2P1"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneCountLog2P1));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorBitSize"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::vectorBitSize));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "vectorByteSize"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::vectorByteSize));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "dummyVector"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::dummyVector));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "laneType"), new OverrideFromMap<>(speciesStableFields, AbstractSpeciesStableFields::laneType));
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(speciesClass, "CACHES"), (receiver, originalValue) -> speciesCache);
 
         /*
          * Manually initialize some inner classes and mark them as reachable. Due to the way we
@@ -216,6 +244,9 @@ public class VectorAPIFeature implements InternalFeature {
             warmupImplCache(vectorClass, "BIN_IMPL", "binaryOperations", warmupData);
             warmupImplCache(vectorClass, "TERN_IMPL", "ternaryOperations", warmupData);
             warmupImplCache(vectorClass, "REDUCE_IMPL", "reductionOperations", warmupData);
+            if (!elementName.equals("Float") && !elementName.equals("Double")) {
+                warmupImplCache(vectorClass, "BIN_INT_IMPL", "broadcastIntOperations", warmupData);
+            }
         }
 
         /* Warm up caches for mapping between lane types, used by shuffles. */
@@ -271,7 +302,7 @@ public class VectorAPIFeature implements InternalFeature {
         }
     }
 
-    private record MaxVectorSizes(int laneCount, int laneCountLog2P1, int vectorBitSize, int vectorByteSize) {
+    private record AbstractSpeciesStableFields(int laneCount, int laneCountLog2P1, int vectorBitSize, int vectorByteSize, Object dummyVector, Object laneType) {
 
     }
 
@@ -280,14 +311,10 @@ public class VectorAPIFeature implements InternalFeature {
      * the instances appearing as keys in {@code map}, return the associated value computed via the
      * {@code accessor}. Otherwise, return the field's original value unchanged.
      */
-    private record OverrideFromMap(EconomicMap<Object, MaxVectorSizes> map, Function<MaxVectorSizes, Object> accessor) implements FieldValueTransformer {
+    private record OverrideFromMap<E>(EconomicMap<Object, E> map, Function<E, Object> accessor) implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            MaxVectorSizes overridingValues = map.get(receiver);
-            if (overridingValues != null) {
-                return accessor.apply(overridingValues);
-            }
-            return originalValue;
+            return accessor.apply(map.get(receiver));
         }
     }
 
@@ -299,8 +326,7 @@ public class VectorAPIFeature implements InternalFeature {
      */
     private static final class WarmupData {
         final Class<?> implCacheClass;
-        final Class<?> operatorClass;
-        final Method implCacheFind;
+        final Field implCacheField;
         final int[] vectorOpcodes;
         final Class<?> laneTypeClass;
         final Object[] laneTypes;
@@ -311,8 +337,7 @@ public class VectorAPIFeature implements InternalFeature {
 
         private WarmupData() {
             implCacheClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".VectorOperators$ImplCache");
-            operatorClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".VectorOperators$Operator");
-            implCacheFind = ReflectionUtil.lookupMethod(implCacheClass, "find", operatorClass, int.class, IntFunction.class);
+            implCacheField = ReflectionUtil.lookupField(implCacheClass, "cache");
             Class<?> vectorSupportClass = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport");
             ArrayList<Integer> opcodeList = new ArrayList<>();
             for (Field f : vectorSupportClass.getDeclaredFields()) {
@@ -347,16 +372,11 @@ public class VectorAPIFeature implements InternalFeature {
         Object cacheObject = ReflectionUtil.readStaticField(vectorClass, cacheName);
         Method cachedMethod = ReflectionUtil.lookupMethod(vectorClass, cachedMethodName, int.class);
 
-        IntFunction<?> methodAsIntFunction = (int opc) -> {
-            try {
-                return cachedMethod.invoke(null, (Object) opc);
-            } catch (Throwable ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        };
         for (int opcode : warmupData.vectorOpcodes) {
             try {
-                warmupData.implCacheFind.invoke(cacheObject, null, opcode, methodAsIntFunction);
+                Object implFn = cachedMethod.invoke(null, opcode);
+                Object[] cacheArray = (Object[]) warmupData.implCacheField.get(cacheObject);
+                cacheArray[opcode] = implFn;
             } catch (InvocationTargetException ex) {
                 if (ex.getCause() instanceof UnsupportedOperationException) {
                     /*
