@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.JavaVersionUtil;
 
 /**
  * Denotes the latest supported JDK version. It corresponds to the highest key in the
