@@ -245,27 +245,18 @@ abstract class ExtAllocator extends BaseAllocator {
             // no primitive fields in this layout that are wide enough
             return -1;
         }
-        next: for (int fieldIndex = startIndex; fieldIndex < l.getPrimitiveFieldCount(); fieldIndex++) {
+        for (int fieldIndex = startIndex; fieldIndex < l.getPrimitiveFieldCount(); fieldIndex++) {
             // ensure alignment
             final int align = desiredBytes - 1;
-            while ((l.getPrimitiveField(fieldIndex).offset() & align) != 0) {
-                continue next;
-            }
-
             FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
-
-            // if we do not have enough space in one field, try to span multiple consecutive fields
-            int availableBytes = fieldInfo.getBytes();
-            int lastFieldIndex = fieldIndex;
-            while (availableBytes < desiredBytes &&
-                            lastFieldIndex + 1 < l.getPrimitiveFieldCount() &&
-                            l.getPrimitiveField(lastFieldIndex + 1).offset() == l.getPrimitiveField(lastFieldIndex).offset() + l.getPrimitiveField(lastFieldIndex).getBytes()) {
-                availableBytes += l.getPrimitiveField(lastFieldIndex + 1).getBytes();
-                lastFieldIndex++;
+            if ((fieldInfo.offset() & align) != 0) {
+                continue;
             }
+
+            int availableBytes = fieldInfo.getBytes();
             if (availableBytes < desiredBytes) {
                 // this field is not suitable for the desired number of bytes, try the next one
-                continue next;
+                continue;
             }
 
             return fieldIndex;
