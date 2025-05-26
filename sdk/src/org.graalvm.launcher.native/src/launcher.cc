@@ -47,9 +47,13 @@
 #include <cstdlib>
 
 #include <string>
+#include <optional>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <vector>
+
+#include <cassert>
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -94,6 +98,7 @@
 #define VM_MODULE_PATH_ARG_PREFIX "--vm.-module-path="
 #define VM_LIBRARY_PATH_ARG_PREFIX "--vm.Djava.library.path="
 #define VM_STACK_SIZE_ARG_PREFIX "--vm.Xss"
+#define VM_ARG_FILE_ARG_PREFIX "--vm.@"
 
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
@@ -102,6 +107,7 @@
 #define VM_MODULE_PATH_ARG_OFFSET (sizeof(VM_MODULE_PATH_ARG_PREFIX)-1)
 #define VM_LIBRARY_PATH_ARG_OFFSET (sizeof(VM_LIBRARY_PATH_ARG_PREFIX)-1)
 #define VM_STACK_SIZE_ARG_OFFSET (sizeof(VM_STACK_SIZE_ARG_PREFIX)-1)
+#define VM_ARG_FILE_ARG_OFFSET (sizeof(VM_ARG_FILE_ARG_PREFIX)-1)
 
 #define STARTS_WITH(ARG, PREFIX) (ARG.rfind(PREFIX, 0) != std::string::npos)
 #define IS_VM_ARG(ARG) STARTS_WITH(ARG, VM_ARG_PREFIX)
@@ -111,6 +117,7 @@
 #define IS_VM_MODULE_PATH_ARG(ARG) STARTS_WITH(ARG, VM_MODULE_PATH_ARG_PREFIX)
 #define IS_VM_LIBRARY_PATH_ARG(ARG) STARTS_WITH(ARG, VM_LIBRARY_PATH_ARG_PREFIX)
 #define IS_VM_STACK_SIZE_ARG(ARG) STARTS_WITH(ARG, VM_STACK_SIZE_ARG_PREFIX)
+#define IS_VM_ARG_FILE_ARG(ARG) STARTS_WITH(ARG, VM_ARG_FILE_ARG_PREFIX)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -345,6 +352,12 @@ static std::string vm_path(std::string exeDir, bool jvmMode) {
 }
 
 static size_t parse_size(std::string_view str);
+static void expand_vm_arg_file(const char *arg_file,
+                               std::vector<std::string> *vmArgs,
+                               std::ostringstream *cp,
+                               std::ostringstream *modulePath,
+                               std::ostringstream *libraryPath,
+                               size_t* stack_size);
 
 static void parse_vm_option(
         std::vector<std::string> *vmArgs,
@@ -363,6 +376,9 @@ static void parse_vm_option(
         *modulePath << CP_SEP_STR << option.substr(VM_MODULE_PATH_ARG_OFFSET);
     } else if (IS_VM_LIBRARY_PATH_ARG(option)) {
         *libraryPath << CP_SEP_STR << option.substr(VM_LIBRARY_PATH_ARG_OFFSET);
+    } else if (IS_VM_ARG_FILE_ARG(option)) {
+        std::string arg_file(option.substr(VM_ARG_FILE_ARG_OFFSET));
+        expand_vm_arg_file(arg_file.c_str(), vmArgs, cp, modulePath, libraryPath, stack_size);
     } else if (IS_VM_ARG(option)) {
         if (IS_VM_STACK_SIZE_ARG(option)) {
             *stack_size = parse_size(option.substr(VM_STACK_SIZE_ARG_OFFSET));
@@ -372,6 +388,163 @@ static void parse_vm_option(
         vmArgs->push_back(opt.str());
     } else if (option == "--jvm") {
         found_switch_to_jvm_flag = true;
+    }
+}
+
+enum ArgFileState {
+    FIND_NEXT,
+    IN_COMMENT,
+    IN_QUOTE,
+    IN_ESCAPE,
+    SKIP_LEAD_WS,
+    IN_TOKEN
+};
+// Parse @arg-files as handled by libjli. See libjli/args.c.
+static std::optional<std::string> arg_file_next_token(std::ifstream &input) {
+    ArgFileState state = FIND_NEXT;
+    int currentQuoteChar = -1;
+    std::istream::int_type ch;
+
+    std::ostringstream token;
+    std::ostringstream::pos_type start = token.tellp();
+
+    while ((ch = input.get()) != std::istream::traits_type::eof()) {
+        // Skip white space characters
+        if (state == FIND_NEXT || state == SKIP_LEAD_WS) {
+            while (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f') {
+                if ((ch = input.get()) == std::istream::traits_type::eof()) {
+                    goto done;
+                }
+            }
+            state = (state == FIND_NEXT) ? IN_TOKEN : IN_QUOTE;
+            // Deal with escape sequences
+        } else if (state == IN_ESCAPE) {
+            // concatenation directive
+            if (ch == '\n' || ch == '\r') {
+                state = SKIP_LEAD_WS;
+            } else {
+                // escaped character
+                switch (ch) {
+                    case 'n':
+                        token << '\n';
+                        break;
+                    case 'r':
+                        token << '\r';
+                        break;
+                    case 't':
+                        token << '\t';
+                        break;
+                    case 'f':
+                        token << '\f';
+                        break;
+                    default:
+                        token << (char) ch;
+                        break;
+                }
+                state = IN_QUOTE;
+            }
+            continue;
+            // ignore comment to EOL
+        } else if (state == IN_COMMENT) {
+            while (ch != '\n' && ch != '\r') {
+                if ((ch = input.get()) == std::istream::traits_type::eof()) {
+                    goto done;
+                }
+            }
+            state = FIND_NEXT;
+            continue;
+        }
+
+        assert(state != IN_ESCAPE);
+        assert(state != FIND_NEXT);
+        assert(state != SKIP_LEAD_WS);
+        assert(state != IN_COMMENT);
+
+        switch (ch) {
+            case ' ':
+            case '\t':
+            case '\f':
+                if (state == IN_QUOTE) {
+                    token << (char) ch;
+                    continue;
+                }
+                // fallthrough
+            case '\n':
+            case '\r':
+                return token.str();
+            case '#':
+                if (state == IN_QUOTE) {
+                    token << (char) ch;
+                    continue;
+                }
+                state = IN_COMMENT;
+                break;
+            case '\\':
+                if (state != IN_QUOTE) {
+                    token << (char) ch;
+                    continue;
+                }
+                state = IN_ESCAPE;
+                break;
+            case '\'':
+            case '"':
+                if (state == IN_QUOTE && currentQuoteChar != ch) {
+                    // not matching quote
+                    token << (char) ch;
+                    continue;
+                }
+                if (state == IN_TOKEN) {
+                    currentQuoteChar = ch;
+                    state = IN_QUOTE;
+                } else {
+                    state = IN_TOKEN;
+                }
+                break;
+            default:
+                token << (char) ch;
+                break;
+        }
+    }
+done:
+    if (token.tellp() == start) {
+        return {};
+    }
+    return token.str();
+}
+
+static void expand_vm_arg_file(const char *arg_file,
+                               std::vector<std::string> *vmArgs,
+                               std::ostringstream *cp,
+                               std::ostringstream *modulePath,
+                               std::ostringstream *libraryPath,
+                               size_t* stack_size) {
+    if (debug) {
+        std::cout << "Expanding VM arg file " << arg_file << std::endl;
+    }
+    std::ifstream input(arg_file);
+    if (input.fail()) {
+        std::cerr << "Error: could not open `" << arg_file << "': " << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    while (true) {
+        std::optional<std::string> token = arg_file_next_token(input);
+        if (token.has_value()) {
+            if (STARTS_WITH(token.value(), "--class-path=")) {
+                *cp << CP_SEP_STR << token.value().substr(sizeof("--class-path=") - 1);
+            } else if (STARTS_WITH(token.value(), "--module-path=")) {
+                *modulePath << CP_SEP_STR << token.value().substr(sizeof("--module-path=") - 1);
+            } else if (STARTS_WITH(token.value(), "-Djava.library.path=")) {
+                *libraryPath << CP_SEP_STR << token.value().substr(sizeof("-Djava.library.path=") - 1);
+            } else {
+                if (STARTS_WITH(token.value(), "-Xss")) {
+                    *stack_size = parse_size(token.value().substr(sizeof("-Xss") - 1));
+                }
+                vmArgs->push_back(token.value());
+            }
+        } else {
+            break;
+        }
     }
 }
 
