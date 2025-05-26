@@ -95,7 +95,7 @@ def _espresso_standalone_command(args, with_sulong=False, allow_jacoco=True, jdk
         + jacoco_args
         # This is needed for Truffle since JEP 472: Prepare to Restrict the Use of JNI
         + ['--enable-native-access=org.graalvm.truffle']
-        + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
+        + ["--module", "org.graalvm.espresso.launcher/" + mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
     )
 
 def javavm_deps():

@@ -49,6 +49,7 @@ You can find out where the espresso standalones are by running `mx path --output
 $ mx path --output ESPRESSO_NATIVE_STANDALONE
 $ mx path --output ESPRESSO_JVM_STANDALONE
 ```
+> Note: If you used options like `--env ...` or `--dynamicimports ...` while building, you should also use them with `mx path`: e.g., `mx --env native-ce path ...`.
 
 `mx espresso` runs Espresso from a standalone (jvm or native). It mimics the `java` command.
 
@@ -68,7 +69,7 @@ The `mx espresso` launcher adds some overhead, to execute Espresso native image 
 
 ```bash
 $ mx --env native-ce build # Always build first
-$ export ESPRESSO=`mx path --output ESPRESSO_NATIVE_STANDALONE`/bin/java
+$ export ESPRESSO=`mx --quiet --no-warning --env native-ce path --output ESPRESSO_NATIVE_STANDALONE`/bin/java
 $ time $ESPRESSO -cp my.jar HelloWorld
 ```
 
