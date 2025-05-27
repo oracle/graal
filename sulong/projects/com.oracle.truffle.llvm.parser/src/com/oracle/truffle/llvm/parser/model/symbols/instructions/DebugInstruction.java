@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,33 +29,48 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-public class DbgValueInstruction extends VoidInstruction {
+public class DebugInstruction extends VoidInstruction {
 
-    private final SymbolImpl value;
-    private final SourceVariable variable;
+    public enum DebugInstructionKind {
+        VALUE,
+        DECLARE
+    }
+
+    private final DebugInstructionKind kind;
+
+    private final MDLocalVariable variable;
     private final MDExpression expression;
+    private final MDBaseNode value;
 
-    public DbgValueInstruction(SymbolImpl value, SourceVariable variable, MDExpression expression) {
-        this.value = value;
+    public DebugInstruction(DebugInstructionKind kind, MDLocation location, MDLocalVariable variable, MDExpression expression, MDBaseNode value) {
+        super(location);
+        this.kind = kind;
         this.variable = variable;
         this.expression = expression;
+        this.value = value;
     }
 
-    public SymbolImpl getValue() {
-        return value;
+    public DebugInstructionKind getKind() {
+        return kind;
     }
 
-    public SourceVariable getVariable() {
+    public MDLocalVariable getVariable() {
         return variable;
     }
 
     public MDExpression getExpression() {
         return expression;
+    }
+
+    public MDBaseNode getValue() {
+        return value;
     }
 
     @Override
@@ -76,9 +91,9 @@ public class DbgValueInstruction extends VoidInstruction {
             return false;
         }
 
-        final DbgValueInstruction that = (DbgValueInstruction) o;
+        final DebugInstruction that = (DebugInstruction) o;
 
-        if (!getValue().equals(that.getValue())) {
+        if (!getKind().equals(that.getKind())) {
             return false;
         }
         if (!getVariable().equals(that.getVariable())) {
@@ -87,14 +102,20 @@ public class DbgValueInstruction extends VoidInstruction {
         if (!getExpression().equals(that.getExpression())) {
             return false;
         }
+        if (!getValue().equals(that.getValue())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = getValue().hashCode();
-        result = 31 * result + getVariable().hashCode();
-        result = 31 * result + getExpression().hashCode();
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((kind == null) ? 0 : kind.hashCode());
+        result = prime * result + ((variable == null) ? 0 : variable.hashCode());
+        result = prime * result + ((expression == null) ? 0 : expression.hashCode());
+        result = prime * result + ((value == null) ? 0 : value.hashCode());
         return result;
     }
 }

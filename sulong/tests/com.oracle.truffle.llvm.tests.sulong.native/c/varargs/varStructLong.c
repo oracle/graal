@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,6 +54,6 @@ int foo(__attribute__((unused)) long y0, __attribute__((unused)) long y1, long y
 }
 
 int main() {
-    return foo(0L, 0L, 6L, (struct _point){ 1L, 0L }, (struct _point){ 2L, 0L }, (struct _point){ 3L, 0L }, (struct _point){ 5L, 0L },
-               (struct _point){ 7L, 0L }, (struct _point){ 11L, 0L });
+    return foo(0L, 0L, 6L, (struct _point) { 1L, 0L }, (struct _point) { 2L, 0L }, (struct _point) { 3L, 0L }, (struct _point) { 5L, 0L },
+               (struct _point) { 7L, 0L }, (struct _point) { 11L, 0L });
 }
