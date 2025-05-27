@@ -62,15 +62,24 @@ public final class ForeignAPIPredicates {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static final class SharedArenasEnabled implements BooleanSupplier {
-        public static boolean getValue() {
-            return SubstrateOptions.isForeignAPIEnabled() && SubstrateOptions.SharedArenaSupport.getValue();
+        private static final String VECTOR_API_SUPPORT_OPTION_NAME = SubstrateOptionsParser.commandArgument(SubstrateOptions.VectorAPISupport, "-");
+        private static final String SHARED_ARENA_SUPPORT_OPTION_NAME = SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedArenaSupport, "-");
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        SharedArenasEnabled() {
         }
 
         @Override
         public boolean getAsBoolean() {
-            return SharedArenasEnabled.getValue();
+            return SubstrateOptions.isSharedArenaSupportEnabled();
+        }
+
+        public static RuntimeException vectorAPIUnsupported() {
+            assert !SubstrateOptions.isSharedArenaSupportEnabled();
+            throw VMError.unsupportedFeature("Support for Arena.ofShared is not available if Vector API support is enabled." +
+                            "Either disable Vector API support using " + VECTOR_API_SUPPORT_OPTION_NAME +
+                            " or replace usages of Arena.ofShared with Arena.ofAuto and disable shared arena support using " + SHARED_ARENA_SUPPORT_OPTION_NAME + ".");
         }
     }
 
@@ -83,11 +92,11 @@ public final class ForeignAPIPredicates {
 
         @Override
         public boolean getAsBoolean() {
-            return !SharedArenasEnabled.getValue();
+            return !SubstrateOptions.isSharedArenaSupportEnabled();
         }
 
         public static RuntimeException fail() {
-            assert !SharedArenasEnabled.getValue();
+            assert !SubstrateOptions.isSharedArenaSupportEnabled();
             throw VMError.unsupportedFeature("Support for Arena.ofShared is not active: enable with " + SHARED_ARENA_SUPPORT_OPTION_NAME);
         }
     }

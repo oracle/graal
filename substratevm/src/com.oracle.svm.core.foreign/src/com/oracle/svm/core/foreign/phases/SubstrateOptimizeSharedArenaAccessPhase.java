@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.foreign.phases;
+package com.oracle.svm.core.foreign.phases;
 
 import static jdk.graal.compiler.debug.DebugContext.VERY_DETAILED_LEVEL;
 
@@ -39,7 +39,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.nodes.ClusterNode;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ClusterBeginNode;
@@ -47,9 +46,6 @@ import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.Ex
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ExceptionPathNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.RegularPathNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMethodNode;
-import com.oracle.svm.hosted.foreign.ForeignFunctionsFeature;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
@@ -346,10 +342,24 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierContext> implements RecursivePhase {
 
-    final CanonicalizerPhase canonicalizer;
+    public interface OptimizeSharedArenaConfig {
+        /**
+         * Tests if calls to the given callee may remain in the critical region of
+         * an @Scoped-annotated method. Usually, this is the case if (1) the callee does not do any
+         * safepoint checks (recursively), or (2) the callee does not access native memory of a
+         * shared arena AND exits with an exception. The second case normally covers methods that
+         * are part of the path that checks the 'checkValidStateRaw' and throws an exception
+         * otherwise.
+         */
+        boolean isSafeCallee(ResolvedJavaMethod method);
+    }
 
-    public SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase canonicalizer) {
+    final CanonicalizerPhase canonicalizer;
+    final OptimizeSharedArenaConfig config;
+
+    public SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase canonicalizer, OptimizeSharedArenaConfig config) {
         this.canonicalizer = canonicalizer;
+        this.config = config;
     }
 
     @Override
@@ -638,13 +648,20 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
         cleanupClusterNodes(graph, context, insertSessionChecks(graph, context));
     }
 
-    private static EconomicSet<DominatedCall> insertSessionChecks(StructuredGraph graph, MidTierContext context) {
+    private EconomicSet<DominatedCall> insertSessionChecks(StructuredGraph graph, MidTierContext context) {
+        if (graph.getNodes().filter(ScopedMethodNode.class).count() == 0) {
+            /*
+             * We are, for whatever reason, compiling the exception handler template method, we do
+             * not verify no calls and we do not duplicate any session checks inside.
+             */
+            return null;
+        }
         ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).modifiableBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true)
                         .computePostdominators(true)
                         .build();
         // Compute the graph with all the necessary data about scoped memory accesses.
         EconomicSet<DominatedCall> calls = EconomicSet.create();
-        EconomicMap<Node, List<ScopedAccess>> sugaredGraph = enumerateScopedAccesses(cfg, context, calls);
+        EconomicMap<Node, List<ScopedAccess>> sugaredGraph = enumerateScopedAccesses(config, cfg, context, calls);
         if (sugaredGraph != null) {
             ReentrantBlockIterator.apply(new MinimalSessionChecks(graph, sugaredGraph, cfg, calls), cfg.getStartBlock());
         }
@@ -848,7 +865,8 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
 
     }
 
-    private static EconomicMap<Node, List<ScopedAccess>> enumerateScopedAccesses(ControlFlowGraph cfg, MidTierContext context, EconomicSet<DominatedCall> dominatedCalls) {
+    private static EconomicMap<Node, List<ScopedAccess>> enumerateScopedAccesses(OptimizeSharedArenaConfig config, ControlFlowGraph cfg, MidTierContext context,
+                    EconomicSet<DominatedCall> dominatedCalls) {
         EconomicMap<Node, List<ScopedAccess>> nodeAccesses = EconomicMap.create();
         final ResolvedJavaType memorySessionType = context.getMetaAccess().lookupJavaType(MemorySessionImpl.class);
         assert memorySessionType != null;
@@ -909,7 +927,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
 
             private void processNode(FixedNode f) {
                 if (!scopes.isEmpty() && f instanceof Invoke i) {
-                    if (i.getTargetMethod() != null && calleeMightUseArena(i.getTargetMethod())) {
+                    if (i.getTargetMethod() != null && !config.isSafeCallee(i.getTargetMethod())) {
                         if (!defs.isEmpty()) {
                             dominatedCalls.add(new DominatedCall(defs.peek().defNode, i));
                         }
@@ -972,21 +990,6 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                     nodeAccesses.put(f, existingAccesses);
                 }
                 existingAccesses.add(new ScopedSafepoint(scopeAssociatedVal, existingDef.defNode));
-            }
-
-            /**
-             * Special methods known to never access a memory arena. Normally part of the path that
-             * checks the `checkValidStateRaw` and throws an exception otherwise.
-             */
-            private boolean calleeMightUseArena(ResolvedJavaMethod targetMethod) {
-                if (Uninterruptible.Utils.isUninterruptible(targetMethod)) {
-                    // Uninterruptible can never safepoint
-                    return false;
-                }
-                if (ForeignFunctionsFeature.singleton().getNeverAccessesSharedArena().contains(((HostedType) targetMethod.getDeclaringClass()).getWrapped())) {
-                    return false;
-                }
-                return !ForeignFunctionsFeature.singleton().getNeverAccessesSharedArenaMethods().contains(((HostedMethod) targetMethod).getWrapped());
             }
 
             private static boolean visitInputsUntil(Node key, Node start) {

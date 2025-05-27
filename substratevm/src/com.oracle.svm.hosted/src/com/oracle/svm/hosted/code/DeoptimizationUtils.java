@@ -304,7 +304,7 @@ public class DeoptimizationUtils {
                     long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
 
                     BytecodeFrame previous = encodedBciMap.put(encodedBci, frame);
-                    assert previous == null : "duplicate encoded bci " + encodedBci + " in deopt target " + method + " found.\n\n" + frame +
+                    assert previous == null : "duplicate encoded bci " + encodedBci + " (original=" + frame.getBCI() + ") in deopt target " + method + " found.\n\n" + frame +
                                     "\n\n" + previous;
                 }
 

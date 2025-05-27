@@ -31,6 +31,7 @@ import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.Cl
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ExceptionInputNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.ExceptionPathNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMemExceptionHandlerClusterNode.RegularPathNode;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -67,6 +68,24 @@ public class SubstrateForeignUtil {
         if (session != null) {
             session.checkValidStateRaw();
         }
+    }
+
+    /**
+     * A decorator method for {@link MemorySessionImpl#checkValidStateRaw()} which will fail if a
+     * shared session is passed. We use this method instead of the decorated one in runtime
+     * compiled @Scoped-annotated methods (and their deopt targets) to fail if shared sessions are
+     * used in runtime compiled methods (GR-66841).
+     */
+    @AlwaysInline("factored out only for readability")
+    public static void checkValidStateRawInRuntimeCompiledCode(MemorySessionImpl session) {
+        /*
+         * A closeable session without an owner thread is a shared session (i.e. it can be closed
+         * concurrently).
+         */
+        if (session.isCloseable() && session.ownerThread() == null) {
+            throw VMError.unsupportedFeature("Invalid session object. Using a shared session in runtime compiled methods is not supported.");
+        }
+        session.checkValidStateRaw();
     }
 
     /**

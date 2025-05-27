@@ -104,6 +104,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.RuntimeCompilationCallbacks;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -474,6 +475,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
          */
         for (ResolvedJavaMethod method : replacements.getSnippetMethods()) {
             objectReplacer.apply(method);
+        }
+
+        /*
+         * Register the same allow list as for hosted compiles also for runtime compiles.
+         */
+        if (SharedArenaSupport.isAvailable()) {
+            SharedArenaSupport.singleton().registerSafeArenaAccessorsForRuntimeCompilation(objectReplacer::createMethod, objectReplacer::createType);
         }
     }
 

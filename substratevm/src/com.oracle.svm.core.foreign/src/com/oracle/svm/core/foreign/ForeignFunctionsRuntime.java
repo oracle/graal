@@ -36,8 +36,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.util.ImageHeapMap;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -54,12 +54,14 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -68,8 +70,10 @@ import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ForeignFunctionsRuntime implements ForeignSupport {
+public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedArenaConfig {
     @Fold
     public static ForeignFunctionsRuntime singleton() {
         return ImageSingletons.lookup(ForeignFunctionsRuntime.class);
@@ -80,6 +84,8 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = ImageHeapMap.create("downcallStubs");
     private final EconomicMap<Pair<DirectMethodHandleDesc, JavaEntryPointInfo>, FunctionPointerHolder> directUpcallStubs = ImageHeapMap.create("directUpcallStubs");
     private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = ImageHeapMap.create("upcallStubs");
+    private final EconomicSet<ResolvedJavaType> neverAccessesSharedArenaTypes = EconomicSet.create();
+    private final EconomicSet<ResolvedJavaMethod> neverAccessesSharedArenaMethods = EconomicSet.create();
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
@@ -149,6 +155,16 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     public boolean addDirectUpcallStubPointer(DirectMethodHandleDesc desc, JavaEntryPointInfo jep, CFunctionPointer ptr) {
         var key = Pair.create(desc, jep);
         return directUpcallStubs.putIfAbsent(key, new FunctionPointerHolder(ptr)) == null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSafeArenaAccessorClass(ResolvedJavaType type) {
+        neverAccessesSharedArenaTypes.add(type);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSafeArenaAccessorMethod(ResolvedJavaMethod method) {
+        neverAccessesSharedArenaMethods.add(method);
     }
 
     /**
@@ -368,6 +384,17 @@ public class ForeignFunctionsRuntime implements ForeignSupport {
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
                     "captureCallState", HAS_SIDE_EFFECT, LocationIdentity.any());
+
+    @Override
+    public boolean isSafeCallee(ResolvedJavaMethod method) {
+        if (neverAccessesSharedArenaMethods.contains(method)) {
+            return true;
+        }
+        if (neverAccessesSharedArenaTypes.contains(method.getDeclaringClass())) {
+            return true;
+        }
+        return false;
+    }
 }
 
 interface StubPointer extends CFunctionPointer {
