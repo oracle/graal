@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,7 @@ struct Order {
 POLYGLOT_DECLARE_STRUCT(Order);
 
 int main() {
-    struct Order o = (struct Order){ .price = 100 };
+    struct Order o = (struct Order) { .price = 100 };
 
     /* The following line represents: void *foo = polyglot_eval("js", "(order) => order.price"); */
     void *foo = polyglot_import("getPrice");

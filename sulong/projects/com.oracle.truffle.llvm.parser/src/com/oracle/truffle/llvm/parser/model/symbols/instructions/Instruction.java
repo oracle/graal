@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,9 +40,17 @@ import java.util.List;
 
 public abstract class Instruction implements SymbolImpl, MetadataAttachmentHolder {
 
-    private MDLocation debugLocation = null;
+    private MDLocation debugLocation;
     private List<MDAttachment> mdAttachments = null;
     private LLVMSourceLocation sourceLocation = null;
+
+    protected Instruction() {
+        this(null);
+    }
+
+    protected Instruction(MDLocation debugLocation) {
+        this.debugLocation = debugLocation;
+    }
 
     public final MDLocation getDebugLocation() {
         return debugLocation;

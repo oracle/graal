@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1582,10 +1582,13 @@ public class BasicNodeFactory implements NodeFactory {
                      */
                     return args[1];
                 case "llvm.va_start":
+                case "llvm.va_start.p0":
                     return LLVMVAStartNodeGen.create(callerArgumentCount, args[1]);
                 case "llvm.va_end":
+                case "llvm.va_end.p0":
                     return LLVMVAEndNodeGen.create(args[1]);
                 case "llvm.va_copy":
+                case "llvm.va_copy.p0":
                     return LLVMVACopyNodeGen.create(args[1], args[2], callerArgumentCount);
                 case "llvm.eh.sjlj.longjmp":
                 case "llvm.eh.sjlj.setjmp":
@@ -1607,6 +1610,7 @@ public class BasicNodeFactory implements NodeFactory {
                     // the other dbg.* intrinsics.
                     return LLVMNoOpNodeGen.create();
                 case "llvm.eh.typeid.for":
+                case "llvm.eh.typeid.for.p0":
                     return LLVMTypeIdForExceptionNodeGen.create(args[1]);
                 case "llvm.expect.i1": {
                     boolean expectedValue = LLVMTypesGen.asBoolean(args[2].executeGeneric(null));
