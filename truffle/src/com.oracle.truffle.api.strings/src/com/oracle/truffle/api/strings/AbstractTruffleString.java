@@ -133,7 +133,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static final int MASKED_ZERO_HASH_CODE = -1;
 
-    AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags, int codePointLength, int codeRange) {
+    AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags, int codePointLength, int codeRange, int hashCode) {
         validateData(data, offset, length, stride);
         assert isByte(stride);
         assert isByte(flags);
@@ -147,6 +147,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         this.flags = (byte) flags;
         this.codeRange = (byte) codeRange;
         this.codePointLength = codePointLength;
+        this.hashCode = hashCode;
     }
 
     static boolean isByte(int i) {

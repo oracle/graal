@@ -65,6 +65,7 @@ final class TStringUnsafe {
     private static final long javaStringValueFieldOffset;
     private static final long javaStringCoderFieldOffset;
     private static final long javaStringHashFieldOffset;
+    private static final long javaStringHashIsZeroFieldOffset;
 
     static final boolean COMPACT_STRINGS_ENABLED;
 
@@ -75,10 +76,12 @@ final class TStringUnsafe {
         Field valueField = getStringDeclaredField("value");
         Field coderField = getStringDeclaredField("coder");
         Field hashField = getStringDeclaredField("hash");
+        Field hashIsZeroField = getStringDeclaredField("hashIsZero");
         Field compactStringsField = getStringDeclaredField("COMPACT_STRINGS");
         javaStringValueFieldOffset = getObjectFieldOffset(valueField);
         javaStringCoderFieldOffset = getObjectFieldOffset(coderField);
         javaStringHashFieldOffset = getObjectFieldOffset(hashField);
+        javaStringHashIsZeroFieldOffset = getObjectFieldOffset(hashIsZeroField);
         COMPACT_STRINGS_ENABLED = UNSAFE.getBoolean(getStaticFieldBase(compactStringsField), getStaticFieldOffset(compactStringsField));
     }
 
@@ -142,6 +145,22 @@ final class TStringUnsafe {
 
     static int getJavaStringStride(String s) {
         return UNSAFE.getByte(s, javaStringCoderFieldOffset);
+    }
+
+    static int getJavaStringHash(String s) {
+        return UNSAFE.getInt(s, javaStringHashFieldOffset);
+    }
+
+    static boolean getJavaStringHashIsZero(String s) {
+        return UNSAFE.getBoolean(s, javaStringHashIsZeroFieldOffset);
+    }
+
+    static int getJavaStringHashMasked(String s) {
+        int hash = getJavaStringHash(s);
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, hash == 0 && getJavaStringHashIsZero(s))) {
+            return TruffleString.HashCodeNode.maskZero(hash);
+        }
+        return hash;
     }
 
     @TruffleBoundary

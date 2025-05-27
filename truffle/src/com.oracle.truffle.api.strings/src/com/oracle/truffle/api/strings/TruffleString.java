@@ -144,12 +144,12 @@ public final class TruffleString extends AbstractTruffleString {
     private static final byte FLAG_CACHE_HEAD = (byte) 0x80;
     TruffleString next;
 
-    private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
-        super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0, codePointLength, codeRange);
+    private TruffleString(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead) {
+        super(data, offset, length, stride, encoding, isCacheHead ? FLAG_CACHE_HEAD : 0, codePointLength, codeRange, hashCode);
     }
 
-    private static TruffleString create(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
-        TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+    private static TruffleString create(Object data, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead) {
+        TruffleString string = new TruffleString(data, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
         if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
             string.toJavaStringUncached();
         }
@@ -157,15 +157,19 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     static TruffleString createFromByteArray(byte[] bytes, int length, int stride, Encoding encoding, int codePointLength, int codeRange) {
-        return createFromByteArray(bytes, length, stride, encoding, codePointLength, codeRange, true);
+        return createFromByteArray(bytes, 0, length, stride, encoding, codePointLength, codeRange, true);
     }
 
     static TruffleString createFromByteArray(byte[] bytes, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
-        return createFromArray(bytes, 0, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+        return createFromByteArray(bytes, 0, length, stride, encoding, codePointLength, codeRange, 0, isCacheHead);
     }
 
     static TruffleString createFromByteArray(byte[] bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
-        return createFromArray(bytes, offset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+        return createFromByteArray(bytes, offset, length, stride, encoding, codePointLength, codeRange, 0, isCacheHead);
+    }
+
+    static TruffleString createFromByteArray(byte[] bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead) {
+        return createFromArray(bytes, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
     }
 
     static TruffleString createFromArray(Object bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange) {
@@ -173,6 +177,10 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     static TruffleString createFromArray(Object bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, boolean isCacheHead) {
+        return createFromArray(bytes, offset, length, stride, encoding, codePointLength, codeRange, 0, isCacheHead);
+    }
+
+    static TruffleString createFromArray(Object bytes, int offset, int length, int stride, Encoding encoding, int codePointLength, int codeRange, int hashCode, boolean isCacheHead) {
         assert bytes instanceof byte[] || isInlinedJavaString(bytes) || bytes instanceof NativePointer;
         assert offset >= 0;
         assert bytes instanceof NativePointer || offset + ((long) length << stride) <= ((byte[]) bytes).length;
@@ -183,9 +191,9 @@ public final class TruffleString extends AbstractTruffleString {
             int add = byteLength;
             byte[] copy = new byte[add + byteLength];
             System.arraycopy(bytes, offset, copy, add, byteLength);
-            return TruffleString.create(copy, add, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+            return TruffleString.create(copy, add, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
         }
-        return TruffleString.create(bytes, offset, length, stride, encoding, codePointLength, codeRange, isCacheHead);
+        return TruffleString.create(bytes, offset, length, stride, encoding, codePointLength, codeRange, hashCode, isCacheHead);
     }
 
     static TruffleString createConstant(byte[] bytes, int length, int stride, Encoding encoding, int codePointLength, int codeRange) {
@@ -201,7 +209,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     static TruffleString createLazyLong(long value, Encoding encoding) {
         int length = NumberConversion.stringLengthLong(value);
-        return TruffleString.create(new LazyLong(value), 0, length, 0, encoding, length, TSCodeRange.get7Bit(), true);
+        return TruffleString.create(new LazyLong(value), 0, length, 0, encoding, length, TSCodeRange.get7Bit(), 0, true);
     }
 
     static TruffleString createLazyConcat(TruffleString a, TruffleString b, Encoding encoding, int length, int stride, int codeRange) {
@@ -210,12 +218,13 @@ public final class TruffleString extends AbstractTruffleString {
         assert a.isLooselyCompatibleTo(encoding);
         assert b.isLooselyCompatibleTo(encoding);
         assert length == a.length() + b.length();
-        return TruffleString.create(new LazyConcat(a, b), 0, length, stride, encoding, a.codePointLength() + b.codePointLength(), codeRange, true);
+        return TruffleString.create(new LazyConcat(a, b), 0, length, stride, encoding, a.codePointLength() + b.codePointLength(), codeRange, 0, true);
     }
 
     static TruffleString createWrapJavaString(String str, int codePointLength, int codeRange) {
         int stride = TStringUnsafe.getJavaStringStride(str);
-        return TruffleString.create(str, 0, str.length(), stride, Encoding.UTF_16, codePointLength, codeRange, false);
+        int hash = TStringUnsafe.getJavaStringHashMasked(str);
+        return TruffleString.create(str, 0, str.length(), stride, Encoding.UTF_16, codePointLength, codeRange, hash, false);
     }
 
     private static boolean attrsAreCorrect(Object dataA, Encoding encoding, int offset, int length, int codePointLength, int codeRange, int stride) {
@@ -3083,7 +3092,7 @@ public final class TruffleString extends AbstractTruffleString {
             return h;
         }
 
-        private static int maskZero(int rawHashCode) {
+        static int maskZero(int rawHashCode) {
             int h = rawHashCode;
             if (h == 0) {
                 h--;
