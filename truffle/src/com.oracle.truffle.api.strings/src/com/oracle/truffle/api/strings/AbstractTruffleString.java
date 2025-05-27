@@ -63,8 +63,6 @@ import java.lang.ref.Reference;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 /**
@@ -1292,10 +1290,9 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof AbstractTruffleString)) {
+        if (!(obj instanceof AbstractTruffleString b)) {
             return false;
         }
-        AbstractTruffleString b = (AbstractTruffleString) obj;
         int enc = encoding();
         if (enc != b.encoding()) {
             if (!b.isLooselyCompatibleTo(enc, TruffleString.Encoding.getMaxCompatibleCodeRange(enc), b.codeRange())) {
@@ -1305,14 +1302,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                 return false;
             }
         }
-        return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedConditionProfile.getUncached(),
-                        InlinedBranchProfile.getUncached(),
-                        InlinedConditionProfile.getUncached());
+        return TruffleString.EqualNode.checkContentEqualsUncached(this, b);
     }
 
     /**

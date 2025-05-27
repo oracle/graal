@@ -5953,7 +5953,8 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         @Fallback
-        final boolean check(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
+        static boolean check(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
+                        @Cached Node node,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
                         @Cached InlinedConditionProfile managedProfileB,
@@ -5963,7 +5964,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile checkFirstByteProfile) {
             a.looseCheckEncoding(expectedEncoding, a.codeRange());
             b.looseCheckEncoding(expectedEncoding, b.codeRange());
-            return checkContentEquals(this, a, b, managedProfileA, nativeProfileA, managedProfileB, nativeProfileB, lengthAndCodeRangeCheckProfile, compareHashProfile, checkFirstByteProfile);
+            return checkContentEquals(node, a, b, managedProfileA, nativeProfileA, managedProfileB, nativeProfileB, lengthAndCodeRangeCheckProfile, compareHashProfile, checkFirstByteProfile);
         }
 
         static boolean checkContentEquals(
@@ -6030,6 +6031,79 @@ public final class TruffleString extends AbstractTruffleString {
                 int strideA = a.stride();
                 int strideB = b.stride();
                 if (checkFirstByteProfile.profile(node, (strideA | strideB) == 0)) {
+                    // fast path: check first byte
+                    if (TStringOps.readS0(arrayA, offsetA, a.length(), 0) != TStringOps.readS0(arrayB, offsetB, b.length(), 0)) {
+                        return false;
+                    } else if (lengthCMP == 1) {
+                        return true;
+                    }
+                }
+                return TStringOps.regionEqualsWithOrMaskWithStride(node,
+                                a, arrayA, offsetA, strideA, 0,
+                                b, arrayB, offsetB, strideB, 0, null, lengthCMP);
+            } finally {
+                Reference.reachabilityFence(dataA);
+                Reference.reachabilityFence(dataB);
+            }
+        }
+
+        /**
+         * A copy of {@link #checkContentEquals} but without profiles. Keep in sync.
+         */
+        static boolean checkContentEqualsUncached(AbstractTruffleString a, AbstractTruffleString b) {
+            Node node = TruffleString.EqualNode.getUncached();
+            int codeRangeA = a.codeRange();
+            int codeRangeB = b.codeRange();
+            int lengthCMP = a.length();
+            if (lengthCMP != b.length() ||
+                            (TSCodeRange.isPrecise(codeRangeA, codeRangeB) && codeRangeA != codeRangeB)) {
+                return false;
+            }
+            if (a.isHashCodeCalculated() && b.isHashCodeCalculated()) {
+                if (a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+                    return false;
+                }
+            }
+            if (lengthCMP == 0) {
+                return true;
+            }
+            Object dataA = a.data();
+            Object dataB = b.data();
+            try {
+                final byte[] arrayA;
+                final long addOffsetA;
+                if (dataA instanceof byte[]) {
+                    arrayA = (byte[]) dataA;
+                    addOffsetA = byteArrayBaseOffset();
+                } else if (dataA instanceof NativePointer) {
+                    arrayA = null;
+                    addOffsetA = NativePointer.unwrap(dataA);
+                } else {
+                    if (dataA instanceof LazyLong lazyLongA && dataB instanceof LazyLong lazyLongB) {
+                        return lazyLongA.value == lazyLongB.value;
+                    }
+                    arrayA = a.materializeLazy(node, dataA);
+                    addOffsetA = byteArrayBaseOffset();
+                }
+                final long offsetA = a.offset() + addOffsetA;
+
+                final byte[] arrayB;
+                final long addOffsetB;
+                if (dataB instanceof byte[]) {
+                    arrayB = (byte[]) dataB;
+                    addOffsetB = byteArrayBaseOffset();
+                } else if (dataB instanceof NativePointer) {
+                    arrayB = null;
+                    addOffsetB = NativePointer.unwrap(dataB);
+                } else {
+                    arrayB = b.materializeLazy(node, dataB);
+                    addOffsetB = byteArrayBaseOffset();
+                }
+                final long offsetB = b.offset() + addOffsetB;
+
+                int strideA = a.stride();
+                int strideB = b.stride();
+                if ((strideA | strideB) == 0) {
                     // fast path: check first byte
                     if (TStringOps.readS0(arrayA, offsetA, a.length(), 0) != TStringOps.readS0(arrayB, offsetB, b.length(), 0)) {
                         return false;
