@@ -44,10 +44,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,33 +59,41 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.core.ForeignSupport;
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.foreign.AbiUtils;
-import com.oracle.svm.core.foreign.ForeignAPIPredicates;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
+import com.oracle.svm.core.foreign.SubstrateForeignUtil;
 import com.oracle.svm.core.foreign.SubstrateMappedMemoryUtils;
 import com.oracle.svm.core.foreign.Target_java_nio_MappedMemoryUtils;
+import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -95,18 +105,26 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.hosted.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
@@ -303,13 +321,21 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private final class SharedArenaSupportImpl implements SharedArenaSupport {
 
         @Override
-        public BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase() {
-            VMError.guarantee(ForeignAPIPredicates.SharedArenasEnabled.getValue(), "Support for shared arenas must be enabled");
-            VMError.guarantee(!RuntimeCompilation.isEnabled(), "Shared arenas cannot be used together with runtime compilations (GR-65268)");
+        public BasePhase<MidTierContext> createOptimizeSharedArenaAccessPhase(boolean hosted) {
+            VMError.guarantee(SubstrateOptions.isSharedArenaSupportEnabled(), "Support for shared arenas must be enabled");
             VMError.guarantee(!VectorAPIEnabled.getValue(), "Shared arenas cannot be used together with Vector API support (GR-65162)");
 
             PhaseSuite<MidTierContext> sharedArenaPhases = new PhaseSuite<>();
-            sharedArenaPhases.appendPhase(new SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase.create()));
+            if (hosted) {
+                sharedArenaPhases.appendPhase(new SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase.create(), method -> {
+                    if (getNeverAccessesSharedArena().contains(((HostedType) method.getDeclaringClass()).getWrapped())) {
+                        return true;
+                    }
+                    return getNeverAccessesSharedArenaMethods().contains(((HostedMethod) method).getWrapped());
+                }));
+            } else {
+                sharedArenaPhases.appendPhase(new SubstrateOptimizeSharedArenaAccessPhase(CanonicalizerPhase.create(), foreignFunctionsRuntime));
+            }
             /*
              * After we injected all necessary scope wide session checks we need to cleanup any new,
              * potentially repetitive, control flow logic.
@@ -321,8 +347,18 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         @Override
         public void registerSafeArenaAccessorClass(AnalysisMetaAccess metaAccess, Class<?> klass) {
-            assert ForeignAPIPredicates.SharedArenasEnabled.getValue();
+            assert SubstrateOptions.isSharedArenaSupportEnabled();
             ForeignFunctionsFeature.this.registerSafeArenaAccessorClass(metaAccess, klass);
+        }
+
+        @Override
+        public void registerSafeArenaAccessorsForRuntimeCompilation(Function<ResolvedJavaMethod, ResolvedJavaMethod> objectReplacer, Function<ResolvedJavaType, ResolvedJavaType> createType) {
+            for (var method : getNeverAccessesSharedArenaMethods()) {
+                foreignFunctionsRuntime.registerSafeArenaAccessorMethod(objectReplacer.apply(method));
+            }
+            for (var type : getNeverAccessesSharedArena()) {
+                foreignFunctionsRuntime.registerSafeArenaAccessorClass(createType.apply(type));
+            }
         }
     }
 
@@ -360,8 +396,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         var access = (FeatureImpl.DuringSetupAccessImpl) a;
         accessSupport = new RuntimeForeignAccessSupportImpl(access.getMetaAccess(), access.getUniverse());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
-        if (SubstrateOptions.SharedArenaSupport.getValue()) {
-            assert ForeignAPIPredicates.SharedArenasEnabled.getValue();
+        if (SubstrateOptions.isSharedArenaSupportEnabled()) {
             ImageSingletons.add(SharedArenaSupport.class, new SharedArenaSupportImpl());
         }
 
@@ -700,10 +735,22 @@ public class ForeignFunctionsFeature implements InternalFeature {
          * checkValidStateRaw
          */
         registerSafeArenaAccessorMethod(metaAccess, Supplier.class.getMethod("get"));
-        registerSafeArenaAccessorMethod(metaAccess, VMError.class.getMethod("shouldNotReachHereSubstitution"));
         registerSafeArenaAccessorMethod(metaAccess, ScopedAccessError.class.getMethod("newRuntimeException"));
         registerSafeArenaAccessorMethod(metaAccess, Throwable.class.getMethod("getMessage"));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(Throwable.class, "fillInStackTrace", int.class));
+        registerSafeArenaAccessorClass(metaAccess, VMError.class);
+
+        /*
+         * Our uninterruptible implementations of Unsafe.setMemory0, Unsafe.copyMemory0, and
+         * Unsafe.copySwapMemory0 are also safe to be called.
+         */
+        registerSafeArenaAccessorMethod(metaAccess,
+                        ReflectionUtil.lookupMethod(JavaMemoryUtil.class, "copyOnHeap", Object.class, UnsignedWord.class, Object.class, UnsignedWord.class, UnsignedWord.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(JavaMemoryUtil.class, "fill", Pointer.class, UnsignedWord.class, byte.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(JavaMemoryUtil.class, "fillOnHeap", Object.class, long.class, long.class, byte.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(JavaMemoryUtil.class, "copySwapOnHeap", Object.class, long.class, Object.class, long.class, long.class, long.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(JavaMemoryUtil.class, "copySwap", Pointer.class, Pointer.class, UnsignedWord.class, UnsignedWord.class));
+        registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(UnmanagedMemoryUtil.class, "copy", Pointer.class, Pointer.class, UnsignedWord.class));
 
         /*
          * Calls to the following methods may remain in the @Scoped-annotated methods because they
@@ -716,6 +763,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "isLoaded", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(mappedMemoryUtils, "unload", long.class, boolean.class, long.class));
         registerSafeArenaAccessorMethod(metaAccess, ReflectionUtil.lookupMethod(SubstrateMappedMemoryUtils.class, "load", long.class, boolean.class, long.class));
+        registerSafeArenaAccessorMethod(metaAccess, Thread.class.getMethod("currentThread"));
 
         /*
          * The actual method checking a valid session state (if not inlined) is also safe as this
@@ -751,6 +799,42 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(ForeignFunctionsRuntime.CAPTURE_CALL_STATE);
+    }
+
+    @Override
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        /*
+         * If support for shared arenas is enabled, register a graph builder plugin that replaces
+         * invocations '((MemorySessionImpl)session).checkValidStateRaw' with
+         * 'SubstrateForeignUtil.checkValidStateRawInRuntimeCompiledCode(session)'
+         * in @Scoped-annotated methods that are built for runtime compilation (GR-66841). We use a
+         * graph builder plugin such that the invocation can already be replaced during bytecode
+         * parsing where the call is still virtual (and thus, an invocation plugin won't trigger).
+         */
+        if (!SubstrateOptions.isSharedArenaSupportEnabled() || !RuntimeCompilation.isEnabled()) {
+            return;
+        }
+
+        ResolvedJavaMethod checkValidState = providers.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(MemorySessionImpl.class, "checkValidStateRaw"));
+        ResolvedJavaMethod checkValidStateRawInRuntimeCompiledCode = providers.getMetaAccess().lookupJavaMethod(
+                        ReflectionUtil.lookupMethod(SubstrateForeignUtil.class, "checkValidStateRawInRuntimeCompiledCode", MemorySessionImpl.class));
+        plugins.appendNodePlugin(new NodePlugin() {
+            @Override
+            public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+                if (!checkValidState.equals(method)) {
+                    return false;
+                }
+                if (MultiMethod.isOriginalMethod(b.getMethod())) { // not for hosted compilation
+                    return false;
+                }
+                if (!AnnotationAccess.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {
+                    return false;
+                }
+                MethodCallTargetNode mt = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, checkValidStateRawInRuntimeCompiledCode, args, b.getInvokeReturnStamp(b.getAssumptions())));
+                b.handleReplacedInvoke(mt, b.getInvokeReturnType().getJavaKind());
+                return true;
+            }
+        });
     }
 
     /* Testing and reporting interface */

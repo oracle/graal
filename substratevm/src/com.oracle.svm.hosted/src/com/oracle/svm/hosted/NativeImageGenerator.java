@@ -1594,9 +1594,9 @@ public class NativeImageGenerator {
         lowTier.replacePlaceholder(AddressLoweringPhase.class, addressLoweringPhase);
         lowTier.replacePlaceholder(TransplantGraphsPhase.class, new TransplantGraphsPhase(createSuitesForLateSnippetTemplate(suites)));
 
-        if (hosted && SharedArenaSupport.isAvailable()) {
+        if (SharedArenaSupport.isAvailable()) {
             var pos = midTier.findPhase(FrameStateAssignmentPhase.class, true);
-            pos.add(SharedArenaSupport.singleton().createOptimizeSharedArenaAccessPhase());
+            pos.add(SharedArenaSupport.singleton().createOptimizeSharedArenaAccessPhase(hosted));
         }
 
         /*
