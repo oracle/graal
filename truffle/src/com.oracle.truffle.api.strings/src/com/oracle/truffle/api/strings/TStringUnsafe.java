@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,12 +154,12 @@ final class TStringUnsafe {
     }
 
     @TruffleBoundary
-    static String createJavaString(byte[] bytes, int stride) {
+    static String createJavaString(byte[] bytes, int stride, int hash) {
         if (stride < (COMPACT_STRINGS_ENABLED ? 0 : 1) || stride > 1) {
             throw new IllegalArgumentException("illegal stride!");
         }
         String ret = allocateJavaString();
-        UNSAFE.putInt(ret, javaStringHashFieldOffset, 0);
+        UNSAFE.putInt(ret, javaStringHashFieldOffset, hash);
         UNSAFE.putByte(ret, javaStringCoderFieldOffset, (byte) stride);
         UNSAFE.putObjectVolatile(ret, javaStringValueFieldOffset, bytes);
         assert checkUnsafeStringResult(bytes, stride, ret);

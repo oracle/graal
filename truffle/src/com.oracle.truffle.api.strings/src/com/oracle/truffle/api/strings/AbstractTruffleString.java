@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,6 +130,8 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
      * hashCode value of zero always means that the hash is not calculated yet.
      */
     int hashCode;
+
+    static final int MASKED_ZERO_HASH_CODE = -1;
 
     AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags, int codePointLength, int codeRange) {
         validateData(data, offset, length, stride);

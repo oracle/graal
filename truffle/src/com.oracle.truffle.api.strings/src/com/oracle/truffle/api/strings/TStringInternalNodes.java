@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2039,7 +2039,12 @@ final class TStringInternalNodes {
                                 arrayA, offsetA, a.stride(), 0,
                                 bytes, byteArrayBaseOffset(), stride, 0, a.length());
             }
-            return TStringUnsafe.createJavaString(bytes, stride);
+            int javaStringHash = a.hashCode;
+            if (javaStringHash == AbstractTruffleString.MASKED_ZERO_HASH_CODE) {
+                // hash code could be 0 or -1, treat the hash code as uninitialized
+                javaStringHash = 0;
+            }
+            return TStringUnsafe.createJavaString(bytes, stride, javaStringHash);
         }
     }
 
