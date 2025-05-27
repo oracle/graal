@@ -865,21 +865,6 @@ public final class Deoptimizer {
         CodePointer originalReturnAddress = framePointer.readWord(0);
         VMError.guarantee(originalReturnAddress.isNonNull());
 
-        /*
-         * Set the return address of the frame that we are about to deoptimize to our deopt stub
-         * entry point. It should already have this value, but not always: on aarch64, for example,
-         * our stub's prologue will have set it to the value of the link register, which, if we got
-         * here via a farReturn from ExceptionUnwind, can be from an arbitrary earlier call. (On
-         * amd64, our stub's prologue leaves the existing return address on the stack.)
-         *
-         * We will never actually return using this return address, but it keeps the stack walkable
-         * and it serves to mark the frame as already pending deoptimization for deoptimizations or
-         * code invalidations that trigger in other threads while we are in interruptible code
-         * below. Stack walks recognize our stub entry points in return addresses and know where to
-         * read the frame's original return address (for walking object references, for example).
-         */
-        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, deoptStubAddress);
-
         try {
             deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, originalReturnAddress, hasException);
         } catch (OutOfMemoryError ex) {

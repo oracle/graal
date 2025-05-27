@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.aarch64;
 import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.fp;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -67,6 +68,13 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         assert sp.getPlatformKind().getSizeInBytes() == FrameAccess.wordSize() && FrameAccess.wordSize() == Long.BYTES : Assertions.errorMessage(sp.getPlatformKind().getSizeInBytes(),
                         FrameAccess.wordSize());
+        /*
+         * In case of deoptimization, we farReturn into an entry point (deopt stub) which will do a regular enter
+         * and thus save lr. This keeps the stack walkable as the frame is properly recognized as deoptimized due to
+         * the return address matching the deopt stub entry point.
+         */
+        masm.mov(64, lr, asRegister(ip));
+
         if (!SubstrateOptions.PreserveFramePointer.getValue() && !fromMethodWithCalleeSavedRegisters) {
             /* No need to restore anything in the frame of the new stack pointer. */
             masm.mov(64, AArch64.sp, asRegister(sp));
