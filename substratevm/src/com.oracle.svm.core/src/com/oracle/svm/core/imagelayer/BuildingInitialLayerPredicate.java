@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.imagelayer;
 
-import java.util.List;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-
-import jdk.internal.loader.ClassLoaderValue;
-
-@SuppressWarnings("unused")
-@TargetClass(value = java.lang.ModuleLayer.class)
-final class Target_java_lang_ModuleLayer {
-
-    @Substitute
-    public static ModuleLayer boot() {
-        return RuntimeModuleSupport.singleton().getBootLayer();
-    }
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ModuleLayerCLVTransformer.class, isFinal = true) //
-    static ClassLoaderValue<List<ModuleLayer>> CLV;
-}
-
-final class ModuleLayerCLVTransformer implements FieldValueTransformer {
+@Platforms(Platform.HOSTED_ONLY.class)
+public class BuildingInitialLayerPredicate implements BooleanSupplier {
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        return originalValue != null ? RuntimeClassLoaderValueSupport.instance().moduleLayerCLV : null;
+    public boolean getAsBoolean() {
+        return ImageLayerBuildingSupport.buildingInitialLayer();
     }
 }

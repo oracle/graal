@@ -41,6 +41,7 @@ import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 
 import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * We use an {@link Feature.DuringSetupAccess#registerObjectReplacer object replacer} because the
@@ -96,7 +97,7 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
             access.registerObjectReplacer(this::replaceStreamsWithRuntimeObject);
         } else {
             var registry = CrossLayerConstantRegistry.singletonOrNull();
-            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> replaceStreamsWithLayerConstant(registry, obj));
+            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceStreamsWithLayerConstant(registry, obj));
         }
     }
 
@@ -121,7 +122,7 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
         }
     }
 
-    ImageHeapConstant replaceStreamsWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
+    JavaConstant replaceStreamsWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object == hostedIn) {
             return registry.getConstant(SYSTEM_IN_KEY_NAME);
         } else if (object == hostedOut) {

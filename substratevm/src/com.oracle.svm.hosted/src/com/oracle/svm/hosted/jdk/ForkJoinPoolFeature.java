@@ -35,6 +35,8 @@ import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 @AutomaticallyRegisteredFeature
 class ForkJoinPoolFeature implements InternalFeature, FeatureSingleton {
 
@@ -44,7 +46,7 @@ class ForkJoinPoolFeature implements InternalFeature, FeatureSingleton {
     public void duringSetup(DuringSetupAccess access) {
         CrossLayerConstantRegistry registry = CrossLayerConstantRegistry.singletonOrNull();
         if (ImageLayerBuildingSupport.buildingExtensionLayer() && registry.constantExists(KEY_NAME)) {
-            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> replaceCommonPoolWithLayerConstant(registry, obj));
+            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceCommonPoolWithLayerConstant(registry, obj));
         } else {
             var commonPool = new DeferredCommonPool();
             access.registerObjectReplacer(obj -> replaceCommonPoolWithRuntimeObject(obj, commonPool));
@@ -62,7 +64,7 @@ class ForkJoinPoolFeature implements InternalFeature, FeatureSingleton {
         return original;
     }
 
-    private static ImageHeapConstant replaceCommonPoolWithLayerConstant(CrossLayerConstantRegistry registry, Object original) {
+    private static JavaConstant replaceCommonPoolWithLayerConstant(CrossLayerConstantRegistry registry, Object original) {
         if (original == ForkJoinPool.commonPool()) {
             return registry.getConstant(KEY_NAME);
         }
