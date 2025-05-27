@@ -209,7 +209,8 @@ public final class TruffleString extends AbstractTruffleString {
 
     static TruffleString createLazyLong(long value, Encoding encoding) {
         int length = NumberConversion.stringLengthLong(value);
-        return TruffleString.create(new LazyLong(value), 0, length, 0, encoding, length, TSCodeRange.get7Bit(), 0, true);
+        int hash = HashCodeNode.maskZero(NumberConversion.computeLongStringHashCode(value));
+        return TruffleString.create(new LazyLong(value), 0, length, 0, encoding, length, TSCodeRange.get7Bit(), hash, true);
     }
 
     static TruffleString createLazyConcat(TruffleString a, TruffleString b, Encoding encoding, int length, int stride, int codeRange) {
@@ -1870,7 +1871,8 @@ public final class TruffleString extends AbstractTruffleString {
         static TruffleString doEager(long value, Encoding enc, @SuppressWarnings("unused") boolean lazy) {
             CompilerAsserts.partialEvaluationConstant(lazy);
             int length = NumberConversion.stringLengthLong(value);
-            return TruffleString.createFromByteArray(NumberConversion.longToString(value, length), length, 0, enc, length, TSCodeRange.get7Bit());
+            int hash = HashCodeNode.maskZero(NumberConversion.computeLongStringHashCode(value));
+            return TruffleString.createFromByteArray(NumberConversion.longToString(value, length), 0, length, 0, enc, length, TSCodeRange.get7Bit(), hash, true);
         }
 
         @Specialization(guards = "!is7BitCompatible(enc)")

@@ -476,4 +476,65 @@ final class NumberConversion {
         writeToByteArray(buf, stride, bufPos, digitPairHi(digitPair));
         writeToByteArray(buf, stride, bufPos + 1, digitPairLo(digitPair));
     }
+
+    /**
+     * Computes Long.toString(value).hashCode() from the long value.
+     *
+     * @implNote This method converts positive inputs into negative values, to cover the
+     *           Long.MIN_VALUE case.
+     * @see #writeLongToBytesIntl
+     */
+    static int computeLongStringHashCode(long value) {
+        long i = value;
+        boolean negative = (i < 0);
+        if (!negative) {
+            i = -i;
+        }
+
+        int hash = 0;
+        int coef = 1;
+        // Get 2 digits/iteration using longs until quotient fits into an int
+        while (i < Integer.MIN_VALUE) {
+            long q = i / 100;
+            int r = (int) ((q * 100) - i);
+            i = q;
+            var digitPair = digitPair(r);
+            hash += coef * digitPairLo(digitPair);
+            coef *= 31;
+            hash += coef * digitPairHi(digitPair);
+            coef *= 31;
+        }
+
+        // Get 2 digits/iteration using ints
+        int i2 = (int) i;
+        while (i2 <= -100) {
+            int q = i2 / 100;
+            int r = (q * 100) - i2;
+            i2 = q;
+            var digitPair = digitPair(r);
+            hash += coef * digitPairLo(digitPair);
+            coef *= 31;
+            hash += coef * digitPairHi(digitPair);
+            coef *= 31;
+        }
+
+        // We know there are at most two digits and at least one digit left at this point.
+        if (i2 < -9) {
+            int r = -i2;
+            var digitPair = digitPair(r);
+            hash += coef * digitPairLo(digitPair);
+            coef *= 31;
+            hash += coef * digitPairHi(digitPair);
+            coef *= 31;
+        } else {
+            hash += coef * ('0' - i2);
+            coef *= 31;
+        }
+
+        if (negative) {
+            hash += coef * '-';
+        }
+        assert hash == Long.toString(value).hashCode() : value;
+        return hash;
+    }
 }
