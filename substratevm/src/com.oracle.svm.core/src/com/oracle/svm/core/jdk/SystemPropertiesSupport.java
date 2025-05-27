@@ -66,6 +66,15 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     private static final String[] HOSTED_PROPERTIES = {
                     "java.version",
                     "java.version.date",
+                    "java.class.version",
+                    "java.runtime.version",
+                    "java.specification.name",
+                    "java.specification.vendor",
+                    "java.specification.version",
+                    "java.specification.maintenance.version",
+                    "java.vm.specification.name",
+                    "java.vm.specification.vendor",
+                    "java.vm.specification.version",
                     ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
                      * We do not support cross-compilation for now. Separators might also be cached
@@ -80,14 +89,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "native.encoding",
                     "stdout.encoding",
                     "stderr.encoding",
-                    "java.class.version",
-                    "java.runtime.version",
-                    "java.specification.name",
-                    "java.specification.vendor",
-                    "java.specification.version",
-                    "java.vm.specification.name",
-                    "java.vm.specification.vendor",
-                    "java.vm.specification.version"
     };
 
     /** System properties that are computed at run time on first access. */
