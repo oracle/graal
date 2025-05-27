@@ -30,116 +30,6 @@ To use bridge annotations, isolate entry points must be generated using the corr
 * [`@GenerateNativeToNativeFactory`](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToNativeFactory.java)
 * [`@GenerateProcessToProcessFactory`](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateProcessToProcessFactory.java)
 
-### Marshaller Configuration
-
-The annotation processor supports Java primitive types, `String`, arrays of primitive types, and foreign references. For other types passed by value, users must register `BinaryMarshaller` instances responsible for marshalling/unmarshalling the types to/from byte streams. Arrays of custom types are supported by a marshaller for the array component type, and the annotation processor automatically generates a loop for marshalling and unmarshalling the array. These marshallers are registered using `MarshallerConfig.Builder`. The class that provides the `MarshallerConfig` must expose it via a static `getInstance()` method and be referenced in the factory annotations, see [Generating Isolate Entry Points](#generating-isolate-entry-points).
-
-**Example: Registering a Marshaller for `ComplexNumber`:**
-
-```java
-record ComplexNumber(int re, int img);
-
-final class ComplexNumberMarshaller implements BinaryMarshaller<ComplexNumber> {
-
-    @Override
-    public void write(BinaryOutput out, ComplexNumber complex) {
-        out.writeInt(complex.re());
-        out.writeInt(complex.img());
-    }
-
-    @Override
-    public ComplexNumber read(Isolate<?> isolate, BinaryInput in) {
-        int re = in.readInt();
-        int img = in.readInt();
-        return new ComplexNumber(re, img);
-    }
-
-    @Override
-    public int inferSize(ComplexNumber object) {
-        return 2 * Integer.BYTES;
-    }
-}
-
-final class CalculatorMarshallerConfig {
-
-    private static final MarshallerConfig INSTANCE = createConfig();
-
-    private CalculatorMarshallerConfig() {}
-
-    static MarshallerConfig getInstance() {
-        return INSTANCE;
-    }
-
-    private static MarshallerConfig createConfig() {
-        return MarshallerConfig.newBuilder()
-            .registerMarshaller(ComplexNumber.class, new ComplexNumberMarshaller())
-            .build();
-    }
-}
-```
-
-
-The annotation processor also supports `out` parameters of custom types. To support `out` parameters the marshaller needs to implement also `writeUpdate`, `readUpdate`, and `inferUpdateSize` methods. The following example bridges `split` method with two out `List<Integer>` parameters.
-
-```java
-interface Numbers {
-    void split(int pivot, List<Integer> numbers, List<Integer> belowOrEqual, List<Integer> above);
-}
-
-@GenerateHotSpotToNativeBridge(factory = ForeignNmbersFactory.class, implementation = NumbersImpl.class)
-abstract class ForeignNumbers implements ForeignObject, Numbers {
-    public abstract void split(int pivot, List<Integer> numbers, @Out List<Integer> belowOrEqual, @Out List<Integer> above);
-}
-```
-
-The `List<Integer>` type is unknown to the annotation processor. We need to provide a marshaller to convert it into a serial form and recreate it from a serial form. The marshaller also needs to implement out parameter methods.
-
-```java
-final class IntListMarshaller implements BinaryMarshaller<List<Integer>> {
-    @Override
-    public List<Integer> read(BinaryInput input) {
-        int len = input.readInt();
-        List<Integer> result = new ArrayList<>(len);
-        for (int i = 0; i < len; i++) {
-            result.add(input.readInt());
-        }
-        return result;
-    }
-
-    @Override
-    public void write(BinaryOutput output, List<Integer> object) {
-        output.writeInt(object.size());
-        for (Integer i : object) {
-            output.writeInt(i);
-        }
-    }
-
-    @Override
-    public int inferSize(List<Integer> object) {
-        return Integer.BYTES + Integer.BYTES * object.size();
-    }
-
-    @Override
-    public void writeUpdate(BinaryOutput output, List<Integer> object) {
-        write(output, object);
-    }
-
-    @Override
-    public void readUpdate(BinaryInput input, List<Integer> object) {
-        object.clear();
-        int len = input.readInt();
-        for (int i = 0; i < len; i++) {
-            object.add(input.readInt());
-        }
-    }
-
-    @Override
-    public int inferUpdateSize(List<Integer> object) {
-        return inferSize(object);
-    }
-}
-```
-
 ### Generating Isolate Entry Points
 
 The annotation processor generates code for spawning isolates and initializing a service within them. Supported factory annotations include:
@@ -148,7 +38,8 @@ The annotation processor generates code for spawning isolates and initializing a
 * `@GenerateNativeToNativeFactory`: Spawns a Native Image isolate from a Native Image host
 * `@GenerateProcessToProcessFactory`: Spawns an isolate in a separate OS process
 
-The `marshallers` attribute in these annotations specifies the marshaller configuration class, see [Marshaller Configuration](#marshaller-configuration).
+The `marshallers` attribute in these annotations specifies the marshaller configuration for custom types. For more information,
+see the [Custom Types](#custom-types) section later in this document.
 
 **Example:**
 
@@ -176,7 +67,7 @@ interface Calculator {
 }
 ```
 
-Create an abstract base class implementing both the interface and `ForeignObject`, and annotate it with the bridge annotations. The `factory` attribute refer to the factory definition class providing the configuration such as custom type marshallers. For initial services, set the `implementation` attribute to a class that should be instantiated in the isolate as an initial service. For non initial bridge definitions keep the `implementation` attribute unsepcified.
+Create an abstract base class implementing both the interface and `ForeignObject`, and annotate it with the bridge annotations. The `factory` attribute refers to the factory definition class providing the configuration such as custom type marshallers. For initial services, set the `implementation` attribute to a class that should be instantiated in the isolate as an initial service. For non-initial bridge definitions, leave the implementation attribute unspecified.
 
 ```java
 @GenerateHotSpotToNativeBridge(factory = ForeignCalculatorFactory.class, implementation = CalculatorImpl.class)
@@ -187,7 +78,7 @@ abstract class ForeignCalculator implements ForeignObject, Calculator {}
 ```
 
 The annotation processor generates `ForeignCalculator` implementations that forwards `add` and `sub` methods to the foreign object.
-The reference to the foreign calculator is obtained using `ForeignCalculatorFactoryGen#create` methods. If only a specific type of isolate delegation is required, the definition class can be annotated with just the corresponding annotation. For example, to generate a `ForeignCalculator` implementation solely for HotSpot to Native Image isolate delegation, use:
+The reference to the foreign calculator is obtained using the `ForeignCalculatorFactoryGen#create` methods. If only a specific type of isolate delegation is required, the definition class can be annotated with the corresponding annotation. For example, to generate a `ForeignCalculator` implementation solely for HotSpot to Native Image isolate delegation, use:
 
 ```java
 @GenerateHotSpotToNativeBridge(factory = ForeignCalculatorFactory.class, implementation = CalculatorImpl.class)
@@ -213,7 +104,7 @@ ForeignCalculator calculator = ForeignCalculatorFactoryGen.create(config);
 calculator.add(calculator.sub(41, 2), 1);
 ```
 
-The lifetime of a foreign object referenced by the `calculator` is bound to `calculator` reference in the hosting VM. Once the `calculator` reference becomes unreachable and is garbage collected, the framework automatically releases the underlying foreign object in the foreign isolate (either native image or external process). Disposal is handled by cleaners associated with the generated `ForeignCalculator` implementations. This ensures that memory and other resources allocated in the foreign isolate are properly reclaimed, preventing resource leaks across runtime boundaries.
+The lifetime of a foreign object referenced by `calculator` is bound to the `calculator` reference in the hosting VM. Once the `calculator` reference becomes unreachable and is garbage collected, the framework automatically releases the underlying foreign object in the foreign isolate (either native image or external process). Disposal is handled by cleaners associated with the generated `ForeignCalculator` implementations. This ensures that memory and other resources allocated in the foreign isolate are properly reclaimed, preventing resource leaks across runtime boundaries.
 
 ### Bridging a Class
 
@@ -232,10 +123,10 @@ class Calculator {
 abstract class ForeignCalculator extends Calculator implements ForeignObject {}
 ```
 
-Obtaining a reference is the same as with interfaces, using `ForeignCalculatorFactoryGen.create` methods.
+Obtaining a reference is the same as with interfaces, using the `ForeignCalculatorFactoryGen#create` methods.
 
 
-### Bridging a class with a custom dispatch
+### Bridging a Class with a Custom Dispatch
 
 Classes with a custom dispatch are final classes with a `receiver` and `dispatch` fields delegating all the operations to the `dispatch` instance. The `dispatch` methods take the `receiver` as the first parameter. The following example shows a `Language` class with a custom dispatch.
 
@@ -316,7 +207,7 @@ abstract class ForeignLanguageDispatch extends AbstractLanguageDispatch {
 
 The annotation processor generates the `ForeignLanguageDispatchGen` class with a static `create(Class<? extends Peer> peerType)` factory method. This method returns a `ForeignLanguageDispatch` instance that forwards dispatch calls to the foreign isolate using the communication model implied by `peerType`.
 
-### Excluding methods from generation
+### Excluding Methods from Generation
 
 Sometimes it's necessary to exclude a method from being bridged. This can be done by overriding a method in the annotated class and making it `final`. The following example excludes `sub` method from being bridged.
 
@@ -334,7 +225,7 @@ abstract class ForeignCalculator extends Calculator implements ForeignObject {
 }
 ```
 
-### Foreign reference types
+### Foreign Reference Types
 The foreign reference is used when a bridged type returns a reference to another bridged type.
 Following example bridges `Compilation` and `Compiler` interfaces. The `Compiler` interface uses `Compilation` type both as a return type and a parameter type.
 
@@ -395,7 +286,7 @@ More foreign reference examples can be found in the [bridge processor tests](htt
 
 ### Arrays
 
-Arrays of primitive types, foreign reference types and custom types are directly supported by the annotation processor. The array method parameters are by default treated as `in` parameters, the content of the array is copied to the called method. Sometimes it's needed to change this behavior and treat the array parameter as an `out` parameter. This can be done using an `@Out` annotation. The following example bridges a `read` method with an `out` array parameter.
+Arrays of primitive types, foreign reference types, and custom types are directly supported by the annotation processor. The array method parameters are by default treated as `in` parameters, meaning the content of the array is copied to the called method. Sometimes it is needed to change this behavior and treat the array parameter as an `out` parameter. This can be done using the `@Out` annotation. The following example bridges a `read` method with an `out` array parameter.
 
 ```java
 interface Reader {
@@ -450,3 +341,114 @@ abstract class ForeignEventSource implements ForeignObject, EventSource {
 ```
 
 More foreign references array examples can be found in the [bridge processor tests](https://github.com/oracle/graal/tree/master/sdk/src/org.graalvm.nativebridge.processor.test/src/org/graalvm/nativebridge/processor/test/references/).
+
+
+### Custom Types
+
+The annotation processor supports Java primitive types, `String`, arrays of primitive types, and foreign references. For other types passed by value, users must register `BinaryMarshaller` instances responsible for marshalling/unmarshalling the types to/from byte streams. Arrays of custom types are supported by a marshaller for the array component type, and the annotation processor automatically generates a loop for marshalling and unmarshalling the array. These marshallers are registered using `MarshallerConfig.Builder`. The class that provides `MarshallerConfig` must expose it via a static `getInstance()` method and be referenced in the factory annotations. (See [Generating Isolate Entry Points](#generating-isolate-entry-points).)
+
+**Example: Registering a Marshaller for `ComplexNumber`:**
+
+```java
+record ComplexNumber(int re, int img);
+
+final class ComplexNumberMarshaller implements BinaryMarshaller<ComplexNumber> {
+
+    @Override
+    public void write(BinaryOutput out, ComplexNumber complex) {
+        out.writeInt(complex.re());
+        out.writeInt(complex.img());
+    }
+
+    @Override
+    public ComplexNumber read(Isolate<?> isolate, BinaryInput in) {
+        int re = in.readInt();
+        int img = in.readInt();
+        return new ComplexNumber(re, img);
+    }
+
+    @Override
+    public int inferSize(ComplexNumber object) {
+        return 2 * Integer.BYTES;
+    }
+}
+
+final class CalculatorMarshallerConfig {
+
+    private static final MarshallerConfig INSTANCE = createConfig();
+
+    private CalculatorMarshallerConfig() {}
+
+    static MarshallerConfig getInstance() {
+        return INSTANCE;
+    }
+
+    private static MarshallerConfig createConfig() {
+        return MarshallerConfig.newBuilder()
+            .registerMarshaller(ComplexNumber.class, new ComplexNumberMarshaller())
+            .build();
+    }
+}
+```
+
+
+The annotation processor also supports `out` parameters of custom types. To support `out` parameters, the marshaller must also implement the `writeUpdate`, `readUpdate`, and `inferUpdateSize` methods. The following example bridges a `split` method with two `out` parameters of type `List<Integer>`.
+
+```java
+interface Numbers {
+    void split(int pivot, List<Integer> numbers, List<Integer> belowOrEqual, List<Integer> above);
+}
+
+@GenerateHotSpotToNativeBridge(factory = ForeignNmbersFactory.class, implementation = NumbersImpl.class)
+abstract class ForeignNumbers implements ForeignObject, Numbers {
+    public abstract void split(int pivot, List<Integer> numbers, @Out List<Integer> belowOrEqual, @Out List<Integer> above);
+}
+```
+
+The `List<Integer>` type is unknown to the annotation processor. A marshaller must be provided to convert it into a serial form and recreate it from a serial form. The marshaller must also implement the `out` parameter methods.
+
+```java
+final class IntListMarshaller implements BinaryMarshaller<List<Integer>> {
+    @Override
+    public List<Integer> read(BinaryInput input) {
+        int len = input.readInt();
+        List<Integer> result = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            result.add(input.readInt());
+        }
+        return result;
+    }
+
+    @Override
+    public void write(BinaryOutput output, List<Integer> object) {
+        output.writeInt(object.size());
+        for (Integer i : object) {
+            output.writeInt(i);
+        }
+    }
+
+    @Override
+    public int inferSize(List<Integer> object) {
+        return Integer.BYTES + Integer.BYTES * object.size();
+    }
+
+    @Override
+    public void writeUpdate(BinaryOutput output, List<Integer> object) {
+        write(output, object);
+    }
+
+    @Override
+    public void readUpdate(BinaryInput input, List<Integer> object) {
+        object.clear();
+        int len = input.readInt();
+        for (int i = 0; i < len; i++) {
+            object.add(input.readInt());
+        }
+    }
+
+    @Override
+    public int inferUpdateSize(List<Integer> object) {
+        return inferSize(object);
+    }
+}
+```

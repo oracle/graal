@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package org.graalvm.nativebridge;
 
 import java.io.IOException;
+import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,6 +65,18 @@ import org.graalvm.nativebridge.ProcessIsolateThreadSupport.DispatchSupport;
 import org.graalvm.nativebridge.ProcessIsolateThreadSupport.Result;
 import org.graalvm.nativebridge.ProcessIsolateThreadSupport.ThreadChannel;
 
+/**
+ * Represents a heap isolated by a separate operating system process. A {@code ProcessIsolate}
+ * encapsulates execution within a distinct OS-level process, fully isolated from the host.
+ * <p>
+ * All foreign objects associated with a {@link ProcessPeer} are tied to exactly one
+ * {@code ProcessIsolate}, which serves as the anchor for foreign execution and resource management.
+ * </p>
+ *
+ * @see ProcessPeer
+ * @see ProcessIsolateThread
+ * @see Isolate
+ */
 public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> {
 
     private static final AtomicLong SOCKET_ID = new AtomicLong();
@@ -91,6 +104,19 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
         return isolatePid;
     }
 
+    /**
+     * Checks whether the current Java runtime and operating system support UNIX domain sockets.
+     * <p>
+     * This method attempts to create a socket channel using the {@link StandardProtocolFamily#UNIX}
+     * protocol family to verify support for AF_UNIX sockets.
+     * <p>
+     * <strong>Note:</strong> If an {@link IOException} occurs during socket creation e.g., due to
+     * resource exhaustion such as reaching the file descriptor limit, the method still returns
+     * {@code true} because such an exception indicates an environmental issue rather than a lack of
+     * support for UNIX domain sockets. Also, it is generally better to fail later, when the socket
+     * is actually created, so that the failure reports the correct and more informative error
+     * message.
+     */
     public static boolean isSupported() {
         return ProcessIsolateThreadSupport.isSupported();
     }
@@ -162,7 +188,7 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
                     DispatchHandler[] dispatchHandlers,
                     ToLongBiFunction<ProcessIsolateThread, Long> releaseObjectHandle) throws IsolateCreateException {
         if (config.getLauncher() != null) {
-            throw new IllegalArgumentException("Config must be a worker ProcessIsolateConfig.");
+            throw new IllegalArgumentException("Config must be a target ProcessIsolateConfig.");
         }
         Path initiatorSocket = config.getInitiatorAddress();
         assert initiatorSocket != null;
@@ -171,7 +197,7 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
         long pid = ProcessHandle.current().pid();
         try {
             ProcessIsolateThreadSupport processIsolateThreadSupport = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).setInitiatorAddress(initiatorSocket).setLocalAddress(
-                            localAddress).buildWorker();
+                            localAddress).buildTarget();
 
             dispatchSupport.isolate = new ProcessIsolate(pid, processIsolateThreadSupport, releaseObjectHandle,
                             config.getThreadLocalFactory().get(), config.getOnIsolateTearDownHook());
@@ -272,7 +298,7 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
                 out = dispatchHandlers[handlerIndex].dispatch(messageId, isolate, in);
                 success = true;
             } catch (Throwable t) {
-                out = ByteArrayBinaryOutput.move(in);
+                out = ByteArrayBinaryOutput.claimBuffer(in);
                 throwableMarshaller.write(out, t);
             }
             if (out == null) {

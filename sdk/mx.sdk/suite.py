@@ -1249,7 +1249,7 @@ suite = {
           "windows-aarch64",
       ],
       "layout": {
-        "external_isolate/": "dependency:org.graalvm.nativebridge.launcher",
+        "<os>/<arch>/": "dependency:org.graalvm.nativebridge.launcher",
       },
       "description": "Contains a launcher for process isolated polyglot.",
       "maven": False,

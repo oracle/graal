@@ -341,7 +341,7 @@ abstract class AbstractServiceGenerator extends AbstractBridgeGenerator {
                 case VALUE:
                     generateSizeOf(builder, e.parameterName, e.parameterType, e.reserveSpace, e.marshallerData);
                     break;
-                case RAW_REFERENCE:
+                case PEER_REFERENCE:
                     generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reserveSpace, e.marshallerData);
                     break;
                 default:

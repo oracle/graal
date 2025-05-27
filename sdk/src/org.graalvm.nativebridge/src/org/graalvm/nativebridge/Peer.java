@@ -46,9 +46,6 @@ import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Represents a reference to an object in an isolated heap or process. A {@code Peer} is used by
  * generated {@link ForeignObject} instances to identify the corresponding object in another process
@@ -60,7 +57,7 @@ import java.util.List;
  *
  * @since 25.0
  */
-public abstract class Peer {
+public abstract sealed class Peer permits NativePeer, ProcessPeer, HSPeer {
 
     Peer() {
     }
@@ -161,44 +158,5 @@ public abstract class Peer {
         } else {
             throw new IllegalArgumentException("Unsupported isolate type " + isolate);
         }
-    }
-
-    /**
-     * Returns all active (strongly reachable) {@link Peer} instances.
-     *
-     * <p>
-     * This method is useful for cleanup during isolate teardown. Active peers within the isolate
-     * hold references to objects in the host, which must be freed to prevent memory leaks.
-     * </p>
-     *
-     * <p>
-     * <b>Typical usage:</b>
-     * </p>
-     * 
-     * <pre>{@code
-     * for (Peer peer : Peer.getAlivePeers()) {
-     *     peer.release();
-     * }
-     * }</pre>
-     *
-     */
-    public static Iterable<? extends Peer> getAlivePeers() {
-        List<Peer> peers = new ArrayList<>();
-
-        for (NativeIsolate isolate : NativeIsolate.getAllNativeIsolates()) {
-            isolate.collectAlivePeers(peers);
-        }
-
-        for (ProcessIsolate isolate : ProcessIsolate.getAllProcessIsolates()) {
-            isolate.collectAlivePeers(peers);
-        }
-
-        HSIsolate hsIsolate = HSIsolate.getOrNull();
-        if (hsIsolate != null) {
-            hsIsolate.collectAlivePeers(peers);
-        }
-
-        ForeignObjectCleaner.processPendingCleaners();
-        return peers;
     }
 }

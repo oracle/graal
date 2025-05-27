@@ -293,7 +293,7 @@ final class ProcessToProcessFactoryGenerator extends AbstractBridgeGenerator {
         CodeBuilder.Parameter binaryInputParameter = CodeBuilder.newParameter(getTypeCache().binaryInput, binaryInputVar);
         builder.methodStart(Set.of(Modifier.PRIVATE, Modifier.STATIC), "initializeIsolate", getTypeCache().binaryOutput, List.of(isolateParameter, binaryInputParameter), List.of());
         builder.indent();
-        builder.lineStart().write(getTypeCache().binaryOutput).space().write(binaryOutputVar).write(" = ").invokeStatic(getTypeCache().binaryOutput, "move", binaryInputVar).lineEnd(";");
+        builder.lineStart().write(getTypeCache().binaryOutput).space().write(binaryOutputVar).write(" = ").invokeStatic(getTypeCache().binaryOutput, "claimBuffer", binaryInputVar).lineEnd(";");
         CharSequence initialObject = createCustomObject(builder, getDefinition().implementation);
         CharSequence createRef = new CodeBuilder(builder).invokeStatic(getTypeCache().referenceHandles, "create", initialObject).build();
         builder.lineStart().invoke(binaryOutputVar, "writeLong", createRef).lineEnd(";");
@@ -317,7 +317,7 @@ final class ProcessToProcessFactoryGenerator extends AbstractBridgeGenerator {
         builder.lineStart().write(resultVar).write(" = 1").lineEnd(";");
         builder.dedent();
         builder.line("}");
-        builder.lineStart().write(getTypeCache().binaryOutput).space().write(binaryOutputVar).write(" = ").invokeStatic(getTypeCache().binaryOutput, "move", binaryInputVar).lineEnd(";");
+        builder.lineStart().write(getTypeCache().binaryOutput).space().write(binaryOutputVar).write(" = ").invokeStatic(getTypeCache().binaryOutput, "claimBuffer", binaryInputVar).lineEnd(";");
         builder.lineStart().invoke(binaryOutputVar, "writeInt", resultVar).lineEnd(";");
         builder.lineStart("return ").write(binaryOutputVar).lineEnd(";");
         builder.dedent();

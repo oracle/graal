@@ -515,7 +515,7 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
         builder.invoke(dispatchVar, methodName, actualParameters).lineEnd(";");
 
         if (!voidReturnType || hasOutParameters) {
-            builder.lineStart().write(typeCache.binaryOutput).space().write(binaryOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "move", binaryInputVar).lineEnd(";");
+            builder.lineStart().write(typeCache.binaryOutput).space().write(binaryOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "claimBuffer", binaryInputVar).lineEnd(";");
             if (!voidReturnType) {
                 generateMarshallResult(builder, methodData, END_POINT_RESULT_VARIABLE, binaryOutputVar);
             }
@@ -1128,9 +1128,9 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             }
         }
 
-        private static final class RawReferenceSnippet extends MarshallerSnippet {
+        private static final class PeerReferenceSnippet extends MarshallerSnippet {
 
-            RawReferenceSnippet(ProcessToProcessServiceGenerator generator, MarshallerData marshallerData) {
+            PeerReferenceSnippet(ProcessToProcessServiceGenerator generator, MarshallerData marshallerData) {
                 super(generator, marshallerData);
             }
 
@@ -1275,7 +1275,7 @@ final class ProcessToProcessServiceGenerator extends AbstractServiceGenerator {
             return switch (marshallerData.kind) {
                 case VALUE -> new DirectSnippet(generator, marshallerData);
                 case REFERENCE -> new ReferenceSnippet(generator, marshallerData);
-                case RAW_REFERENCE -> new RawReferenceSnippet(generator, marshallerData);
+                case PEER_REFERENCE -> new PeerReferenceSnippet(generator, marshallerData);
                 case CUSTOM -> new CustomSnippet(generator, marshallerData);
             };
         }

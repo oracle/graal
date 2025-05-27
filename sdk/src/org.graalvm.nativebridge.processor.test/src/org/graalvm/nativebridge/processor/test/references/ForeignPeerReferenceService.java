@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.references;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativebridge.ByLocalReference;
+import org.graalvm.nativebridge.ByRemoteReference;
+import org.graalvm.nativebridge.ForeignObject;
+import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
+import org.graalvm.nativebridge.GenerateProcessToProcessBridge;
+import org.graalvm.nativebridge.Peer;
 
-/**
- * Instruments the native bridge processor to marshall annotated method return type or method
- * parameter as a {@link Peer}. The annotated parameter must have {@link Object} type.
- */
-@Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.PARAMETER, ElementType.METHOD})
-public @interface ByLocalRawReference {
+@GenerateProcessToProcessBridge(factory = ForeignServiceFactory.class)
+@GenerateHotSpotToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToNativeBridge(factory = ForeignServiceFactory.class)
+@GenerateNativeToHotSpotBridge(factory = ForeignServiceFactory.class)
+abstract class ForeignPeerReferenceService implements PeerReferenceService, ForeignObject {
+
+    @Override
+    @ByLocalReference(Peer.class)
+    public abstract Object getLocalPeerReference();
+
+    @Override
+    public abstract void setLocalPeerReference(@ByLocalReference(Peer.class) Object reference);
+
+    @Override
+    @ByRemoteReference(Peer.class)
+    public abstract Object getRemotePeerReference();
+
+    @Override
+    public abstract void setRemotePeerReference(@ByRemoteReference(Peer.class) Object receiver);
 }

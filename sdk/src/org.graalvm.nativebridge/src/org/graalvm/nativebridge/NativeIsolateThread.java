@@ -43,7 +43,7 @@ package org.graalvm.nativebridge;
 import java.util.Objects;
 
 /**
- * Represents an entered isolate thread.
+ * Represents an entered native isolate thread.
  *
  * @see NativeIsolate#enter()
  */

@@ -49,8 +49,16 @@ import java.util.function.LongBinaryOperator;
 import java.util.function.LongUnaryOperator;
 
 /**
- * Represents a single native image isolate. All {@link NativePeer}s have a {@link NativeIsolate}
- * context.
+ * Represents an isolated heap backed by a native-image in-process isolate. Both the host and the
+ * native-image isolate co-exist in the same operating system process but have separated heaps.
+ * <p>
+ * All foreign objects that have a {@link NativePeer} are associated with exactly one
+ * {@code NativeIsolate}, which serves as the anchor for native execution and resource management.
+ * </p>
+ *
+ * @see NativePeer
+ * @see NativeIsolateThread
+ * @see Isolate
  */
 public final class NativeIsolate extends AbstractIsolate<NativeIsolateThread> {
 

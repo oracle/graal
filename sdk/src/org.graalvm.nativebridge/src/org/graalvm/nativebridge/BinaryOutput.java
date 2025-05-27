@@ -503,12 +503,10 @@ public abstract class BinaryOutput {
      * Creates a {@link BinaryOutput} by consuming the internal storage of {@code binaryInput}.
      * After this call, {@code binaryInput} is in a moved-from state and must not be used further.
      * The returned {@link BinaryOutput} type corresponds to the type of {@code binaryInput}. If
-     * {@code binaryInput} is byte array-based, a
-     * {@link org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput} will be created. If
-     * {@code binaryInput} is raw memory-based, a
-     * {@link org.graalvm.nativebridge.BinaryOutput.CCharPointerBinaryOutput} will be created.
+     * {@code binaryInput} is byte array-based, a {@link ByteArrayBinaryOutput} will be created. If
+     * {@code binaryInput} is raw memory-based, a {@link CCharPointerBinaryOutput} will be created.
      */
-    public static BinaryOutput move(BinaryInput binaryInput) {
+    public static BinaryOutput claimBuffer(BinaryInput binaryInput) {
         if (binaryInput instanceof BinaryInput.ByteArrayBinaryInput arrayInput) {
             return create(arrayInput.getArray());
         } else if (binaryInput instanceof BinaryInput.CCharPointerInput pointerInput) {

@@ -862,8 +862,8 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
                 case VALUE -> new DirectSnippet(generator, marshallerData);
                 case REFERENCE ->
                     new ReferenceSnippet(generator, marshallerData);
-                case RAW_REFERENCE ->
-                    new RawReferenceSnippet(generator, marshallerData);
+                case PEER_REFERENCE ->
+                    new PeerReferenceSnippet(generator, marshallerData);
                 case CUSTOM -> new CustomSnippet(generator, marshallerData);
             };
         }
@@ -1391,9 +1391,9 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
             }
         }
 
-        private static final class RawReferenceSnippet extends HotSpotToNativeMarshallerSnippet {
+        private static final class PeerReferenceSnippet extends HotSpotToNativeMarshallerSnippet {
 
-            RawReferenceSnippet(HotSpotToNativeServiceGenerator generator, MarshallerData marshallerData) {
+            PeerReferenceSnippet(HotSpotToNativeServiceGenerator generator, MarshallerData marshallerData) {
                 super(generator, marshallerData);
             }
 

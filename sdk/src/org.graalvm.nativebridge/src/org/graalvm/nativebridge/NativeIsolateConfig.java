@@ -53,7 +53,7 @@ import java.util.function.Supplier;
  * processor.
  *
  * @see GenerateHotSpotToNativeBridge
- * @see GenerateHotSpotToNativeBridge
+ * @see GenerateNativeToNativeBridge
  */
 public final class NativeIsolateConfig {
 
@@ -66,7 +66,7 @@ public final class NativeIsolateConfig {
                     Map<String, Object> nativeIsolateHandlerOptions,
                     Supplier<ThreadLocal<NativeIsolateThread>> threadLocalFactory,
                     Consumer<? super NativeIsolate> onIsolateTearDown) {
-        this.isolateLibrary = isolateLibrary;
+        this.isolateLibrary = isolateLibrary.toAbsolutePath();
         this.nativeIsolateHandlerOptions = nativeIsolateHandlerOptions;
         this.threadLocalFactory = threadLocalFactory;
         this.onIsolateTearDown = onIsolateTearDown;

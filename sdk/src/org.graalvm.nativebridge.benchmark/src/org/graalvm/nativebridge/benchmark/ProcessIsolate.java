@@ -51,7 +51,7 @@ final class ProcessIsolate {
      */
     static int start(String[] args) {
         try {
-            ProcessIsolateConfig config = ProcessIsolateConfig.newWorkerBuilder(Path.of(args[0])).build();
+            ProcessIsolateConfig config = ProcessIsolateConfig.newTargetBuilder(Path.of(args[0])).build();
             BenchmarkFactoryGen.listen(config);
             return 0;
         } catch (Throwable t) {

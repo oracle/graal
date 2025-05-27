@@ -165,7 +165,7 @@ abstract class AbstractBridgeParser {
         enum Kind {
             VALUE,
             REFERENCE,
-            RAW_REFERENCE,
+            PEER_REFERENCE,
             CUSTOM,
         }
 
@@ -251,8 +251,8 @@ abstract class AbstractBridgeParser {
                             sameDirection, in, out, Collections.emptyList(), nonDefaultReceiver, customDispatchFactory);
         }
 
-        static MarshallerData rawReference(boolean sameDirection) {
-            return new MarshallerData(Kind.RAW_REFERENCE, null, null, false, sameDirection, null, null, null, null, null);
+        static MarshallerData peerReference(boolean sameDirection) {
+            return new MarshallerData(Kind.PEER_REFERENCE, null, null, false, sameDirection, null, null, null, null, null);
         }
     }
 
@@ -266,9 +266,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType binaryInput;
         final DeclaredType binaryOutput;
         final DeclaredType boxedLong;
-        final DeclaredType byLocalRawReference;
         final DeclaredType byLocalReference;
-        final DeclaredType byRemoteRawReference;
         final DeclaredType byRemoteReference;
         final DeclaredType byteArrayBinaryOutput;
         final DeclaredType clazz;
@@ -354,8 +352,6 @@ abstract class AbstractBridgeParser {
             this.out = processor.getDeclaredType("org.graalvm.nativebridge.Out");
             this.override = processor.getDeclaredType("java.lang.Override");
             this.peer = processor.getDeclaredType("org.graalvm.nativebridge.Peer");
-            this.byLocalRawReference = processor.getDeclaredType("org.graalvm.nativebridge.ByLocalRawReference");
-            this.byRemoteRawReference = processor.getDeclaredType("org.graalvm.nativebridge.ByRemoteRawReference");
             this.receiverMethod = processor.getDeclaredType("org.graalvm.nativebridge.ReceiverMethod");
             this.referenceHandles = processor.getDeclaredType("org.graalvm.nativebridge.ReferenceHandles");
             this.runtimeException = processor.getDeclaredType("java.lang.RuntimeException");

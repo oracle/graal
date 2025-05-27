@@ -54,7 +54,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
                 ForeignContext.class,
                 ForeignCustomLanguageDispatch.class,
                 ForeignHandler.class,
-                ForeignRawReferenceService.class,
+                ForeignPeerReferenceService.class,
                 ForeignRecord.class,
                 ForeignReferenceArrayOperations.class,
                 ForeignService.class

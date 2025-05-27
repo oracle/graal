@@ -97,8 +97,7 @@ abstract class AbstractServiceParser extends AbstractBridgeParser {
                         typeCache.byLocalReference, typeCache.byRemoteReference,
                         typeCache.customDispatchFactory, typeCache.customDispatchAccessor,
                         typeCache.customReceiverAccessor, typeCache.idempotent, typeCache.in, typeCache.out,
-                        typeCache.byLocalRawReference, typeCache.byRemoteRawReference, typeCache.receiverMethod,
-                        typeCache.isolateDeathHandler);
+                        typeCache.receiverMethod, typeCache.isolateDeathHandler);
         if (typeCache.expectError != null) {
             this.ignoreAnnotations.add(typeCache.expectError);
         }
@@ -379,12 +378,16 @@ abstract class AbstractServiceParser extends AbstractBridgeParser {
             } else {
                 List<? extends VariableElement> customDispatchAccessorParams = customDispatchAccessor.getParameters();
                 TypeMirror expectedReturnType = customDispatchAccessorParams.size() == 1 ? customDispatchAccessorParams.get(0).asType() : getTypeCache().object;
-                if (!res.getModifiers().contains(Modifier.STATIC) || res.getModifiers().contains(Modifier.PRIVATE) || res.getParameters().size() != 1 ||
+                if (!res.getModifiers().contains(Modifier.STATIC) || res.getModifiers().contains(Modifier.PRIVATE) ||
+                                res.getParameters().size() != 1 ||
+                                !types.isSameType(res.getParameters().getFirst().asType(), getTypeCache().foreignObject) ||
                                 !types.isSubtype(res.getReturnType(), expectedReturnType)) {
                     Set<Modifier> expectedModifiers = staticNonPrivate(res.getModifiers());
-                    List<Map.Entry<TypeMirror, CharSequence>> expectedParameters = Collections.singletonList(new SimpleImmutableEntry<>(getTypeCache().object, "receiver"));
-                    emitError(res, annotation, "A method annotated by `%s` must be a non-private static method with a single object parameter and `%s` return type.%n" +
-                                    "To fix this change the signature to `%s`.", Utilities.getTypeName(getTypeCache().customDispatchFactory), Utilities.getTypeName(expectedReturnType),
+                    List<Map.Entry<TypeMirror, CharSequence>> expectedParameters = Collections.singletonList(new SimpleImmutableEntry<>(getTypeCache().foreignObject, "receiver"));
+                    emitError(res, annotation, "A method annotated by `%s` must be a non-private static method with a single `%s` parameter and `%s` return type.%n" +
+                                    "To fix this change the signature to `%s`.", Utilities.getTypeName(getTypeCache().customDispatchFactory),
+                                    Utilities.getTypeName(getTypeCache().foreignObject),
+                                    Utilities.getTypeName(expectedReturnType),
                                     Utilities.printMethod(expectedModifiers, res.getSimpleName(), expectedReturnType, expectedParameters));
                 }
             }
@@ -472,7 +475,7 @@ abstract class AbstractServiceParser extends AbstractBridgeParser {
             CacheData cacheData;
             AnnotationMirror idempotentMirror = processor.getAnnotation(methodToGenerate, getTypeCache().idempotent);
             boolean noReturnType = methodToGenerateType.getReturnType().getKind() == TypeKind.VOID;
-            boolean referenceReturnType = retMarshaller.kind == MarshallerData.Kind.RAW_REFERENCE || retMarshaller.kind == MarshallerData.Kind.REFERENCE;
+            boolean referenceReturnType = retMarshaller.kind == MarshallerData.Kind.PEER_REFERENCE || retMarshaller.kind == MarshallerData.Kind.REFERENCE;
             boolean hasOutParameter = paramsMarshallers.stream().anyMatch((md) -> md.out != null);
             boolean hasCustomOutParameter = paramsMarshallers.stream().anyMatch((md) -> md.kind == MarshallerData.Kind.CUSTOM && md.out != null);
             if (idempotentMirror != null && noReturnType) {
@@ -651,18 +654,22 @@ abstract class AbstractServiceParser extends AbstractBridgeParser {
             DeclaredType alwaysByReferenceEndPointClass = null;
             if ((byReferenceAnnotationMirror = findByReference(annotationMirrors, getTypeCache().byLocalReference)) != null ||
                             (alwaysByReferenceEndPointClass = resolveAlwaysByReference(type, alwaysByLocalReference)) != null) {
-                res = createReferenceMarshallerData(method, type, annotationMirrors, byReferenceAnnotationMirror, alwaysByReferenceEndPointClass,
-                                otherConfiguration, customDispatch, false);
+                if (byReferenceAnnotationMirror != null && isPeerReference(byReferenceAnnotationMirror)) {
+                    validatePeerReference(method, type, getTypeCache().byLocalReference, byReferenceAnnotationMirror);
+                    res = MarshallerData.peerReference(false);
+                } else {
+                    res = createReferenceMarshallerData(method, type, annotationMirrors, byReferenceAnnotationMirror, alwaysByReferenceEndPointClass,
+                                    otherConfiguration, customDispatch, false);
+                }
             } else if ((byReferenceAnnotationMirror = findByReference(annotationMirrors, getTypeCache().byRemoteReference)) != null ||
                             (alwaysByReferenceEndPointClass = resolveAlwaysByReference(type, alwaysByRemoteReference)) != null) {
-                res = createReferenceMarshallerData(method, type, annotationMirrors, byReferenceAnnotationMirror, alwaysByReferenceEndPointClass,
-                                myConfiguration, customDispatch, true);
-            } else if ((byReferenceAnnotationMirror = findByReference(annotationMirrors, getTypeCache().byLocalRawReference)) != null) {
-                validateRawReference(method, type, byReferenceAnnotationMirror);
-                res = MarshallerData.rawReference(false);
-            } else if ((byReferenceAnnotationMirror = findByReference(annotationMirrors, getTypeCache().byRemoteRawReference)) != null) {
-                validateRawReference(method, type, byReferenceAnnotationMirror);
-                res = MarshallerData.rawReference(true);
+                if (byReferenceAnnotationMirror != null && isPeerReference(byReferenceAnnotationMirror)) {
+                    validatePeerReference(method, type, getTypeCache().byRemoteReference, byReferenceAnnotationMirror);
+                    res = MarshallerData.peerReference(true);
+                } else {
+                    res = createReferenceMarshallerData(method, type, annotationMirrors, byReferenceAnnotationMirror, alwaysByReferenceEndPointClass,
+                                    myConfiguration, customDispatch, true);
+                }
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 annotations.stream().map(AnnotationMirror::getAnnotationType).forEach(marshallerAnnotations::add);
@@ -672,9 +679,15 @@ abstract class AbstractServiceParser extends AbstractBridgeParser {
         return res;
     }
 
-    private void validateRawReference(ExecutableElement method, TypeMirror type, AnnotationMirror byRawReferenceAnnotationMirror) {
+    private boolean isPeerReference(AnnotationMirror byReferenceMirror) {
+        DeclaredType target = (DeclaredType) getAnnotationValue(byReferenceMirror, "value");
+        return types.isSameType(getTypeCache().peer, target);
+    }
+
+    private void validatePeerReference(ExecutableElement method, TypeMirror type, DeclaredType annotationType, AnnotationMirror byReferenceAnnotationMirror) {
         if (!types.isSameType(type, getTypeCache().object)) {
-            emitError(method, byRawReferenceAnnotationMirror, "A parameter annotated by `%s` must have `Object` type.", Utilities.getTypeName(getTypeCache().byLocalRawReference));
+            emitError(method, byReferenceAnnotationMirror, "A parameter annotated by `%s(%s.class)` must have `Object` type.",
+                            Utilities.getTypeName(annotationType), Utilities.getTypeName(getTypeCache().peer));
         }
     }
 

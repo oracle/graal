@@ -68,8 +68,8 @@ abstract class InvalidCustomDispatchFactory4Test extends CustomReceiverService {
     }
 
     @CustomDispatchFactory
-    @ExpectError("A method annotated by `CustomDispatchFactory` must be a non-private static method with a single object parameter and `ServiceAPI` return type.%n" +
-                    "To fix this change the signature to `static ServiceAPI create(Object receiver)`.")
+    @ExpectError("A method annotated by `CustomDispatchFactory` must be a non-private static method with a single `ForeignObject` parameter and `ServiceAPI` return type.%n" +
+                    "To fix this change the signature to `static ServiceAPI create(ForeignObject receiver)`.")
     static ServiceAPI create() {
         return null;
     }

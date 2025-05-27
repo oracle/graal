@@ -77,9 +77,9 @@ import java.util.stream.Stream;
  *
  * <p>
  * This support allows reentrant operations, where the initiating process calls a remote operation
- * that is executed by a worker thread in the peer process. During this operation, the worker thread
- * may invoke an upcall to the initiating process, which must be completed before the initial call
- * can return.
+ * that is executed by a peer thread in the isolate subprocess. During this operation, the peer
+ * thread may invoke an upcall to the initiator process, which must be completed before the initial
+ * call can return.
  * </p>
  *
  * <p>
@@ -94,7 +94,7 @@ import java.util.stream.Stream;
  * <pre>
  * ProcessIsolateThreadSupport host = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).socketNamePrefix("host").buildInitiator();
  * Path localAddress = host.getLocalAddress();
- * spawnSubprocess("/path/to/worker/application", localAddress.toString());
+ * spawnSubprocess("/path/to/isolate/launcher", localAddress.toString());
  * host.connect();
  *
  * ThreadEndPoint endPoint = host.attachThread();
@@ -102,12 +102,12 @@ import java.util.stream.Stream;
  * host.detachThread();
  * </pre>
  *
- * Worker process
+ * Target process
  *
  * <pre>
  * Path hostAddress = Path.of(args[0]);
- * ProcessIsolateThreadSupport host = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).socketNamePrefix("worker").initiatorAddress(hostAddress).buildWorker();
- * worker.connect();
+ * ProcessIsolateThreadSupport host = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).socketNamePrefix("target").initiatorAddress(hostAddress).buildTarget();
+ * host.connectInCurrentThread();
  * </pre>
  * </p>
  */
@@ -151,7 +151,8 @@ final class ProcessIsolateThreadSupport {
              * Handles cases where an {@link IOException} may be thrown due to the operating system
              * being unable to allocate a new socket, such as when the process has exhausted its
              * available file handles. Despite such failures, this method ensures that it still
-             * reports that AX_UNIX sockets are supported.
+             * reports that AX_UNIX sockets are supported. The intention is to fail later when the
+             * socket is created with the correct error message.
              */
         }
         return true;
@@ -209,7 +210,7 @@ final class ProcessIsolateThreadSupport {
                 throw ce;
             }
         } else {
-            // isolate worker
+            // isolate subprocess
             try (SocketChannel s = SocketChannel.open(peer)) {
                 writeConnectRequest(s, getLocalAddress().toString());
             }
@@ -356,16 +357,16 @@ final class ProcessIsolateThreadSupport {
         }
 
         /**
-         * Creates a new {@link ProcessIsolateThreadSupport} instance for a worker process. The
-         * worker connects to the initiator's {@link ProcessIsolateThreadSupport} instance and
+         * Creates a new {@link ProcessIsolateThreadSupport} instance for an isolate subprocess. The
+         * subprocess connects to the initiator's {@link ProcessIsolateThreadSupport} instance and
          * handles requests accordingly.
          * 
-         * @return A new instance of {@link ProcessIsolateThreadSupport} for the worker process.
+         * @return A new instance of {@link ProcessIsolateThreadSupport} for the isolate subprocess.
          * @throws IOException If an I/O error occurs while establishing the connection.
          * @throws IllegalStateException if {@link #setInitiatorAddress(Path) initiatorAddress} was
          *             not set.
          */
-        ProcessIsolateThreadSupport buildWorker() throws IOException {
+        ProcessIsolateThreadSupport buildTarget() throws IOException {
             if (initiatorAddress == null) {
                 throw new IllegalStateException("InitiatorAddress must be set.");
             }

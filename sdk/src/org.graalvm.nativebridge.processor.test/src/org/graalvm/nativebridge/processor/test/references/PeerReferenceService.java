@@ -40,31 +40,13 @@
  */
 package org.graalvm.nativebridge.processor.test.references;
 
-import org.graalvm.nativebridge.ByRemoteRawReference;
-import org.graalvm.nativebridge.ForeignObject;
-import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
-import org.graalvm.nativebridge.GenerateProcessToProcessBridge;
-import org.graalvm.nativebridge.ByLocalRawReference;
+interface PeerReferenceService {
 
-@GenerateProcessToProcessBridge(factory = ForeignServiceFactory.class)
-@GenerateHotSpotToNativeBridge(factory = ForeignServiceFactory.class)
-@GenerateNativeToNativeBridge(factory = ForeignServiceFactory.class)
-@GenerateNativeToHotSpotBridge(factory = ForeignServiceFactory.class)
-abstract class ForeignRawReferenceService implements RawReferenceService, ForeignObject {
+    Object getLocalPeerReference();
 
-    @Override
-    @ByLocalRawReference
-    public abstract Object getLocalRawReference();
+    void setLocalPeerReference(Object reference);
 
-    @Override
-    public abstract void setLocalRawReference(@ByLocalRawReference Object reference);
+    Object getRemotePeerReference();
 
-    @Override
-    @ByRemoteRawReference
-    public abstract Object getRemoteRawReference();
-
-    @Override
-    public abstract void setRemoteRawReference(@ByRemoteRawReference Object receiver);
+    void setRemotePeerReference(Object receiver);
 }

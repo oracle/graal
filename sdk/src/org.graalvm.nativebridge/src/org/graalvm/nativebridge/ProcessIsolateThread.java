@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,11 @@ import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 
 import static org.graalvm.nativebridge.ForeignException.HOST_TO_GUEST;
 
+/**
+ * Represents an entered process isolate thread.
+ *
+ * @see ProcessIsolate#enter()
+ */
 public final class ProcessIsolateThread extends AbstractIsolateThread {
 
     private final ProcessIsolate isolate;

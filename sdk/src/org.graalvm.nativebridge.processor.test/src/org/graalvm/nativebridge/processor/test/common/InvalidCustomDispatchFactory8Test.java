@@ -43,6 +43,7 @@ package org.graalvm.nativebridge.processor.test.common;
 import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.CustomDispatchFactory;
 import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.ForeignObject;
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
@@ -68,9 +69,9 @@ abstract class InvalidCustomDispatchFactory8Test extends CustomReceiverService {
     }
 
     @CustomDispatchFactory
-    @ExpectError("A method annotated by `CustomDispatchFactory` must be a non-private static method with a single object parameter and `ServiceAPI` return type.%n" +
-                    "To fix this change the signature to `static ServiceAPI create(Object receiver)`.")
-    static Object create(Object receiver) {
+    @ExpectError("A method annotated by `CustomDispatchFactory` must be a non-private static method with a single `ForeignObject` parameter and `ServiceAPI` return type.%n" +
+                    "To fix this change the signature to `static ServiceAPI create(ForeignObject receiver)`.")
+    static Object create(ForeignObject receiver) {
         return new ServiceAPI(null, receiver);
     }
 }

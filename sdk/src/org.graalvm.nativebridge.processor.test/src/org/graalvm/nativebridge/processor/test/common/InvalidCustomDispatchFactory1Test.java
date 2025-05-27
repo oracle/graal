@@ -43,6 +43,7 @@ package org.graalvm.nativebridge.processor.test.common;
 import org.graalvm.nativebridge.CustomDispatchAccessor;
 import org.graalvm.nativebridge.CustomDispatchFactory;
 import org.graalvm.nativebridge.CustomReceiverAccessor;
+import org.graalvm.nativebridge.ForeignObject;
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
@@ -68,14 +69,14 @@ abstract class InvalidCustomDispatchFactory1Test extends CustomReceiverService {
     }
 
     @CustomDispatchFactory
-    static ServiceAPI create1(Object receiver) {
+    static ServiceAPI create1(ForeignObject receiver) {
         return new ServiceAPI(null, receiver);
     }
 
     @CustomDispatchFactory
     @ExpectError("Only a single method can be annotated by the `CustomDispatchFactory`.%n" +
-                    "Fix the ambiguity by removing the `static ServiceAPI create1(Object receiver)` method or the `static ServiceAPI create2(Object receiver)` method.")
-    static ServiceAPI create2(Object receiver) {
+                    "Fix the ambiguity by removing the `static ServiceAPI create1(ForeignObject receiver)` method or the `static ServiceAPI create2(ForeignObject receiver)` method.")
+    static ServiceAPI create2(ForeignObject receiver) {
         return new ServiceAPI(null, receiver);
     }
 }

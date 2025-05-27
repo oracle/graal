@@ -1035,7 +1035,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         for (int i = 0; i < methodData.element.getParameters().size(); i++) {
             MarshallerData marshallerData = methodData.getParameterMarshaller(i);
             switch (marshallerData.kind) {
-                case REFERENCE, RAW_REFERENCE -> {
+                case REFERENCE, PEER_REFERENCE -> {
                     if (!marshallerData.sameDirection) {
                         return true;
                     }
@@ -1065,8 +1065,8 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
                 case VALUE -> new DirectSnippet(generator, marshallerData);
                 case REFERENCE ->
                     new ReferenceSnippet(generator, marshallerData);
-                case RAW_REFERENCE ->
-                    new RawReferenceSnippet(generator, marshallerData);
+                case PEER_REFERENCE ->
+                    new PeerReferenceSnippet(generator, marshallerData);
                 case CUSTOM -> new CustomSnippet(generator, marshallerData);
             };
         }
@@ -1561,9 +1561,9 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             }
         }
 
-        private static final class RawReferenceSnippet extends NativeToHotSpotMarshallerSnippet {
+        private static final class PeerReferenceSnippet extends NativeToHotSpotMarshallerSnippet {
 
-            RawReferenceSnippet(NativeToHotSpotServiceGenerator generator, MarshallerData marshallerData) {
+            PeerReferenceSnippet(NativeToHotSpotServiceGenerator generator, MarshallerData marshallerData) {
                 super(generator, marshallerData);
             }
 

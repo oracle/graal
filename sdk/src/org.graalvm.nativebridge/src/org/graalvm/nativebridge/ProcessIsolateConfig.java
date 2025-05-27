@@ -100,16 +100,20 @@ public final class ProcessIsolateConfig {
     }
 
     /**
-     * Creates a new {@link Builder} for configuring a {@link ProcessIsolate} as an initiator
-     * (client).
+     * Creates a new {@link Builder} for configuring a {@link ProcessIsolate} as an initiator, the
+     * client process that spawns a subprocess isolate.
      *
-     * @param isolateLauncher the path to the process isolate launcher.
+     * @param isolateLauncher the path to the process isolate launcher binary.
      * @param initiatorSocketAddress the UNIX domain socket address, represented as a file path. The
-     *            created {@link ProcessIsolate} opens a socket at this address, which the
-     *            subprocess uses to establish an initial handshake. Note: The
-     *            {@code initiatorSocketAddress} must also be added at the appropriate position in
-     *            the {@link ProcessIsolateConfig.Builder#launcherArgument(String) launcher
-     *            arguments}.
+     *            initiator process opens a socket at this address, which the target subprocess
+     *            connects to in order to perform the initial handshake.
+     *            <p>
+     *            <strong>Note:</strong> This socket address must also be passed as a launcher
+     *            argument using {@link ProcessIsolateConfig.Builder#launcherArgument(String)} so
+     *            that the subprocess can locate it.
+     *
+     * @return a {@link Builder} configured for the initiator role.
+     *
      * @see #createDefaultInitiatorSocketAddress(Path)
      */
     public static Builder newInitiatorBuilder(Path isolateLauncher, Path initiatorSocketAddress) {
@@ -119,10 +123,16 @@ public final class ProcessIsolateConfig {
     }
 
     /**
-     * Creates a new builder for constructing a {@link ProcessIsolateConfig} to configure a
-     * {@link ProcessIsolate} for a worker process.
+     * Creates a new {@link Builder} for configuring a {@link ProcessIsolate} as a target, the
+     * subprocess isolate spawned by an initiator.
+     *
+     * @param initiatorSocketAddress the UNIX domain socket address (represented as a file path) of
+     *            the initiator process. The target subprocess will use this address to establish an
+     *            initial handshake with the initiator.
+     *
+     * @return a {@link Builder} configured for the target role.
      */
-    public static Builder newWorkerBuilder(Path initiatorSocketAddress) {
+    public static Builder newTargetBuilder(Path initiatorSocketAddress) {
         Objects.requireNonNull(initiatorSocketAddress, "InitiatorSocketAddress must be non-null.");
         return new Builder(null, initiatorSocketAddress);
     }

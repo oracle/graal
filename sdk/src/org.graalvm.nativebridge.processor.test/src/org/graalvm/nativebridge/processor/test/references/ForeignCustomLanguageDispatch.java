@@ -68,8 +68,8 @@ abstract class ForeignCustomLanguageDispatch extends CustomLanguageDispatch {
 
     @CustomDispatchFactory
     @SuppressWarnings("unchecked")
-    static LanguageAPI createLanguage(Object receiver) {
-        Peer peer = ((ForeignObject) receiver).getPeer();
+    static LanguageAPI createLanguage(ForeignObject receiver) {
+        Peer peer = receiver.getPeer();
         ForeignCustomLanguageDispatch dispatch = ForeignCustomLanguageDispatchGen.create(peer.getClass());
         return new LanguageAPI(dispatch, receiver);
     }

@@ -1553,7 +1553,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                                                           "optional": True},
                     f'{resource_base_folder}/external_isolate/': {"source_type": "dependency",
                                                           "dependency": "sdk:NATIVEBRIDGE_LAUNCHER_RESOURCES",
-                                                          "path": 'external_isolate/*'},
+                                                          "path": f"{os_name}/{cpu_architecture}/*"},
                 },
                 path=None,
                 platformDependent=True,

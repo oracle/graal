@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import java.util.Objects;
  * required to implement custom subclasses. This implementation is intended for technologies in
  * which the thread attaches once and remains attached for its entire lifetime.
  */
-abstract class AbstractIsolate<T extends AbstractIsolateThread> extends Isolate<T> {
+abstract sealed class AbstractIsolate<T extends AbstractIsolateThread> extends Isolate<T> permits NativeIsolate, ProcessIsolate {
 
     static final int CLOSED = -1;
 

@@ -40,7 +40,18 @@
  */
 package org.graalvm.nativebridge;
 
-public abstract class IsolateThread {
+/**
+ * Represents a generic abstraction of an entered isolate thread.
+ *
+ * @see Isolate#enter()
+ * @see NativeIsolateThread
+ * @see ProcessIsolateThread
+ * @see HSIsolateThread
+ */
+public abstract sealed class IsolateThread permits AbstractIsolateThread, HSIsolateThread {
+
+    IsolateThread() {
+    }
 
     /**
      * Returns the isolate for this thread.

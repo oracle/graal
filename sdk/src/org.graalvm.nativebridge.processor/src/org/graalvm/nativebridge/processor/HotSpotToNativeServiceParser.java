@@ -124,7 +124,7 @@ final class HotSpotToNativeServiceParser extends AbstractNativeServiceParser {
         TypeMirror getEntryPointMethodParameterType(MarshallerData marshaller, TypeMirror type) {
             return switch (marshaller.kind) {
                 case CUSTOM -> types.getArrayType(types.getPrimitiveType(TypeKind.BYTE));
-                case RAW_REFERENCE -> {
+                case PEER_REFERENCE -> {
                     if (marshaller.sameDirection) {
                         yield types.getPrimitiveType(TypeKind.LONG);
                     } else {

@@ -77,9 +77,6 @@ public @interface GenerateProcessToProcessFactory {
 
     /**
      * Defines services that can be invoked within the created {@link ProcessIsolate}.
-     * <p>
-     * This attribute is valid only when registering an initial service, i.e., when
-     * {@link #initialService()} is set.
      */
     Class<?>[] services() default {};
 }

@@ -61,6 +61,13 @@ import java.lang.annotation.Target;
  * local object, for instance, using {@link ReferenceHandles#resolve(long, Class)}.</li>
  * </ul>
  *
+ * <p>
+ * <strong>Note:</strong> When the {@link #value()} attribute is set to {@code Peer.class}, the
+ * processor marshals the object directly as a {@link Peer} rather than as a {@link ForeignObject}.
+ * In this case, the type of the corresponding method parameter or return value must be
+ * {@link Object}.
+ * </p>
+ *
  * @see ByRemoteReference
  * @see AlwaysByLocalReference
  * @see AlwaysByRemoteReference
@@ -78,6 +85,9 @@ public @interface ByLocalReference {
      * {@link ForeignObject}.</li>
      * <li>If the bridged type has a custom dispatch, the class must be the dispatch class with a
      * {@link CustomDispatchFactory factory}.</li>
+     * <li>If this attribute is set to {@code Peer.class}, the processor will marshal the object
+     * directly as a {@link Peer} instance, bypassing {@link ForeignObject}
+     * wrapping/unwrapping.</li>
      * </ul>
      * </p>
      */

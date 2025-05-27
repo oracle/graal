@@ -393,8 +393,6 @@ def nativebridge_benchmark(args):
             target = os.path.join(target_dir, "bench")
             native_image_args = mx.get_runtime_jvm_args(benchmark_dist, jdk=jdk) + [
                 '--shared',
-                '--initialize-at-build-time=org.graalvm.processisolate.api,org.graalvm.processisolate.common,org.graalvm.processisolate.impl',
-                '',
                 '-o',
                 target
             ]

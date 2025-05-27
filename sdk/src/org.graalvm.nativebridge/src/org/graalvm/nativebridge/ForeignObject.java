@@ -78,9 +78,20 @@ public interface ForeignObject {
 
     /**
      * Creates a {@link ForeignObject} instance for the given {@code peer} without associating it
-     * with any service class or implementing any service interface. This method is useful for
-     * creating a handle to a foreign object that serves as a receiver for custom dispatch
-     * interfaces.
+     * with any service class or implementing any service interface.
+     * <p>
+     * This method is intended for use cases where a foreign object needs to be used as a generic
+     * receiver in a custom dispatch class. A typical custom dispatch class is a final class
+     * containing two final fields: {@code dispatch} and {@code receiver}. The {@code dispatch}
+     * field implements an SPI interface whose methods correspond to those of the dispatch class,
+     * but with the {@code receiver} passed explicitly as the first parameter. For more details, see
+     * <a href=
+     * "http://github.com/oracle/graal/blob/master/compiler/docs/NativeBridgeProcessor.md#bridging-a-class-with-a-custom-dispatch">.
+     *
+     * @see CustomDispatchAccessor
+     * @see CustomReceiverAccessor
+     * @see CustomDispatchFactory
+     *
      */
     static ForeignObject createUnbound(Peer peer) {
         Objects.requireNonNull(peer, "Peer must be non-null.");

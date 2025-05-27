@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ import static org.graalvm.nativebridge.NativeIsolate.CLOSED;
  * effort required to implement custom subclasses. This implementation is intended for technologies
  * in which the thread attaches once and remains attached for its entire lifetime.
  */
-abstract class AbstractIsolateThread extends IsolateThread {
+abstract sealed class AbstractIsolateThread extends IsolateThread permits NativeIsolateThread, ProcessIsolateThread {
 
     private static final int CLOSING_MASK = 0b1;
 
