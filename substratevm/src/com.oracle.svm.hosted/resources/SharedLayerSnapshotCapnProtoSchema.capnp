@@ -278,6 +278,8 @@ struct SharedLayerSnapshot {
   dynamicHubInfos @18 :List(DynamicHubInfo);
   hostedMethods @19 :List(PersistedHostedMethod);
   nodeClassMapLocation @20 :Text;
+  sharedLayerBootLayerModules @21 :List(Text);
+  layeredModule @22 :LayeredModule;
 }
 
 struct StaticFinalFieldFoldingSingleton {
@@ -291,6 +293,21 @@ struct StaticFinalFieldFoldingSingleton {
 struct LayeredRuntimeMetadataSingleton {
   methods @0 :List(MethodId);
   fields @1 :List(FieldId);
+}
+
+struct LayeredModule {
+  openModulePackages @0 :List(ModulePackages);
+  exportedModulePackages @1 :List(ModulePackages);
+}
+
+struct ModulePackages {
+  moduleKey @0 :Text;
+  packages @1 :List(Packages);
+}
+
+struct Packages {
+  packageKey @0 :Text;
+  modules @1 :List(Text);
 }
 
 struct PrimitiveValue {
