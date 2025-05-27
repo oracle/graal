@@ -4676,10 +4676,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
          * statement's probability accordingly. When the compiler decides to generate an
          * IntegerSwitch node from the cascade of if statements, it converts the probabilities back
          * to independent ones.
+         *
+         * The adjusted probability can be calculated from the original probability as follows:
+         *
+         * branchProbability = profile / sum; predecessorProbability = precedingSum / sum;
+         * adjustedProbability = branchProbability / (1 - predecessorProbability);
+         *
+         * Safer version of the above that also handles precedingSum >= sum, i.e. when the sum of
+         * the preceding branch counters exceeds the total hit counter (e.g. due to saturation):
          */
-        final double probability = (double) profile / (double) sum;
-        final double predecessorProbability = (double) precedingSum / sum;
-        final double adjustedProbability = probability / (1 - predecessorProbability);
+        final double adjustedProbability = (double) profile / (double) (precedingSum < sum ? sum - precedingSum : sum);
         return CompilerDirectives.injectBranchProbability(Math.min(adjustedProbability, 1.0), val);
     }
 
