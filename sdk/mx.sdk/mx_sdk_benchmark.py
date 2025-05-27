@@ -1608,24 +1608,30 @@ class NativeImageVM(GraalVm):
         assert not self.stages_info.failed, "In case of a failed benchmark, no further calls into the VM should be made"
         assert self.stages_info.vm_used_for_stages == self, f"VM used to prepare stages ({self.stages_info.vm_used_for_stages}) cannot be different from the VM used to run the suite ({self})!"
 
-        self.config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
-        self.stages = StagesContext(self, out, err, True if self.is_gate else nonZeroIsFatal,
-                                    os.path.abspath(cwd if cwd else os.getcwd()))
-
-        self.config.output_dir.mkdir(parents=True, exist_ok=True)
-        self.config.config_dir.mkdir(parents=True, exist_ok=True)
-
         if self.stages_info.fallback_mode:
             # In fallback mode, we have to run all requested stages in the same `run_java` invocation.
             # We simply emulate the dispatching of the individual stages as in `NativeImageBenchmarkMixin.intercept_run`
+            first_stage = True
             while self.stages_info.has_next_stage():
                 self.stages_info.next_stage()
+                if first_stage:
+                    self._prepare_for_running(args, out, err, cwd, nonZeroIsFatal)
+                    first_stage = False
                 self.run_single_stage()
         else:
+            self._prepare_for_running(args, out, err, cwd, nonZeroIsFatal)
             self.run_single_stage()
 
         if self.stages_info.failed:
             mx.abort('Exiting the benchmark due to the failure.')
+
+    def _prepare_for_running(self, args, out, err, cwd, nonZeroIsFatal):
+        """Initialize the objects and directories necessary for stage running."""
+        self.config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
+        self.stages = StagesContext(self, out, err, True if self.is_gate else nonZeroIsFatal,
+                                    os.path.abspath(cwd if cwd else os.getcwd()))
+        self.config.output_dir.mkdir(parents=True, exist_ok=True)
+        self.config.config_dir.mkdir(parents=True, exist_ok=True)
 
     def get_stage_runner(self) -> StageRunner:
         return StageRunner(self.stages)
