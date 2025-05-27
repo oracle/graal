@@ -12,7 +12,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   sulong:: {
     suite:: "sulong",
-    extra_mx_args+:: [ "--dynamicimport", "/compiler" ],
+    extra_mx_args+:: if self._jdkIsGraalVM then [] else [ "--dynamicimport", "/compiler" ],
     setup+: [
       ["cd", "./sulong"],
     ],

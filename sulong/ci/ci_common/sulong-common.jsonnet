@@ -193,8 +193,14 @@ local sulong_deps = common.deps.sulong;
   },
 } + {
 
-  [std.strReplace(name, "-", "_")]: common[name]
+  [std.strReplace(name, "-", "_")]: common[name] + { _jdkIsGraalVM:: false }
   for name in std.objectFieldsAll(common)
   if std.startsWith(name, "labsjdk")
+
+} + {
+
+  [name]: common[name] + { _jdkIsGraalVM:: true }
+  for name in std.objectFieldsAll(common)
+  if std.startsWith(name, "graalvm")
 
 }
