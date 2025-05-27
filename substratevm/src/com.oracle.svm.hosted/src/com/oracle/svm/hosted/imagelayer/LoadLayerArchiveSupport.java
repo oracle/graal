@@ -28,14 +28,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.option.LayerVerification;
+import com.oracle.svm.core.option.LayerVerification.Kind;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.util.DiffTool;
-import com.oracle.svm.hosted.util.DiffTool.DiffResult.Kind;
 import com.oracle.svm.util.LogUtils;
 
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
@@ -63,7 +66,8 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
-    public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport) {
+    public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport, Map<String, Map<Kind, LayerVerification>> verifications) {
+
         // var errorMessagePrefix = "Layer Compatibility Error: ";
         var strippedBuilderArguments = builderArguments.stream()
                         .map(argument -> splitArgumentOrigin(argument).argument)
@@ -74,24 +78,78 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
                         .toList();
 
         var diffResults = DiffTool.diffResults(strippedBuilderArguments, strippedCurrentBuilderArguments);
+
+        if (Boolean.getBoolean("org.graalvm.nativeimage.layers.verification.verbose") && !diffResults.isEmpty()) {
+            System.out.println("{".repeat(40));
+            for (var diffResult : diffResults) {
+                System.out.println(diffResult.toString(builderArguments, currentBuilderArguments));
+            }
+            System.out.println("}".repeat(40));
+        }
+
         for (var diffResult : diffResults) {
-            if (diffResult.kind() == Kind.Removed) {
+            Set<Kind> verificationKinds = switch (diffResult.kind()) {
+                case Removed -> Set.of(Kind.Removed, Kind.Changed);
+                case Added -> Set.of(Kind.Added, Kind.Changed);
+                default -> Set.of();
+            };
+            for (Kind verificationKind : verificationKinds) {
                 ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(builderArguments, currentBuilderArguments));
-                OptionOrigin origin = OptionOrigin.from(argumentOrigin.origin);
-                LogUtils.warning("The used parent layer '" + layerProperties.layerName() + "' specified via layer-file '" + layerFile.getFileName() + "'" +
-                                " was built with option argument '" + argumentOrigin.argument + "' from " + origin + "." +
-                                " The same option argument is required to also be used at the same place for this layered image build.");
+                Map<Kind, LayerVerification> perOptionVerifications = verifications.get(argumentOrigin.nameValue().name);
+                if (perOptionVerifications == null) {
+                    continue;
+                }
+                LayerVerification verification = perOptionVerifications.get(verificationKind);
+                if (verification != null) {
+                    OptionOrigin origin = OptionOrigin.from(argumentOrigin.origin);
+                    String message = "Parent layer '" + layerProperties.layerName() + "' specified via layer-file '" + layerFile.getFileName() + "'" +
+                                    " was built with option argument '" + argumentOrigin.argument + "' from " + origin + ".";
+                    String suffix;
+                    if (!verification.Message().isEmpty()) {
+                        suffix = verification.Message();
+                    } else {
+                        suffix = switch (verificationKind) {
+                            case Removed, Changed -> "This is also required to be specified for the current layered image build.";
+                            case Added -> "This is also required to be specified for the parent layer build.";
+                        };
+                    }
+                    message += " " + suffix;
+                    switch (verification.Severity()) {
+                        case Info -> LogUtils.info(message);
+                        case Warn -> LogUtils.warning(message);
+                        case Error -> {
+                            if (!Boolean.getBoolean("org.graalvm.nativeimage.layers.verification.strict")) {
+                                LogUtils.warning(message);
+                            } else {
+                                UserError.abort(message);
+                            }
+                        }
+                    }
+                }
             }
         }
-
-        System.out.println("============================================================");
-        for (var diffResult : diffResults) {
-            System.out.println(diffResult.toString(builderArguments, currentBuilderArguments));
-        }
-        System.out.println("============================================================");
     }
 
-    record ArgumentOrigin(String argument, String origin) {
+    record ArgumentOrigin(boolean booleanOption, String argument, String origin) {
+
+        record NameValue(String name, String value) {
+        }
+
+        NameValue nameValue() {
+            String name;
+            String value;
+            if (booleanOption) {
+                // "-R:+BoolFooBar" -> BoolFooBar
+                name = argument.substring(4);
+                value = String.valueOf(argument.charAt(3));
+            } else {
+                // "-H:Foo=bar" -> Foo
+                int valueSep = argument.indexOf('=');
+                name = argument.substring(3, valueSep);
+                value = argument.substring(valueSep + 1);
+            }
+            return new NameValue(name, value);
+        }
     }
 
     private static ArgumentOrigin splitArgumentOrigin(String argumentWithOrigin) {
@@ -116,6 +174,6 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
                 origin = argumentWithOrigin.substring(originSeparatorPos + 1, keyValueSeparatorPos);
             }
         }
-        return new ArgumentOrigin(argument, origin);
+        return new ArgumentOrigin(booleanOption, argument, origin);
     }
 }

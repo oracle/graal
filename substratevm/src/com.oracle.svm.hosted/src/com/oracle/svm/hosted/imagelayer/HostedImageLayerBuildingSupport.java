@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,6 +39,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.LayerVerification;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -50,13 +53,17 @@ import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsContainer;
 
 public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
 
@@ -275,7 +282,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport);
-            loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport);
+            loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader));
             try {
                 graphsChannel = FileChannel.open(loadLayerArchiveSupport.getSnapshotGraphsPath());
 
@@ -298,6 +305,20 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         }
 
         return imageLayerBuildingSupport;
+    }
+
+    public static Map<String, Map<LayerVerification.Kind, LayerVerification>> collectLayerVerifications(ImageClassLoader loader) {
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(loader.getClassLoader());
+        EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
+        EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
+        HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
+        Map<String, Map<LayerVerification.Kind, LayerVerification>> result = new HashMap<>();
+        for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
+            for (LayerVerification layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerification.class)) {
+                result.computeIfAbsent(optionDescriptor.getName(), key -> new HashMap()).put(layerVerification.Kind(), layerVerification);
+            }
+        }
+        return result;
     }
 
     @SuppressFBWarnings(value = "NP", justification = "FB reports null pointer dereferencing because it doesn't see through UserError.guarantee.")
