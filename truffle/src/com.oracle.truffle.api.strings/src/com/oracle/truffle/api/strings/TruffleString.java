@@ -6005,6 +6005,9 @@ public final class TruffleString extends AbstractTruffleString {
                     arrayA = null;
                     addOffsetA = NativePointer.unwrap(dataA);
                 } else {
+                    if (dataA instanceof LazyLong lazyLongA && dataB instanceof LazyLong lazyLongB) {
+                        return lazyLongA.value == lazyLongB.value;
+                    }
                     arrayA = a.materializeLazy(node, dataA);
                     addOffsetA = byteArrayBaseOffset();
                 }
