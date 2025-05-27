@@ -141,6 +141,12 @@ public final class VMInspectionOptions {
                         SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME) + "'.";
     }
 
+    @Fold
+    public static String getJfrNotSupportedMessage() {
+        return "JFR is only supported on Linux and MacOS for native binaries built with '" +
+                        SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_JFR_NAME) + "'.";
+    }
+
     private static Set<String> getEnabledMonitoringFeatures() {
         return new HashSet<>(EnableMonitoringFeatures.getValue().values());
     }
