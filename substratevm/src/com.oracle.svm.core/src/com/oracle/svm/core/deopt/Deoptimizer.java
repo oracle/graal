@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -387,7 +386,7 @@ public final class Deoptimizer {
     public static boolean checkLazyDeoptimized(IsolateThread thread, Pointer sp) {
         if (DeoptimizationSupport.enabled() && Options.LazyDeoptimization.getValue()) {
             CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
-            return checkLazyDeoptimized0(ip);
+            return isLazyDeoptStub(ip);
         }
         return false;
     }
@@ -398,16 +397,13 @@ public final class Deoptimizer {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean checkLazyDeoptimized(CodePointer ip) {
         if (DeoptimizationSupport.enabled() && Options.LazyDeoptimization.getValue()) {
-            return checkLazyDeoptimized0(ip);
+            return isLazyDeoptStub(ip);
         }
         return false;
     }
 
-    /**
-     * Checks whether a return address is equal to one of the lazy deopt stubs.
-     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean checkLazyDeoptimized0(CodePointer ip) {
+    private static boolean isLazyDeoptStub(CodePointer ip) {
         assert Options.LazyDeoptimization.getValue();
         return ip.equal(DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer()) || ip.equal(DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer());
     }
@@ -831,40 +827,40 @@ public final class Deoptimizer {
             gpReturnValueObject = ((Pointer) gpReturnValue).toObject();
         }
 
-        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject, DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer());
+        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
     }
 
     @DeoptStub(stubType = StubType.LazyEntryStub)
     @Uninterruptible(reason = "gpReturnValue may hold unmanaged reference")
     public static UnsignedWord lazyDeoptStubPrimitiveReturn(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         /*
-         * If we need to return to the exception handler, then we should always go to
-         * lazyDeoptStubObjectReturn, since returning to an exception handler involves returning an
-         * Exception Object.
+         * Note: when we dispatch an exception, we enter lazyDeoptStubObjectReturn instead, since
+         * that involves returning an exception object.
          */
         assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
         assert Options.LazyDeoptimization.getValue();
         assert VMThreads.StatusSupport.isStatusJava() : "Deopt stub execution must not be visible to other threads.";
         assert !ExceptionUnwind.getLazyDeoptStubShouldReturnToExceptionHandler();
 
-        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, false, null, DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer());
+        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, false, null);
     }
 
     /**
      * The handler for lazy deoptimization.
      * 
      * Despite being marked Uninterruptible, this contains interruptible sections when we look up
-     * the codeinfo, and construct the {@link DeoptimizedFrame}.
+     * the code info, and construct the {@link DeoptimizedFrame}.
      */
     @Uninterruptible(reason = "frame will hold objects in unmanaged storage")
-    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject,
-                    CFunctionPointer deoptStubAddress) {
-        DeoptimizedFrame deoptFrame;
+    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject) {
+        CodePointer deoptStubAddress = FrameAccess.singleton().readReturnAddress(CurrentIsolate.getCurrentThread(), framePointer);
+        assert isLazyDeoptStub(deoptStubAddress);
 
         /* The original return address is at offset 0 from the stack pointer */
         CodePointer originalReturnAddress = framePointer.readWord(0);
         VMError.guarantee(originalReturnAddress.isNonNull());
 
+        DeoptimizedFrame deoptFrame;
         try {
             deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, originalReturnAddress, hasException);
         } catch (OutOfMemoryError ex) {
