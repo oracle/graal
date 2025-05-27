@@ -23,9 +23,11 @@
  * questions.
  */
 
-package com.oracle.graal.pointsto.heap;
+package com.oracle.svm.core.graal.nodes;
 
 import java.util.Objects;
+
+import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -33,20 +35,20 @@ import jdk.vm.ci.meta.VMConstant;
 
 /**
  * An {@code TLABObjectHeaderConstant} is a constant representing the content of the header of a
- * newly created object. It is computed from the address of the type object and needs patching in
- * after compilation.
+ * newly created object. It is computed from the address of the {@link DynamicHub} and needs
+ * patching after compilation and relocations at run-time.
  */
 public final class TLABObjectHeaderConstant implements JavaConstant, VMConstant {
-    private final ImageHeapInstance hub;
+    private final JavaConstant hub;
     private final int size;
 
-    public TLABObjectHeaderConstant(ImageHeapInstance hub, int size) {
+    public TLABObjectHeaderConstant(JavaConstant hub, int size) {
         assert size == Integer.BYTES || size == Long.BYTES : size;
         this.hub = hub;
         this.size = size;
     }
 
-    public ImageHeapInstance hub() {
+    public JavaConstant hub() {
         return hub;
     }
 

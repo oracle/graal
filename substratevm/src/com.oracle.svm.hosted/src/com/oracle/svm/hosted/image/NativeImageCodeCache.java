@@ -57,7 +57,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.heap.TLABObjectHeaderConstant;
+import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
