@@ -478,8 +478,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     }
 
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
-        String actualFormat = "%,9d ";
-        String totalFormat = " (%4.1f%% of %,8d total)";
+        String typesFieldsMethodFormat = "%,9d types, %,7d fields, and %,7d methods ";
         long reachableTypes;
         if (universe.hostVM().useBaseLayer()) {
             reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).filter(t -> !t.isInBaseLayer()).count();
@@ -487,12 +486,8 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
         }
         long totalTypes = universe.getTypes().size();
-        recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
-        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
+        recordJsonMetric(AnalysisResults.DEPRECATED_TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.TYPES_REACHABLE, reachableTypes);
-        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_REACHABLE, reachableTypes);
-        l().a(actualFormat, reachableTypes).doclink("reachable types", "#glossary-reachability").a("  ")
-                        .a(totalFormat, Utils.toPercentage(reachableTypes, totalTypes), totalTypes).println();
         Collection<AnalysisField> fields = universe.getFields();
         long reachableFields;
         if (universe.hostVM().useBaseLayer()) {
@@ -501,10 +496,8 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
         }
         int totalFields = fields.size();
-        recordJsonMetric(AnalysisResults.FIELD_TOTAL, totalFields);
+        recordJsonMetric(AnalysisResults.DEPRECATED_FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
-        l().a(actualFormat, reachableFields).doclink("reachable fields", "#glossary-reachability").a(" ")
-                        .a(totalFormat, Utils.toPercentage(reachableFields, totalFields), totalFields).println();
         Collection<AnalysisMethod> methods = universe.getMethods();
         long reachableMethods;
         if (universe.hostVM().useBaseLayer()) {
@@ -513,29 +506,21 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
         }
         int totalMethods = methods.size();
-        recordJsonMetric(AnalysisResults.METHOD_TOTAL, totalMethods);
+        recordJsonMetric(AnalysisResults.DEPRECATED_METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
-        l().a(actualFormat, reachableMethods).doclink("reachable methods", "#glossary-reachability")
-                        .a(totalFormat, Utils.toPercentage(reachableMethods, totalMethods), totalMethods).println();
-        if (numRuntimeCompiledMethods >= 0) {
-            recordJsonMetric(ImageDetailKey.RUNTIME_COMPILED_METHODS_COUNT, numRuntimeCompiledMethods);
-            l().a(actualFormat, numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
-                            .a(totalFormat, Utils.toPercentage(numRuntimeCompiledMethods, totalMethods), totalMethods).println();
-        }
-        String typesFieldsMethodFormat = "%,9d types, %,5d fields, and %,5d methods ";
+        l().a(typesFieldsMethodFormat, reachableTypes, reachableFields, reachableMethods)
+                        .doclink("found reachable", "#glossary-reachability").println();
         int reflectClassesCount = ClassForNameSupport.currentLayer().count();
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectFieldsCount = rs.getReflectionFieldsCount();
         int reflectMethodsCount = rs.getReflectionMethodsCount();
         recordJsonMetric(AnalysisResults.METHOD_REFLECT, reflectMethodsCount);
         recordJsonMetric(AnalysisResults.TYPES_REFLECT, reflectClassesCount);
-        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_REFLECT, reflectClassesCount);
         recordJsonMetric(AnalysisResults.FIELD_REFLECT, reflectFieldsCount);
         l().a(typesFieldsMethodFormat, reflectClassesCount, reflectFieldsCount, reflectMethodsCount)
                         .doclink("registered for reflection", "#glossary-reflection-registrations").println();
         recordJsonMetric(AnalysisResults.METHOD_JNI, (numJNIMethods >= 0 ? numJNIMethods : UNAVAILABLE_METRIC));
         recordJsonMetric(AnalysisResults.TYPES_JNI, (numJNIClasses >= 0 ? numJNIClasses : UNAVAILABLE_METRIC));
-        recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_JNI, (numJNIClasses >= 0 ? numJNIClasses : UNAVAILABLE_METRIC));
         recordJsonMetric(AnalysisResults.FIELD_JNI, (numJNIFields >= 0 ? numJNIFields : UNAVAILABLE_METRIC));
         if (numJNIClasses >= 0) {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
@@ -552,6 +537,11 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         if (numLibraries > 0) {
             TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
             l().a("%,9d native %s: ", numLibraries, numLibraries == 1 ? "library" : "libraries").a(String.join(", ", sortedLibraries)).println();
+        }
+        if (numRuntimeCompiledMethods >= 0) {
+            recordJsonMetric(ImageDetailKey.RUNTIME_COMPILED_METHODS_COUNT, numRuntimeCompiledMethods);
+            l().a("%,9d ", numRuntimeCompiledMethods).doclink("runtime compiled methods", "#glossary-runtime-methods")
+                            .a(" (%.1f%% of all reachable methods)", Utils.toPercentage(numRuntimeCompiledMethods, reachableMethods), reachableMethods).println();
         }
     }
 
