@@ -192,8 +192,8 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_ABS -> unop(x, F64X2, VectorOperators.ABS);
             case Bytecode.VECTOR_F64X2_NEG -> unop(x, F64X2, VectorOperators.NEG);
             case Bytecode.VECTOR_F64X2_SQRT -> unop(x, F64X2, VectorOperators.SQRT);
-            case Bytecode.VECTOR_F64X2_CEIL -> f64x2_unop_fallback(x, Math::ceil);
-            case Bytecode.VECTOR_F64X2_FLOOR -> f64x2_unop_fallback(x, Math::floor);
+            case Bytecode.VECTOR_F64X2_CEIL -> f64x2_floorOrCeil(x, -0.0, 1.0, 1.0);
+            case Bytecode.VECTOR_F64X2_FLOOR -> f64x2_floorOrCeil(x, -1.0, 0.0, -1.0);
             case Bytecode.VECTOR_F64X2_TRUNC -> f64x2_unop_fallback(x, ExactMath::truncate);
             case Bytecode.VECTOR_F64X2_NEAREST -> f64x2_unop_fallback(x, Math::rint);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> convert(x, F32X4, VectorOperators.F2I);
@@ -208,6 +208,41 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> convert(x, F32X4, VectorOperators.F2D);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
+    }
+
+    public static final int DOUBLE_SIGNIFICAND_WIDTH = Double.PRECISION;
+
+    public static final int DOUBLE_EXP_BIAS =
+            (1 << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1; // 1023
+
+    private static final long DOUBLE_EXP_BIT_MASK =
+                    ((1L << (Double.SIZE - DOUBLE_SIGNIFICAND_WIDTH)) - 1) << (DOUBLE_SIGNIFICAND_WIDTH - 1);
+
+    public static final long DOUBLE_SIGNIF_BIT_MASK = (1L << (DOUBLE_SIGNIFICAND_WIDTH - 1)) - 1;
+
+    private static LongVector getExponent(DoubleVector x) {
+        return x.viewAsIntegralLanes().and(DOUBLE_EXP_BIT_MASK).lanewise(VectorOperators.ASHR, DOUBLE_SIGNIFICAND_WIDTH - 1).sub(DOUBLE_EXP_BIAS);
+    }
+
+    private static ByteVector f64x2_floorOrCeil(ByteVector xBytes, double negativeBoundary, double positiveBoundary, double sign) {
+        DoubleVector x = xBytes.reinterpretAsDoubles();
+        LongVector exponent = getExponent(x);
+        VectorMask<Double> isNegativeExponent = exponent.lt(0).cast(F64X2.species());
+        VectorMask<Double> isZero = x.eq(0);
+        VectorMask<Double> isNegative = x.lt(0);
+        DoubleVector negativeExponentResult = DoubleVector.broadcast(F64X2.species(), positiveBoundary).blend(DoubleVector.broadcast(F64X2.species(), negativeBoundary), isNegative).blend(x, isZero);
+        VectorMask<Double> isHighExponent = exponent.compare(VectorOperators.GE, 52).cast(F64X2.species());
+        DoubleVector highExponentResult = x;
+        LongVector doppel = x.viewAsIntegralLanes();
+        Vector<Long> mask = I64X2.broadcast(DOUBLE_SIGNIF_BIT_MASK).lanewise(VectorOperators.ASHR, exponent);
+        VectorMask<Double> isIntegral = doppel.and(mask).eq(0).cast(F64X2.species());
+        DoubleVector integralResult = x;
+        DoubleVector fractional = doppel.and(mask.neg()).viewAsFloatingLanes();
+        VectorMask<Double> signMatch = x.mul(sign).compare(VectorOperators.GT, 0).cast(F64X2.species());
+        DoubleVector fractionalResult = fractional.blend(fractional.add(sign), signMatch);
+        DoubleVector defaultResult = fractionalResult.blend(integralResult, isIntegral);
+        DoubleVector result = defaultResult.blend(highExponentResult, isHighExponent).blend(negativeExponentResult, isNegativeExponent);
+        return result.reinterpretAsBytes();
     }
 
     public static ByteVector binary(ByteVector x, ByteVector y, int vectorOpcode) {
