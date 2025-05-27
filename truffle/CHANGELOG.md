@@ -22,6 +22,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Automatic reference type tracking based on assumptions, eliminating redundant type checks.
     * Automatic single-assignment tracking based on assumptions allowing languages to assume that a property is effectively final (i.e. stays unchanged after the initial assignment) as well as constant-fold values of a constant receiver with a known shape.
     * You can still disable the new layout and switch back to the previous implementation using the system property: `-Dtruffle.object.LayoutFactory=com.oracle.truffle.api.object.CoreLayoutFactory`.
+* GR-64488 Added `TruffleFile#getFileStoreInfo()` providing access to disk-related metadata such as total size, usable space, unallocated space and block size.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
