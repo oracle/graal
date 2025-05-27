@@ -490,7 +490,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         AddressNode address = createFieldAddress(graph, object, field);
 
         BarrierType barrierType = barrierSet.fieldReadBarrierType(field, getStorageKind(field));
-        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()), loadStamp, barrierType, loadField.getMemoryOrder()));
+        ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()),
+                        loadStamp, barrierType, loadField.getMemoryOrder(), loadField.field(), loadField.trustInjected()));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
