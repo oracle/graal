@@ -89,8 +89,10 @@ public class KnownIntrinsics {
      * Note that this is very dangerous. You have to know what you are doing. The parameters are not
      * checked for correctness in any way.
      *
-     * Consider that invoking a method or stub this way will result in a missing or corrupt return
-     * address (e.g., the return address is taken from a link register that does not get set here)
+     * Consider that invoking a method or stub this way can result in a missing return address and
+     * therefore an unwalkable stack when the return address is expected to be pushed by the caller
+     * (such as on AMD64). On other platforms, we set the link register here which the callee will
+     * push on the stack (such as on AArch64).
      */
     public static native void farReturn(Object result, Pointer sp, CodePointer ip, boolean fromMethodWithCalleeSavedRegisters);
 
