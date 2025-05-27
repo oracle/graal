@@ -176,12 +176,12 @@ suite = {
 
     "JSON" : {
       "moduleName" : "org.json",
-      "digest" : "sha512:a5cdd1ed984448d6538746429f2d1a0ec8f64f93af0e84870ce898a9f07a81d11bf27d2ee081471975772efc8a0d3d5e05541197a532066e9edb09ad032d31a3",
-      "sourceDigest" : "sha512:80b382663f1bfd31f668eeb083a0a5a1620153e195e5b030da8f4c320f6126d7183ecb11f4b1afc8408a385c0918caa9f77942376499f9723dd7134dadd57a89",
+      "digest" : "sha512:486459450e13f1e291b9ab8fa62829132171f8102b7051e904c166a9f958f04149603d8aa3e3c939301226fd5b528d5900aff9acb7953b4c87e864c97c192fcb",
+      "sourceDigest" : "sha512:b1ca3a30fbb770015a920c016cedcb315ff7a1c0145b7769460435dd1264d8820ee7a9c15129bdb42f28ae974fa3c010e99a5311773fd7b145f93d021d1ad8e6",
       "maven" : {
         "groupId" : "org.json",
         "artifactId" : "json",
-        "version" : "20231013",
+        "version" : "20250517",
       },
     },
 
