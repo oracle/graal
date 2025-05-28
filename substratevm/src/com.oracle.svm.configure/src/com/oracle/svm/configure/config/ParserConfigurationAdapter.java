@@ -53,6 +53,12 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
+    public TypeResult<List<ConfigurationType>> resolveTypes(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
+        TypeResult<ConfigurationType> result = resolveType(condition, typeDescriptor, allowPrimitives, jniAccessible);
+        return TypeResult.toList(result);
+    }
+
+    @Override
     public void registerType(UnresolvedConfigurationCondition condition, ConfigurationType type) {
         checkArguments(condition.equals(type.getCondition()), "condition is already a part of the type");
         configuration.add(type);
