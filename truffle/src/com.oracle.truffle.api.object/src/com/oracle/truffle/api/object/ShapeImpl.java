@@ -510,17 +510,18 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         return getLayoutStrategy().addProperty(this, property);
     }
 
-    @TruffleBoundary
-    protected void onPropertyTransition(Property property) {
-        onPropertyTransitionWithKey(property.getKey());
+    protected final void onPropertyTransition(Transition.PropertyTransition propertyTransition) {
+        if (allowPropertyAssumptions()) {
+            invalidatePropertyAssumption(propertyTransition.getPropertyKey(), propertyTransition.isDirect());
+        }
     }
 
-    final void onPropertyTransitionWithKey(Object propertyKey) {
-        if (allowPropertyAssumptions()) {
-            PropertyAssumptions propertyAssumptions = getPropertyAssumptions();
-            if (propertyAssumptions != null) {
-                propertyAssumptions.invalidatePropertyAssumption(propertyKey);
-            }
+    private void invalidatePropertyAssumption(Object propertyKey, boolean onlyExisting) {
+        PropertyAssumptions propertyAssumptions = onlyExisting
+                        ? getPropertyAssumptions()
+                        : getOrCreatePropertyAssumptions();
+        if (propertyAssumptions != null) {
+            propertyAssumptions.invalidatePropertyAssumption(propertyKey, onlyExisting);
         }
     }
 
@@ -1023,7 +1024,8 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     @TruffleBoundary
     @Override
     public Assumption getPropertyAssumption(Object key) {
-        if (allowPropertyAssumptions()) {
+        // Deny new property assumptions from being made if shape is already obsolete.
+        if (allowPropertyAssumptions() && this.isValid()) {
             Assumption propertyAssumption = getOrCreatePropertyAssumptions().getPropertyAssumption(key);
             if (propertyAssumption != null && propertyAssumption.isValid()) {
                 return propertyAssumption;
@@ -1228,14 +1230,32 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
             return assumption;
         }
 
-        synchronized void invalidatePropertyAssumption(Object propertyName) {
+        synchronized void invalidatePropertyAssumption(Object propertyName, boolean onlyExisting) {
             CompilerAsserts.neverPartOfCompilation();
             EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
             Assumption assumption = map.get(propertyName);
-            if (assumption != null && assumption != Assumption.NEVER_VALID) {
+            if (assumption == Assumption.NEVER_VALID) {
+                return;
+            }
+            if (assumption != null) {
                 assumption.invalidate("invalidatePropertyAssumption");
+            }
+            /*
+             * Direct property transitions can happen only once per object as they always lead to
+             * new shapes, so we only need to invalidate already registered assumptions.
+             *
+             * Indirect property transitions, OTOH, can form transition cycles in the shape tree
+             * that may cause toggling between existing shapes for the same object, and since
+             * already cached shape transitions fly under the radar of future property assumptions,
+             * we have to block any future assumptions from being registered for this property.
+             */
+            if (assumption != null || !onlyExisting) {
                 map.put(propertyName, Assumption.NEVER_VALID);
-                propertyAssumptionsRemoved.inc();
+                if (assumption != null) {
+                    propertyAssumptionsRemoved.inc();
+                } else {
+                    propertyAssumptionsBlocked.inc();
+                }
             }
         }
 
@@ -1260,6 +1280,7 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
     static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter propertyAssumptionsBlocked = DebugCounter.create("Property assumptions blocked");
     static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
     static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 
