@@ -30,14 +30,19 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.LayerVerification;
 import com.oracle.svm.core.option.LayerVerification.Kind;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.OptionLayerVerificationRequests;
+import com.oracle.svm.hosted.imagelayer.LoadLayerArchiveSupport.ArgumentOrigin.NameValue;
 import com.oracle.svm.hosted.util.DiffTool;
 import com.oracle.svm.util.LogUtils;
 
@@ -66,27 +71,29 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
-    public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport, Map<String, Map<Kind, LayerVerification>> verifications) {
+    public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport, Map<String, OptionLayerVerificationRequests> allRequests, boolean strict) {
+        Function<String, String> filterFunction = argument -> splitArgumentOrigin(argument).argument;
+        verifyCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, true);
+        verifyCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, false);
+    }
 
-        // var errorMessagePrefix = "Layer Compatibility Error: ";
-        var strippedBuilderArguments = builderArguments.stream()
-                        .map(argument -> splitArgumentOrigin(argument).argument)
-                        .toList();
-        List<String> currentBuilderArguments = classLoaderSupport.getHostedOptionParser().getArguments();
-        var strippedCurrentBuilderArguments = currentBuilderArguments.stream()
-                        .map(argument -> splitArgumentOrigin(argument).argument)
-                        .toList();
+    private static void verifyCompatibility(List<String> parentArgs, List<String> currentArgs, Function<String, String> filterFunction,
+                    Map<String, OptionLayerVerificationRequests> allRequests, boolean strict, boolean positional) {
 
-        var diffResults = DiffTool.diffResults(strippedBuilderArguments, strippedCurrentBuilderArguments);
-
-        if (Boolean.getBoolean("org.graalvm.nativeimage.layers.verification.verbose") && !diffResults.isEmpty()) {
-            System.out.println("{".repeat(40));
-            for (var diffResult : diffResults) {
-                System.out.println(diffResult.toString(builderArguments, currentBuilderArguments));
-            }
-            System.out.println("}".repeat(40));
+        List<String> left;
+        List<String> right;
+        if (positional) {
+            left = parentArgs;
+            right = currentArgs;
+        } else {
+            // Use sorted lists for position-independent diff results
+            left = parentArgs.stream().sorted().toList();
+            right = currentArgs.stream().sorted().toList();
         }
 
+        List<String> filteredLeft = left.stream().map(filterFunction).toList();
+        List<String> filteredRight = right.stream().map(filterFunction).toList();
+        var diffResults = DiffTool.diffResults(filteredLeft, filteredRight);
         for (var diffResult : diffResults) {
             Set<Kind> verificationKinds = switch (diffResult.kind()) {
                 case Removed -> Set.of(Kind.Removed, Kind.Changed);
@@ -94,35 +101,44 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
                 default -> Set.of();
             };
             for (Kind verificationKind : verificationKinds) {
-                ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(builderArguments, currentBuilderArguments));
-                Map<Kind, LayerVerification> perOptionVerifications = verifications.get(argumentOrigin.nameValue().name);
+                ArgumentOrigin argumentOrigin = splitArgumentOrigin(diffResult.getEntry(left, right));
+                NameValue argumentNameAndValue = argumentOrigin.nameValue();
+                var perOptionVerifications = allRequests.get(argumentNameAndValue.name);
                 if (perOptionVerifications == null) {
                     continue;
                 }
-                LayerVerification verification = perOptionVerifications.get(verificationKind);
-                if (verification != null) {
-                    OptionOrigin origin = OptionOrigin.from(argumentOrigin.origin);
-                    String message = "Parent layer '" + layerProperties.layerName() + "' specified via layer-file '" + layerFile.getFileName() + "'" +
-                                    " was built with option argument '" + argumentOrigin.argument + "' from " + origin + ".";
-                    String suffix;
-                    if (!verification.Message().isEmpty()) {
-                        suffix = verification.Message();
-                    } else {
-                        suffix = switch (verificationKind) {
-                            case Removed, Changed -> "This is also required to be specified for the current layered image build.";
-                            case Added -> "This is also required to be specified for the parent layer build.";
-                        };
-                    }
-                    message += " " + suffix;
-                    switch (verification.Severity()) {
-                        case Info -> LogUtils.info(message);
-                        case Warn -> LogUtils.warning(message);
-                        case Error -> {
-                            if (!Boolean.getBoolean("org.graalvm.nativeimage.layers.verification.strict")) {
-                                LogUtils.warning(message);
-                            } else {
-                                UserError.abort(message);
-                            }
+                LayerVerification request = perOptionVerifications.requests().get(verificationKind);
+                if (request == null || request.Positional() != positional) {
+                    continue;
+                }
+
+                OptionOrigin origin = OptionOrigin.from(argumentOrigin.origin);
+                String argument = SubstrateOptionsParser.commandArgument(perOptionVerifications.option().getOptionKey(), argumentNameAndValue.value);
+                String message = switch (diffResult.kind()) {
+                    case Removed -> "Parent layer was";
+                    case Added -> "Current layer gets";
+                    case Equal -> throw VMError.shouldNotReachHere("diff for equal");
+                } + " built with option argument '" + argument + "' from " + origin + ".";
+                String suffix;
+                if (!request.Message().isEmpty()) {
+                    suffix = request.Message();
+                } else {
+                    /* fallback to generic verification message */
+                    suffix = "This is also required to be specified for the " + switch (diffResult.kind()) {
+                        case Removed -> "current layered image build";
+                        case Added -> "parent layer build";
+                        case Equal -> throw VMError.shouldNotReachHere("diff for equal");
+                    };
+                }
+                message += " " + suffix + (positional ? " at the same position." : ".");
+                switch (request.Severity()) {
+                    case Info -> LogUtils.info(message);
+                    case Warn -> LogUtils.warning(message);
+                    case Error -> {
+                        if (strict) {
+                            UserError.abort(message);
+                        } else {
+                            LogUtils.warning(message);
                         }
                     }
                 }

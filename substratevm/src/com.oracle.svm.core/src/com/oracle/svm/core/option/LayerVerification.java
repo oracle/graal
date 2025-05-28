@@ -59,4 +59,6 @@ public @interface LayerVerification {
         Changed,
         Added
     }
+
+    boolean Positional() default true;
 }

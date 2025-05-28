@@ -282,7 +282,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         if (buildingExtensionLayer) {
             Path layerFileName = getLayerUseValue(values);
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerName, layerFileName, builderTempDir, archiveSupport);
-            loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader));
+            boolean strict = SubstrateOptions.LayerVerificationStrict.getValue(values);
+            loadLayerArchiveSupport.verifyCompatibility(imageClassLoader.classLoaderSupport, collectLayerVerifications(imageClassLoader), strict);
             try {
                 graphsChannel = FileChannel.open(loadLayerArchiveSupport.getSnapshotGraphsPath());
 
@@ -307,15 +308,21 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return imageLayerBuildingSupport;
     }
 
-    public static Map<String, Map<LayerVerification.Kind, LayerVerification>> collectLayerVerifications(ImageClassLoader loader) {
+    record OptionLayerVerificationRequests(OptionDescriptor option, Map<LayerVerification.Kind, LayerVerification> requests) {
+        public OptionLayerVerificationRequests(OptionDescriptor option) {
+            this(option, new HashMap<>());
+        }
+    }
+
+    public static Map<String, OptionLayerVerificationRequests> collectLayerVerifications(ImageClassLoader loader) {
         Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(loader.getClassLoader());
         EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
         HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
-        Map<String, Map<LayerVerification.Kind, LayerVerification>> result = new HashMap<>();
+        Map<String, OptionLayerVerificationRequests> result = new HashMap<>();
         for (OptionDescriptor optionDescriptor : hostedOptions.getValues()) {
             for (LayerVerification layerVerification : OptionUtils.getAnnotationsByType(optionDescriptor, LayerVerification.class)) {
-                result.computeIfAbsent(optionDescriptor.getName(), key -> new HashMap()).put(layerVerification.Kind(), layerVerification);
+                result.computeIfAbsent(optionDescriptor.getName(), key -> new OptionLayerVerificationRequests(optionDescriptor)).requests.put(layerVerification.Kind(), layerVerification);
             }
         }
         return result;

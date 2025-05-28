@@ -173,6 +173,9 @@ public class SubstrateOptions {
     @BundleMember(role = Role.Input) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
+    @Option(help = "Experimental: Perform strict checking of options used for layered image build.")//
+    public static final HostedOptionKey<Boolean> LayerVerificationStrict = new HostedOptionKey<>(true);
+
     @Option(help = "Mark singleton as application layer only")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerOnlySingletons = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
