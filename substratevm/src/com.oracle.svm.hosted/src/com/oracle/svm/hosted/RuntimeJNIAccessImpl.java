@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure;
+package com.oracle.svm.hosted;
 
-import java.util.Collection;
-import java.util.Locale;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RegistrationCondition;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
-public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
+public final class RuntimeJNIAccessImpl implements RuntimeJNIAccess {
 
-    @SuppressWarnings("unchecked")
-    static ResourcesRegistry<RegistrationCondition> singleton() {
-        return ImageSingletons.lookup(ResourcesRegistry.class);
-    }
-
-    void addClassBasedResourceBundle(C condition, String basename, String className);
-
-    /**
-     * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
-     * reflectively.
-     */
-    @Deprecated
-    default void addResources(C condition, String pattern) {
-        addResources(condition, pattern, "unknown");
+    @Override
+    public void register(RegistrationCondition condition, Class<?>... classes) {
+        DynamicAccessSupport.printUserError("following classes for JNI access: " + Arrays.toString(classes));
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, classes);
     }
 
     @Override
-    void ignoreResources(C condition, String pattern);
+    public void register(RegistrationCondition condition, Executable... methods) {
+        DynamicAccessSupport.printUserError("following methods for JNI access: " + Arrays.toString(methods));
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, methods);
+    }
 
     @Override
-    void addResourceBundles(C condition, String name);
-
-    @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    public void register(RegistrationCondition condition, Field... fields) {
+        DynamicAccessSupport.printUserError("following fields for JNI access: " + Arrays.toString(fields));
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(condition, false, fields);
+    }
 }

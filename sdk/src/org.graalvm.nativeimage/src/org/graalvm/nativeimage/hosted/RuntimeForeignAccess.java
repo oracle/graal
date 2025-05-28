@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,77 @@ import java.lang.invoke.MethodType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class RuntimeForeignAccess {
+public interface RuntimeForeignAccess {
+
+    /**
+     * Registers the provided function descriptor and options pair at image build time for downcalls
+     * into foreign code, if the {@code condition} is satisfied. Required to get a downcall method
+     * handle using {@link java.lang.foreign.Linker#downcallHandle} for the same descriptor and
+     * options at runtime.
+     * <p>
+     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * performed to ensure that the arguments have the expected type. It will be deprecated in favor
+     * of strongly typed variant as soon as possible.
+     *
+     * @param condition represents the condition that needs to be satisfied in order to register
+     *            target resources.
+     * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for downcalls.
+     * @param options An array of {@link java.lang.foreign.Linker.Option} used for the downcalls.
+     *
+     * @since 23.1
+     */
+    void registerForDowncall(RegistrationCondition condition, Object desc, Object... options);
+
+    /**
+     * Registers the provided function descriptor and options pair at image build time for upcalls
+     * from foreign code, if the {@code condition} is satisfied. Required to get an upcall stub
+     * function pointer using {@link java.lang.foreign.Linker#upcallStub} for the same descriptor
+     * and options at runtime.
+     * <p>
+     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * performed to ensure that the arguments have the expected type. It will be deprecated in favor
+     * of strongly typed variant as soon as possible.
+     *
+     * @param condition represents the condition that needs to be satisfied in order to register
+     *            target resources.
+     * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
+     * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
+     *
+     * @since 24.1
+     */
+    void registerForUpcall(RegistrationCondition condition, Object desc, Object... options);
+
+    /**
+     * Registers a specific static method (denoted by a method handle) as a fast upcall target, if
+     * the {@code condition} is satisfied. This will create a specialized upcall stub that will
+     * invoke only the specified method, which is much faster than using
+     * {@link #registerForUpcall(Object, Object...)}).
+     * <p>
+     * The provided method handle must be a direct method handle. Those are most commonly created
+     * using {@link java.lang.invoke.MethodHandles.Lookup#findStatic(Class, String, MethodType)}.
+     * However, a strict requirement is that it must be possible to create a non-empty descriptor
+     * for the method handle using {@link MethodHandle#describeConstable()}. The denoted static
+     * method will also be registered for reflective access since run-time code will also create a
+     * method handle to denoted static method.
+     * </p>
+     * <p>
+     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * performed to ensure that the arguments have the expected type. It will be deprecated in favor
+     * of strongly typed variant as soon as possible.
+     * </p>
+     * 
+     * @param condition represents the condition that needs to be satisfied in order to register
+     *            target resources.
+     * @param target A direct method handle denoting a static method.
+     * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
+     * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
+     *
+     * @since 24.2
+     */
+    void registerForDirectUpcall(RegistrationCondition condition, MethodHandle target, Object desc, Object... options);
 
     /**
      * Registers the provided function descriptor and options pair at image build time for downcalls
@@ -67,8 +133,8 @@ public final class RuntimeForeignAccess {
      *
      * @since 23.1
      */
-    public static void registerForDowncall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
+    static void registerForDowncall(Object desc, Object... options) {
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(RegistrationCondition.always(), desc, options);
     }
 
     /**
@@ -85,8 +151,8 @@ public final class RuntimeForeignAccess {
      *
      * @since 24.1
      */
-    public static void registerForUpcall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(ConfigurationCondition.alwaysTrue(), desc, options);
+    static void registerForUpcall(Object desc, Object... options) {
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(RegistrationCondition.always(), desc, options);
     }
 
     /**
@@ -113,10 +179,7 @@ public final class RuntimeForeignAccess {
      *
      * @since 24.2
      */
-    public static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), target, desc, options);
-    }
-
-    private RuntimeForeignAccess() {
+    static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(RegistrationCondition.always(), target, desc, options);
     }
 }

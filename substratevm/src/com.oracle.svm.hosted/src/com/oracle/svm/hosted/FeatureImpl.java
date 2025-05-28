@@ -50,8 +50,10 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
+import org.graalvm.nativeimage.hosted.RuntimeForeignAccess;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -97,6 +99,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
@@ -189,6 +192,26 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public RuntimeReflectionImpl getRuntimeReflection() {
+            return new RuntimeReflectionImpl();
+        }
+
+        @Override
+        public RuntimeResourceAccess getRuntimeResourceAccess() {
+            return new RuntimeResourceAccessImpl();
+        }
+
+        @Override
+        public RuntimeJNIAccess getRuntimeJNIAccess() {
+            return new RuntimeJNIAccessImpl();
+        }
+
+        @Override
+        public RuntimeForeignAccess getRuntimeForeignAccess() {
+            return new RuntimeForeignAccessImpl();
         }
     }
 
@@ -409,7 +432,7 @@ public class FeatureImpl {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
-            classForNameSupport.registerUnsafeAllocated(ConfigurationCondition.alwaysTrue(), aType.getJavaClass());
+            classForNameSupport.registerUnsafeAllocated(RegistrationCondition.always(), aType.getJavaClass());
         }
 
         @Override
