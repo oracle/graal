@@ -515,21 +515,23 @@ public class NativeImageGenerator {
         setSystemPropertiesForImageLate(k);
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
-        HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader);
-        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.buildingImageLayer), imageLayerSupport);
+        var tempDirectoryOptionValue = NativeImageOptions.TempDirectory.getValue(hostedOptionValues).lastValue().orElse(null);
+        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
+            var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
+            HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
+            ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.buildingImageLayer), imageLayerSupport);
 
-        ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
-        ImageSingletons.add(ProgressReporter.class, reporter);
-        ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
-        ImageSingletons.add(TimerCollection.class, timerCollection);
-        ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
-        ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
-        ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
-        ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
-        ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-
-        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
+            ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
+            ImageSingletons.add(ProgressReporter.class, reporter);
+            ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
+            ImageSingletons.add(TimerCollection.class, timerCollection);
+            ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
+            ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
+            ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
+            ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
+            ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
+
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
         } finally {
             reporter.ensureCreationStageEndCompleted();
@@ -563,7 +565,7 @@ public class NativeImageGenerator {
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, debug);
+            setupNativeImage(options, entryPoints, javaMainSupport, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -758,7 +760,7 @@ public class NativeImageGenerator {
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.ARCHIVE_LAYER)) {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     ImageSingletonsSupportImpl.HostedManagement.persist();
-                    HostedImageLayerBuildingSupport.singleton().archiveLayer(imageName);
+                    HostedImageLayerBuildingSupport.singleton().archiveLayer();
                 }
             }
             reporter.printCreationEnd(image.getImageFileSize(), heap.getLayerObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize(),
@@ -917,7 +919,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    protected void setupNativeImage(String imageName, OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
+    protected void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
                     SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
@@ -996,7 +998,6 @@ public class NativeImageGenerator {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     SVMImageLayerWriter imageLayerWriter = HostedConfiguration.instance().createSVMImageLayerWriter(imageLayerSnapshotUtil, useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
                     HostedImageLayerBuildingSupport.singleton().setWriter(imageLayerWriter);
-                    HostedImageLayerBuildingSupport.setupImageLayerArtifacts(imageName);
                 }
 
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {

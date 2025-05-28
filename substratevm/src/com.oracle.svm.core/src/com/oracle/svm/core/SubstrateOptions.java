@@ -61,6 +61,9 @@ import com.oracle.svm.core.option.BundleMember.Role;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.LayerVerification;
+import com.oracle.svm.core.option.LayerVerification.Kind;
+import com.oracle.svm.core.option.LayerVerification.Severity;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -90,6 +93,7 @@ public class SubstrateOptions {
     static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
@@ -169,6 +173,9 @@ public class SubstrateOptions {
     @BundleMember(role = Role.Input) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
+    @Option(help = "Experimental: Perform strict checking of options used for layered image build.")//
+    public static final HostedOptionKey<Boolean> LayerVerificationStrict = new HostedOptionKey<>(true);
+
     @Option(help = "Mark singleton as application layer only")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerOnlySingletons = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -195,6 +202,7 @@ public class SubstrateOptions {
         }
     };
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
     public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("") {
@@ -314,6 +322,7 @@ public class SubstrateOptions {
 
     }
 
+    @LayerVerification(Severity = Severity.Error, Kind = Kind.Changed)//
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
     @Option(help = "Control code optimizations: b - optimize for fastest build time, s - optimize for size, " +
                     "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
@@ -488,6 +497,7 @@ public class SubstrateOptions {
         SubstrateOptions.imageLayerCreateEnabledHandler = updateHandler;
     }
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
@@ -565,6 +575,7 @@ public class SubstrateOptions {
 
     public static class DeprecatedOptions {
 
+        @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
         @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
         @Option(help = "Use a serial GC", deprecated = true, deprecationMessage = "Please use '--gc=serial' instead")//
         public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true) {
@@ -579,6 +590,7 @@ public class SubstrateOptions {
             }
         };
 
+        @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
         @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
         @Option(help = "Use a no-op GC", deprecated = true, deprecationMessage = "Please use '--gc=epsilon' instead")//
         public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false) {
@@ -593,9 +605,11 @@ public class SubstrateOptions {
         };
     }
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Enable detection and runtime container configuration support.")//
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
@@ -660,9 +674,11 @@ public class SubstrateOptions {
     @Option(help = "Trace all native tool invocations as part of image building", type = User)//
     public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Prefix that is added to the names of API functions.", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
 
@@ -678,6 +694,7 @@ public class SubstrateOptions {
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @SuppressWarnings("unused") //
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @APIOption(name = "enable-all-security-services")//
     @Option(help = "Add all security service classes to the generated image.", deprecated = true)//
     public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<>(false);
@@ -795,20 +812,25 @@ public class SubstrateOptions {
         return SubstrateOptions.useSerialGC() ? 0 : 1;
     }
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Sets the prefetch instruction to prefetch ahead of the allocation pointer. Possible values are from 0 to 3. The actual instructions behind the values depend on the platform.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchInstr = new HostedOptionKey<>(0);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
                     "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
                     "Each Java thread has its own allocation point.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(192);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(64);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
     public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Add additional header bytes to each object, for diagnostic purposes.", type = OptionType.Debug) //
     public static final HostedOptionKey<Integer> AdditionalHeaderBytes = new HostedOptionKey<>(0, SubstrateOptions::validateAdditionalHeaderBytes);
 
@@ -819,6 +841,7 @@ public class SubstrateOptions {
         }
     }
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Fill unused and freed native memory with sentinel values. Needs NMT.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> ZapNativeMemory = new HostedOptionKey<>(false, SubstrateOptions::validateZapNativeMemory);
 
@@ -833,9 +856,11 @@ public class SubstrateOptions {
      * Isolate tear down options.
      */
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message.  0 implies no warning.")//
     public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message.  0 implies no message.")//
     public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
@@ -862,9 +887,11 @@ public class SubstrateOptions {
     @Option(help = "Deprecated", deprecated = true)//
     static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
+    @LayerVerification(Kind = Kind.Removed, Severity = Severity.Error, Positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -880,6 +907,7 @@ public class SubstrateOptions {
     @Option(help = "The maximum number of nodes in a graph allowed after trivial inlining.")//
     public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(Integer.MAX_VALUE);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
@@ -889,12 +917,14 @@ public class SubstrateOptions {
         return SubstrateOptions.PreserveFramePointer.getValue() || Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.RISCV64.class);
     }
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: Reachable, Instantiated).", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir") {
         @Override
@@ -938,15 +968,19 @@ public class SubstrateOptions {
         return "lir".equals(CompilerBackend.getValue());
     }
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(true);
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +
                     "Using global symbols is problematic for shared libraries because the loader implicitly changes the value when the symbol is already defined in the executable loading the library. " +
                     "Setting this option to true preserves the broken behavior of old Native Image versions.")//
     public static final HostedOptionKey<Boolean> InternalSymbolsAreGlobal = new HostedOptionKey<>(false);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
 
@@ -956,6 +990,7 @@ public class SubstrateOptions {
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @APIOption(name = "native-compiler-path")//
     @Option(help = "Provide custom path to C compiler used for query code compilation and linking.", type = OptionType.User)//
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
@@ -976,6 +1011,7 @@ public class SubstrateOptions {
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Determines if a null region is present between the heap base and the image heap.", type = Expert)//
     public static final HostedOptionKey<Boolean> UseNullRegion = new HostedOptionKey<>(true);
 
@@ -1005,9 +1041,11 @@ public class SubstrateOptions {
     @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> AllowVMInternalThreads = new HostedOptionKey<>(true);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Determines if debugging-specific helper methods are embedded into the image. Those methods can be called directly from the debugger to obtain or print additional information.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeDebugHelperMethods = new HostedOptionKey<>(false);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
@@ -1142,18 +1180,22 @@ public class SubstrateOptions {
         protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
         /** Use {@link SubstrateOptions#needsExitHandlers()} instead. */
+        @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
         @APIOption(name = "install-exit-handlers")//
         @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
         protected static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
+        @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, IsolateCreationOnly);
 
         /** Use {@link SubstrateOptions#getAllocatePrefetchStyle()} instead. */
+        @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
         @Option(help = "Generated code style for prefetch instructions: for 0 or less no prefetch instructions are generated and for 1 or more prefetch instructions are introduced after each allocation.")//
         public static final HostedOptionKey<Integer> AllocatePrefetchStyle = new HostedOptionKey<>(null);
 
         /** Use {@link SubstrateOptions#codeAlignment()} instead. */
+        @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
         @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
         public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);
 
@@ -1181,6 +1223,7 @@ public class SubstrateOptions {
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
     public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
         @Override
@@ -1197,6 +1240,7 @@ public class SubstrateOptions {
         }
     };
 
+    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
     @Option(help = "Determines if the system locale should be used at run-time. If this is disabled, the locale 'en-US' will be used instead.", stability = OptionStability.EXPERIMENTAL, type = Expert)//
     public static final HostedOptionKey<Boolean> UseSystemLocale = new HostedOptionKey<>(true);
 
