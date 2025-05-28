@@ -286,8 +286,12 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     /**
      * Gets the inlined call stack for this context. A list with only one element implies that no
      * inlining has taken place.
+     *
+     * @param ignoreInvocationPluginTarget if set to true, and {@link #isParsingInvocationPlugin()}
+     *            returns true, the resulting call stack does not include the target of the
+     *            invocation plugin.
      */
-    default List<StackTraceElement> getCallStack() {
+    default List<StackTraceElement> getCallStack(boolean ignoreInvocationPluginTarget) {
         List<StackTraceElement> callStack = new ArrayList<>();
         for (GraphBuilderContext cur = this; cur != null; cur = cur.getParent()) {
             callStack.add(cur.getMethod().asStackTraceElement(cur.bci()));

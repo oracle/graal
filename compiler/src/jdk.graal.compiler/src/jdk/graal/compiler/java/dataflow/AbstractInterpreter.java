@@ -246,9 +246,9 @@ import static jdk.graal.compiler.bytecode.Bytecodes.SASTORE;
 import static jdk.graal.compiler.bytecode.Bytecodes.SIPUSH;
 import static jdk.graal.compiler.bytecode.Bytecodes.SWAP;
 import static jdk.graal.compiler.bytecode.Bytecodes.TABLESWITCH;
-import static jdk.graal.compiler.java.dataflow.AbstractFrame.SizedValue.Slots.ONE_SLOT;
-import static jdk.graal.compiler.java.dataflow.AbstractFrame.SizedValue.Slots.TWO_SLOTS;
-import static jdk.graal.compiler.java.dataflow.AbstractFrame.SizedValue.wrap;
+import static jdk.graal.compiler.java.dataflow.AbstractFrame.ValueWithSlots.Slots.ONE_SLOT;
+import static jdk.graal.compiler.java.dataflow.AbstractFrame.ValueWithSlots.Slots.TWO_SLOTS;
+import static jdk.graal.compiler.java.dataflow.AbstractFrame.ValueWithSlots.wrap;
 
 /**
  * A {@link ForwardDataFlowAnalyzer} where the data flow state is represented by an abstract
@@ -297,7 +297,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         int numParameters = signature.getParameterCount(false);
         for (int parameterIndex = 0; parameterIndex < numParameters; parameterIndex++) {
             JavaKind kind = signature.getParameterKind(parameterIndex);
-            AbstractFrame.SizedValue<T> value = wrap(storeMethodArgument(method, parameterIndex, variableIndex), getSizeForKind(kind));
+            AbstractFrame.ValueWithSlots<T> value = wrap(storeMethodArgument(method, parameterIndex, variableIndex), getSizeForKind(kind));
             state.localVariableTable().put(variableIndex, value);
             variableIndex += kind.needsTwoSlots() ? 2 : 1;
         }
@@ -314,7 +314,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         AbstractFrame<T> exceptionPathState = new AbstractFrame<>(inState);
         exceptionPathState.operandStack().clear();
 
-        AbstractFrame.SizedValue<T> exceptionObject = wrap(pushExceptionObject(exceptionTypes), ONE_SLOT);
+        AbstractFrame.ValueWithSlots<T> exceptionObject = wrap(pushExceptionObject(exceptionTypes), ONE_SLOT);
         exceptionPathState.operandStack().push(exceptionObject);
         return exceptionPathState;
     }
@@ -333,7 +333,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     @Override
     @SuppressWarnings("DuplicateBranchesInSwitch")
-    protected AbstractFrame<T> processInstruction(AbstractFrame<T> inState, BytecodeStream stream, Bytecode code) throws DataFlowAnalysisException {
+    protected AbstractFrame<T> processInstruction(AbstractFrame<T> inState, BytecodeStream stream, Bytecode code) {
         AbstractFrame<T> outState = copyState(inState);
 
         int bci = stream.currentBCI();
@@ -610,7 +610,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         return lookupAppendix(code.getConstantPool(), cpi, opcode);
     }
 
-    private void handleConstant(Context context, AbstractFrame<T> state, Object value, AbstractFrame.SizedValue.Slots size) {
+    private void handleConstant(Context context, AbstractFrame<T> state, Object value, AbstractFrame.ValueWithSlots.Slots size) {
         if (value == null) {
             /*
              * The constant is an unresolved JVM_CONSTANT_Dynamic, JVM_CONSTANT_MethodHandle or
@@ -627,18 +627,18 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handleVariableLoad(Context context, AbstractFrame<T> state, int variableIndex) {
-        AbstractFrame.SizedValue<T> value = state.localVariableTable().get(variableIndex);
+        AbstractFrame.ValueWithSlots<T> value = state.localVariableTable().get(variableIndex);
         state.operandStack().push(wrap(loadVariable(context, state, variableIndex, value.value()), value.size()));
     }
 
-    private void handleArrayElementLoad(Context context, AbstractFrame<T> state, AbstractFrame.SizedValue.Slots size) {
+    private void handleArrayElementLoad(Context context, AbstractFrame<T> state, AbstractFrame.ValueWithSlots.Slots size) {
         T index = state.operandStack().pop().value();
         T array = state.operandStack().pop().value();
         state.operandStack().push(wrap(loadArrayElement(context, state, array, index), size));
     }
 
     private void handleVariableStore(Context context, AbstractFrame<T> state, int variableIndex) {
-        AbstractFrame.SizedValue<T> value = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> value = state.operandStack().pop();
         state.localVariableTable().put(variableIndex, wrap(storeVariable(context, state, variableIndex, value.value()), value.size()));
     }
 
@@ -654,7 +654,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handlePop2(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> value = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> value = state.operandStack().pop();
         if (value.size() == ONE_SLOT) {
             state.operandStack().pop();
         }
@@ -665,18 +665,18 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handleDupX1(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> first = state.operandStack().pop();
-        AbstractFrame.SizedValue<T> second = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
         state.operandStack().push(first);
         state.operandStack().push(second);
         state.operandStack().push(first);
     }
 
     private void handleDupX2(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> first = state.operandStack().pop();
-        AbstractFrame.SizedValue<T> second = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
         if (second.size() == ONE_SLOT) {
-            AbstractFrame.SizedValue<T> third = state.operandStack().pop();
+            AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
             state.operandStack().push(first);
             state.operandStack().push(third);
         } else {
@@ -687,9 +687,9 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handleDup2(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> first = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
         if (first.size() == ONE_SLOT) {
-            AbstractFrame.SizedValue<T> second = state.operandStack().peek();
+            AbstractFrame.ValueWithSlots<T> second = state.operandStack().peek();
             state.operandStack().push(first);
             state.operandStack().push(second);
             state.operandStack().push(first);
@@ -700,10 +700,10 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handleDup2X1(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> first = state.operandStack().pop();
-        AbstractFrame.SizedValue<T> second = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
         if (first.size() == ONE_SLOT) {
-            AbstractFrame.SizedValue<T> third = state.operandStack().pop();
+            AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
             state.operandStack().push(second);
             state.operandStack().push(first);
             state.operandStack().push(third);
@@ -715,12 +715,12 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handleDup2X2(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> first = state.operandStack().pop();
-        AbstractFrame.SizedValue<T> second = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
         if (first.size() == ONE_SLOT) {
-            AbstractFrame.SizedValue<T> third = state.operandStack().pop();
+            AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
             if (third.size() == ONE_SLOT) {
-                AbstractFrame.SizedValue<T> fourth = state.operandStack().pop();
+                AbstractFrame.ValueWithSlots<T> fourth = state.operandStack().pop();
                 state.operandStack().push(second);
                 state.operandStack().push(first);
                 state.operandStack().push(fourth);
@@ -731,7 +731,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
             state.operandStack().push(third);
         } else {
             if (second.size() == ONE_SLOT) {
-                AbstractFrame.SizedValue<T> third = state.operandStack().pop();
+                AbstractFrame.ValueWithSlots<T> third = state.operandStack().pop();
                 state.operandStack().push(first);
                 state.operandStack().push(third);
             } else {
@@ -743,29 +743,29 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
     }
 
     private void handleSwap(AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> first = state.operandStack().pop();
-        AbstractFrame.SizedValue<T> second = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> first = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> second = state.operandStack().pop();
         state.operandStack().push(first);
         state.operandStack().push(second);
     }
 
     private void handleBinaryOperation(Context context, AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> right = state.operandStack().pop();
-        AbstractFrame.SizedValue<T> left = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> right = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> left = state.operandStack().pop();
         state.operandStack().push(wrap(binaryOperation(context, state, left.value(), right.value()), left.size()));
     }
 
     private void handleUnaryOperation(Context context, AbstractFrame<T> state) {
-        AbstractFrame.SizedValue<T> value = state.operandStack().pop();
+        AbstractFrame.ValueWithSlots<T> value = state.operandStack().pop();
         state.operandStack().push(wrap(unaryOperation(context, state, value.value()), value.size()));
     }
 
     private void handleIncrement(Context context, AbstractFrame<T> state, int variableIndex, int incrementBy) {
-        AbstractFrame.SizedValue<T> value = state.localVariableTable().get(variableIndex);
+        AbstractFrame.ValueWithSlots<T> value = state.localVariableTable().get(variableIndex);
         state.localVariableTable().put(variableIndex, wrap(incrementVariable(context, state, variableIndex, incrementBy, value.value()), value.size()));
     }
 
-    private void handleCast(Context context, AbstractFrame<T> state, AbstractFrame.SizedValue.Slots size) {
+    private void handleCast(Context context, AbstractFrame<T> state, AbstractFrame.ValueWithSlots.Slots size) {
         T value = state.operandStack().pop().value();
         state.operandStack().push(wrap(castOperation(context, state, value), size));
     }
@@ -794,7 +794,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     private void handleStaticFieldLoad(Context context, AbstractFrame<T> state, JavaField field) {
         JavaKind fieldKind = field.getJavaKind();
-        AbstractFrame.SizedValue.Slots size = getSizeForKind(fieldKind);
+        AbstractFrame.ValueWithSlots.Slots size = getSizeForKind(fieldKind);
         state.operandStack().push(wrap(loadStaticField(context, state, field), size));
     }
 
@@ -805,7 +805,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
 
     private void handleFieldLoad(Context context, AbstractFrame<T> state, JavaField field) {
         JavaKind fieldKind = field.getJavaKind();
-        AbstractFrame.SizedValue.Slots size = getSizeForKind(fieldKind);
+        AbstractFrame.ValueWithSlots.Slots size = getSizeForKind(fieldKind);
         T object = state.operandStack().pop().value();
         state.operandStack().push(wrap(loadField(context, state, field, object), size));
     }
@@ -848,7 +848,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         if (returnKind.equals(JavaKind.Void)) {
             invokeVoidMethod(context, state, method, operands);
         } else {
-            AbstractFrame.SizedValue.Slots size = getSizeForKind(returnKind);
+            AbstractFrame.ValueWithSlots.Slots size = getSizeForKind(returnKind);
             state.operandStack().push(wrap(invokeMethod(context, state, method, operands), size));
         }
     }
@@ -866,19 +866,39 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         state.operandStack().push(wrap(newArray(context, state, type, counts), ONE_SLOT));
     }
 
+    /**
+     * Type codes as defined by the <a
+     * href=https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-6.html#jvms-6.5.newarray>JVM
+     * specification</a>.
+     */
+    private enum PrimitiveTypeArrayCode {
+        T_BOOLEAN(boolean.class),
+        T_CHAR(char.class),
+        T_FLOAT(float.class),
+        T_DOUBLE(double.class),
+        T_BYTE(byte.class),
+        T_SHORT(short.class),
+        T_INT(int.class),
+        T_LONG(long.class);
+
+        private static final int TYPE_CODE_OFFSET = 4;
+        private final Class<?> typeClass;
+
+        PrimitiveTypeArrayCode(Class<?> typeClass) {
+            this.typeClass = typeClass;
+        }
+
+        static Class<?> getType(int typeCode) {
+            int typeIndex = typeCode - TYPE_CODE_OFFSET;
+            if (typeIndex < 0 || typeIndex >= values().length) {
+                throw GraalError.shouldNotReachHere("Unexpected primitive type code: " + typeCode);
+            }
+            return values()[typeIndex].typeClass;
+        }
+    }
+
     private JavaType getJavaTypeFromPrimitiveArrayCode(int typeCode) {
-        Class<?> clazz = switch (typeCode) {
-            case 4 -> boolean.class;
-            case 5 -> char.class;
-            case 6 -> float.class;
-            case 7 -> double.class;
-            case 8 -> byte.class;
-            case 9 -> short.class;
-            case 10 -> int.class;
-            case 11 -> long.class;
-            default -> throw GraalError.shouldNotReachHere("Unexpected primitive type code: " + typeCode);
-        };
-        return providers.getMetaAccess().lookupJavaType(clazz);
+        return providers.getMetaAccess().lookupJavaType(PrimitiveTypeArrayCode.getType(typeCode));
     }
 
     private void handleArrayLength(Context context, AbstractFrame<T> state) {
@@ -891,7 +911,7 @@ public abstract class AbstractInterpreter<T> extends ForwardDataFlowAnalyzer<Abs
         state.operandStack().push(wrap(castCheckOperation(context, state, type, object), ONE_SLOT));
     }
 
-    private static AbstractFrame.SizedValue.Slots getSizeForKind(JavaKind kind) {
+    private static AbstractFrame.ValueWithSlots.Slots getSizeForKind(JavaKind kind) {
         return kind.needsTwoSlots() ? TWO_SLOTS : ONE_SLOT;
     }
 

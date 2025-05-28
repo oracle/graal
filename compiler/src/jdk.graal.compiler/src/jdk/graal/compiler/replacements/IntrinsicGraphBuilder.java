@@ -329,7 +329,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public List<StackTraceElement> getCallStack() {
+    public List<StackTraceElement> getCallStack(boolean ignoreInvocationPluginTarget) {
         return new ArrayList<>();
     }
 
