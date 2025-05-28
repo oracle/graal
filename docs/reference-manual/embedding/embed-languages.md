@@ -411,19 +411,20 @@ Polyglot Truffle runtimes can be used on several host virtual machines with vary
 Runtime optimization of guest application code is crucial for the efficient execution of embedded guest applications.
 This table shows the level of optimizations the Java runtimes currently provide:
 
-| Java Runtime                                  | Runtime Optimization Level                        |
-|-----------------------------------------------|---------------------------------------------------|
-| Oracle GraalVM                                | Optimized with additional compiler passes         |
-| GraalVM Community Edition                     | Optimized                                         |
-| Oracle JDK                                    | Optimized if enabled via experimental VM option   |
-| OpenJDK                                       | Optimized if enabled via experimental VM option   |
-| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)       |
+| Java Runtime                                  | Runtime Optimization Level                          |
+|-----------------------------------------------|-----------------------------------------------------|
+| Oracle GraalVM                                | Best (includes additional compiler optimizations)   |
+| GraalVM Community Edition                     | Optimized                                           |
+| Oracle JDK                                    | Optimized via VM option                             |
+| OpenJDK                                       | Optimized via VM option and `--upgrade-module-path` |
+| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)         |
 
 ### Explanations
 
 * **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
 * **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
-* **Optimized if enabled via experimental VM option:** Optimization is not enabled by default and must be enabled using `-XX:+EnableJVMCI` virtual machine option. In addition, to support compilation, the Graal compiler must be downloaded as a JAR file and put on the `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
+* **Optimized via VM option:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher.
+* **Optimized via VM option and `--upgrade-module-path`:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. Additionally, the Graal compiler must be downloaded as a JAR file and specified to the `java` launcher with `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
 * **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode. 
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 

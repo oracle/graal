@@ -90,7 +90,6 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -378,7 +377,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * @param exclude
      */
     protected Register[] getSaveableRegisters(boolean forSafepoint, AllocatableValue exclude) {
-        RegisterArray allocatableRegisters = getResult().getRegisterAllocationConfig().getAllocatableRegisters();
+        List<Register> allocatableRegisters = getResult().getRegisterAllocationConfig().getAllocatableRegisters();
 
         ArrayList<Register> registers = new ArrayList<>(allocatableRegisters.size());
         for (Register reg : allocatableRegisters) {

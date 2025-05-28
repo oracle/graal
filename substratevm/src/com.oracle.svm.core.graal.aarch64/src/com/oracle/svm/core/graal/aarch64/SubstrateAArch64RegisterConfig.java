@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,6 +68,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
@@ -87,7 +88,6 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -104,11 +104,11 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
-    private final RegisterArray generalParameterRegs;
-    private final RegisterArray fpParameterRegs;
-    private final RegisterArray allocatableRegs;
-    private final RegisterArray calleeSaveRegisters;
-    private final RegisterAttributes[] attributesMap;
+    private final List<Register> generalParameterRegs;
+    private final List<Register> fpParameterRegs;
+    private final List<Register> allocatableRegs;
+    private final List<Register> calleeSaveRegisters;
+    private final List<RegisterAttributes> attributesMap;
     private final MetaAccessProvider metaAccess;
     private final boolean preserveFramePointer;
     public static final Register fp = r29;
@@ -127,12 +127,12 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          * On Windows, when calling a method with variadic args, all fp parameters must be passed on
          * the stack. Currently, this is unsupported. Adding support is tracked by GR-34188.
          */
-        generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
-        fpParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
+        generalParameterRegs = List.of(r0, r1, r2, r3, r4, r5, r6, r7);
+        fpParameterRegs = List.of(v0, v1, v2, v3, v4, v5, v6, v7);
 
         nativeParamsStackOffset = 0;
 
-        ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
+        ArrayList<Register> regs = new ArrayList<>(allRegisters);
         regs.remove(ReservedRegisters.singleton().getFrameRegister()); // sp
         regs.remove(zr);
 
@@ -166,15 +166,15 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         if (Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class) || Platform.includedIn(Platform.ANDROID.class)) {
             regs.remove(r18);
         }
-        allocatableRegs = new RegisterArray(regs);
+        allocatableRegs = List.copyOf(regs);
 
         switch (config) {
             case NORMAL:
-                calleeSaveRegisters = new RegisterArray();
+                calleeSaveRegisters = List.of();
                 break;
 
             case NATIVE_TO_JAVA:
-                calleeSaveRegisters = new RegisterArray(r19, r20, r21, r22, r23, r24, r25, r26, r27, r28,
+                calleeSaveRegisters = List.of(r19, r20, r21, r22, r23, r24, r25, r26, r27, r28,
                                 v8, v9, v10, v11, v12, v13, v14, v15);
                 break;
 
@@ -207,17 +207,17 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterArray getAllocatableRegisters() {
+    public List<Register> getAllocatableRegisters() {
         return allocatableRegs;
     }
 
     @Override
-    public RegisterArray getCalleeSaveRegisters() {
+    public List<Register> getCalleeSaveRegisters() {
         return calleeSaveRegisters;
     }
 
     @Override
-    public RegisterArray getCallerSaveRegisters() {
+    public List<Register> getCallerSaveRegisters() {
         return getAllocatableRegisters();
     }
 
@@ -227,12 +227,12 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterAttributes[] getAttributesMap() {
+    public List<RegisterAttributes> getAttributesMap() {
         return attributesMap;
     }
 
     @Override
-    public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
+    public List<Register> getCallingConventionRegisters(Type t, JavaKind kind) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -420,7 +420,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterArray filterAllocatableRegisters(PlatformKind kind, RegisterArray registers) {
+    public List<Register> filterAllocatableRegisters(PlatformKind kind, List<Register> registers) {
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : registers) {
             if (target.arch.canStoreValue(reg.getRegisterCategory(), kind)) {
@@ -428,10 +428,10 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             }
         }
 
-        return new RegisterArray(list);
+        return List.copyOf(list);
     }
 
-    public RegisterArray getJavaGeneralParameterRegs() {
+    public List<Register> getJavaGeneralParameterRegs() {
         return generalParameterRegs;
     }
 }

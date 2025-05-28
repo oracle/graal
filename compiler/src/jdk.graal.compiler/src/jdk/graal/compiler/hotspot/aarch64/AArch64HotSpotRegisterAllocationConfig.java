@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,10 +89,10 @@ import static jdk.vm.ci.aarch64.AArch64.v9;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 
 public class AArch64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
@@ -129,7 +129,7 @@ public class AArch64HotSpotRegisterAllocationConfig extends RegisterAllocationCo
     }
 
     @Override
-    protected RegisterArray initAllocatable(RegisterArray registers) {
+    protected List<Register> initAllocatable(List<Register> registers) {
         BitSet regMap = new BitSet(registerConfig.getAllocatableRegisters().size());
         for (Register reg : registers) {
             regMap.set(reg.number);
@@ -145,6 +145,6 @@ public class AArch64HotSpotRegisterAllocationConfig extends RegisterAllocationCo
             }
         }
 
-        return super.initAllocatable(new RegisterArray(allocatableRegisters));
+        return super.initAllocatable(List.copyOf(allocatableRegisters));
     }
 }

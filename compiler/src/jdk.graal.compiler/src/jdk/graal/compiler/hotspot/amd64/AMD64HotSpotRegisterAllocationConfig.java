@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,10 +64,10 @@ import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 
 class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
@@ -84,6 +84,7 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     // @formatter:off
     static final Register[] registerAllocationOrder = {
         r10, r11, r8, r9, r12, rcx, rbx, rdi, rdx, rsi, rax, rbp, r13, r14, /*r15,*/ /*rsp,*/
+        /* r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, // APX registers */
         xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
         xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
         k1, k2, k3, k4, k5, k6, k7
@@ -98,7 +99,7 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     }
 
     @Override
-    protected RegisterArray initAllocatable(RegisterArray registers) {
+    protected List<Register> initAllocatable(List<Register> registers) {
         BitSet regMap = new BitSet(registerConfig.getAllocatableRegisters().size());
         for (Register reg : registers) {
             regMap.set(reg.number);
@@ -114,6 +115,6 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
             }
         }
 
-        return super.initAllocatable(new RegisterArray(allocatableRegisters));
+        return super.initAllocatable(List.copyOf(allocatableRegisters));
     }
 }
