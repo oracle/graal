@@ -44,8 +44,9 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         builderArguments.addAll(classLoaderSupport.getHostedOptionParser().getArguments());
     }
 
-    protected void validateLayerFile(Path layerFile) {
-        super.validateLayerFile(layerFile);
+    @Override
+    protected void validateLayerFile() {
+        super.validateLayerFile();
 
         Path layerFilePath = layerFile.toAbsolutePath();
         Path layerParentPath = layerFilePath.getParent();

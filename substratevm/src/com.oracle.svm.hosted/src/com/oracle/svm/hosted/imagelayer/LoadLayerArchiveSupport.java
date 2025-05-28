@@ -63,8 +63,9 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
-    protected void validateLayerFile(Path layerFile) {
-        super.validateLayerFile(layerFile);
+    @Override
+    protected void validateLayerFile() {
+        super.validateLayerFile();
 
         if (!Files.isReadable(layerFile)) {
             throw UserError.abort("The given layer file " + layerFile + " cannot be read.");

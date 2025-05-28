@@ -65,11 +65,12 @@ public class LayerArchiveSupport {
     /** The temp directory where the layer files reside in expanded form. */
     protected final Path layerDir;
 
+    @SuppressWarnings("this-escape")
     public LayerArchiveSupport(String layerName, Path layerFile, Path layerDir, ArchiveSupport archiveSupport) {
         this.archiveSupport = archiveSupport;
 
-        validateLayerFile(layerFile);
         this.layerFile = layerFile;
+        validateLayerFile();
 
         this.layerDir = layerDir;
         try {
@@ -82,7 +83,7 @@ public class LayerArchiveSupport {
         this.builderArguments = new ArrayList<>();
     }
 
-    protected void validateLayerFile(Path layerFile) {
+    protected void validateLayerFile() {
         Path fileName = layerFile.getFileName();
         if (fileName == null || !fileName.toString().endsWith(LAYER_FILE_EXTENSION)) {
             throw UserError.abort("The given layer file " + layerFile + " must end with '" + LAYER_FILE_EXTENSION + "'.");
