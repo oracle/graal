@@ -1523,12 +1523,26 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         protected final void emitVexOrEvex(AMD64Assembler asm, Register dst, Register nds, AMD64Address src, Register opmask, AVXSize size, int actualPP, int actualMMMMM, int actualW,
                         int actualWEvex, int z, int b) {
             asm.interceptMemorySrcOperands(src);
+            emitVexOrEvexImpl(asm, dst, nds, src, opmask, size, actualPP, actualMMMMM, actualW, actualWEvex, z, b);
+        }
+
+        protected final void emitVexOrEvex(AMD64Assembler asm, AMD64Address dst, Register nds, Register src, AVXSize size, int actualPP, int actualMMMMM, int actualW, int actualWEvex) {
+            emitVexOrEvex(asm, dst, nds, src, Register.None, size, actualPP, actualMMMMM, actualW, actualWEvex, Z0, B0);
+        }
+
+        protected final void emitVexOrEvex(AMD64Assembler asm, AMD64Address dst, Register nds, Register src, Register opmask, AVXSize size, int actualPP, int actualMMMMM, int actualW,
+                        int actualWEvex, int z, int b) {
+            emitVexOrEvexImpl(asm, src, nds, dst, opmask, size, actualPP, actualMMMMM, actualW, actualWEvex, z, b);
+        }
+
+        private void emitVexOrEvexImpl(AMD64Assembler asm, Register reg1, Register reg2, AMD64Address addr, Register opmask, AVXSize size, int actualPP, int actualMMMMM, int actualW,
+                        int actualWEvex, int z, int b) {
             if (isEvex) {
-                checkEvex(asm, size, dst, opmask, z, nds, null, b);
-                asm.evexPrefix(dst, opmask, nds, src, size, actualPP, actualMMMMM, actualWEvex, z, b);
+                checkEvex(asm, size, reg1, opmask, z, reg2, null, b);
+                asm.evexPrefix(reg1, opmask, reg2, addr, size, actualPP, actualMMMMM, actualWEvex, z, b);
             } else {
-                checkVex(asm, size, dst, opmask, z, nds, null, b);
-                asm.emitVEX(getLFlag(size), actualPP, actualMMMMM, actualW, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0);
+                checkVex(asm, size, reg1, opmask, z, reg2, null, b);
+                asm.emitVEX(getLFlag(size), actualPP, actualMMMMM, actualW, getRXB(reg1, addr), reg2.isValid() ? reg2.encoding() : 0);
             }
         }
 
@@ -1844,13 +1858,13 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
-            emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex);
+            emitVexOrEvex(asm, dst, Register.None, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
 
         public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src, Register mask) {
-            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, Z0, B0);
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, Z0, B0);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
@@ -1877,7 +1891,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, Register mask, int z, int b) {
-            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, z, b);
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
@@ -2779,7 +2793,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            emitVexOrEvex(asm, null, dst, src, mask, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, z, b);
+            emitVexOrEvex(asm, (Register) null, dst, src, mask, AVXSize.XMM, pp, mmmmm, size == AVXSize.DWORD ? VEXPrefixConfig.W0 : VEXPrefixConfig.W1, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(ext, src);
         }
@@ -2857,7 +2871,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
-            emitVexOrEvex(asm, null, dst, src, size, pp, mmmmm, w, wEvex);
+            emitVexOrEvex(asm, (Register) null, dst, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(immOp);
             asm.emitModRM(r, src);
             asm.emitByte(imm8);
@@ -2899,7 +2913,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
-            emitVexOrEvex(asm, null, dst, src, size, pp, mmmmm, w, wEvex);
+            emitVexOrEvex(asm, (Register) null, dst, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(op);
             asm.emitModRM(r, src);
             asm.emitByte(imm8);
@@ -2936,7 +2950,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register mask, Register src) {
-            emitVexOrEvex(asm, src, mask, dst, size, pp, mmmmm, w, wEvex);
+            emitVexOrEvex(asm, dst, mask, src, size, pp, mmmmm, w, wEvex);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
