@@ -48,9 +48,9 @@ import java.util.Set;
  * are propagated through the control-flow graph of a method until a fixed point is reached, i.e.,
  * there are no more modifications of the abstract program states.
  * <p>
- * This class can be used to implement simple data-flow algorithms, such as constant propagation
- * through variables, or more complex algorithms where {@code S} is an abstract representation of
- * the program's execution frames.
+ * This class can be used to implement simple data-flow algorithms, such as finding reaching
+ * definitions, or more complex algorithms where {@code S} is an abstract representation of the
+ * program's execution frames.
  *
  * @param <S> The type of the abstract program state to be propagated during the data-flow analysis.
  *            {@code S} should override {@link Object#equals(Object)} in order to allow a fixed
@@ -68,7 +68,7 @@ public abstract class ForwardDataFlowAnalyzer<S> {
      * @throws DataFlowAnalysisException Can be thrown to signal unrecoverable exceptions in the
      *             analysis.
      */
-    public Map<Integer, S> analyze(BciBlockMapping controlFlowGraph) throws DataFlowAnalysisException {
+    public Map<Integer, S> analyze(BciBlockMapping controlFlowGraph) {
         ExceptionHandler[] exceptionHandlers = controlFlowGraph.code.getExceptionHandlers();
 
         Map<Integer, S> states = new HashMap<>();
@@ -132,14 +132,14 @@ public abstract class ForwardDataFlowAnalyzer<S> {
      * Wrapper for {@link #analyze(BciBlockMapping)} which creates a control flow graph based on
      * {@link Bytecode}.
      */
-    public Map<Integer, S> analyze(Bytecode bytecode) throws DataFlowAnalysisException {
+    public Map<Integer, S> analyze(Bytecode bytecode) {
         OptionValues emptyOptions = new OptionValues(null, OptionValues.newOptionMap());
         DebugContext disabledDebugContext = DebugContext.disabled(emptyOptions);
         BciBlockMapping controlFlowGraph = BciBlockMapping.create(new BytecodeStream(bytecode.getCode()), bytecode, emptyOptions, disabledDebugContext, false);
         return analyze(controlFlowGraph);
     }
 
-    private Pair<Integer, S> processBlock(BciBlock block, Bytecode code, Map<Integer, S> states) throws DataFlowAnalysisException {
+    private Pair<Integer, S> processBlock(BciBlock block, Bytecode code, Map<Integer, S> states) {
         BytecodeStream stream = new BytecodeStream(code.getCode());
         stream.setBCI(block.getStartBci());
 
@@ -228,5 +228,5 @@ public abstract class ForwardDataFlowAnalyzer<S> {
      * @param code The bytecode of the method currently being analyzed.
      * @return The abstract program state after the instruction being processed.
      */
-    protected abstract S processInstruction(S inState, BytecodeStream stream, Bytecode code) throws DataFlowAnalysisException;
+    protected abstract S processInstruction(S inState, BytecodeStream stream, Bytecode code);
 }

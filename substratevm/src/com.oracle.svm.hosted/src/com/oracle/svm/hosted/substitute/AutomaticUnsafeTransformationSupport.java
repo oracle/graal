@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionAnalyzer;
 import com.oracle.svm.hosted.strictconstantanalysis.ConstantExpressionRegistry;
+import com.oracle.svm.hosted.strictconstantanalysis.StrictConstantAnalysisFeature;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -253,8 +254,8 @@ public class AutomaticUnsafeTransformationSupport {
         NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
-        if (ImageSingletons.contains(ConstantExpressionRegistry.class)) {
-            ConstantExpressionRegistry registry = ImageSingletons.lookup(ConstantExpressionRegistry.class);
+        if (StrictConstantAnalysisFeature.isActive()) {
+            ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
             ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), loader);
             plugins.appendMethodParsingPlugin((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
         }

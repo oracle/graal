@@ -38,14 +38,12 @@ import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
@@ -72,11 +70,11 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
     }
 
     public static void logRegistration(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments) {
-        logEntry(b, reason, () -> new RegistreationLogEntry(b, targetMethod, targetReceiver, targetArguments));
+        logEntry(b, reason, () -> new RegistrationLogEntry(b, targetMethod, targetReceiver, targetArguments));
     }
 
     private static void logEntry(GraphBuilderContext b, ParsingReason reason, Supplier<LogEntry> entrySupplier) {
-        if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation && isEnabled()) {
+        if (isEnabled() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             VMError.guarantee(log != null, "Logging attempt when log has been sealed");
             LogEntry entry = entrySupplier.get();
             b.add(ReachabilityRegistrationNode.create(() -> log.add(entry), reason));
@@ -110,12 +108,11 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
     }
 
     private static void dump(String location) {
-        try (JsonWriter out = new JsonPrettyWriter(Path.of(location))) {
-            try (JsonBuilder.ArrayBuilder arrayBuilder = out.arrayBuilder()) {
-                for (LogEntry entry : log) {
-                    try (JsonBuilder.ObjectBuilder objectBuilder = arrayBuilder.nextEntry().object()) {
-                        entry.toJson(objectBuilder);
-                    }
+        try (JsonWriter out = new JsonPrettyWriter(Path.of(location));
+                        JsonBuilder.ArrayBuilder arrayBuilder = out.arrayBuilder()) {
+            for (LogEntry entry : log) {
+                try (JsonBuilder.ObjectBuilder objectBuilder = arrayBuilder.nextEntry().object()) {
+                    entry.toJson(objectBuilder);
                 }
             }
         } catch (IOException e) {
@@ -128,17 +125,15 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
     }
 
     private static void warnForNonStrictFolding() {
-        ConstantExpressionRegistry registry = ImageSingletons.lookup(ConstantExpressionRegistry.class);
+        ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
         List<LogEntry> unsafeFoldingEntries = log.stream().filter(entry -> !registryContainsConstantOperands(registry, entry)).toList();
         if (!unsafeFoldingEntries.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("The following method invocations have been inferred outside of the strict constant expression mode:").append(System.lineSeparator());
             for (int i = 0; i < unsafeFoldingEntries.size(); i++) {
-                sb.append((i + 1)).append(". ").append(unsafeFoldingEntries.get(i));
-                if (i != unsafeFoldingEntries.size() - 1) {
-                    sb.append(System.lineSeparator());
-                }
+                sb.append((i + 1)).append(". ").append(unsafeFoldingEntries.get(i)).append(System.lineSeparator());
             }
+            sb.delete(sb.length() - System.lineSeparator().length(), sb.length());
             LogUtils.warning(sb.toString());
         }
     }
@@ -146,14 +141,14 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
     private static boolean registryContainsConstantOperands(ConstantExpressionRegistry registry, LogEntry entry) {
         Pair<ResolvedJavaMethod, Integer> callLocation = entry.callLocation;
         if (entry.targetMethod.hasReceiver()) {
-            Optional<Object> receiver = registry.getReceiver(callLocation.getLeft(), callLocation.getRight(), entry.targetMethod);
-            if (entry.targetReceiver != ignoredArgument() && receiver.isEmpty()) {
+            Object receiver = registry.getReceiver(callLocation.getLeft(), callLocation.getRight(), entry.targetMethod);
+            if (entry.targetReceiver != ignoredArgument() && receiver == null) {
                 return false;
             }
         }
         for (int i = 0; i < entry.targetArguments.length; i++) {
-            Optional<Object> argument = registry.getArgument(callLocation.getLeft(), callLocation.getRight(), entry.targetMethod, i);
-            if (entry.targetArguments[i] != ignoredArgument() && argument.isEmpty()) {
+            Object argument = registry.getArgument(callLocation.getLeft(), callLocation.getRight(), entry.targetMethod, i);
+            if (entry.targetArguments[i] != ignoredArgument() && argument == null) {
                 return false;
             }
         }
@@ -186,7 +181,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
             VMError.guarantee(targetMethod.hasReceiver() == (targetReceiver != null), "Inferred receiver does not match with target method signature");
             VMError.guarantee(targetMethod.getSignature().getParameterCount(false) == targetArguments.length, "Inferred arguments do not match with target method signature");
             this.callLocation = Pair.create(b.getMethod(), b.bci());
-            this.callStack = b.getCallStack();
+            this.callStack = b.getCallStack(true);
             this.targetMethod = targetMethod;
             this.targetReceiver = targetReceiver;
             this.targetArguments = targetArguments;
@@ -266,9 +261,9 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
         }
     }
 
-    private static class RegistreationLogEntry extends LogEntry {
+    private static class RegistrationLogEntry extends LogEntry {
 
-        RegistreationLogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments) {
+        RegistrationLogEntry(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object targetCaller, Object[] targetArguments) {
             super(b, targetMethod, targetCaller, targetArguments);
         }
 

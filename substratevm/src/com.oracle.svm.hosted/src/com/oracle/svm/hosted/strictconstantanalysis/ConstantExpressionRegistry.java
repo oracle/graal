@@ -35,22 +35,25 @@ import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConstantExpressionRegistry {
+
+    public static ConstantExpressionRegistry singleton() {
+        return ImageSingletons.lookup(ConstantExpressionRegistry.class);
+    }
 
     private static final Object NULL_MARKER = new Object();
 
     private Map<Pair<ResolvedJavaMethod, Integer>, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry;
-    private final AtomicBoolean isSealed = new AtomicBoolean();
+    private boolean isSealed;
 
     public ConstantExpressionRegistry() {
         registry = new ConcurrentHashMap<>();
-        isSealed.set(false);
+        isSealed = false;
     }
 
     public void analyzeAndStore(ConstantExpressionAnalyzer analyzer, ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
@@ -71,48 +74,71 @@ public class ConstantExpressionRegistry {
         return bytecodeProvider.getBytecode(method);
     }
 
-    public Optional<Object> getReceiver(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod) {
+    /**
+     * Attempt to get the inferred receiver of a {@code targetMethod} invocation at the specified
+     * code location.
+     *
+     * @param callerMethod The method in which {@code targetMethod} is invoked
+     * @param bci The BCI of the invocation instruction with respect to {@code callerMethod}
+     * @param targetMethod The invoked method
+     * @return The Java value of the receiver if it can be inferred and null otherwise. A
+     *         {@code null} value is represented by {@link ConstantExpressionRegistry#NULL_MARKER}.
+     */
+    public Object getReceiver(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod) {
         VMError.guarantee(!isSealed(), "Registry is already sealed");
         VMError.guarantee(targetMethod.hasReceiver(), "Receiver requested for static method");
         AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
         if (frame == null) {
-            return Optional.empty();
+            return null;
         }
         int numOfParameters = targetMethod.getSignature().getParameterCount(false);
         ConstantExpressionAnalyzer.Value receiver = frame.operandStack().getOperand(numOfParameters);
         if (receiver instanceof ConstantExpressionAnalyzer.CompileTimeConstant constant) {
             Object receiverValue = constant.getValue();
-            return Optional.of(receiverValue == null ? NULL_MARKER : receiverValue);
+            return receiverValue == null ? NULL_MARKER : receiverValue;
         } else {
-            return Optional.empty();
+            return null;
         }
     }
 
+    /**
+     * Utility method which calls into
+     * {@link ConstantExpressionRegistry#getReceiver(ResolvedJavaMethod, int, ResolvedJavaMethod)},
+     * but attempts to cast the inferred value into {@code type}.
+     * <p>
+     * If the inferred value is {@code null}, i.e., {@link ConstantExpressionRegistry#NULL_MARKER},
+     * {@code null} is returned, which is the same return value as if the receiver could not be
+     * inferred.
+     */
     public <T> T getReceiver(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, Class<T> type) {
-        Optional<Object> receiver = getReceiver(callerMethod, bci, targetMethod);
-        if (receiver.isEmpty()) {
-            return null;
-        }
-        Object receiverValue = receiver.get();
-        if (isNull(receiverValue) || !type.isAssignableFrom(receiverValue.getClass())) {
-            return null;
-        }
-        return type.cast(receiver.get());
+        Object receiver = getReceiver(callerMethod, bci, targetMethod);
+        return tryToCast(receiver, type);
     }
 
-    public Optional<Object> getArgument(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, int index) {
+    /**
+     * Attempt to get an inferred argument of a {@code targetMethod} invocation at the specified
+     * code location.
+     *
+     * @param callerMethod The method in which {@code targetMethod} is invoked
+     * @param bci The BCI of the invocation instruction with respect to {@code callerMethod}
+     * @param targetMethod The invoked method
+     * @param index The argument index
+     * @return The Java value of the argument if it can be inferred and null otherwise. A
+     *         {@code null} value is represented by {@link ConstantExpressionRegistry#NULL_MARKER}.
+     */
+    public Object getArgument(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, int index) {
         VMError.guarantee(!isSealed(), "Registry is already sealed");
         int numOfParameters = targetMethod.getSignature().getParameterCount(false);
-        VMError.guarantee(index >= 0 && index < numOfParameters, "Argument index out of bounds");
+        VMError.guarantee(0 <= index && index < numOfParameters, "Argument index out of bounds");
         AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
         if (frame == null) {
-            return Optional.empty();
+            return null;
         }
         ConstantExpressionAnalyzer.Value argument = frame.operandStack().getOperand(numOfParameters - index - 1);
         if (argument instanceof ConstantExpressionAnalyzer.CompileTimeConstant constant) {
             Object argumentValue = constant.getValue();
             if (argumentValue == null) {
-                return Optional.of(NULL_MARKER);
+                return NULL_MARKER;
             } else if (argumentValue instanceof Integer n) {
                 /*
                  * Since the analyzer doesn't differentiate between boolean, byte, short, char and
@@ -120,44 +146,55 @@ public class ConstantExpressionRegistry {
                  * the target method and cast the value appropriately.
                  */
                 JavaKind parameterKind = targetMethod.getSignature().getParameterKind(index);
-                Object properlyTypedValue = switch (parameterKind) {
+                return switch (parameterKind) {
                     case JavaKind.Boolean -> n != 0;
                     case JavaKind.Byte -> n.byteValue();
                     case JavaKind.Short -> n.shortValue();
                     case JavaKind.Char -> (char) ('0' + n);
                     default -> argumentValue;
                 };
-                return Optional.of(properlyTypedValue);
             } else {
-                return Optional.of(argumentValue);
+                return argumentValue;
             }
         } else {
-            return Optional.empty();
+            return null;
         }
     }
 
+    /**
+     * Utility method which calls into
+     * {@link ConstantExpressionRegistry#getArgument(ResolvedJavaMethod, int, ResolvedJavaMethod, int)},
+     * but attempts to cast the inferred value into {@code type}.
+     * <p>
+     * If the inferred value is {@code null}, i.e., {@link ConstantExpressionRegistry#NULL_MARKER},
+     * {@code null} is returned, which is the same return value as if the argument could not be
+     * inferred.
+     */
     public <T> T getArgument(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, int index, Class<T> type) {
-        Optional<Object> argument = getArgument(callerMethod, bci, targetMethod, index);
-        if (argument.isEmpty()) {
+        Object argument = getArgument(callerMethod, bci, targetMethod, index);
+        return tryToCast(argument, type);
+    }
+
+    private static <T> T tryToCast(Object value, Class<T> type) {
+        if (value == null || isNull(value) || !type.isAssignableFrom(value.getClass())) {
             return null;
         }
-        Object argumentValue = argument.get();
-        if (isNull(argumentValue) || !type.isAssignableFrom(argumentValue.getClass())) {
-            return null;
-        }
-        return type.cast(argumentValue);
+        return type.cast(value);
     }
 
     public boolean isSealed() {
-        return isSealed.get();
+        return isSealed;
     }
 
     public void seal() {
-        isSealed.set(true);
+        isSealed = true;
         registry = null;
     }
 
-    public static boolean isNull(Object object) {
-        return object == NULL_MARKER;
+    /**
+     * Check if {@code value} represents a {@code null} Java value.
+     */
+    public static boolean isNull(Object value) {
+        return value == NULL_MARKER;
     }
 }

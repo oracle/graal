@@ -107,11 +107,15 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
         public static final HostedOptionKey<Mode> StrictConstantAnalysis = new HostedOptionKey<>(Mode.Disable);
     }
 
+    public static boolean isActive() {
+        return Options.StrictConstantAnalysis.getValue() != Options.Mode.Disable;
+    }
+
     private ImageClassLoader loader;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess a) {
-        return Options.StrictConstantAnalysis.getValue() != Options.Mode.Disable;
+        return isActive();
     }
 
     @Override
@@ -125,22 +129,31 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /*
          * The strict analysis mode disables constant folding through method inlining, which leads
-         * to <clinit> of sun.nio.ch.DatagramChannelImpl. This is a temporary fix until annotation
-         * guided analysis is implemented.
+         * to <clinit> of sun.nio.ch.DatagramChannelImpl throwing a missing reflection registration
+         * error. This is a temporary fix until annotation guided analysis is implemented.
          *
          * An alternative to this approach would be creating invocation plugins for the methods
          * defined in jdk.internal.invoke.MhUtil.
          */
-        Class<?> datagramChannelImpl = ReflectionUtil.lookupClass(true, "sun.nio.ch.DatagramChannelImpl");
-        if (datagramChannelImpl != null) {
-            Field socketField = ReflectionUtil.lookupField(datagramChannelImpl, "socket");
-            access.registerReachabilityHandler(a -> RuntimeReflection.register(socketField), datagramChannelImpl);
+        registerFieldForReflectionIfExists(access, "sun.nio.ch.DatagramChannelImpl", "socket");
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private void registerFieldForReflectionIfExists(BeforeAnalysisAccess access, String className, String fieldName) {
+        Class<?> clazz = ReflectionUtil.lookupClass(true, className);
+        if (clazz == null) {
+            return;
         }
+        Field field = ReflectionUtil.lookupField(true, clazz, fieldName);
+        if (field == null) {
+            return;
+        }
+        access.registerReachabilityHandler(a -> RuntimeReflection.register(field), clazz);
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        ConstantExpressionRegistry registry = ImageSingletons.lookup(ConstantExpressionRegistry.class);
+    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
         ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(providers, loader);
         plugins.appendMethodParsingPlugin((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
     }
@@ -151,8 +164,7 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
          * No more bytecode parsing should happen after analysis, so we can seal and clean up the
          * registry.
          */
-        ConstantExpressionRegistry registry = ImageSingletons.lookup(ConstantExpressionRegistry.class);
-        registry.seal();
+        ConstantExpressionRegistry.singleton().seal();
     }
 
     /**
@@ -164,7 +176,7 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
         Options.Mode analysisMode = Options.StrictConstantAnalysis.getValue();
         boolean isTarget = strictModeTarget.test(targetMethod);
         if (analysisMode != Options.Mode.Disable && isTarget) {
-            ConstantExpressionRegistry registry = ImageSingletons.lookup(ConstantExpressionRegistry.class);
+            ConstantExpressionRegistry registry = ConstantExpressionRegistry.singleton();
             if (strictModeRoutine.test(registry)) {
                 return true;
             }

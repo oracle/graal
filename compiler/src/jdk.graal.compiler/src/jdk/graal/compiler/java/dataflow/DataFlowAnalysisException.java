@@ -27,11 +27,11 @@ package jdk.graal.compiler.java.dataflow;
 import java.io.Serial;
 
 /**
- * Exceptions thrown during bytecode data flow analysis. These should only be thrown in rare cases,
+ * Exceptions thrown during bytecode data-flow analysis. These should only be thrown in rare cases,
  * such as unsupported opcodes, as {@link ForwardDataFlowAnalyzer} and {@link AbstractInterpreter}
  * assume that the received bytecode is already verified.
  */
-public class DataFlowAnalysisException extends Exception {
+public class DataFlowAnalysisException extends RuntimeException {
 
     @Serial private static final long serialVersionUID = 1L;
 

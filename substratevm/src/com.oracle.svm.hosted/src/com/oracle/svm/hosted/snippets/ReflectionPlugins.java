@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -602,9 +601,8 @@ public final class ReflectionPlugins {
     }
 
     private static Object getReceiverFromRegistry(ConstantExpressionRegistry registry, GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-        Optional<Object> maybeValue = registry.getReceiver(b.getMethod(), b.bci(), targetMethod);
-        if (maybeValue.isPresent()) {
-            Object value = maybeValue.get();
+        Object value = registry.getReceiver(b.getMethod(), b.bci(), targetMethod);
+        if (value != null) {
             return ConstantExpressionRegistry.isNull(value) ? NULL_MARKER : value;
         } else {
             return null;
@@ -612,9 +610,8 @@ public final class ReflectionPlugins {
     }
 
     private static Object getArgumentFromRegistry(ConstantExpressionRegistry registry, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int index) {
-        Optional<Object> maybeValue = registry.getArgument(b.getMethod(), b.bci(), targetMethod, index);
-        if (maybeValue.isPresent()) {
-            Object value = maybeValue.get();
+        Object value = registry.getArgument(b.getMethod(), b.bci(), targetMethod, index);
+        if (value != null) {
             return ConstantExpressionRegistry.isNull(value) ? NULL_MARKER : value;
         } else {
             return null;
