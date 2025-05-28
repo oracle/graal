@@ -368,11 +368,6 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Added by BaristaNativeImageCommand
         return []
 
-    def extra_image_build_argument(self, benchmark, args):
-        return [
-            "--install-exit-handlers"
-        ] + super().extra_image_build_argument(benchmark, args)
-
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
         self.context = mx_sdk_benchmark.BaristaBenchmarkSuite.RuntimeContext(self, None, benchmarks[0], bmSuiteArgs)
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
