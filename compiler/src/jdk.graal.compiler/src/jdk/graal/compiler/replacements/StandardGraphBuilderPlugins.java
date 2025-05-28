@@ -2551,15 +2551,6 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static boolean hasEnsureMaterializedForStackWalk() {
-        try {
-            Thread.class.getDeclaredMethod("ensureMaterializedForStackWalk", Object.class);
-        } catch (Exception e) {
-            return false;
-        }
-        return true;
-    }
-
     private static void registerThreadPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Thread.class, replacements);
         r.register(new InvocationPlugin("onSpinWait") {
@@ -2569,15 +2560,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        if (hasEnsureMaterializedForStackWalk()) {
-            r.register(new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                    b.add(new BlackholeNode(object, "ensureMaterializedForStackWalk"));
-                    return true;
-                }
-            });
-        }
+        r.register(new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.add(new BlackholeNode(object, "ensureMaterializedForStackWalk"));
+                return true;
+            }
+        });
     }
 
     public static class MessageDigestPlugin extends InvocationPlugin {

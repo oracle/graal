@@ -40,7 +40,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.loop.phases.LoopTransformations;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.Verbosity;
@@ -84,6 +83,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -385,11 +385,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
      *         {@code bci}
      */
     private static BitSet getOopMapAt(ResolvedJavaMethod method, int bci) {
-        if (!HotSpotGraalServices.hasGetOopMapAt()) {
-            return null;
-        } else {
-            return HotSpotGraalServices.getOopMapAt(method, bci);
-        }
+        return ((HotSpotResolvedJavaMethod) method).getOopMapAt(bci);
     }
 
     private static EntryMarkerNode getEntryMarker(StructuredGraph graph) {
