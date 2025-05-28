@@ -481,8 +481,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
-        if (c instanceof PrimitiveConstant) {
-            PrimitiveConstant primitiveConstant = (PrimitiveConstant) c;
+        if (c instanceof PrimitiveConstant primitiveConstant) {
             long value = primitiveConstant.asLong();
             if (primitiveConstant.getJavaKind() == JavaKind.Boolean && value == 1) {
                 // Need to special case booleans as integer stamps are always signed values.
@@ -497,20 +496,15 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public SerializableConstant deserialize(ByteBuffer buffer) {
-        switch (getBits()) {
-            case 1:
-                return JavaConstant.forBoolean(buffer.get() != 0);
-            case 8:
-                return JavaConstant.forByte(buffer.get());
-            case 16:
-                return JavaConstant.forShort(buffer.getShort());
-            case 32:
-                return JavaConstant.forInt(buffer.getInt());
-            case 64:
-                return JavaConstant.forLong(buffer.getLong());
-            default:
+        return switch (getBits()) {
+            case 1 -> JavaConstant.forBoolean(buffer.get() != 0);
+            case 8 -> JavaConstant.forByte(buffer.get());
+            case 16 -> JavaConstant.forShort(buffer.getShort());
+            case 32 -> JavaConstant.forInt(buffer.getInt());
+            case 64 -> JavaConstant.forLong(buffer.getLong());
+            default ->
                 throw GraalError.shouldNotReachHereUnexpectedValue(getBits()); // ExcludeFromJacocoGeneratedReport
-        }
+        };
     }
 
     @Override
@@ -534,20 +528,15 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        switch (getBits()) {
-            case 1:
-                return metaAccess.lookupJavaType(Boolean.TYPE);
-            case 8:
-                return metaAccess.lookupJavaType(Byte.TYPE);
-            case 16:
-                return metaAccess.lookupJavaType(Short.TYPE);
-            case 32:
-                return metaAccess.lookupJavaType(Integer.TYPE);
-            case 64:
-                return metaAccess.lookupJavaType(Long.TYPE);
-            default:
+        return switch (getBits()) {
+            case 1 -> metaAccess.lookupJavaType(Boolean.TYPE);
+            case 8 -> metaAccess.lookupJavaType(Byte.TYPE);
+            case 16 -> metaAccess.lookupJavaType(Short.TYPE);
+            case 32 -> metaAccess.lookupJavaType(Integer.TYPE);
+            case 64 -> metaAccess.lookupJavaType(Long.TYPE);
+            default ->
                 throw GraalError.shouldNotReachHereUnexpectedValue(getBits()); // ExcludeFromJacocoGeneratedReport
-        }
+        };
     }
 
     @Override
@@ -753,8 +742,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         if (this == stamp) {
             return true;
         }
-        if (stamp instanceof IntegerStamp) {
-            IntegerStamp other = (IntegerStamp) stamp;
+        if (stamp instanceof IntegerStamp other) {
             return getBits() == other.getBits();
         }
         return false;
@@ -762,8 +750,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public boolean isCompatible(Constant constant) {
-        if (constant instanceof PrimitiveConstant) {
-            PrimitiveConstant prim = (PrimitiveConstant) constant;
+        if (constant instanceof PrimitiveConstant prim) {
             JavaKind kind = prim.getJavaKind();
             return kind.isNumericInteger() && kind.getBitCount() == getBits();
         }
@@ -793,10 +780,10 @@ public final class IntegerStamp extends PrimitiveStamp {
         final int prime = 31;
         int result = 1;
         result = prime * result + super.hashCode();
-        result = prime * result + (int) (lowerBound ^ (lowerBound >>> 32));
-        result = prime * result + (int) (upperBound ^ (upperBound >>> 32));
-        result = prime * result + (int) (mustBeSet ^ (mustBeSet >>> 32));
-        result = prime * result + (int) (mayBeSet ^ (mayBeSet >>> 32));
+        result = prime * result + Long.hashCode(lowerBound);
+        result = prime * result + Long.hashCode(upperBound);
+        result = prime * result + Long.hashCode(mustBeSet);
+        result = prime * result + Long.hashCode(mayBeSet);
         result = prime * result + Boolean.hashCode(canBeZero);
         return result;
     }
@@ -907,9 +894,9 @@ public final class IntegerStamp extends PrimitiveStamp {
         if (bits == 64) {
             if (a > 0 && b > 0) {
                 return a > 0x7FFFFFFF_FFFFFFFFL / b;
-            } else if (a > 0 && b <= 0) {
+            } else if (a > 0) {
                 return b < 0x80000000_00000000L / a;
-            } else if (a <= 0 && b > 0) {
+            } else if (b > 0) {
                 return a < 0x80000000_00000000L / b;
             } else {
                 // a<=0 && b <=0
@@ -1315,7 +1302,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                     }
                                 }
 
-                                assert newLowerBound <= newUpperBound : Assertions.errorMessageContext("newLowerBound", newLowerBound, "newUpperBonud", newUpperBound, "stamp1", stamp1, "stamp2",
+                                assert newLowerBound <= newUpperBound : Assertions.errorMessageContext("newLowerBound", newLowerBound, "newUpperBound", newUpperBound, "stamp1", stamp1, "stamp2",
                                                 stamp2);
                                 return StampFactory.forIntegerWithMask(bits, newLowerBound, newUpperBound, 0, newMayBeSet);
                             }
@@ -1835,8 +1822,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                     return value;
                                 }
                                 if (shiftAmount >= bits) {
-                                    IntegerStamp result = IntegerStamp.create(bits, 0, 0, 0, 0);
-                                    return result;
+                                    return IntegerStamp.create(bits, 0, 0, 0, 0);
                                 }
                                 // the mask of bits that will be lost or shifted into the sign bit
                                 if (testNoSignChangeAfterShifting(bits, value.lowerBound(), shiftAmount) && testNoSignChangeAfterShifting(bits, value.upperBound(), shiftAmount)) {
@@ -1844,9 +1830,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                                      * use a better stamp if neither lower nor upper bound can lose
                                      * bits
                                      */
-                                    IntegerStamp result = IntegerStamp.create(bits, value.lowerBound() << shiftAmount, value.upperBound() << shiftAmount,
+                                    return IntegerStamp.create(bits, value.lowerBound() << shiftAmount, value.upperBound() << shiftAmount,
                                                     (value.mustBeSet() << shiftAmount) & CodeUtil.mask(bits), (value.mayBeSet() << shiftAmount) & CodeUtil.mask(bits));
-                                    return result;
                                 }
                             }
                             if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
@@ -2189,11 +2174,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                                  * @formatter:on
                                  */
                                 if (zeroInExtension) {
-                                    long msbZeroMask = ~(1 << (inputBits - 1));
+                                    long msbZeroMask = ~(1L << (inputBits - 1));
                                     inputMustBeSet &= msbZeroMask;
                                     inputMayBeSet &= msbZeroMask;
                                 } else if (oneInExtension) {
-                                    long msbOneMask = 1 << (inputBits - 1);
+                                    long msbOneMask = 1L << (inputBits - 1);
                                     inputMustBeSet |= msbOneMask;
                                     inputMayBeSet |= msbOneMask;
                                 }
