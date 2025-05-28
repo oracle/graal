@@ -1042,7 +1042,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink_persist = []
 
         if jdk_enables_jvmci_by_default(jdk):
-            # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
+            # +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
             jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
 
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))

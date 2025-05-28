@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
@@ -38,13 +39,9 @@ import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class PartialEscapeAnalysisIterationTest extends EATestBase {
 
-    // remember boxing nodes from before PEA
-    private List<BoxNode> boxNodes;
-
     @Override
     protected void canonicalizeGraph() {
         super.canonicalizeGraph();
-        boxNodes = graph.getNodes().filter(BoxNode.class).snapshot();
     }
 
     private static final class AllocatedObject {
@@ -59,6 +56,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
         }
     }
 
+    public static int cnt;
     public static volatile Object obj1;
     public static volatile Double object1 = (double) 123;
     public static volatile AllocatedObject object2 = new AllocatedObject(123);
@@ -66,6 +64,8 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
     public static String moveIntoBranchBox(int id) {
         Double box = object1 + 1;
         if (id == 0) {
+            // Prevent if simplification
+            cnt++;
             obj1 = new AtomicReference<>(box);
         }
         return "value";
@@ -82,7 +82,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
     @Test
     public void testJMHBlackholePattern() {
         /*
-         * The overall number of allocations in this methods does not change during PEA, but the
+         * The overall number of allocations in these methods does not change during PEA, but the
          * effects still need to be applied since they move the allocation between blocks.
          */
 
@@ -91,7 +91,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
         Assert.assertEquals(1, graph.getNodes().filter(UnboxNode.class).count());
         Assert.assertEquals(1, graph.getNodes().filter(BoxNode.class).count());
         // the boxing needs to be moved into the branch
-        Assert.assertTrue(graph.getNodes().filter(BoxNode.class).first().next() instanceof StoreFieldNode);
+        Assert.assertTrue(graph.getNodes().filter(BoxNode.class).first().next() instanceof CommitAllocationNode);
 
         // test with a normal object
         prepareGraph("moveIntoBranch", false);
@@ -133,14 +133,14 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
     @Test
     public void testNoLoopIteration() {
         /*
-         * PEA should not apply any effects on this method, since it cannot move the allocation into
-         * the branch anyway (it needs to stay outside the loop).
+         * After PEA, the BoxNode stays outside the loop.
          */
 
         // test with a boxing object
         prepareGraph("noLoopIterationBox", true);
+        List<BoxNode> boxNodes = graph.getNodes().filter(BoxNode.class).snapshot();
         Assert.assertEquals(1, boxNodes.size());
-        Assert.assertTrue(boxNodes.get(0).isAlive());
+        Assert.assertTrue(boxNodes.getFirst().next() instanceof EndNode);
 
         // test with a normal object (needs one iteration to replace NewInstance with
         // CommitAllocation)
@@ -148,8 +148,9 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
             prepareGraph(name, false);
             List<CommitAllocationNode> allocations = graph.getNodes().filter(CommitAllocationNode.class).snapshot();
             new PartialEscapePhase(true, false, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
-            Assert.assertEquals(1, allocations.size());
+            Assert.assertEquals(2, allocations.size());
             Assert.assertTrue(allocations.get(0).isAlive());
+            Assert.assertTrue(allocations.get(1).isAlive());
         }
     }
 

@@ -499,7 +499,7 @@ def _truffle_gate_runner(args, tasks):
 
 def gate_truffle_jvm(tasks):
     if mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(mx.get_jdk(tag='default').home):
-        additional_jvm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
+        additional_jvm_args = mx_sdk.GraalVMJDKConfig.libgraal_additional_vm_args
     else:
         additional_jvm_args = []
     # GR-62632: Debug VM exception translation failure
