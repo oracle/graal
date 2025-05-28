@@ -36,6 +36,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
@@ -413,13 +414,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public List<StackTraceElement> getCallStack() {
-            List<StackTraceElement> callStack = new ArrayList<>(Arrays.asList(methodScope.getCallStack()));
+        public List<StackTraceElement> getCallStack(boolean ignoreInvocationPluginTarget) {
+            StackTraceElement[] callStackArray = methodScope.getCallStack();
+            List<StackTraceElement> callStack = new ArrayList<>(callStackArray.length);
+            Collections.addAll(callStack, callStackArray);
             /*
-             * If we're processing an invocation plugin, we want the top stack element to be the
-             * callee of the method targeted by the plugin, and not the target itself.
+             * If triggered while processing an invocation plugin, the call stack as returned by the
+             * methodScope object will include the target of the plugin.
              */
-            if (isParsingInvocationPlugin()) {
+            if (isParsingInvocationPlugin() && ignoreInvocationPluginTarget) {
                 callStack.removeFirst();
             }
             return callStack;
