@@ -60,7 +60,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
         static final HostedOptionKey<String> InferredDynamicAccessLog = new HostedOptionKey<>(null);
     }
 
-    private static final Queue<LogEntry> log = new ConcurrentLinkedQueue<>();
+    private static Queue<LogEntry> log = new ConcurrentLinkedQueue<>();
 
     public static void logConstant(GraphBuilderContext b, ParsingReason reason, ResolvedJavaMethod targetMethod, Object targetReceiver, Object[] targetArguments, Object value) {
         logEntry(b, reason, () -> new ConstantLogEntry(b, targetMethod, targetReceiver, targetArguments, value));
@@ -77,6 +77,7 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
 
     private static void logEntry(GraphBuilderContext b, ParsingReason reason, Supplier<LogEntry> entrySupplier) {
         if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation && isEnabled()) {
+            VMError.guarantee(log != null, "Logging attempt when log has been sealed");
             LogEntry entry = entrySupplier.get();
             b.add(ReachabilityRegistrationNode.create(() -> log.add(entry), reason));
         }
@@ -100,6 +101,12 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
         if (shouldWarnForNonStrictFolding()) {
             warnForNonStrictFolding();
         }
+        /* The log is no longer used after this, so we can clean it up. */
+        cleanLog();
+    }
+
+    private static void cleanLog() {
+        log = null;
     }
 
     private static void dump(String location) {
@@ -140,13 +147,13 @@ public class InferredDynamicAccessLoggingFeature implements InternalFeature {
         Pair<ResolvedJavaMethod, Integer> callLocation = entry.callLocation;
         if (entry.targetMethod.hasReceiver()) {
             Optional<Object> receiver = registry.getReceiver(callLocation.getLeft(), callLocation.getRight(), entry.targetMethod);
-            if (entry.targetReceiver != IGNORED_ARGUMENT_MARKER && receiver.isEmpty()) {
+            if (entry.targetReceiver != ignoredArgument() && receiver.isEmpty()) {
                 return false;
             }
         }
         for (int i = 0; i < entry.targetArguments.length; i++) {
             Optional<Object> argument = registry.getArgument(callLocation.getLeft(), callLocation.getRight(), entry.targetMethod, i);
-            if (entry.targetArguments[i] != IGNORED_ARGUMENT_MARKER && argument.isEmpty()) {
+            if (entry.targetArguments[i] != ignoredArgument() && argument.isEmpty()) {
                 return false;
             }
         }

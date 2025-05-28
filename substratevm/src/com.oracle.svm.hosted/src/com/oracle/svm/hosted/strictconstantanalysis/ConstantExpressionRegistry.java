@@ -39,18 +39,22 @@ import org.graalvm.collections.Pair;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConstantExpressionRegistry {
 
     private static final Object NULL_MARKER = new Object();
 
-    private final Map<Pair<ResolvedJavaMethod, Integer>, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry;
+    private Map<Pair<ResolvedJavaMethod, Integer>, AbstractFrame<ConstantExpressionAnalyzer.Value>> registry;
+    private final AtomicBoolean isSealed = new AtomicBoolean();
 
     public ConstantExpressionRegistry() {
         registry = new ConcurrentHashMap<>();
+        isSealed.set(false);
     }
 
     public void analyzeAndStore(ConstantExpressionAnalyzer analyzer, ResolvedJavaMethod method, IntrinsicContext intrinsicContext) {
+        VMError.guarantee(!isSealed(), "Registry is already sealed");
         Bytecode bytecode = getBytecode(method, intrinsicContext);
         try {
             Map<Integer, AbstractFrame<ConstantExpressionAnalyzer.Value>> abstractFrames = analyzer.analyze(bytecode);
@@ -68,6 +72,7 @@ public class ConstantExpressionRegistry {
     }
 
     public Optional<Object> getReceiver(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod) {
+        VMError.guarantee(!isSealed(), "Registry is already sealed");
         VMError.guarantee(targetMethod.hasReceiver(), "Receiver requested for static method");
         AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
         if (frame == null) {
@@ -96,6 +101,7 @@ public class ConstantExpressionRegistry {
     }
 
     public Optional<Object> getArgument(ResolvedJavaMethod callerMethod, int bci, ResolvedJavaMethod targetMethod, int index) {
+        VMError.guarantee(!isSealed(), "Registry is already sealed");
         int numOfParameters = targetMethod.getSignature().getParameterCount(false);
         VMError.guarantee(index >= 0 && index < numOfParameters, "Argument index out of bounds");
         AbstractFrame<ConstantExpressionAnalyzer.Value> frame = registry.get(Pair.create(callerMethod, bci));
@@ -140,6 +146,15 @@ public class ConstantExpressionRegistry {
             return null;
         }
         return type.cast(argumentValue);
+    }
+
+    public boolean isSealed() {
+        return isSealed.get();
+    }
+
+    public void seal() {
+        isSealed.set(true);
+        registry = null;
     }
 
     public static boolean isNull(Object object) {

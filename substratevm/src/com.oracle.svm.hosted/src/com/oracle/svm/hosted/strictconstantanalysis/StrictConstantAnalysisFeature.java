@@ -145,6 +145,16 @@ public class StrictConstantAnalysisFeature implements InternalFeature {
         plugins.appendMethodParsingPlugin((method, intrinsicContext) -> registry.analyzeAndStore(analyzer, method, intrinsicContext));
     }
 
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        /*
+         * No more bytecode parsing should happen after analysis, so we can seal and clean up the
+         * registry.
+         */
+        ConstantExpressionRegistry registry = ImageSingletons.lookup(ConstantExpressionRegistry.class);
+        registry.seal();
+    }
+
     /**
      * Utility method which attempts to infer {@code targetMethod} according to the {@code Disable},
      * {@code Warn} and {@code Enforce} options of {@code StrictConstantAnalysis}.
