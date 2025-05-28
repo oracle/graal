@@ -891,7 +891,7 @@ public class SubstrateOptions {
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
-    @LayerVerification(Kind = Kind.Changed, Severity = Severity.Error)//
+    @LayerVerification(Kind = Kind.Removed, Severity = Severity.Error, Positional = false)//
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
