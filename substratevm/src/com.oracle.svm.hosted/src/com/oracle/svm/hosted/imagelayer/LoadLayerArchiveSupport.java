@@ -48,6 +48,7 @@ import com.oracle.svm.util.LogUtils;
 
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 
+    @SuppressWarnings("this-escape")
     public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport) {
         super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "load"), archiveSupport);
         this.archiveSupport.expandJarToDir(layerFile, layerDir);

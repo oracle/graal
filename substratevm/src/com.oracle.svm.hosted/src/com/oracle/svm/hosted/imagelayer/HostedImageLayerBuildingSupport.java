@@ -309,7 +309,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     record OptionLayerVerificationRequests(OptionDescriptor option, Map<LayerVerification.Kind, LayerVerification> requests) {
-        public OptionLayerVerificationRequests(OptionDescriptor option) {
+        OptionLayerVerificationRequests(OptionDescriptor option) {
             this(option, new HashMap<>());
         }
     }
