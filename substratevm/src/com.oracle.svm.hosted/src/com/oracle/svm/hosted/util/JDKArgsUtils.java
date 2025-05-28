@@ -67,30 +67,11 @@ public class JDKArgsUtils {
             boolean isArgFileOption = argument.startsWith("@") && !argument.startsWith("@@");
             if (isArgFileOption || isTerminalOpt(argument)) {
                 throw errorFunction.apply("Option '" + argument + "' is not allowed in environment variable " + envVarName);
-            } else if (!isExpectingNoDashArg(argument, result)) {
-                throw errorFunction.apply("Cannot specify main class in environment variable " + envVarName);
             }
             result.add(argument);
             assert i >= envVarValueLength || isspace(envVarValue.charAt(i));
         }
         return result;
-    }
-
-    private static boolean isExpectingNoDashArg(String argument, List<String> previousArgs) {
-        if (argument.startsWith("-")) {
-            return true; // Ignore dash args
-        }
-        if (previousArgs.isEmpty()) {
-            return false; // No previous arg means the no-dash arg is unexpected
-        }
-        String previousArg = previousArgs.getLast();
-        // Derivation from port: unpack any flags for JVM running the image generator
-        previousArg = previousArg.startsWith("-J") ? previousArg.substring(2) : previousArg;
-        boolean expectingNoDashArg = isWhiteSpaceOption(previousArg);
-        if ("-jar".equals(previousArg) || "--module".equals(previousArg) || "-m".equals(previousArg)) {
-            expectingNoDashArg = false;
-        }
-        return expectingNoDashArg;
     }
 
     public static boolean isspace(char value) {
