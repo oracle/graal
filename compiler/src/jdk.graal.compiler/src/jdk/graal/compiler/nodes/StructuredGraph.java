@@ -72,6 +72,7 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -501,6 +502,17 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         properties.put("compilationIdentifier", compilationId());
         properties.put("edgeModificationCount", getEdgeModificationCount());
         properties.put("assumptions", String.valueOf(getAssumptions()));
+        if (method() != null && profileProvider != null) {
+            ProfilingInfo profilingInfo = profileProvider.getProfilingInfo(method());
+            for (DeoptimizationReason reason : DeoptimizationReason.values()) {
+                if (reason != DeoptimizationReason.None) {
+                    int count = profilingInfo.getDeoptimizationCount(reason);
+                    if (count != 0) {
+                        properties.put("DeoptimizationCount-" + reason, count);
+                    }
+                }
+            }
+        }
     }
 
     @Override

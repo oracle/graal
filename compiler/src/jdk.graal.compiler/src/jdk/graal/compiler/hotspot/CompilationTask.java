@@ -30,9 +30,11 @@ import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationBailoutAsF
 import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static jdk.graal.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static jdk.graal.compiler.core.phases.HighTier.Options.Inline;
+import static jdk.graal.compiler.hotspot.CompilationTask.Options.MethodRecompilationLimit;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
+import java.util.ListIterator;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -60,8 +62,16 @@ import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
+import jdk.graal.compiler.phases.common.ForceDeoptSpeculationPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -72,6 +82,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
@@ -90,6 +101,12 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                         If the value starts with a non-letter character, that
                         character is used as the separator between options instead of a space.""")//
         public static final OptionKey<String> PerMethodOptions = new OptionKey<>(null);
+        @Option(help = "Hard limit on the number of recompilations to avoid deopt loops. Exceeding the limit results in a permanent bailout. " + //
+                        "Negative value means the limit is disabled. The default is -1 (disabled).", type = OptionType.Debug)//
+        public static final OptionKey<Integer> MethodRecompilationLimit = new OptionKey<>(-1);
+        @Option(help = "When the number of recompilations exceeds the limit, enable the detection of repeated identical deopts and report the source of the deopt loop when detected. " + // +
+                        "Negative value means the limit is disabled. The default is -1 (disabled).", type = OptionType.Debug)//
+        public static final OptionKey<Integer> DetectRecompilationLimit = new OptionKey<>(-1);
     }
 
     @Override
@@ -118,6 +135,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private final boolean shouldUsePreciseUnresolvedDeopts;
 
     private final boolean eagerResolving;
+
+    protected boolean checkRecompileCycle;
+
+    protected final int decompileCount;
 
     /**
      * Filter describing which types in {@link JavaTypeProfile} should be considered for profile
@@ -166,6 +187,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                  * given tier will happen if retry is false.
                  */
                 return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !bailout.isPermanent());
+            }
+            if (t instanceof ForceDeoptSpeculationPhase.TooManyDeoptimizationsError) {
+                // Handle this as a permanent bailout
+                return HotSpotCompilationRequestResult.failure(t.getMessage(), false);
             }
 
             /*
@@ -272,7 +297,27 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug);
+                Suites suites = compiler.getSuites(compiler.getGraalRuntime().getHostProviders(), debug.getOptions());
+                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) < 0 || decompileCount < MethodRecompilationLimit.getValue(debug.getOptions()))) {
+                    /*
+                     * Disable DeoptimizationGroupingPhase to simplify the creation of the
+                     * speculations for each deopt.
+                     */
+                    ListIterator<BasePhase<? super MidTierContext>> phase = suites.getMidTier().findPhase(DeoptimizationGroupingPhase.class);
+                    if (phase != null) {
+                        phase.remove();
+                    }
+                    ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
+                    if (lowTierPhasesIterator != null) {
+                        lowTierPhasesIterator.previous();
+                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount, null));
+                    }
+                }
+                result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);
+                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(debug.getOptions()))) {
+                    ProfilingInfo info = profileProvider.getProfilingInfo(method);
+                    throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -334,6 +379,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         this.shouldUsePreciseUnresolvedDeopts = shouldUsePreciseUnresolvedDeopts;
         this.eagerResolving = eagerResolving;
         this.installAsDefault = installAsDefault;
+        this.decompileCount = HotSpotGraalServices.getDecompileCount(request.getMethod());
     }
 
     public void setTypeFilter(TypeFilter typeFilter) {
@@ -425,6 +471,10 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     public int getEntryBCI() {
         return getRequest().getEntryBCI();
+    }
+
+    public StableProfileProvider getProfileProvider() {
+        return profileProvider;
     }
 
     /**
