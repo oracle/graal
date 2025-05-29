@@ -32,7 +32,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 
-@Platforms({Platform.WINDOWS.class, Platform.LINUX.class})
+@Platforms({Platform.LINUX.class, Platform.WINDOWS_AMD64.class, Platform.WINDOWS_AARCH64.class})
+/* Note: matching WINDOWS_* leaf platforms directly above because only they include JNI support. */
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
     @Override

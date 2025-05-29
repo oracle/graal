@@ -119,7 +119,7 @@ public class AMD64InterpreterStubs {
                 masm.movq(createAddress(offsetAbiFpArg6()), fps.get(6));
                 masm.movq(createAddress(offsetAbiFpArg7()), fps.get(7));
             } else {
-                assert Platform.includedIn(Platform.WINDOWS_BASE.class);
+                assert Platform.includedIn(Platform.WINDOWS.class);
                 VMError.guarantee(fps.size() == 4);
             }
 
@@ -558,7 +558,7 @@ public class AMD64InterpreterStubs {
 
         private static int upperFpEnd() {
             /* only 4 floating point regs on Windows, 8 otherwise */
-            return Platform.includedIn(Platform.WINDOWS_BASE.class) ? 3 : 7;
+            return Platform.includedIn(Platform.WINDOWS.class) ? 3 : 7;
         }
 
         @Override

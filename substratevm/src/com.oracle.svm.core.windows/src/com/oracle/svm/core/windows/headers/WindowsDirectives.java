@@ -48,12 +48,12 @@ public class WindowsDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS_BASE.class);
+        return Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS_BASE.class)) {
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
             return new ArrayList<>(Arrays.asList(windowsLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");

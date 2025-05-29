@@ -92,7 +92,7 @@ import jdk.graal.compiler.core.common.NumUtil;
  *      x64 exception handling</a>
  */
 @AutomaticallyRegisteredFeature
-@Platforms(Platform.WINDOWS_BASE.class)
+@Platforms(Platform.WINDOWS.class)
 public class WindowsUnwindInfoFeature implements InternalFeature {
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {

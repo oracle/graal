@@ -62,11 +62,7 @@ public class JNIRegistrationUtil {
     }
 
     protected static boolean isWindows() {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            return true;
-        }
-        assert !Platform.includedIn(Platform.WINDOWS_BASE.class) : "Should never be called when targeting a non-JNI platform";
-        return false;
+        return Platform.includedIn(Platform.WINDOWS.class);
     }
 
     protected static void initializeAtRunTime(FeatureAccess access, String... classNames) {

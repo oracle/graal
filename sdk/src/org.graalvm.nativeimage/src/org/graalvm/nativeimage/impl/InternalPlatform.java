@@ -45,11 +45,20 @@ import org.graalvm.nativeimage.Platform;
 public interface InternalPlatform {
 
     /**
+     * Installs default implementations for various providers of low-level functionality, such as
+     * page-level memory management.
+     *
+     * @since 25.0
+     */
+    interface FURNISHED extends Platform {
+    }
+
+    /**
      * Used for all platforms that make use of static JNI JDK libraries (libjava.a, libnio.a, ...).
      *
      * @since 19.2
      */
-    interface PLATFORM_JNI extends Platform {
+    interface PLATFORM_JNI extends FURNISHED {
     }
 
     /**
@@ -58,6 +67,5 @@ public interface InternalPlatform {
      * @since 23.0
      */
     interface NATIVE_ONLY extends Platform {
-
     }
 }

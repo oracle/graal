@@ -26,7 +26,7 @@
 package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS_BASE;
+import org.graalvm.nativeimage.Platform.WINDOWS;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -39,7 +39,7 @@ import jdk.internal.misc.Signal;
 public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS_BASE.class);
+        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class);
     }
 
     @Override

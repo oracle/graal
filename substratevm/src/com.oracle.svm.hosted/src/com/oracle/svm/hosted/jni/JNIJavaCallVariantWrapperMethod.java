@@ -215,7 +215,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         // iOS CallVariant.VARARGS stores values as an array on the stack
         if (callVariant == CallVariant.ARRAY ||
                         (Platform.includedIn(Platform.DARWIN_AARCH64.class) && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) ||
-                        (Platform.includedIn(Platform.WINDOWS_BASE.class) && callVariant == CallVariant.VA_LIST)) {
+                        (Platform.includedIn(Platform.WINDOWS.class) && callVariant == CallVariant.VA_LIST)) {
             ValueNode array;
             if (callVariant == CallVariant.VARARGS) {
                 array = kit.append(new ReadCallerStackPointerNode());
